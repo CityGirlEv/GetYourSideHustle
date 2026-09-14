@@ -14,6 +14,7 @@ export type GuideChangeLogAction =
   | "delete"
   | "restore"
   | "bulk_status"
+  | "bulk_assignee"
   | "qa_pass"
   | "content";
 
@@ -29,6 +30,7 @@ export type GuideChangeLogEntry = {
     minTier?: string;
     note?: string;
     fields?: string[];
+    assignee?: string;
   };
 };
 
@@ -39,6 +41,7 @@ export function isGuideChangeLogAction(value: unknown): value is GuideChangeLogA
     value === "delete" ||
     value === "restore" ||
     value === "bulk_status" ||
+    value === "bulk_assignee" ||
     value === "qa_pass" ||
     value === "content"
   );
@@ -71,6 +74,10 @@ export function formatGuideChangeLogSummary(entry: GuideChangeLogEntry): string 
   if (entry.action === "bulk_status") {
     if (from && to) return `Bulk status: ${from} → ${to}`;
     return to ? `Bulk status → ${to}` : "Bulk status update";
+  }
+  if (entry.action === "bulk_assignee") {
+    const assignee = entry.detail?.assignee?.trim();
+    return assignee ? `Bulk assignee → ${assignee}` : "Bulk assignee → Unassigned";
   }
   if (from && to) return `Status: ${from} → ${to}`;
   if (to) return `Status → ${to}`;

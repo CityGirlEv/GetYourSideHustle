@@ -13,19 +13,91 @@ import { APPOINTMENT_SETTER_DETAILED_STEPS } from "./appointment-setter-guide";
 import { ONLINE_RESEARCH_ASSISTANT_DETAILED_STEPS } from "./online-research-assistant-guide";
 import { MOTHERS_HELPER_DETAILED_STEPS } from "./mothers-helper-guide";
 import { CRAFTS_DETAILED_STEPS } from "./crafts-guide";
+import { BEACH_SHELL_JEWELRY_DETAILED_STEPS } from "./beach-shell-jewelry-guide";
+import { GIFT_WRAPPING_DETAILED_STEPS } from "./gift-wrapping-guide";
+import { AFFILIATE_DETAILED_STEPS } from "./affiliate-guide";
+import { DROPSHIPPING_DETAILED_STEPS } from "./dropshipping-guide";
+import { FB_MARKETPLACE_HELPER_DETAILED_STEPS } from "./fb-marketplace-helper-guide";
+import { PORCH_PACKAGE_DETAILED_STEPS } from "./porch-package-helper-guide";
+import { TRAVEL_RESEARCH_DETAILED_STEPS } from "./travel-research-assistant-guide";
+import { TRANSCRIPTION_NOTES_DETAILED_STEPS } from "./transcription-notes-helper-guide";
+import { WEBSITE_TESTER_DETAILED_STEPS } from "./website-tester-guide";
+import { COMMUNITY_NEWSLETTER_DETAILED_STEPS } from "./community-newsletter-creator-guide";
+import { COMMUNITY_TEACHING_DETAILED_STEPS } from "./community-teaching-workshops-guide";
+import { REVIEW_RESPONSE_DETAILED_STEPS } from "./review-response-assistant-guide";
+import { CAREER_CONSULTING_DETAILED_STEPS } from "./career-industry-consulting-guide";
+import { PART_TIME_NOTARY_DETAILED_STEPS } from "./part-time-notary-guide";
+import { RESUME_LINKEDIN_DETAILED_STEPS } from "./resume-linkedin-helper-guide";
+import { SHORT_FORM_VIDEO_DETAILED_STEPS } from "./short-form-video-editor-guide";
+import { GBP_HELPER_DETAILED_STEPS } from "./google-business-profile-helper-guide";
+import { UGC_CREATOR_DETAILED_STEPS } from "./ugc-creator-guide";
+import { VIRTUAL_ASSISTANT_DETAILED_STEPS } from "./virtual-assistant-guide";
+import { VIRTUAL_RECEPTIONIST_DETAILED_STEPS } from "./virtual-receptionist-guide";
+import { SOCIAL_INFLUENCER_DETAILED_STEPS } from "./social-influencer-guide";
+import { COMMUNITY_MODERATOR_DETAILED_STEPS } from "./online-community-moderator-guide";
+import { BASIC_INVITATION_DETAILED_STEPS } from "./basic-invitation-creator-guide";
+import { POD_DETAILED_STEPS } from "./pod-guide";
+import { PET_SITTING_DETAILED_STEPS } from "./pet-sitting-guide";
+import { HANDYMAN_DETAILED_STEPS } from "./handyman-guide";
+import { FRIENDSHIP_BRACELET_DETAILED_STEPS } from "./friendship-bracelet-maker-guide";
+import { LEAF_RAKING_DETAILED_STEPS } from "./leaf-raking-guide";
+import { LEMONADE_STAND_DETAILED_STEPS } from "./lemonade-stand-guide";
+import { AIRBNB_HOSTING_DETAILED_STEPS } from "./airbnb-hosting-guide";
+import { DIGITAL_COOKBOOK_DETAILED_STEPS } from "./digital-cookbook-creator-guide";
+import { FAMILY_PHOTO_SLIDESHOW_DETAILED_STEPS } from "./family-photo-slideshow-guide";
+import { LOCAL_RESOURCE_LIST_DETAILED_STEPS } from "./local-resource-list-creator-guide";
+import { RECYCLING_HELPER_DETAILED_STEPS } from "./recycling-helper-guide";
+import { PROOFREADER_DETAILED_STEPS } from "./proofreader-guide";
+import { TOY_ORGANIZER_DETAILED_STEPS } from "./toy-organizer-guide";
+import { TRASH_CAN_SERVICE_DETAILED_STEPS } from "./trash-can-service-guide";
+import { HOMEWORK_HELPER_DETAILED_STEPS } from "./homework-helper-guide";
+import { CANVA_FLYER_DETAILED_STEPS } from "./canva-flyer-creator-guide";
+import { CAR_INTERIOR_DETAILED_STEPS } from "./car-interior-cleanup-guide";
+import { NEIGHBORHOOD_DOG_WALKER_DETAILED_STEPS } from "./neighborhood-dog-walker-guide";
+import { GREETING_CARD_DETAILED_STEPS } from "./greeting-card-creator-guide";
+import { HOLIDAY_DECORATING_DETAILED_STEPS } from "./holiday-decorating-helper-guide";
+import { LIGHT_HANDYMAN_DETAILED_STEPS } from "./light-handyman-home-help-guide";
+import { TUTORING_SKILLS_DETAILED_STEPS } from "./tutoring-skills-coaching-guide";
+import { VACATION_PLANT_DETAILED_STEPS } from "./vacation-plant-helper-guide";
 import { PERSONAL_SHOPPER_DETAILED_STEPS } from "./personal-shopper-guide";
 import { YOUTH_SPORTS_HELPER_DETAILED_STEPS } from "./youth-sports-helper-guide";
 import { GENEALOGY_DETAILED_STEPS } from "./genealogy-family-history-guide";
 import { JUNIOR_GIVE_BACK_TEACH_DETAILED_STEPS } from "./junior-give-back-teach-guide";
+import { JUNIOR_SAVINGS_CEO_DETAILED_STEPS } from "./junior-savings-ceo-guide";
 import { KIDS_KINDNESS_SHARE_DETAILED_STEPS } from "./kids-kindness-share-guide";
 import { KIDS_PIGGY_FIRST_GOAL_DETAILED_STEPS } from "./kids-piggy-first-goal-guide";
 import { BABYSITTING_DETAILED_STEPS } from "./babysitting-guide";
 import { DIGITAL_PRODUCTS_DETAILED_STEPS } from "./digital-products-guide";
+import { BOOK_PUBLISHING_DETAILED_STEPS } from "./book-publishing-guide";
+import { BOOK_PUBLISHING_KIDS_DETAILED_STEPS } from "./book-publishing-kids-guide";
+import { AI_PROMPT_HELPER_DETAILED_STEPS } from "./ai-prompt-helper-guide";
+import { AI_PEERS_DETAILED_STEPS } from "./ai-peers-guide";
+import { JUNIOR_GAMES_AI_DETAILED_STEPS } from "./junior-games-ai-guide";
+import { ETSY_STORE_DETAILED_STEPS } from "./etsy-store-guide";
 import { RIDESHARE_DETAILED_STEPS } from "./rideshare-guide";
 import { JUNIOR_REINVEST_CEO_DETAILED_STEPS } from "./junior-reinvest-ceo-guide";
 import { KIDS_REINVEST_JAR_DETAILED_STEPS } from "./kids-reinvest-jar-guide";
 import { PROPERTY_MGMT_DETAILED_STEPS } from "./property-mgmt-guide";
 import { AIRBNB_TURNOVER_CHECKER_DETAILED_STEPS } from "./airbnb-turnover-checker-guide";
+import { STR_COHOST_DETAILED_STEPS } from "./str-cohost-guide";
+import { ERRAND_RUNNER_DETAILED_STEPS } from "./errand-runner-guide";
+import { AI_AGENTS_DETAILED_STEPS } from "./ai-agents-guide";
+import { AI_PROMO_VIDEO_DETAILED_STEPS } from "./ai-promo-video-guide";
+import { AI_TIMING_DETAILED_STEPS } from "./ai-timing-guide";
+import { TECH_HELPER_DETAILED_STEPS } from "./tech-helper-guide";
+import { YARD_HELP_DETAILED_STEPS } from "./yard-help-guide";
+import { CLEANING_SERVICE_DETAILED_STEPS } from "./cleaning-service-guide";
+import { PLANT_WATERING_DETAILED_STEPS } from "./plant-watering-guide";
+import { HOMEWORK_ORGANIZER_DETAILED_STEPS } from "./homework-organizer-guide";
+import { GROUP_SETUP_HELPER_DETAILED_STEPS } from "./group-setup-helper-guide";
+import { HOUSE_SITTER_DETAILED_STEPS } from "./house-sitter-guide";
+import { BOOKKEEPING_DETAILED_STEPS } from "./bookkeeping-guide";
+import { CLOSET_CLEANOUT_LISTING_DETAILED_STEPS } from "./closet-cleanout-listing-guide";
+import { NONPROFIT_SOCIAL_HELPER_DETAILED_STEPS } from "./nonprofit-social-helper-guide";
+import { START_GARDENING_CLUB_DETAILED_STEPS } from "./start-gardening-club-guide";
+import { START_BOOK_CLUB_DETAILED_STEPS } from "./start-book-club-guide";
+import { FORECLOSURE_PROPERTIES_DETAILED_STEPS } from "./foreclosure-properties-guide";
+import { KIDS_GAMES_AI_DETAILED_STEPS } from "./kids-games-ai-guide";
 
 export type DetailedGuideStep = { title: string; desc: string };
 
@@ -208,8 +280,9 @@ export function clientScoutSteps(cfg: ClientScoutConfig): DetailedGuideStep[] {
 export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
   "errand-runner": {
     serviceLabel: "Errand Runner",
-    examplePitch: "I run local errands (pharmacy, groceries, post office) and bring receipts.",
-    examplePrice: "Usually $10 base + $5 per extra stop.",
+    examplePitch:
+      "I help with simple store pickups, returns, shopping, package drop-offs, and permitted pharmacy pickups. Receipts included. Merchandise is separate from the service fee.",
+    examplePrice: "Starting at $10–$15 per errand (examples).",
   },
   "car-interior-cleanup": {
     serviceLabel: "Car Interior Cleanup",
@@ -222,19 +295,20 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
     examplePrice: "About $12–18 per 20-minute walk.",
   },
   "yard-help": {
-    serviceLabel: "Yard Help",
-    examplePitch: "I help with mowing, weeding, and yard tidy-ups.",
-    examplePrice: "About $15–25/hr or a flat small-yard price.",
+    serviceLabel: "Yard & Garden Helper",
+    examplePitch:
+      "I help with light yard work — raking, watering flowers, pulling weeds, sweeping, and seasonal cleanup. Yard jobs start at $15.",
+    examplePrice: "Yard jobs start at $15 (examples $15 – $30 / yard).",
   },
   "pet-sitting": {
     serviceLabel: "Pet Sitting",
     examplePitch: "I pet-sit while you’re away — feeding, walks, and daily photo updates.",
-    examplePrice: "Daily visit pricing by arrangement.",
+    examplePrice: "Walks, drop-ins, and overnight by arrangement (examples only).",
   },
   "plant-watering": {
-    serviceLabel: "Plant Watering",
-    examplePitch: "I’ll water plants on a schedule — homes while you travel, or weekly care for your shop or office lobby plants.",
-    examplePrice: "About $10–15 per visit.",
+    serviceLabel: "Plant watering for homes and local businesses",
+    examplePitch: "I water indoor and outdoor plants on a schedule — homes while you travel, and weekly care for lobby or office plants. I follow your written plant instructions.",
+    examplePrice: "Quoted per visit, vacation package, or recurring business route.",
   },
   handyman: {
     serviceLabel: "Handyman Services",
@@ -248,9 +322,9 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
     examplePrice: "Flat fees by job (examples in the guide).",
   },
   "tech-helper": {
-    serviceLabel: "Tech Helper",
-    examplePitch: "I help neighbors with phones, Wi‑Fi, and simple computer setup.",
-    examplePrice: "Session pricing by visit.",
+    serviceLabel: "Smartphone & everyday tech lessons",
+    examplePitch: "I provide patient, one-on-one smartphone help for sending photos, video calls, apps, and everyday settings. You keep control of your phone and passwords.",
+    examplePrice: "Sessions start at a quoted rate — see Suggested Pricing.",
   },
   homework: {
     serviceLabel: "Homework Help",
@@ -296,7 +370,7 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
   "beach-shell-jewelry": {
     serviceLabel: "Beach Shell Jewelry",
     examplePitch: "Handmade jewelry from beach shells — earrings, bracelets, and necklaces.",
-    examplePrice: "About $8–22 per piece.",
+    examplePrice: "About $8–$18 earrings, $10–$22 bracelets, $15–$35+ necklaces (examples only).",
   },
   "garage-sale-helper": {
     serviceLabel: "Garage Sale Helper",
@@ -336,7 +410,7 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
   "basic-invitation-creator": {
     serviceLabel: "Invitation Design",
     examplePitch: "I design party invitations in Canva — digital files + optional print.",
-    examplePrice: "About $10–25 for a simple invite.",
+    examplePrice: "About $15–$50 per project (examples only).",
     canvaTemplate: {
       search: "birthday invitation or party invite",
       pickHint: "kids, elegant, or casual — match the party vibe",
@@ -379,8 +453,9 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
   },
   "cleaning-service": {
     serviceLabel: "House Cleaning",
-    examplePitch: "Standard 2-bed clean — kitchen, baths, floors, dusting. Free re-clean on any missed spot.",
-    examplePrice: "About $140 for a standard 2-bed (examples).",
+    examplePitch:
+      "Standard cleans, recurring slots, move-outs, and turnovers — clear included/not-included lists and a quote before I start.",
+    examplePrice: "Standard small home from about $80–130 (examples).",
     youthFriendly: false,
   },
   "ai-social-helper": {
@@ -390,15 +465,16 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
     youthFriendly: false,
   },
   "ai-prompt-helper": {
-    serviceLabel: "AI Prompt Helper",
-    examplePitch: "I build prompt packs and chat workflows so you get better AI answers for your business tasks.",
-    examplePrice: "Flat pack or hourly session fee.",
-    youthFriendly: false,
+    serviceLabel: "Learn AI using ChatGPT",
+    examplePitch: "I help beginners learn ChatGPT with simple prompts and reusable workflows for writing, planning, and everyday tasks.",
+    examplePrice: "Optional paid projects $15–$50 (examples) after you review the AI output.",
+    youthFriendly: true,
   },
   "ai-peers": {
-    serviceLabel: "AI Peer Coffee Chat",
-    examplePitch: "I host short peer sessions teaching practical AI tools for everyday work.",
-    examplePrice: "Per-session fee (examples in the guide).",
+    serviceLabel: "AI-for-Peers Coffee Chat",
+    examplePitch:
+      "Curious about ChatGPT but don’t want a tech lecture? Join a friendly AI Coffee Chat and learn practical everyday uses at your own pace.",
+    examplePrice: "1:1 about $20–$50/hour · small group about $10–$30/person (examples).",
     youthFriendly: false,
   },
   "ai-assets": {
@@ -409,9 +485,10 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
   },
   "ai-promo-video": {
     serviceLabel: "AI Promo Video",
-    examplePitch: "I produce short promo clips with AI tools for your product or event.",
-    examplePrice: "Flat fee per finished video.",
-    youthFriendly: false,
+    examplePitch:
+      "I create short promotional videos for local businesses using your brand assets plus licensed/AI-assisted visuals — may I send a sample and package options?",
+    examplePrice: "Quick $35–$75 · Standard $75–$175 · Premium $175–$350+ (examples only).",
+    youthFriendly: true,
   },
   "local-business-ai-setup": {
     serviceLabel: "Local Business AI Setup",
@@ -495,6 +572,22 @@ export const GIVE_BACK_FOUNDATION_GUIDE_IDS = [
   "junior-give-back-teach",
 ] as const;
 
+/** Skill-building / education guides — no sale closing or marketing inject. */
+export const SKILL_LEARNING_GUIDE_IDS = [
+  "ai-prompt-helper",
+  "junior-games-ai",
+  "kids-games-ai",
+] as const;
+
+/** Investment-acquisition guides — no client-marketing or first-sale playbook. */
+export const INVESTMENT_ACQUISITION_GUIDE_IDS = ["foreclosure-properties"] as const;
+
+export function guideUsesInvestmentAcquisitionPlaybook(guideId: string): boolean {
+  return (INVESTMENT_ACQUISITION_GUIDE_IDS as readonly string[]).includes(
+    String(guideId || "").trim(),
+  );
+}
+
 export function guideUsesSavingsFoundation(guideId: string): boolean {
   return (SAVINGS_FOUNDATION_GUIDE_IDS as readonly string[]).includes(
     String(guideId || "").trim(),
@@ -507,8 +600,14 @@ export function guideUsesGiveBackFoundation(guideId: string): boolean {
   );
 }
 
+export function guideUsesSkillLearningPlaybook(guideId: string): boolean {
+  return (SKILL_LEARNING_GUIDE_IDS as readonly string[]).includes(
+    String(guideId || "").trim(),
+  );
+}
+
 /** Uber/Lyft-style marketplace — no customer-acquisition marketing sequence. */
-export const PLATFORM_MARKETPLACE_GUIDE_IDS = ["rideshare"] as const;
+export const PLATFORM_MARKETPLACE_GUIDE_IDS = ["rideshare", "str-cohost"] as const;
 
 export function guideUsesPlatformMarketplacePlaybook(guideId: string): boolean {
   return (PLATFORM_MARKETPLACE_GUIDE_IDS as readonly string[]).includes(
@@ -516,9 +615,14 @@ export function guideUsesPlatformMarketplacePlaybook(guideId: string): boolean {
   );
 }
 
-/** Savings + give-back educational guides skip business playbook extras. */
+/** Savings + give-back + skill-learning + investment-acquisition guides skip business playbook extras. */
 export function guideUsesNonLaunchPlaybook(guideId: string): boolean {
-  return guideUsesSavingsFoundation(guideId) || guideUsesGiveBackFoundation(guideId);
+  return (
+    guideUsesSavingsFoundation(guideId) ||
+    guideUsesGiveBackFoundation(guideId) ||
+    guideUsesSkillLearningPlaybook(guideId) ||
+    guideUsesInvestmentAcquisitionPlaybook(guideId)
+  );
 }
 
 /** Every guide: always step 1 — get a thumbs-up from someone close before going further. */
@@ -652,7 +756,7 @@ export function ensureGuideFoundationSteps(
 
 /** Early block titles — before-photos and hustle body come after these. */
 const EARLY_PLAYBOOK_BLOCK_RE =
-  /run this by your parent|get parent thumbs up|set safety rules|consult parent|research competitors|pick a name for your side hustle|plan what you.?re saving for|pick how you will tell people|decide on marketing objectives|choose your marketing channels|make your marketing materials|create your marketing campaign|carry out (the|your) marketing plan|execute your marketing campaign|how you will advertise/i;
+  /run this by your parent|get parent thumbs up|set safety rules|consult parent|research competitors|pick a name for your side hustle|plan what you.?re saving for|pick how you will tell people|decide on marketing objectives|choose your marketing channels|make your (?:authority\s*&\s*)?marketing materials|create your marketing campaign|carry out (the|your) marketing plan|execute your marketing campaign|how you will advertise/i;
 
 /** Index right after consecutive foundation + marketing steps at the start of the list. */
 export function indexAfterEarlyPlaybookBlock(steps: DetailedGuideStep[]): number {
@@ -720,7 +824,7 @@ export const ASK_FOR_REVIEW_STEP: DetailedGuideStep = {
 const MAKE_YOUR_FIRST_SALE_TITLE_RE =
   /make your first sale|deliver the first (small )?job|complete your first (paid )?(sale|job)|document all sales|log (your )?(first )?(sale|income)/i;
 const ASK_FOR_REVIEW_TITLE_RE =
-  /ask for a (short )?review|ask .+ leave a review|leave a review|review and a next booking|ask for (a )?testimonial/i;
+  /^(ask for a (short )?review)\b|^ask .+ to leave a review$|review and a next booking|^ask for (a )?testimonial$/i;
 
 /**
  * Every business guide ends with:
@@ -763,7 +867,10 @@ export function finalizeGuidePlaybookSteps(
     audiences: opts?.audiences,
     foundation: guideUsesSavingsFoundation(id)
       ? "savings"
-      : guideUsesGiveBackFoundation(id) || guideUsesPlatformMarketplacePlaybook(id)
+      : guideUsesGiveBackFoundation(id) ||
+          guideUsesPlatformMarketplacePlaybook(id) ||
+          guideUsesSkillLearningPlaybook(id) ||
+          guideUsesInvestmentAcquisitionPlaybook(id)
         ? "giveback"
         : "business",
   });
@@ -828,7 +935,7 @@ export function detailedStepsForGuide(
 /** True when the guide already teaches marketing channel choices. */
 export function stepsIncludeMarketingChoices(steps: DetailedGuideStep[]): boolean {
   return steps.some((s) =>
-    /decide on marketing objectives|pick how you will tell people about your side hustle|choose your marketing channels|make your marketing materials|create your marketing campaign|carry out (the|your) marketing plan|execute your marketing campaign|how you will advertise|choose how you(?:'ll| will) market/i.test(
+    /decide on marketing objectives|pick how you will tell people about your side hustle|choose your marketing channels|make your (?:authority\s*&\s*)?marketing materials|create your marketing campaign|carry out (the|your) marketing plan|execute your marketing campaign|how you will advertise|choose how you(?:'ll| will) market|create honest marketing materials|contact suitable clients/i.test(
       s.title,
     ),
   );
@@ -837,6 +944,12 @@ export function stepsIncludeMarketingChoices(steps: DetailedGuideStep[]): boolea
 export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   babysitting: BABYSITTING_DETAILED_STEPS.map((s) => ({ ...s })),
   "digital-products": DIGITAL_PRODUCTS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "book-publishing": BOOK_PUBLISHING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "book-publishing-kids": BOOK_PUBLISHING_KIDS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ai-prompt-helper": AI_PROMPT_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ai-peers": AI_PEERS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "junior-games-ai": JUNIOR_GAMES_AI_DETAILED_STEPS.map((s) => ({ ...s })),
+  "etsy-store": ETSY_STORE_DETAILED_STEPS.map((s) => ({ ...s })),
   "food-delivery": FOOD_DELIVERY_DETAILED_STEPS.map((s) => ({ ...s })),
   "estate-sale-listing-helper": ESTATE_SALE_DETAILED_STEPS.map((s) => ({ ...s })),
   "kids-party-game-host": KIDS_PARTY_GAME_HOST_DETAILED_STEPS.map((s) => ({ ...s })),
@@ -847,9 +960,56 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "online-research-assistant": ONLINE_RESEARCH_ASSISTANT_DETAILED_STEPS.map((s) => ({ ...s })),
   "mothers-helper": MOTHERS_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
   crafts: CRAFTS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "beach-shell-jewelry": BEACH_SHELL_JEWELRY_DETAILED_STEPS.map((s) => ({ ...s })),
+  "gift-wrapping": GIFT_WRAPPING_DETAILED_STEPS.map((s) => ({ ...s })),
+  affiliate: AFFILIATE_DETAILED_STEPS.map((s) => ({ ...s })),
+  dropshipping: DROPSHIPPING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "fb-marketplace-helper": FB_MARKETPLACE_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "porch-package-helper": PORCH_PACKAGE_DETAILED_STEPS.map((s) => ({ ...s })),
+  "travel-research-assistant": TRAVEL_RESEARCH_DETAILED_STEPS.map((s) => ({ ...s })),
+  "transcription-notes-helper": TRANSCRIPTION_NOTES_DETAILED_STEPS.map((s) => ({ ...s })),
+  "website-tester": WEBSITE_TESTER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "community-newsletter-creator": COMMUNITY_NEWSLETTER_DETAILED_STEPS.map((s) => ({ ...s })),
+  teaching: COMMUNITY_TEACHING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "review-response-assistant": REVIEW_RESPONSE_DETAILED_STEPS.map((s) => ({ ...s })),
+  consulting: CAREER_CONSULTING_DETAILED_STEPS.map((s) => ({ ...s })),
+  notary: PART_TIME_NOTARY_DETAILED_STEPS.map((s) => ({ ...s })),
+  "resume-linkedin-helper": RESUME_LINKEDIN_DETAILED_STEPS.map((s) => ({ ...s })),
+  "short-form-video-editor": SHORT_FORM_VIDEO_DETAILED_STEPS.map((s) => ({ ...s })),
+  "google-business-helper": GBP_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ugc-creator": UGC_CREATOR_DETAILED_STEPS.map((s) => ({ ...s })),
+  "virtual-assistant": VIRTUAL_ASSISTANT_DETAILED_STEPS.map((s) => ({ ...s })),
+  "virtual-receptionist": VIRTUAL_RECEPTIONIST_DETAILED_STEPS.map((s) => ({ ...s })),
+  social: SOCIAL_INFLUENCER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "online-community-moderator": COMMUNITY_MODERATOR_DETAILED_STEPS.map((s) => ({ ...s })),
+  "basic-invitation-creator": BASIC_INVITATION_DETAILED_STEPS.map((s) => ({ ...s })),
+  pod: POD_DETAILED_STEPS.map((s) => ({ ...s })),
+  "pet-sitting": PET_SITTING_DETAILED_STEPS.map((s) => ({ ...s })),
+  handyman: HANDYMAN_DETAILED_STEPS.map((s) => ({ ...s })),
+  "friendship-bracelet-maker": FRIENDSHIP_BRACELET_DETAILED_STEPS.map((s) => ({ ...s })),
+  "leaf-raking": LEAF_RAKING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "lemonade-stand": LEMONADE_STAND_DETAILED_STEPS.map((s) => ({ ...s })),
+  airbnb: AIRBNB_HOSTING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "digital-cookbook-creator": DIGITAL_COOKBOOK_DETAILED_STEPS.map((s) => ({ ...s })),
+  "family-photo-slideshow": FAMILY_PHOTO_SLIDESHOW_DETAILED_STEPS.map((s) => ({ ...s })),
+  "local-resource-list-creator": LOCAL_RESOURCE_LIST_DETAILED_STEPS.map((s) => ({ ...s })),
+  "recycling-helper": RECYCLING_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  proofreader: PROOFREADER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "toy-organizer": TOY_ORGANIZER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "trash-can-service": TRASH_CAN_SERVICE_DETAILED_STEPS.map((s) => ({ ...s })),
+  homework: HOMEWORK_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "canva-flyer-creator": CANVA_FLYER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "car-interior-cleanup": CAR_INTERIOR_DETAILED_STEPS.map((s) => ({ ...s })),
+  "dog-walk": NEIGHBORHOOD_DOG_WALKER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "greeting-card-creator": GREETING_CARD_DETAILED_STEPS.map((s) => ({ ...s })),
+  "holiday-decorating-helper": HOLIDAY_DECORATING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "handyman-light": LIGHT_HANDYMAN_DETAILED_STEPS.map((s) => ({ ...s })),
+  tutoring: TUTORING_SKILLS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "vacation-mail-plant-helper": VACATION_PLANT_DETAILED_STEPS.map((s) => ({ ...s })),
   "personal-shopper": PERSONAL_SHOPPER_DETAILED_STEPS.map((s) => ({ ...s })),
   "youth-sports-helper": YOUTH_SPORTS_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
   "junior-give-back-teach": JUNIOR_GIVE_BACK_TEACH_DETAILED_STEPS.map((s) => ({ ...s })),
+  "junior-savings-ceo": JUNIOR_SAVINGS_CEO_DETAILED_STEPS.map((s) => ({ ...s })),
   "kids-kindness-share": KIDS_KINDNESS_SHARE_DETAILED_STEPS.map((s) => ({ ...s })),
   "kids-piggy-first-goal": KIDS_PIGGY_FIRST_GOAL_DETAILED_STEPS.map((s) => ({ ...s })),
   "kids-reinvest-jar": KIDS_REINVEST_JAR_DETAILED_STEPS.map((s) => ({ ...s })),
@@ -859,6 +1019,25 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "junior-reinvest-ceo": JUNIOR_REINVEST_CEO_DETAILED_STEPS.map((s) => ({ ...s })),
   "property-mgmt": PROPERTY_MGMT_DETAILED_STEPS.map((s) => ({ ...s })),
   "airbnb-turnover-checker": AIRBNB_TURNOVER_CHECKER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "str-cohost": STR_COHOST_DETAILED_STEPS.map((s) => ({ ...s })),
+  "errand-runner": ERRAND_RUNNER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ai-agents": AI_AGENTS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ai-promo-video": AI_PROMO_VIDEO_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ai-timing": AI_TIMING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "tech-helper": TECH_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "yard-help": YARD_HELP_DETAILED_STEPS.map((s) => ({ ...s })),
+  "cleaning-service": CLEANING_SERVICE_DETAILED_STEPS.map((s) => ({ ...s })),
+  "plant-watering": PLANT_WATERING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "homework-organizer": HOMEWORK_ORGANIZER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "group-setup-helper": GROUP_SETUP_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "house-sitter": HOUSE_SITTER_DETAILED_STEPS.map((s) => ({ ...s })),
+  bookkeeping: BOOKKEEPING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "closet-cleanout-listing": CLOSET_CLEANOUT_LISTING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "nonprofit-social-helper": NONPROFIT_SOCIAL_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "start-gardening-club": START_GARDENING_CLUB_DETAILED_STEPS.map((s) => ({ ...s })),
+  "start-book-club": START_BOOK_CLUB_DETAILED_STEPS.map((s) => ({ ...s })),
+  "foreclosure-properties": FORECLOSURE_PROPERTIES_DETAILED_STEPS.map((s) => ({ ...s })),
+  "kids-games-ai": KIDS_GAMES_AI_DETAILED_STEPS.map((s) => ({ ...s })),
 
   "web-leads": [
     {
@@ -884,509 +1063,6 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     {
       title: "Stack recurring revenue",
       desc: "Offer monthly hosting + light edits on Cloudflare ($49–$149). Ask every client for 2 referrals and one Google review. Keep revision limits in writing.",
-    },
-  ],
-
-  consulting: [
-    {
-      title: "Define your niche and who you help",
-      desc: "Write one sentence: industry + who you advise + outcome (e.g. “I help mid-career nurses move into healthcare admin roles with a 90-day plan”). List 3 problems you solve. Save in Google Docs (Tools tab — sign in with Google, or use an account you already have). Skip “I advise anyone.”",
-    },
-    {
-      title: "Build a simple rate card",
-      desc: "Publish 2–3 packages: 30-min discovery (free or low fee), 60-min strategy session, and optional 3-session retainer. Example ranges only: $50–200/hr depending on niche depth — not a guarantee. State what’s included (agenda, notes, one follow-up email).",
-    },
-    {
-      title: "Prep a discovery-call agenda",
-      desc: "One-page outline: goals, current role/business, blockers, 90-day success, next step. Use Google Docs (Tools tab — sign in with Google, or use an account you already have) or Notion. Practice a 45-minute flow: 10 listen / 25 advise / 10 agree on homework.",
-    },
-    {
-      title: "Deliver the first paid session and send notes",
-      desc: "Meet on Zoom (https://zoom.us/) or in a public café. Take notes live; within 24 hours email a 5-bullet summary + 3 action items. Ask permission to use a one-line testimonial (no confidential details).",
-    },
-    {
-      title: "Ask for referrals and a LinkedIn recommendation",
-      desc: "After a strong session: “Who else in your network should hear about this?” Send a LinkedIn recommendation request (https://www.linkedin.com/) with a draft sentence they can edit. Track referrals in a Sheet.",
-    },
-    {
-      title: "Productize a workshop or group cohort",
-      desc: "Turn your best session into a 90-minute workshop or 4-week group (same agenda, more seats). Promote with the flyer and LinkedIn posts from your marketing plan. Raise 1:1 rates after 5 happy clients.",
-    },
-  ],
-
-  "basic-invitation-creator": [
-    {
-      title: "Collect event details from the host",
-      desc: "Text or call the host and write down: event name, date, start/end time, street address or venue, dress code (optional), and RSVP name + phone or email. Save these in a Notes app or Google Docs (Tools tab — sign in with Google, or use an account you already have) so you can paste them into Canva without guessing.",
-    },
-    {
-      title: "Customize text, colors, and photos in Canva",
-      desc: "Open the invitation template you picked in Make your marketing materials (or duplicate it for this client). Double-click headline text and replace with the event name and date. Use the Text tool for time, address, and RSVP line. Swap colors with the color picker; upload a photo via Uploads if the host sent one. Keep fonts readable at print size.",
-    },
-    {
-      title: "Export PDF Print and PNG files",
-      desc: "Click Share → Download → choose PDF Print for home or print-shop printing (with bleed if offered). Download a second copy as PNG for texting or email. Name files like Smith-Birthday-Invite.pdf.",
-    },
-    {
-      title: "Send a proof and do one revision",
-      desc: "Text the host the PNG preview: “Does this look right? One free text fix.” Fix typos or time changes in Canva, re-export, and resend. Do not print until they approve.",
-    },
-    {
-      title: "Deliver files and optional printing",
-      desc: "Email or AirDrop the final PDF/PNG. If they want prints, use your home printer or a local shop / library copier. Charge a flat fee ($10–25 for a simple invite is a fair example).",
-    },
-    {
-      title: "Invoice and ask for a neighbor referral",
-      desc: "Send a simple text invoice: “Invitation design $20 — Venmo @you or cash OK.” Ask: “Know anyone else with a party coming up?” Save the approved Canva file in a folder for fast reorders.",
-    },
-  ],
-
-  "canva-flyer-creator": [
-    {
-      title: "Interview the client on flyer purpose",
-      desc: "Ask what the flyer is for (yard sale, babysitting, bake sale, lost pet, club signup). Get the must-have lines: headline, date/time, location, price or free, and one contact (phone or QR). Write them in Google Docs (Tools tab — sign in with Google, or use an account you already have) before you customize in Canva.",
-    },
-    {
-      title: "Drop in copy and high-contrast colors",
-      desc: "Open the flyer template you picked in Make your marketing materials (or duplicate it for this client). Replace placeholder text with the client’s exact words. Use Canva’s Elements tab for simple icons (calendar, map pin). Avoid tiny fonts — flyers are read from 6 feet away. Check spelling twice.",
-    },
-    {
-      title: "Add a QR code if they have a link",
-      desc: "In Canva search Elements for “QR code” (or use https://www.qr-code-generator.com/ ) and paste their signup URL, Instagram, or Google Form. Place it bottom-right with “Scan to sign up.”",
-    },
-    {
-      title: "Download print-ready PDF and share PNG",
-      desc: "Share → Download → PDF Print for bulletin boards and shop windows. Also export PNG for group texts and Facebook neighborhood posts. Send both to the client for approval.",
-    },
-    {
-      title: "Print test copy and adjust margins",
-      desc: "Print one copy on plain paper at home or library. If text is clipped, nudge margins in Canva and re-export. Charge per flyer ($15–40 design) or add $5–15 if you handle printing.",
-    },
-    {
-      title: "Post where the client wants visibility",
-      desc: "With permission, tape copies on community boards, church lobbies, or local café windows. Take a photo of the posted flyer for your portfolio in Canva or Google Photos.",
-    },
-  ],
-
-  "greeting-card-creator": [
-    {
-      title: "Pick the occasion and tone with the buyer",
-      desc: "Confirm birthday, thank-you, sympathy, or holiday — and whether they want funny, heartfelt, or kid-made. Note inside message text (20–40 words) and whether they need a blank inside for handwriting.",
-    },
-    {
-      title: "Design the cover in Canva or by hand",
-      desc: "Digital path: use the greeting-card template you picked in Make your marketing materials — keep the front bold; save long messages for the inside. Handmade path: cardstock, colored pencils, stickers from a craft drawer.",
-    },
-    {
-      title: "Set up inside text and envelope fit",
-      desc: "In Canva add a second page for inside copy. Use 14–18 pt font for readability. If mailing, measure against a standard envelope (#10 or A2) so nothing gets cropped when folded.",
-    },
-    {
-      title: "Export or photograph the finished card",
-      desc: "Canva: Download PDF Print (front/back pages) or PNG. Handmade: photograph in daylight on a plain background; crop in your phone Photos app. Send preview before final print or delivery.",
-    },
-    {
-      title: "Print at home or order a small run",
-      desc: "Home printer on cardstock (110 lb is ideal) or library color printer. For multiples, export PDF and use a print shop quote. Price single cards $3–8 handmade, $5–15 custom Canva sets.",
-    },
-    {
-      title: "Hand-deliver or mail with parent help",
-      desc: "Kid sellers: parent handles stamps and addresses. Include a sticky note: “Made by [first name only].” Ask the buyer to show the card to one friend who might order for the next holiday.",
-    },
-  ],
-
-  "digital-cookbook-creator": [
-    {
-      title: "Gather recipes and stories from the family",
-      desc: "Interview a parent or grandparent over FaceTime. Collect 8–15 recipes with ingredients, steps, serving size, and one memory line each. Paste everything into Google Docs (Tools tab — sign in with Google, or use an account you already have) in one shared doc.",
-    },
-    {
-      title: "Organize sections and standardize formatting",
-      desc: "Create headings: Appetizers, Mains, Desserts, Family Favorites. Use the same format for every recipe: title, prep time, ingredients bullet list, numbered steps. Fix typos; do not change grandma’s wording without asking.",
-    },
-    {
-      title: "Add photos in Canva or Docs",
-      desc: "Scan or phone-photo dish pictures. In Canva (https://www.canva.com/) start a “Photo book” or “Document” layout — one recipe per page with a photo strip. Or keep it simple in Google Docs (Tools tab — sign in with Google, or use an account you already have) with Insert → Image.",
-    },
-    {
-      title: "Design a cover and title page",
-      desc: "In Canva search “cookbook cover.” Add family name + “Recipes & Stories.” Export cover as PNG; keep the interior in Docs or Canva multipage PDF.",
-    },
-    {
-      title: "Export a shareable PDF",
-      desc: "In Google Docs (Tools tab — sign in with Google, or use an account you already have): File → Download → PDF. Canva: Download PDF Print. Name it like Johnson-Family-Cookbook-2026.pdf. Email a proof PDF to the family for one round of edits.",
-    },
-    {
-      title: "Optional print via Amazon KDP or local shop",
-      desc: "For printed copies, parent can upload PDF to Amazon KDP (https://kdp.amazon.com/) as a low-cost paperback — verify trim size. Or print spiral-bound at Office Depot / Staples. Charge $50–150 for design depending on page count.",
-    },
-    {
-      title: "Deliver files and backup to Drive",
-      desc: "Send final PDF by email and upload to Google Drive with view-only link. Ask for a testimonial line you can reuse: “We finally saved all of Nana’s recipes in one place.”",
-    },
-  ],
-
-  "family-photo-slideshow": [
-    {
-      title: "Collect photos and the event storyline",
-      desc: "Ask the family for 30–80 photos (birthdays, vacations, holidays) via Google Photos shared album, AirDrop, or USB. Note the occasion (retirement party, anniversary) and song preference if they want music.",
-    },
-    {
-      title: "Sort photos chronologically or by theme",
-      desc: "In Google Photos (https://photos.google.com/) or your computer folder, order images: childhood → teens → today, or “Summer at the lake” chapters. Delete duplicates and blurry shots.",
-    },
-    {
-      title: "Build the slideshow in Canva or CapCut",
-      desc: "Canva: https://www.canva.com/ → Video → “Slideshow” template → upload photos, set 3–5 seconds per slide, add title cards. CapCut (https://www.capcut.com/): import photos, add transitions and licensed music from CapCut’s library.",
-    },
-    {
-      title: "Add captions, dates, and one opening title",
-      desc: "Keep captions short: names and year only — no full addresses. Opening slide: “The Martinez Family — 40 Years.” End slide: “Happy Anniversary!” Export 1080p MP4.",
-    },
-    {
-      title: "Preview with the family and trim length",
-      desc: "Target 3–6 minutes for parties. Send a private YouTube link (Unlisted) or text the MP4. Fix photo order or typos once; charge extra for major re-edits.",
-    },
-    {
-      title: "Deliver MP4 and optional USB",
-      desc: "Email/Drive link for the MP4. Optional: copy to a labeled USB for the party venue AV person. Price $40–120 depending on photo count and music licensing needs.",
-    },
-    {
-      title: "Archive project files for repeat customers",
-      desc: "Save the CapCut or Canva project and a folder of exported slides. Offer annual “add new year’s photos” updates for a smaller fee.",
-    },
-  ],
-
-  "dog-walk": [
-    {
-      title: "Meet the dog and owner on a trial walk",
-      desc: "Walk with the owner once to learn the dog’s name, leash manners, triggers (squirrels, other dogs), and where waste bags live. Confirm vet contact and whether the dog is allowed off-leash (usually no).",
-    },
-    {
-      title: "Agree on schedule, route, and price",
-      desc: "Set fixed days/times (e.g., Mon/Wed/Fri 4 pm, 20 minutes). Stick to sidewalks and neighborhood paths the owner approves. Example pricing: $12–18 per walk for one dog; write it in a text thread both sides save.",
-    },
-    {
-      title: "Pack your walk kit every time",
-      desc: "Bring poop bags, a spare leash clip if you have one, water in summer, and your phone fully charged. Wear reflective gear at dusk. Never use retractable leashes unless the owner insists and you’re trained.",
-    },
-    {
-      title: "Send a start and finish text",
-      desc: "Text the owner when you pick up and when you drop off: “Started walk with Bella” / “Bella home, water refreshed.” Include one fun detail — “She made a friend at the park bench.”",
-    },
-    {
-      title: "Lock up and secure the home",
-      desc: "If you enter the house, follow their rule: leash on before opening the door, lock deadbolt on exit, don’t adjust thermostat. Never share house codes with friends.",
-    },
-    {
-      title: "Track walks and payments weekly",
-      desc: "Use Notes or a simple Google Sheet: date, duration, paid Y/N. Collect weekly via Venmo/Cash App or cash Sunday. Ask satisfied owners for one intro to another dog neighbor.",
-    },
-  ],
-
-  "yard-help": [
-    {
-      title: "Walk the yard with the homeowner",
-      desc: "Ask which beds to weed, where the hose/spigot is, and whether they want lawn mowing or just edging. Note poison ivy, bee nests, or fragile plants to avoid.",
-    },
-    {
-      ...TAKE_BEFORE_PHOTOS_STEP,
-      desc: "Photograph the lawn, beds, and walkways from the curb and from the porch before you touch anything. Same angles later prove the tidy-up.",
-    },
-    {
-      title: "Confirm tools and disposal rules",
-      desc: "Use their mower, rake, and trimmers when possible — $0 startup. Ask where yard waste bags go (curb pickup day?) and whether they have gloves you should wear. Buy nothing until a job repeats.",
-    },
-    {
-      title: "Weed, rake, or mow in a set order",
-      desc: "Typical order: mow open lawn → edge walkways → weed beds → rake clippings → water if asked. Work when dry grass won’t clump. Bag debris per city rules.",
-    },
-    {
-      title: "Water plants if included in the job",
-      desc: "Use the hose or watering can on the schedule they give (deep soak vs. sprinkle). Don’t overwater succulents. Text if a sprinkler head is broken — don’t DIY plumbing.",
-    },
-    {
-      title: "Snow shoveling seasonal add-on",
-      desc: "In winter, offer driveway/sidewalk clearing after storms. Use their shovel or a lightweight pusher. Salt only if they provide it and approve where to spread.",
-    },
-    {
-      title: "Take After Photos and collect payment",
-      desc: "Reshoot from the same curb/porch angles. Send after photos with “Done — 1 hr” text. Charge $15–25/hr youth helper rates or $30–50 flat for a small yard. Book recurring weekly slots in spring/fall.",
-    },
-  ],
-
-
-  "tech-helper": [
-    {
-      title: "Book a calm intake at their kitchen table",
-      desc: "Ask what device (iPhone, Android, iPad, laptop) and the top 3 goals: “video call grandkids,” “text photos,” “stop spam calls.” Write goals on paper — seniors remember paper better than texts.",
-    },
-    {
-      title: "Set large text and simple home screen",
-      desc: "iPhone: Settings → Display & Brightness → Text Size / Larger Text. Android: Settings → Display → Font size. Remove unused app icons; keep Phone, Messages, Photos, and one video app (FaceTime or Google Meet https://meet.google.com/).",
-    },
-    {
-      title: "Teach one skill per visit",
-      desc: "Visit 1: send a photo in Messages. Visit 2: start a Meet call. Visit 3: save contacts with photos. Repeat the same steps slowly; let them tap while you point — don’t take the phone away the whole time.",
-    },
-    {
-      title: "Write cheat-sheet steps they can photograph",
-      desc: "Type 5-step instructions in large font in Google Docs (Tools tab — sign in with Google, or use an account you already have), print or text a photo of the sheet. Title: “How to FaceTime Emma.” Number every tap (“1. Tap green Phone icon”).",
-    },
-    {
-      title: "Security basics without fear",
-      desc: "Show how to ignore unknown links, update iOS/Android when home Wi‑Fi is strong, and use a simple passcode they can remember. Do not install remote-access apps unless a trusted family member approves.",
-    },
-    {
-      title: "Charge by the visit and offer a bundle",
-      desc: "Example: $20 for 30 minutes, $120 for six visits prepaid. Log visit dates in Notes. Ask if their church or senior center needs a group workshop — parent/guardian present for youth helpers.",
-    },
-  ],
-
-  homework: [
-    {
-      title: "Align with the parent on subjects and limits",
-      desc: "Confirm grade level, subjects (reading, spelling, math facts), and rules: you guide, you don’t do assignments for them. Ask for teacher expectations or a sample worksheet.",
-    },
-    {
-      title: "Set a quiet weekly time block",
-      desc: "Same day/time reduces fights — e.g., Tue/Thu 4–4:45 pm at kitchen table or library. Bring pencils, scratch paper, and a timer. Phones in another room unless the assignment needs a calculator app.",
-    },
-    {
-      title: "Use the read-cover-retell method for reading",
-      desc: "Student reads aloud one page, covers it, retells in their words. You praise specifics: “You remembered the dragon’s color.” Track minutes read on a sticky note for the parent.",
-    },
-    {
-      title: "Drill math with flashcards or free apps",
-      desc: "Grades K–3: addition/subtraction flashcards. Optional: Khan Academy Kids (https://learn.khanacademy.org/khan-academy-kids/) with parent permission. Stop after 15 minutes of drills — short wins beat marathons.",
-    },
-    {
-      title: "Check work without giving answers",
-      desc: "Ask “How did you get that number?” If stuck, show a similar example on scratch paper — never copy their homework answers. Note tricky topics for the parent email.",
-    },
-    {
-      title: "End with a 2-sentence summary to the parent",
-      desc: "Text: “Today we practiced 7× tables and read 12 min of chapter 2. Struggled with carrying — suggest one more worksheet.” Charge $12–20/hr depending on age and local norms.",
-    },
-  ],
-
-  "pet-sitting": [
-    {
-      title: "Do a meet-and-greet with pets and supplies",
-      desc: "Learn feeding amounts, treat rules, litter box location, and where leashes/carriers live. Note meds with written instructions — don’t guess doses. Save vet phone and emergency contact in your phone favorites.",
-    },
-    {
-      title: "Agree on drop-in vs. overnight scope",
-      desc: "Drop-in: 1–2 visits/day, 20–30 min each. Overnight: only with parent/guardian approval for youth sitters. Price examples: $15–25 per drop-in, $50–75 overnight. Put dates in a shared calendar.",
-    },
-    {
-      title: "Follow the owner’s checklist every visit",
-      desc: "Feed → fresh water → walk or play → scoop litter → quick home check (mail piled visibly?). Take one photo of happy pet per day and text — not live location publicly.",
-    },
-    {
-      title: "Secure doors and don’t invite friends over",
-      desc: "Lock all doors you use; set thermostat as instructed. No additional visitors or your own pets without written owner OK. Never post house interiors on social media.",
-    },
-    {
-      title: "Handle emergencies with the vet list first",
-      desc: "If pet seems ill, call owner, then vet on their card. Transport only if owner pre-authorized and an adult drives. Document what happened in a timestamped note.",
-    },
-    {
-      title: "Return keys and debrief in person",
-      desc: "Hand keys back the day they return; walk through any issues (chewed shoe, skipped walk). Leave a short written log in Google Docs (Tools tab — sign in with Google, or use an account you already have). Ask for repeat booking on their next trip.",
-    },
-  ],
-
-  "plant-watering": [
-    {
-      title: "Pitch local businesses too — not only vacation homes",
-      desc: "Don’t forget shops and offices: salons, cafés, boutiques, dental/medical waiting rooms, coworking lobbies, and realtor offices often have plants nobody “owns.” Drop in with a parent if under 18; leave a simple flyer or say: “I water lobby plants weekly so they stay healthy — about $10–15 per visit or a flat monthly route fee.” Recurring business stops beat one-off travel jobs for steady cash.",
-    },
-    {
-      title: "Label every plant with water needs",
-      desc: "Walk the home or shop with the owner; mark each plant “daily / twice weekly / weekly / skip.” Note which pots are succulents vs. tropical. Photo each plant with a sticky note number for your reference.",
-    },
-    {
-      title: "Learn hose, sink, and drainage spots",
-      desc: "Find watering cans, mister bottles, and where to dump excess water. Check saucers so hardwood floors don’t stain. Ask about fertilizer — usually skip unless they leave exact bottles and doses. At businesses, ask who locks up and where the break-room sink is.",
-    },
-    {
-      title: "Build a visit calendar for travel dates and shop routes",
-      desc: "Google Calendar entries for every day a client is gone: “Smith plants — morning porch, evening indoor.” For businesses, set a weekly route day (e.g. every Tuesday). Include key/lockbox pickup time and emergency contact.",
-    },
-    {
-      title: "Water deeply but don’t flood",
-      desc: "Water until a little drains from bottom holes, then stop. For outdoor pots in summer, early morning is best. Text one photo of the healthiest bloom mid-week as proof of life — same for shop managers who aren’t on site daily.",
-    },
-    {
-      title: "Report problems immediately",
-      desc: "Yellow leaves or broken stems — text photos, don’t prune heavily without permission. If a plant dies despite care, document dates watered for honesty.",
-    },
-    {
-      title: "Charge per visit, trip package, or monthly business route",
-      desc: "Example: $10–15 per visit, $60 for a week of daily vacation visits, or a flat monthly fee for a small office/salon plant list. Offer plant-watering bundled with mail pickup if you also run vacation helper services.",
-    },
-  ],
-
-  handyman: [
-    {
-      title: "Scope the job with photos before quoting",
-      desc: "Ask the homeowner to text wide shots and close-ups of the repair (loose railing, leaky faucet trim, TV mount wall). Confirm you’re licensed for the task locally — youth/adults skip electrical panel work and gas lines.",
-    },
-    {
-      title: "List tools and parts for one trip",
-      desc: "Pack screwdriver set, drill, level, tape measure, pliers, and drop cloth. Buy parts after approval (Home Depot / Lowe’s) and keep receipts. Charge materials at cost + tax unless you pre-agree a flat materials fee.",
-    },
-    {
-      title: "Confirm shutoffs before water or demo",
-      desc: "Locate water shutoff under sink or at meter before changing a faucet cartridge. For drywall anchors, use a stud finder app or knock test. Never cut walls if owner hasn’t marked OK.",
-    },
-    {
-      title: "Protect floors and clean up daily",
-      desc: "Shoe booties or removed shoes indoors; vacuum metal shavings. Leave work area broom-clean even if the job spans two days. Before/after photos go in a Google Photos album for portfolio.",
-    },
-    {
-      title: "Write a simple scope note and price",
-      desc: "Google Docs (Tools tab — sign in with Google, or use an account you already have) one-pager: tasks done, parts used, labor hours, total due. Example labor $45–85/hr depending on market and skill. Collect deposit on jobs over $200 if materials are special-order.",
-    },
-    {
-      title: "Follow up in 48 hours",
-      desc: "Text: “Everything still working OK?” Fix small punch-list items once if it’s a workmanship issue. Ask landlords for repeat work on turnover units.",
-    },
-  ],
-
-  "cleaning-service": [
-    {
-      title: "Define your cleaning packages",
-      desc: "Write clear packages clients can buy: e.g. Standard 2-bed (kitchen, baths, floors, dusting), deep clean (+40–60%), and move-out after a walkthrough. Put the same package names and example prices on every flyer and Page — free re-clean on any missed spot is a strong differentiator.",
-    },
-    {
-      title: "Write a room-by-room checklist in Google Docs (Tools tab)",
-      desc: "Bath: toilet, sink, shower, mirrors, floors. Kitchen: counters, sink, stove top, microwave inside, floors. Living areas: dust surfaces, vacuum/sweep, empty trash. Share the checklist with the client so expectations match.",
-    },
-    {
-      title: "Build a portable cleaning kit",
-      desc: "All-purpose cleaner, bathroom cleaner, glass spray, microfiber cloths, scrub brush, gloves, trash bags, plus a vacuum and mop you can carry (if the client doesn’t provide them). Prefer fragrance-light products unless the client requests otherwise. Restock after every 3–4 jobs.",
-    },
-    {
-      title: "Walk the home before you start",
-      desc: "Confirm pets, no-go rooms, breakables, and parking. Note stain priorities. Take quick before photos (phone) of problem spots so you can prove progress after.",
-    },
-    {
-      title: "Work top-to-bottom, dry-to-wet",
-      desc: "Dust high shelves first, then surfaces, then floors last. Do bathrooms and kitchen carefully — clients judge those rooms hardest. Leave a sticky note: “Done — text me if anything needs a touch-up.”",
-    },
-    {
-      title: "Price packages and lock recurring slots",
-      desc: "Examples: studio/1-bed $90–130, 2-bed $120–180, 3-bed $160–240; deep clean +40–60%; move-out quote after a walkthrough. Ask every happy client for a weekly or biweekly standing slot — recurring beats one-offs.",
-    },
-  ],
-
-  "handyman-light": [
-    {
-      title: "Stick to an approved light task list",
-      desc: "Offer furniture assembly (IKEA), picture hanging, smoke-detector battery swaps, caulk touch-ups, and closet organizing — no roof, electrical panel, or structural demo. Text the list to clients so expectations match.",
-    },
-    {
-      title: "Bring a minimal tool belt",
-      desc: "Hammer, multi-bit screwdriver, stud finder, level, pencil, painter’s tape, and Command strips for renters. Use their hardware when possible to avoid wrong screws.",
-    },
-    {
-      title: "Assemble furniture with the manual open",
-      desc: "Lay parts on a blanket; match diagram numbers to bags. Tighten evenly — don’t strip IKEA cam locks. Bag leftover parts and tape to the underside of the table with a note.",
-    },
-    {
-      title: "Hang art at eye level with anchors",
-      desc: "Mark 57–60″ center height for frames. Use anchors rated for weight; for drywall only, use toggle or self-drill anchors. Vacuum dust immediately.",
-    },
-    {
-      title: "Time-box declutter coaching sessions",
-      desc: "Set a 2-hour block: sort keep/donate/trash, label three bins, stop when timer ends. Don’t haul away donations without adult transport arranged.",
-    },
-    {
-      title: "Invoice flat rates for common jobs",
-      desc: "Examples: $60–90 per IKEA dresser, $40 for TV picture mount consult + hang, $35/hr declutter assist. Payment on completion via check or Venmo.",
-    },
-  ],
-
-  "gift-wrapping": [
-    {
-      title: "Stock wrap, tape, scissors, and tags",
-      desc: "Buy or reuse kraft paper, tissue, ribbon, and double-sided tape for clean seams. Keep a bone folder or credit card edge for crisp folds. Sort paper rolls in a under-bed bin for transport.",
-    },
-    {
-      title: "Price by box size and bow level",
-      desc: "Post simple tiers: small box $3, medium $5, large $7, luxury bow +$2. Odd shapes (bikes, wine) = custom quote. Confirm whether client supplies paper or you do (mark up paper 20%).",
-    },
-    {
-      title: "Measure paper with the box diagonal trick",
-      desc: "Place box on paper; paper must wrap all sides with 2″ overlap. Cut once. Use double-sided tape on seams hidden underneath — no visible scotch on glossy paper.",
-    },
-    {
-      title: "Add tags without full names on public displays",
-      desc: "Write “To: Mom” on tags; keep surnames private at mall booths. Use stick-on bows or tie ribbon knots that flatten for stacking in car trunks.",
-    },
-    {
-      title: "Run holiday pop-up hours with a parent",
-      desc: "Set up a folding table at church bazaar or driveway with sanitizer and a cash box. Take photos (no addresses) for Instagram with parent account. Peak: first two weekends of December.",
-    },
-    {
-      title: "Offer pickup/drop-off for busy parents",
-      desc: "Neighbors drop unwrapped gifts in a labeled bin on your porch; you wrap and text when ready. Bundle 10 gifts for a 10% discount to fill your calendar early.",
-    },
-  ],
-
-  "lemonade-stand": [
-    {
-      title: "Pick a safe spot with parent approval",
-      desc: "Choose your driveway, cul-de-sac, or school fair booth — never busy roads. Check if your town needs a temporary permit (city website). Parent handles any food-safety questions.",
-    },
-    {
-      title: "Cost ingredients and set cup price",
-      desc: "Recipe: 1 cup lemon juice, 1 cup sugar, 6 cups water = ~8 cups. Count cup cost (lemons + sugar ÷ servings). Price $1–2 per cup so you earn after supplies — write prices on poster board.",
-    },
-    {
-      title: "Make a sign in Canva or by hand",
-      desc: "Big letters: “Lemonade $1 — Cash/Venmo.” Add ice graphic from Canva (https://www.canva.com/) printed at home. Tape to a folding table at kid eye level.",
-    },
-    {
-      title: "Food safety: ice, lid, and hand wash",
-      desc: "Keep pitcher on ice in a cooler; use a ladle, not fingers. Paper cups only; trash bag attached to table. Wash hands before setup — hand sanitizer visible for customers.",
-    },
-    {
-      title: "Run a 2-hour shift with a float",
-      desc: "Start with $5–10 in quarters for change. Track sales on a tally sheet: hash marks per cup. Parent supervises money handling for younger kids.",
-    },
-    {
-      title: "Count profit and save for reinvestment",
-      desc: "Revenue minus lemon/sugar/ice/cups = profit. Photograph the tally sheet for school project credit. Split profit: 50% spend, 50% save in piggy bank per family rule.",
-    },
-  ],
-
-  "trash-can-service": [
-    {
-      title: "Learn pickup day and bin colors",
-      desc: "Ask neighbors which day trash vs. recycling runs (city site or sticker on bin). Note if they use green waste carts. Write a street calendar in Google Sheets: address, trash day, recycling week A/B if applicable.",
-    },
-    {
-      title: "Agree on curb times and return rules",
-      desc: "Typical: roll to curb by 6 pm night before, return to side yard by 8 pm after pickup. Some HOAs fine late bins — charge $5–10 per stop per house for roll-out + return.",
-    },
-    {
-      title: "Use gloves and check lid closure",
-      desc: "Work gloves prevent cuts; tilt bins don’t overfill (lids must close or trucks skip). If bin is heavy, two-person lift with parent help — no back injuries for kids.",
-    },
-    {
-      title: "Text confirmation photo optional",
-      desc: "Send a quick photo of bins at curb for snowbird clients who travel. No house numbers visible in public posts — crop the photo.",
-    },
-    {
-      title: "Monthly billing for recurring route",
-      desc: "Group 8–15 houses on the same trash day. Collect $20–40/month per home via Venmo on the 1st. Skip service weeks only if they notify you — credit $5.",
-    },
-    {
-      title: "Add storm and holiday schedule notes",
-      desc: "When city delays pickup (snow, holidays), check https://www.google.com/search?q=your+city+trash+schedule and shift your route. Text the block: “Pickup moved to Friday — still handling bins.”",
     },
   ],
 
@@ -1417,60 +1093,6 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
   ],
 
-  "leaf-raking": [
-    {
-      title: "Highlight Free Mini Hand-Held Blower drawing",
-      desc: "The Side-Hustler that picks this Side-Hustle is eligible for entry in a drawing to win a Free Mini Hand-Held Blower. Conditions apply. Inquire about details via the Contact Form. Put that on your flyer.",
-    },
-    {
-      title: "Quote by area size",
-      desc: "Walk the property: driveway only, front lawn, or full lot. Ask if they want bagging to curb. Price examples: $25 / $45 / $80 flat in peak leaf season.",
-    },
-    {
-      title: "Bring bags, gloves, rake — and optional Mini Hand-Held Blower",
-      desc: "Yard bags per city rules, work gloves, and a rake. Optional: buy a Mini Hand-Held Blower for faster walkways if you want gear before any drawing. Wear eye/ear protection with any blower.",
-    },
-    {
-      title: "Blow toward one pile per zone",
-      desc: "Start farthest from disposal; work downhill when possible. Don’t leave piles on storm drains. Bag or mulch per the homeowner’s preference.",
-    },
-    {
-      title: "Bag, label, and place for pickup",
-      desc: "Fill bags ¾ full for lift safety; place at curb per city yard-waste rules. Sweep the sidewalk — that’s your signature finish.",
-    },
-    {
-      title: "Book repeat visits after windy nights",
-      desc: "Text the street after storms: same rate if booked by Sunday. Keep 3–5 fall regulars.",
-    },
-  ],
-
-  "beach-shell-jewelry": [
-    {
-      title: "Check beach collecting rules with a parent",
-      desc: "Before you pick up a single shell, confirm the beach allows collecting (city/park site or posted signs). Skip live animals, protected species, and parks that ban removing shells. Parent comes on every beach trip.",
-    },
-    {
-      title: "Collect, rinse, and fully dry shells",
-      desc: "Gather only empty shells in a mesh bag. At home: soak in fresh water, scrub gently with an old toothbrush, rinse salt off, and air-dry 24–48 hours so jewelry doesn’t smell or rust findings.",
-    },
-    {
-      title: "Sort shells by size for earrings vs pendants",
-      desc: "Small matched pairs → earrings. Medium flat shells → pendants. Tiny chips → bracelet accents. Discard cracked pieces. Photograph your best 10 for inventory.",
-    },
-    {
-      title: "Make 3 sample pieces (parent helps with tools)",
-      desc: "Start simple: cord necklace with one pendant, bracelet with 3–5 shells on elastic, earring pair with jump rings + hooks. Parent operates any drill or sharp pliers. Work on a towel so shells don’t roll.",
-    },
-    {
-      title: "Price each piece and photograph in daylight",
-      desc: "Materials + time × 2–3. Example targets: earrings $8–15, necklace $12–22, set $22–35. White poster-board photos on your phone; optional Canva collage (https://www.canva.com/) for a price sheet.",
-    },
-    {
-      title: "Sell locally with parent-run posts",
-      desc: "Neighbors, school fair, beach-town stand, or parent Facebook/Nextdoor post. Use a first-name-only shop name. Never put a kid’s personal cell on a public listing — parent contact only.",
-    },
-  ],
-
   "garage-sale-helper": [
     {
       title: "Plan sort, price, and layout day before",
@@ -1495,253 +1117,6 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     {
       title: "Pay helper fee or commission",
       desc: "Agree upfront: $50 flat for 4 hours or 10% of sales. Count cash with owner at end; Venmo your fee same day.",
-    },
-  ],
-
-  "car-interior-cleanup": [
-    {
-      title: "Inspect car and agree on scope",
-      desc: "Check seats, floor mats, cup holders, trunk. Confirm no biohazards (mold, needles) — those are adult pros only. Price by vehicle size: compact $40, SUV $60, minivan $75 examples.",
-    },
-    {
-      ...TAKE_BEFORE_PHOTOS_STEP,
-      desc: "Photograph the cabin from the driver door and the back seat before you vacuum — floors, seats, and cup holders. No license plates or kids’ faces. Same angles after prove the clean.",
-    },
-    {
-      title: "Gather vac, microfiber, and safe cleaners",
-      desc: "Shop vac or home vacuum with hose, microfiber cloths, mild all-purpose cleaner (diluted), glass cleaner for inside windshield, lint roller for pet hair. Avoid harsh bleach on upholstery.",
-    },
-    {
-      title: "Remove trash and floor mats first",
-      desc: "Trash bag all cups and wrappers; shake mats outside. Vacuum mats separately then car floors front-to-back. Use crevice tool for seats and between console.",
-    },
-    {
-      title: "Wipe surfaces and streak-free glass",
-      desc: "Damp microfiber on dash and doors — not soaking electronics. Dry glass with second cloth. Replace air freshener only if owner supplies one.",
-    },
-    {
-      ...TAKE_AFTER_PHOTOS_STEP,
-      desc: "Reshoot from the same driver-door and back-seat angles. Send the after set to the client before payment; crop private details for your portfolio.",
-    },
-    {
-      title: "Schedule monthly for family fleets",
-      desc: "Offer $10 off when booking 3 cars same driveway. Keep supplies in a milk crate in your trunk for route days.",
-    },
-  ],
-
-  "holiday-decorating-helper": [
-    {
-      title: "Walk through décor plan and storage boxes",
-      desc: "Label owner boxes “indoor,” “outdoor,” “fragile.” Note ladder heights needed — kids don’t climb extension ladders; adults only. Confirm outlet locations for lights.",
-    },
-    {
-      title: "Test lights before hanging",
-      desc: "Plug each string on the ground; replace bulbs from spare pack owner provides. Use outdoor-rated extension cords and timers from Home Depot — don’t overload one outlet.",
-    },
-    {
-      title: "Hang wreaths, garland, and mantle pieces",
-      desc: "Command hooks for renters; nails only with owner OK. Step ladder max 2 steps for teens with spotter. Symmetry check from street — one person outside radios adjustments.",
-    },
-    {
-      title: "Set timer and tidy wire runs",
-      desc: "Hide cords along gutters with clips; no trip hazards on walkways. Set timer 4:30 pm–11 pm default; adjust per HOA rules.",
-    },
-    {
-      title: "Pack takedown date on calendar",
-      desc: "Book January takedown now at 50% of install price. Label broken items in a “repair” bag for owner.",
-    },
-    {
-      title: "Charge package pricing",
-      desc: "Example: $150 front porch only, $350 whole-house with adult ladder team. Photos for next year’s Canva marketing flyer (with permission).",
-    },
-  ],
-
-  "recycling-helper": [
-    {
-      title: "Learn local recycle rules",
-      desc: "Search “[city] recycling guidelines” for what goes in blue bin vs. trash (plastic #1–2, clean cardboard, no plastic bags). Save PDF on phone for quick checks at curb.",
-    },
-    {
-      title: "Sort countertop pile for elderly neighbors",
-      desc: "Weekly visit: rinse cans/jars, flatten boxes, separate glass if curbside glass isn’t allowed. Leave a one-page chart on fridge with pictures.",
-    },
-    {
-      title: "Roll correct bin on alternating weeks",
-      desc: "Many cities alternate trash/recycling — mark A/B weeks in Google Calendar reminders. Text “Recycling out” photo like trash-can service.",
-    },
-    {
-      title: "Return bins and wipe handles",
-      desc: "Pull bins back to side yard; quick Lysol wipe on lids during flu season. Small touch that earns referrals.",
-    },
-    {
-      title: "Monthly fee on same route as trash helper",
-      desc: "Bundle recycling + trash roll-out for $35/month. Offer senior discount $5 if prepaid 6 months.",
-    },
-    {
-      title: "Print a fridge cheat sheet in Canva",
-      desc: "Canva (https://www.canva.com/) one-page guide with photos: bottles, cans, paper, landfill. Leave a copy taped inside the cabinet for the household and a duplicate for your clipboard on route days.",
-    },
-  ],
-
-  "vacation-mail-plant-helper": [
-    {
-      title: "Scope plant care only (no mail)",
-      desc: "Agree in writing: which plants, how much water, which days. Never collect, open, or move mail or packages — leave porch deliveries alone. Write a daily checklist in Google Docs (Tools tab — sign in with Google, or use an account you already have) both sign.",
-    },
-    {
-      title: "Collect keys or lockbox code with parent witness",
-      desc: "One labeled key per house; never tag with address on keyring. Return keys in person when they return. Log entry/exit times in Notes.",
-    },
-    {
-      title: "Visit routine (10–15 minutes)",
-      desc: "Water per plant tags → wipe spills → lock up. Text “Plants watered — all good” unless there’s an issue (leak, wilted plant, broken pot).",
-    },
-    {
-      title: "Leave packages and mail untouched",
-      desc: "If you see a package or piled mail, do not touch it. Optional: text the owner a photo from outside so they know deliveries arrived — still do not move anything.",
-    },
-    {
-      title: "Emergency contacts on fridge sheet",
-      desc: "Owner leaves plumber and neighbor numbers. Call owner first, then listed contact — never 911 unless true emergency.",
-    },
-    {
-      title: "Trip pricing examples",
-      desc: "$15–25 per visit for plant watering, or $90–140 flat week for a small plant list. Add $5 per extra heavy-watering plant if scoped.",
-    },
-  ],
-
-  "errand-runner": [
-    {
-      title: "Take precise errand orders by text",
-      desc: "Item list, store name, size/brand, max spend, receipt required. Confirm payment method: their card via mobile wallet tap in store (with adult) or reimbursement after receipt photo.",
-    },
-    {
-      title: "Route batch errands geographically",
-      desc: "Pharmacy + post office + Target in one loop saves time. Google Maps (https://maps.google.com/) multi-stop route. Text ETA before leaving each store if lines are long.",
-    },
-    {
-      title: "Keep receipts and bag cold items first",
-      desc: "Photo receipt before leaving register; insulated bag for groceries. Separate fragile (eggs) from heavy (milk).",
-    },
-    {
-      title: "Deliver to door and confirm change",
-      desc: "Hand items, return cash change and receipt. Charge runner fee: $10 base + $5 per extra stop or 15% of purchase total (cap agreed upfront).",
-    },
-    {
-      title: "Decline restricted purchases",
-      desc: "No alcohol, tobacco, lottery, or prescription pickups unless local law and parent allow for specific senior assist programs — default decline.",
-    },
-    {
-      title: "Build senior weekly slot",
-      desc: "Same Tuesday pharmacy run = reliable income. Store preferences in Contacts note: “CVS on Main, generic OK.”",
-    },
-  ],
-
-  tutoring: [
-    {
-      title: "Diagnostic chat with parent and student",
-      desc: "Identify subject, grade, upcoming test dates, and pain points (fractions, essay thesis, Spanish verbs). Review a recent graded paper. Set one measurable goal: “Raise next unit test to B.”",
-    },
-    {
-      title: "Schedule sessions in Google Calendar + Meet link",
-      desc: "Weekly 45–60 min slot. Video: Google Meet (https://meet.google.com/) or Zoom (https://zoom.us/) with waiting room on. In-person: library study room with parent OK.",
-    },
-    {
-      title: "Prep a mini-lesson before each session",
-      desc: "Google Docs (Tools tab — sign in with Google, or use an account you already have) agenda: warm-up 5 min, teach 20 min, practice 15 min, exit ticket 5 min. Pull free practice from Khan Academy (https://www.khanacademy.org/) aligned to topic.",
-    },
-    {
-      title: "Teach one concept; assign targeted practice",
-      desc: "Show worked example, student tries two with coaching, assigns 10 problems or one paragraph draft before next week. No doing their homework for them.",
-    },
-    {
-      title: "Email parent summary after session",
-      desc: "Three bullets: what we covered, what student did well, homework for next time. Track hours in Sheet for monthly invoice.",
-    },
-    {
-      title: "Adjust rate by subject and level",
-      desc: "Examples: $25/hr elementary math, $40/hr HS chemistry, $50/hr SAT reading. Offer 4-pack prepaid discount.",
-    },
-  ],
-
-  proofreader: [
-    {
-      title: "Confirm document format and deadline",
-      desc: "Ask for Word, Google Docs link (Tools tab), or PDF. Note style: AP, casual blog, or school essay. Get word count and due time — rush fees OK for <24 hr.",
-    },
-    {
-      title: "First pass: spelling and grammar",
-      desc: "In Google Docs (Tools tab — sign in with Google, or use an account you already have), turn on Suggesting mode. Run Grammarly free browser check if client allows. Mark fixes; don’t rewrite voice without comment.",
-    },
-    {
-      title: "Second pass: clarity and flow",
-      desc: "Shorten long sentences, flag jargon, check headings match content. Leave polite comments: “Consider defining this term for new readers.”",
-    },
-    {
-      title: "Third pass: links and facts spot-check",
-      desc: "Click every hyperlink; flag broken URLs. Don’t fact-check medical/legal claims — comment “verify statistic” instead.",
-    },
-    {
-      title: "Return tracked changes and summary note",
-      desc: "Send Doc link + 5-line summary of major fixes. Price: $0.02–0.04/word or $15 flat per 500-word flyer.",
-    },
-    {
-      title: "Offer retainer for small businesses",
-      desc: "Local café menu monthly proof for $40. Build template checklist in Docs you reuse.",
-    },
-  ],
-
-  "friendship-bracelet-maker": [
-    {
-      title: "Pick 3 patterns and master each",
-      desc: "Start with candy stripe, chevron, and fishtail — video tutorials on YouTube search “friendship bracelet candy stripe.” Use embroidery floss (DMC colors) and tape to table edge.",
-    },
-    {
-      title: "Cost floss per bracelet",
-      desc: "One skein ~$0.50 makes 2–3 medium bracelets. Price $5–8 each at school or $12 custom with name beads. Track time — aim for 30–45 min per bracelet at first.",
-    },
-    {
-      title: "Photograph on wrist for sales",
-      desc: "Daylight photo on plain background; show clasp knot quality. Post in Canva collage (https://www.canva.com/) for Instagram story price sticker.",
-    },
-    {
-      title: "Take custom orders with color chart",
-      desc: "Show floss color ring; write orders in Notes: “4 blue/4 white, 7″ wrist.” 50% deposit on orders over $15 via Venmo with parent.",
-    },
-    {
-      title: "Sell at craft fair with display board",
-      desc: "Pin samples on cork board; bag finished ones in cello with business card sticker (first name + parent email only).",
-    },
-    {
-      title: "Bundle for parties",
-      desc: "Birthday party pack: 10 matching bracelets $70 — parent hosts bracelet station while you teach one pattern for 20 minutes extra fee.",
-    },
-  ],
-
-  "toy-organizer": [
-    {
-      title: "Walk the playroom with the parent",
-      desc: "Ask goals: floor clear for vacuum, labeled bins for LEGO vs. dolls, donate pile. Note if new bins should be bought (Target clear bins) or use existing.",
-    },
-    {
-      title: "Sort keep, donate, trash with kid present if possible",
-      desc: "Three laundry baskets labeled; broken toys trash, duplicates donate. Kid picks one of duplicate sets to keep — reduces meltdowns.",
-    },
-    {
-      title: "Label bins with pictures + words",
-      desc: "Print picture labels from Canva (https://www.canva.com/) — photo of blocks + word “Blocks.” Tape at kid eye level. Same size bins stack on short shelf.",
-    },
-    {
-      title: "Zone layout: daily toys low, rare up high",
-      desc: "Everyday play on floor bins; messy crafts up high with parent permission. Leave one empty bin for “quick toss” before guests.",
-    },
-    {
-      title: "Teach 5-minute reset routine",
-      desc: "Show kid: “Everything in a bin beats perfect sorting.” Parent records 30-sec video of you demoing reset for repeat use.",
-    },
-    {
-      title: "Charge by room size",
-      desc: "Small play corner $40, full basement $120. Add $30 if you haul donate bags to car (parent drives to Goodwill).",
     },
   ],
 
@@ -1774,60 +1149,6 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
   ],
 
-  "ai-prompt-helper": [
-    {
-      title: "Interview the client on outcomes they want from AI",
-      desc: "Examples: weekly blog drafts, customer email replies, job descriptions, study guides. Pick one workflow first — don’t sell “AI everything day one.”",
-    },
-    {
-      title: "Build a prompt library in Google Docs (Tools tab)",
-      desc: "Sections: Role, Context, Task, Format, Examples, Constraints. Store in a shared Google Docs folder named “Client Prompts v1” (Tools tab — sign in with Google, or use an account you already have). Never paste client secrets or passwords into ChatGPT.",
-    },
-    {
-      title: "Test prompts in ChatGPT and Gemini side by side",
-      desc: "Run the same prompt on https://chatgpt.com/ and https://gemini.google.com/ — compare accuracy and tone. Save the winning version with version date in doc title.",
-    },
-    {
-      title: "Add guardrails and review checklist",
-      desc: "Every prompt ends with: “If unsure, say you don’t know; no invented citations.” Client checklist: factual review, brand voice, legal/compliance sign-off.",
-    },
-    {
-      title: "Train client in a 45-minute Zoom",
-      desc: "Google Meet or Zoom: screen-share paste workflow, show edit-don’t-send-raw rule. Record with permission; link in Drive.",
-    },
-    {
-      title: "Package deliverables and maintenance",
-      desc: "Deliver PDF export of prompt pack + 30-day Slack/email tweak support. Charge setup $200–500 + $75/mo refresh as models update.",
-    },
-  ],
-
-  "ai-peers": [
-    {
-      title: "Form a 4–6 person accountability pod",
-      desc: "Invite peers learning the same AI stack (ChatGPT, Canva, CapCut). Set norms: no client confidential data in shared chats, meet weekly 45 min on Google Meet (https://meet.google.com/).",
-    },
-    {
-      title: "Rotate show-and-tell demos",
-      desc: "Each week one member screenshares a workflow: “How I batch captions” or “My KDP cover prompt.” Others take notes in a shared Google Docs file (Tools tab — sign in with Google, or use an account you already have).",
-    },
-    {
-      title: "Run prompt swap exercises",
-      desc: "Everyone brings one prompt; group improves it live in ChatGPT (https://chatgpt.com/). Save best versions to a pod Prompt Vault doc with contributor credit.",
-    },
-    {
-      title: "Track experiments in a simple Sheet",
-      desc: "Columns: hypothesis, tool, result metric (time saved, $ earned), keep/kill. Review last 10 rows monthly — double down on keeps.",
-    },
-    {
-      title: "Share client-safe templates only",
-      desc: "Strip PII from examples before sharing. Use first names fake (“Sample Bakery”) in templates uploaded to Drive.",
-    },
-    {
-      title: "Optional paid mastermind upgrade",
-      desc: "If pod matures, charge $20/mo for office hours with an adult mentor — parent/guardian approves for teen pods. Reinvest in one shared Canva Teams seat if needed.",
-    },
-  ],
-
   "ai-assets": [
     {
       title: "Define asset pack for one niche",
@@ -1852,87 +1173,6 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     {
       title: "Iterate from first 5 reviews",
       desc: "Ask buyers one improvement; add bonus asset v1.1 free to past buyers via Etsy message — builds repeat purchases.",
-    },
-  ],
-
-  "ai-agents": [
-    {
-      title: "Pick one boring workflow to automate",
-      desc: "Good first agent job: weekly competitor price scrape summary, inbox triage draft replies, or blog outline from bullet notes. Write acceptance tests: “Output must be CSV with 5 columns.”",
-    },
-    {
-      title: "Draft AGENT.md spec in ChatGPT",
-      desc: "Prompt: “Write AGENT.md for Google Antigravity with goal, inputs, outputs, tools allowed, stop conditions, and 5 acceptance tests.” Save to project root — see https://antigravity.google/",
-    },
-    {
-      title: "Implement in Antigravity or Cursor with human review",
-      desc: "Download Antigravity from https://antigravity.google/download or open Cursor (https://cursor.com/). Agent runs read-only APIs first; no auto-send email until client signs off.",
-    },
-    {
-      title: "Sandbox test on fake data",
-      desc: "Google Sheets copy with dummy rows — never production passwords. Log each run: time, success/fail, human edits needed.",
-    },
-    {
-      title: "Deploy scheduled trigger with limits",
-      desc: "Cron weekly Monday 8 am; cap API spend; alert human on failure via email. Document kill switch in README.",
-    },
-    {
-      title: "Charge setup + maintenance",
-      desc: "Example $500–1500 setup + $100/mo monitoring for local business lead digest agent. Include 2 revision rounds in the SOW Google Docs file (Tools tab — sign in with Google, or use an account you already have).",
-    },
-  ],
-
-  "ai-timing": [
-    {
-      title: "Map the client’s seasonal revenue calendar",
-      desc: "Interview: when do they peak (tax season, holidays, back-to-school)? Plot 12 months in Google Sheets with historical sales if they share.",
-    },
-    {
-      title: "Research trend windows with ChatGPT + web",
-      desc: "ChatGPT (https://chatgpt.com/): “List US search trend windows for [niche] by month; cite general patterns only.” Cross-check one data source they use (Shopify dashboard, Google Trends https://trends.google.com/).",
-    },
-    {
-      title: "Build a launch timing playbook",
-      desc: "Doc sections: 90-day pre-launch content, 30-day teaser, launch week daily actions, post-launch recap. Tie each action to a channel (email, IG, in-store sign).",
-    },
-    {
-      title: "Align ad spend to margin weeks",
-      desc: "Recommend heavier Meta ads (https://business.facebook.com/) only in weeks with >40% margin promos — never bleed budget in slow months without test budget cap ($5/day).",
-    },
-    {
-      title: "Set reminder automations",
-      desc: "Google Calendar alerts for inventory order dates, email draft due dates, and influencer outreach 14 days before peak.",
-    },
-    {
-      title: "Deliver one-page timing poster",
-      desc: "Canva timeline graphic they can print for office. Charge $150–400 for seasonal plan + 30-min walkthrough call.",
-    },
-  ],
-
-  "ai-promo-video": [
-    {
-      title: "Script a 30-second promo in ChatGPT",
-      desc: "Prompt: “Write a 75-word voiceover for [business] promo: hook, 2 benefits, CTA, spoken tone friendly.” Read aloud — trim to 25–30 seconds at moderate pace.",
-    },
-    {
-      title: "Generate avatar or B-roll in Hedra or CapCut",
-      desc: "Hedra (https://www.hedra.com/) for talking-head avatar from script if client wants faceless promo. CapCut (https://www.capcut.com/) for stock clips + text overlays.",
-    },
-    {
-      title: "Record voiceover or use licensed AI voice",
-      desc: "CapCut Text-to-speech or client’s own voice on phone mic in quiet room. Match music bed lower than voice (-12 LUFS target roughly).",
-    },
-    {
-      title: "Edit to platform specs",
-      desc: "Export 9:16 for Reels/TikTok, 1:1 optional for feed. Add captions burned-in (CapCut auto-captions → fix names). Logo end card 2 seconds.",
-    },
-    {
-      title: "Client review with one revision round",
-      desc: "Unlisted YouTube link or Drive preview. Track comments timestamped; fix typos and CTA phone number — not full reshoot unless paid.",
-    },
-    {
-      title: "Deliver masters and price tiers",
-      desc: "ZIP: MP4 1080p + project file if agreed. Price $75–250 first video; bundle 3 for 20% off.",
     },
   ],
 
@@ -2014,41 +1254,6 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     {
       title: "Write a short postmortem in Google Docs (Tools tab)",
       desc: "Three bullets: what worked in Antigravity, what broke, next feature for v2. Share with your guardian or classmates as a portfolio piece — link the itch.io or GitHub demo, not your home address.",
-    },
-  ],
-
-  "start-gardening-club": [
-    {
-      title: "Name the club and pick a clear garden focus",
-      desc: `Write one sentence in ${GOOGLE_DOCS_FROM_TOOLS}: who the club is for + what you grow together (container veggies, pollinator flowers, raised beds, or patio herbs). Skip “gardening for everyone” — a narrow focus makes Meetup topics and flyers easier.`,
-    },
-    {
-      title: "Decide the meetup objective, topic, and guest takeaways",
-      desc: `Before you post anything, open ${GOOGLE_DOCS_FROM_TOOLS} and fill three lines for meetup #1: (1) Objective — why people show up (e.g. “Help new container gardeners plant their first tomato”). (2) Topic — the one lesson or activity (e.g. “Soil mix + potting demo” or “spring plant swap”). (3) Walk-aways — 2–3 things every guest should leave with (a tip sheet, a cutting or seed packet, a watering schedule, and the date of meetup #2). Paste those three lines into your Meetup event description so RSVPs know the promise.`,
-    },
-    {
-      title: "Book a free or low-cost meeting spot",
-      desc: "Ask a library meeting room, church hall, senior center, community garden shed, HOA clubhouse, or a neighbor’s patio for 60–90 minutes. Confirm restrooms, chairs/tables, outdoor shade or indoor backup for rain, and whether food/drinks are allowed. Write the address, parking tip, and “how to find us” notes for Meetup.",
-    },
-    {
-      title: "Set up your Gardening Club on Meetup.com",
-      desc: "Create a free Meetup account at https://www.meetup.com/ then choose Start a new group. Name the group after your club focus, set your city, pick gardening / outdoors topics, and write a short description that matches your Docs objective. First-time organizers may see Meetup Starter (free plan with limits — often 1 group, up to 2 in-person events/month, and a small attendee cap; verify current limits at https://help.meetup.com/). Submit the group for Meetup’s review (often within ~24 hours). While waiting, create Event #1: title = your topic, date/time under 90 minutes, venue = the spot you booked, description = objective + walk-aways + what to bring (gloves, one cutting for a swap, etc.). Publish once the form is complete. You (or a named co-host) must be present in person at every Meetup event.",
-    },
-    {
-      title: "Gather hosting supplies and simple food or drinks",
-      desc: "Pack a host kit before the RSVP count grows: name tags + markers, printed tip sheets (one page from Docs), a sign-in clipboard or phone Notes list, demo seeds/gloves if you promised a hands-on activity, hand sanitizer, trash bags, and a small first-aid bandaid pack. For hospitality: water or iced tea, disposable cups, napkins, and one tray of simple finger food (cookies, fruit, or crackers) — keep it light and label allergens. Ask the venue about food rules. Optional plant-swap extras: spare small pots, newspaper wrap, and a “bring one / take one” sign. Aim to stay near your Supply list budget (~$15–40 for the first meetup demos).",
-    },
-    {
-      title: "Invite a starter circle and track RSVPs",
-      desc: "Share the Meetup event link on Nextdoor, church/senior-center boards, community garden groups, and 5–10 neighbors by text. Lead with “first meetup is free” and the walk-away promise. Aim for 6–12 people; on Meetup Starter stay within the attendee cap. Check RSVPs 48 hours and 2 hours before — text “Still coming?” if the room looks empty. Bring a paper backup list in case Wi‑Fi fails.",
-    },
-    {
-      title: "Host meetup #1 with a simple timed agenda",
-      desc: "Arrive 20 minutes early to set chairs, food table, and demo station. Run ~75 minutes: 10 intros → 25 topic/demo tied to your objective → 20 plant swap or Q&A → 10 walk-aways handout + next date → 10 optional dues/workshop tease. End on time. Collect emails or invite guests to join the Meetup group before they leave. Take 2–3 photos of the activity (not close-ups of faces without permission) for your next event post.",
-    },
-    {
-      title: "Follow up and add light monetization (optional)",
-      desc: `Same day, post a thank-you on the Meetup event page with the tip sheet link or photo and the date for meetup #2. In ${GOOGLE_DOCS_FROM_TOOLS}, note what worked, what to buy next time, and any volunteer co-hosts. Once the group trusts you, offer gentle options: $5–$15/month dues examples, a seed starter kit, or a $15–$40 seasonal workshop — examples only, not income guarantees. Keep the next Meetup topic + walk-aways written before you publish the next event.`,
     },
   ],
 };

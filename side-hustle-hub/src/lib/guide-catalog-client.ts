@@ -1,5 +1,6 @@
 import { api } from "./api";
 import {
+  bulkGuideAssigneeFromInput,
   isGuidePublished,
   isGuideVisibilityStatus,
   normalizeGuideCatalogState,
@@ -96,6 +97,25 @@ export async function setGuideCatalogStatusBulk(
   }>("guide-catalog/bulk", {
     method: "POST",
     body: { guideIds: ids, status, note: note?.trim() || undefined },
+    timeoutMs: 60_000,
+  });
+  return mapApiGuideCatalogStates(data.states ?? {});
+}
+
+/** Admin: set assignee on many guides ("" clears to Unassigned). Syncs linked GUIDE-REV tests. */
+export async function setGuideCatalogAssigneeBulk(
+  guideIds: string[],
+  assignee: string,
+): Promise<GuideCatalogStateMap> {
+  const ids = [...new Set(guideIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  if (!ids.length) return {};
+  const data = await api<{
+    ok?: boolean;
+    assignee?: string;
+    states?: Record<string, PublicState>;
+  }>("guide-catalog/bulk", {
+    method: "POST",
+    body: { guideIds: ids, assignee: bulkGuideAssigneeFromInput(assignee) },
     timeoutMs: 60_000,
   });
   return mapApiGuideCatalogStates(data.states ?? {});

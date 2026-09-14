@@ -33,10 +33,10 @@ export function countGuideLibraryByStatus(
     const status = getGuideVisibilityStatus(id, catalogStates);
     if (status === "pending") counts.pending += 1;
     else if (status === "fixed_rereview") counts.fixed_rereview += 1;
-    else if (status === "inactive") counts.inactive += 1;
     else if (status === "reviewed_by_qa") counts.reviewed_by_qa += 1;
     else if (status === "reviewed_by_dev") counts.reviewed_by_dev += 1;
     if (guideMatchesStatusFilter(status, "active")) counts.active += 1;
+    if (guideMatchesStatusFilter(status, "inactive")) counts.inactive += 1;
     if (guideMatchesStatusFilter(status, "not_reviewed")) counts.not_reviewed += 1;
     if (guideMatchesStatusFilter(status, "reviewed")) counts.reviewed += 1;
   }
@@ -44,10 +44,12 @@ export function countGuideLibraryByStatus(
 }
 
 /**
- * Exclusive status partition (plain Active + Pending + Reviewed QA/Dev + Inactive).
- * Equals `counts.all` when every guide has one stored status.
+ * Exclusive status partition (plain Active + Pending + Reviewed QA/Dev + exclusive Inactive).
+ * `counts.inactive` is held-Inactive (Pending + exclusive Inactive), matching the chip —
+ * subtract Pending so the partition still equals `counts.all`.
  */
 export function sumGuideStatusBuckets(counts: GuideStatusTabCounts): number {
+  const exclusiveInactive = Math.max(0, counts.inactive - counts.pending);
   const plainActive = Math.max(
     0,
     counts.all -
@@ -55,7 +57,7 @@ export function sumGuideStatusBuckets(counts: GuideStatusTabCounts): number {
       counts.fixed_rereview -
       counts.reviewed_by_qa -
       counts.reviewed_by_dev -
-      counts.inactive,
+      exclusiveInactive,
   );
   return (
     plainActive +
@@ -63,6 +65,6 @@ export function sumGuideStatusBuckets(counts: GuideStatusTabCounts): number {
     counts.fixed_rereview +
     counts.reviewed_by_qa +
     counts.reviewed_by_dev +
-    counts.inactive
+    exclusiveInactive
   );
 }

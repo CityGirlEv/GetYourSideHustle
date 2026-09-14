@@ -15,11 +15,11 @@ import { hustleById } from "./side-hustle-catalog";
 import { kidsGuideById } from "./kids-guides";
 
 const MATERIALS_RE =
-  /make your marketing materials|create your marketing campaign/i;
+  /make your (?:authority\s*&\s*)?marketing materials|create your marketing campaign|create honest marketing materials/i;
 const CARRY_RE =
-  /carry out (the|your) marketing plan|execute your marketing campaign/i;
+  /carry out (the|your) marketing plan|execute your marketing campaign|contact suitable clients|qualify and onboard the client/i;
 const PICK_RE =
-  /pick how you will tell people about your side hustle|decide on marketing objectives|choose your marketing channels/i;
+  /pick how you will tell people about your side hustle|decide on marketing objectives|choose your marketing channels|choose the tasks you will and will not offer|choose a safe call-handling niche/i;
 const FOUNDATION_RE =
   /run this by your parent|research competitors|pick a name for your side hustle|plan what you.?re saving for|get parent thumbs up|set safety rules|consult parent/i;
 
@@ -171,70 +171,26 @@ export function ensureMarketingPlanSteps(
  * Active/Reviewed rows must not be forced back to Pending.
  */
 export const GUIDES_PENDING_AFTER_PREP_TAB_BACKFILL: readonly string[] = [
-  "airbnb",
-  "book-publishing",
-  "bookkeeping",
-  "etsy-store",
-  "nonprofit-social-helper",
-  "community-newsletter-creator",
-  "teaching",
-  "review-response-assistant",
-  "google-business-helper",
-  "notary",
-  "resume-linkedin-helper",
-  "short-form-video-editor",
-  "social",
-  "ugc-creator",
-  "virtual-assistant",
-  "virtual-receptionist",
-  "affiliate",
-  "ai-agents",
-  "ai-timing",
   "amazon",
-  "dropshipping",
   "web-leads",
-  "pod",
-  "str-cohost",
   "airbnb-cohost",
   "virtual-call-assistant",
   "flipping-properties",
   "lien-tax-sales",
-  "foreclosure-properties",
-  "fb-marketplace-helper",
   "digital-organizer",
-  "transcription-notes-helper",
   "digital-photo-organizer",
-  "travel-research-assistant",
-  "online-community-moderator",
-  "group-setup-helper",
-  "website-tester",
   "digital-product-formatter",
-  "house-sitter",
-  "porch-package-helper",
   "closet-organizer",
   "birthday-party-helper",
-  "closet-cleanout-listing",
-  "local-resource-list-creator",
-  "start-gardening-club",
-  "start-book-club",
-  "book-publishing-kids",
   "create-games-junior",
   "mailbox-cleaning",
   "custom-bookmark-creator",
-  "homework-organizer",
-  "junior-savings-ceo",
   "junior-games-ai",
   "junior-content-create",
   "create-games-kids",
-  "kids-games-ai",
   "kids-craft-hustle",
-  "cleaning-service",
-  "consulting",
   "ai-assets",
   "ai-social-helper",
-  "ai-promo-video",
-  "ai-prompt-helper",
-  "ai-peers",
   "local-business-ai-setup",
 ] as const;
 

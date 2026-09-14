@@ -1,5 +1,6 @@
 /**
- * Admin overrides for guide kit body content (prerequisites, tools, steps).
+ * Admin overrides for guide kit body content (prerequisites, tools, steps,
+ * Supply List, and Suggested Pricing).
  * Stored in guide_catalog_state.patch_json; full ordered arrays replace code defaults.
  */
 import type { GuideCatalogPatch } from "./guide-catalog-state";
@@ -11,7 +12,7 @@ import type {
   GuideSupplyList,
   GuideToolCost,
 } from "./guide-tools";
-import { guideKitForId } from "./guide-tools";
+import { guideKitForId, stripGyshFreeAccountPrerequisite } from "./guide-tools";
 import { finalizeGuidePlaybookSteps } from "./guide-detailed-steps";
 import { ensureMarketingPlanSteps } from "./guide-marketing-plan";
 import { hustleById } from "./side-hustle-catalog";
@@ -69,7 +70,7 @@ export function sanitizeGuidePrerequisites(raw: unknown): GuidePrerequisite[] | 
       detail,
     });
   }
-  return out;
+  return stripGyshFreeAccountPrerequisite(out);
 }
 
 export function sanitizeGuideTools(raw: unknown): GuideToolCost[] | undefined {
@@ -195,6 +196,12 @@ export function sanitizeGuideSuggestedPricing(raw: unknown): GuideSuggestedPrici
   if (typeof body.raiseTip === "string" && body.raiseTip.trim()) {
     out.raiseTip = clip(body.raiseTip, MAX_TEXT);
   }
+  if (typeof body.intro === "string" && body.intro.trim()) {
+    out.intro = clip(body.intro, MAX_TEXT);
+  }
+  if (typeof body.tabLabel === "string" && body.tabLabel.trim()) {
+    out.tabLabel = clip(body.tabLabel, MAX_LABEL);
+  }
   return out;
 }
 
@@ -273,6 +280,10 @@ export function applyGuideKitPatch(
       ...(patch.suggestedPricing.raiseTip
         ? { raiseTip: patch.suggestedPricing.raiseTip }
         : {}),
+      ...(patch.suggestedPricing.intro ? { intro: patch.suggestedPricing.intro } : {}),
+      ...(patch.suggestedPricing.tabLabel
+        ? { tabLabel: patch.suggestedPricing.tabLabel }
+        : {}),
     };
   }
   return next;
@@ -295,6 +306,7 @@ export function resolveGuideKit(
   patch?: GuideCatalogPatch | null,
 ): GuideKit {
   const kit = applyGuideKitPatch(guideKitForId(guideId), patch);
+  kit.prerequisites = stripGyshFreeAccountPrerequisite(kit.prerequisites);
   /** Admin/QA Steps tab saves are authoritative — do not re-inject deleted foundation/marketing steps. */
   if (patch?.steps !== undefined) {
     return {

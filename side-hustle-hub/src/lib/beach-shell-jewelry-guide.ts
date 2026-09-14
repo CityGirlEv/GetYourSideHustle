@@ -5,14 +5,20 @@
  */
 
 export const BEACH_SHELL_JEWELRY_REALITY_CHECK = {
-  title: "COLLECT RESPONSIBLY",
+  title: "COLLECT RESPONSIBLY — THE SHELL IS NOT FREE PROFIT",
   body: [
-    "Never assume shells may be collected everywhere.",
-    "Check the rules for the specific beach, park, preserve, protected area, or shoreline before collecting.",
-    "Do not take live shells or living animals. Avoid protected species and restricted natural resources. When unsure, leave it.",
-    "A great alternative is to use legally purchased craft shells.",
+    "Collect shells only where collection is allowed. Respect beach, park, protected-area, wildlife, and local rules.",
+    "Do not collect live animals or occupied shells. Avoid protected species and restricted materials.",
+    "Verify current local rules — collection restrictions vary. When unsure, leave it or buy legally sold craft shells.",
     "",
-    "For minors, a parent/guardian should supervise beach collecting, tools, online selling accounts, payments, shipping, and meetups.",
+    "Do not price a piece only because the shell was free. Time, findings, collection effort, jewelry components, packaging, selling costs, and labor still matter.",
+    "Revenue is not profit. Track both.",
+    "",
+    "Wash and sanitize materials appropriately. Use eye protection and adult supervision when drilling or cutting.",
+    "Use adhesives and tools according to the instructions.",
+    "Younger sellers need adult supervision for sharp tools, drilling, adhesives, online selling, payments, meetups, and shipping.",
+    "Protect personal information. Use safe meetup and delivery practices.",
+    "Follow current marketplace and platform age and selling rules. Do not invent laws.",
     "",
     "Tagline: Find It. Clean It. Create It. Sell It.",
   ].join("\n"),
@@ -21,59 +27,73 @@ export const BEACH_SHELL_JEWELRY_REALITY_CHECK = {
 /** Beach shell jewelry planner shown above freeform Notes for this guide. */
 export const BEACH_SHELL_JEWELRY_NOTES_WORKSHEET = `MY BEACH SHELL JEWELRY PLAN
 
-First Product: ________
-Shell Source: ________
-Collection Allowed/Verified: ☐ Yes ☐ Purchased Shells
-Selling Price: $____
-Cost Per Piece: $____
-Estimated Profit Per Piece: $____
-
-Marketing Channels:
-1. ________
-2. ________
-3. ________
-
-FIRST BATCH
-Quantity: ____
+DESIGN
+Piece Name: ________
+Type: ________
+Shell Type: ________
 Materials: ________
-Batch Cost: $____
-Where I’ll Sell: ________
-Market/Event Date: ________
-Online Shop: ________
+Time to Make: ________
 
-SALES TRACKER
-Date | Product | Qty | Revenue | Expenses | Profit
-________________________________________________________
-________________________________________________________
-________________________________________________________
+COST
+Shell/Material Cost: $____
+Jewelry Findings: $____
+Packaging: $____
+Selling Fees: $____
+Other Cost: $____
+Total Cost: $____
 
-BESTSELLERS
-Best Design: ________
-Best Shell Style/Color: ________
-Best Channel: ________
-Customer Requests: ________
-What Did Not Sell: ________
-What I’ll Make More Of: ________
+PRICING
+Selling Price: $____
+Estimated Profit: $____
+Profit Margin: ____%
 
-Money I’ll Save: $____
-Money I’ll Reinvest: $____
-Next Supply Purchase: ________
+INVENTORY
+Quantity Made: ____
+Quantity Sold: ____
+Quantity Remaining: ____
+
+SALE
+Date: ________
+Channel: ________
+Customer/Order: ________
+Selling Price: $____
+Delivery/Shipping: ________
+
+RESULTS
+Gross Revenue: $____
+Expenses: $____
+Profit: $____
+Hours Worked: ____
+Profit Per Hour: $____
+Best Seller: ________
+
+NEXT BATCH
+What Sold Best: ________
+What to Make Again: ________
+What to Change: ________
+
+Collection Allowed/Verified: ☐ Yes ☐ Purchased Shells
+Marketing Channel 1: ________
+Marketing Channel 2: ________
+Marketing Channel 3: ________
 
 GYSH PRO TIP
 THE SHELL IS ALREADY INTERESTING — DON'T OVERDESIGN IT.
 A clean, simple piece can show off the shell's natural shape and color.
+Do not price a piece based only on a free shell.
 SOURCE RESPONSIBLY → MAKE IT WELL → PRICE FOR PROFIT → TELL THE STORY → TRACK WHAT SELLS.
 
 BEGINNER CHALLENGE
 Create your FIRST 5-PIECE MINI COLLECTION.
-1. Legally source/purchase suitable shells.
+1. Legally source or purchase suitable shells.
 2. Make 5 pieces of ONE jewelry type.
-3. Calculate cost per piece.
+3. Calculate cost per piece, including labor value.
 4. Set your price.
 5. Take clear photos.
-6. Show/list through your selected channels.
-7. Track every sale.
-Goal: prove you can SOURCE IT → MAKE IT → PRICE IT → SELL IT → PROFIT.`;
+6. Show or list through 2–3 selected channels.
+7. Track every sale, expense, and profit.
+Goal: prove you can SOURCE IT → MAKE IT → PRICE IT → SELL IT → PROFIT.
+`;
 
 export const BEACH_SHELL_JEWELRY_PREREQUISITE_EXTRAS: {
   id: string;
@@ -84,43 +104,37 @@ export const BEACH_SHELL_JEWELRY_PREREQUISITE_EXTRAS: {
     id: "overview",
     label: "What this hustle is",
     detail:
-      "Collect shells at the beach where collection is allowed and turn suitable shells into earrings, bracelets, necklaces, charms, and other simple jewelry to sell locally or online. Tagline: Find It. Clean It. Create It. Sell It. Category: Crafts / Jewelry / Product Sales. Best for juniors / teens, adults, seniors / retirees. Beginner · Low startup · Flexible / market weekends · Home / local markets / online · Per piece / product sales · 3 - 10 hrs/week · Free Guide.",
+      "Collect shells at the beach (where allowed) and turn them into earrings, bracelets, and necklaces to sell. Tagline: Find It. Clean It. Create It. Sell It. Category: Crafts / Jewelry / Product Sales. Beginner handmade product / craft sales · Low startup · 3 - 10 hrs/week · $8 – $35 / piece (examples only). For younger makers, a parent/guardian supervises collecting, tools, online selling, payments, meetups, and shipping.",
   },
   {
     id: "need",
     label: "What you need",
     detail:
-      "Legal/approved shell source · Parent/guardian approval for minors · Safe workspace · Basic jewelry-making supplies · Small startup budget · Simple cost tracker · Packaging · Safe selling/payment method.",
+      "Legal or purchased shell source · Parent/guardian approval for minors · Safe workspace · Basic jewelry-making supplies · Small startup budget · Cost tracker · Packaging · Age-appropriate selling and payment method.",
   },
   {
     id: "before-making",
     label: "Before making",
     detail:
-      "Check local collection rules · Use empty, legally collected or legally purchased shells · Clean and dry shells appropriately · Discard sharp, cracked, contaminated, or unsafe pieces · Learn safe use of pliers, drills, adhesives, cutters, and other tools · Use eye protection for drilling/cutting where appropriate · Follow product/material safety guidance · Clearly describe materials to buyers where relevant.",
+      "Check local collection rules · Use empty, legally collected or legally purchased shells · Clean and dry shells · Discard sharp, cracked, contaminated, or unsafe pieces · Learn safe use of pliers, drills, adhesives, and cutters · Use eye protection for drilling/cutting · Follow product safety guidance · Clearly describe materials to buyers.",
   },
   {
     id: "collect-responsibly",
     label: "Collect responsibly",
     detail:
-      "Never assume shells may be collected everywhere. Check the rules for the specific beach, park, preserve, protected area, or shoreline before collecting. Do not take live shells or living animals. Avoid protected species and restricted natural resources. When unsure, leave it. A great alternative is to use legally purchased craft shells.",
+      "Collect only where allowed. Respect beach, park, protected-area, wildlife, and local rules. Do not take live animals or occupied shells. Avoid protected species. Verify current local rules because restrictions vary. A great alternative is legally purchased craft shells.",
   },
   {
     id: "minors",
-    label: "Parent/guardian for minors",
+    label: "Parent/guardian for younger makers",
     detail:
-      "A parent/guardian should supervise beach collecting, tools, online selling accounts, payments, shipping, and meetups.",
+      "Adult supervision for sharp tools, drilling, adhesives, online selling, payments, meetups, and shipping. Protect personal information. Follow current marketplace age and selling rules.",
   },
   {
-    id: "hypoallergenic",
-    label: "Do not overclaim materials",
+    id: "revenue-vs-profit",
+    label: "Revenue is not profit",
     detail:
-      "Do not market natural shell jewelry as hypoallergenic unless the actual jewelry components support that claim.",
-  },
-  {
-    id: "pro-tip",
-    label: "GYSH Pro Tip — don't overdesign the shell",
-    detail:
-      "The shell is already interesting — don't overdesign it. A clean, simple piece can show off the shell's natural shape and color. Source responsibly → make it well → price for profit → tell the story → track what sells.",
+      "Do not price a piece based only on a free shell. Material cost + packaging + selling/platform fees + labor value + desired profit = suggested selling price.",
   },
 ];
 
@@ -129,102 +143,116 @@ export const BEACH_SHELL_JEWELRY_EXTERNAL_LINKS: {
   url: string;
   note?: string;
 }[] = [
-  {
-    label: "Canva",
-    url: "https://www.canva.com/",
-    note: "Cards, signage, and listing photos",
-  },
-  {
-    label: "Google Sheets",
-    url: "https://sheets.google.com/",
-    note: "Track cost per piece, sales, and bestsellers",
-  },
+  { label: "Canva", url: "https://www.canva.com/", note: "Product cards, tags, and social graphics" },
+  { label: "Google Sheets", url: "https://sheets.google.com/", note: "Inventory, costs, sales, and profit" },
   {
     label: "Etsy seller handbook",
     url: "https://www.etsy.com/sell",
-    note: "Verify fees, seller eligibility, age requirements, and prohibited-item/material policies",
+    note: "Verify fees, seller eligibility, age requirements, and prohibited-item policies",
   },
 ];
 
 export const BEACH_SHELL_JEWELRY_SUPPLIES = {
   starterKitTotal:
-    "About $15–40 — start with a small collection and basic tools; do not buy expensive jewelry equipment before proving demand",
+    "About $15–40 for a first jewelry kit — start small; do not buy expensive equipment before you know what sells",
   items: [
     {
       id: "shells",
       name: "Legally collected or purchased shells",
       qty: "1 small batch",
       estCost: "$0–15",
-      notes: "Empty shells where collection is allowed, or craft shells from a legitimate supplier",
+      notes: "Essential — empty shells where collection is allowed, or craft shells from a legitimate supplier",
     },
     {
-      id: "pliers",
-      name: "Jewelry pliers",
-      qty: "1 pair",
-      estCost: "$8–15",
+      id: "cord",
+      name: "Jewelry cord / wire",
+      qty: "1–2 spools",
+      estCost: "$5–12",
+      notes: "Essential",
+    },
+    {
+      id: "hooks",
+      name: "Earring hooks",
+      qty: "1 pack",
+      estCost: "$4–8",
+      notes: "Essential for earrings",
     },
     {
       id: "jumps",
       name: "Jump rings",
       qty: "1 pack (50+)",
       estCost: "$3–6",
-    },
-    {
-      id: "hooks",
-      name: "Earring hooks/posts",
-      qty: "1 pack",
-      estCost: "$4–8",
-      notes: "As needed for earrings",
-    },
-    {
-      id: "cord",
-      name: "Cord, chain, or bracelet material",
-      qty: "1–2 spools",
-      estCost: "$5–12",
+      notes: "Essential",
     },
     {
       id: "clasps",
       name: "Clasps",
       qty: "1 pack",
       estCost: "$4–8",
+      notes: "Essential",
+    },
+    {
+      id: "findings",
+      name: "Bracelet / necklace findings",
+      qty: "1 pack",
+      estCost: "$4–10",
+      notes: "Essential — ends, extenders, and connectors",
+    },
+    {
+      id: "pliers",
+      name: "Jewelry pliers",
+      qty: "1 pair",
+      estCost: "$8–15",
+      notes: "Essential — adult supervision for younger makers",
     },
     {
       id: "adhesive",
-      name: "Jewelry-safe adhesive",
+      name: "Craft adhesive suitable for jewelry",
       qty: "1",
       estCost: "$3–8",
-      notes: "Where appropriate",
+      notes: "Essential when a design needs glue — follow the label; adult supervision for minors",
+    },
+    {
+      id: "measuring",
+      name: "Measuring tool (ruler or tape)",
+      qty: "1",
+      estCost: "$0–5",
+      notes: "Essential — necklace and bracelet lengths",
     },
     {
       id: "containers",
-      name: "Small containers for findings",
+      name: "Small storage containers",
       qty: "2–4",
       estCost: "$2–8",
+      notes: "Essential — keep findings sorted",
     },
     {
       id: "cleaning",
-      name: "Cleaning supplies appropriate to the shells",
+      name: "Cleaning supplies for shells",
       qty: "1 set",
       estCost: "$2–8",
+      notes: "Essential — brush, fresh water, and a drying tray",
     },
     {
-      id: "packaging",
-      name: "Packaging",
+      id: "cards",
+      name: "Display cards",
       qty: "1 pack",
       estCost: "$4–10",
+      notes: "Essential — earring and necklace cards",
     },
     {
-      id: "labels",
-      name: "Price labels",
+      id: "bags",
+      name: "Small bags / boxes",
       qty: "1 pack",
-      estCost: "$2–6",
+      estCost: "$4–12",
+      notes: "Essential — protect finished pieces",
     },
     {
       id: "drill",
-      name: "Appropriate small drill/tool",
+      name: "Small hand drill or shell-drilling tool",
       qty: "1",
       estCost: "$10–25",
-      notes: "For drilled designs — eye protection and adult supervision for minors",
+      notes: "Optional — only when the design needs a hole; eye protection and adult supervision",
       optional: true,
     },
     {
@@ -232,42 +260,23 @@ export const BEACH_SHELL_JEWELRY_SUPPLIES = {
       name: "Eye protection",
       qty: "1",
       estCost: "$3–10",
-      notes: "For drilling/cutting",
+      notes: "Optional — required if you drill or cut",
+      optional: true,
+    },
+    {
+      id: "mailers",
+      name: "Shipping materials",
+      qty: "1 pack",
+      estCost: "$4–12",
+      notes: "Optional — only if you sell online and ship",
       optional: true,
     },
     {
       id: "beads",
-      name: "Beads",
+      name: "Beads / extra accents",
       qty: "1 pack",
       estCost: "$3–10",
-      optional: true,
-    },
-    {
-      id: "charms",
-      name: "Charms",
-      qty: "1 pack",
-      estCost: "$3–10",
-      optional: true,
-    },
-    {
-      id: "wire",
-      name: "Wire",
-      qty: "1 spool",
-      estCost: "$3–10",
-      optional: true,
-    },
-    {
-      id: "cards",
-      name: "Display cards",
-      qty: "1 pack",
-      estCost: "$4–10",
-      optional: true,
-    },
-    {
-      id: "boxes",
-      name: "Jewelry boxes/pouches",
-      qty: "1 pack",
-      estCost: "$4–12",
+      notes: "Nice to have",
       optional: true,
     },
     {
@@ -275,14 +284,7 @@ export const BEACH_SHELL_JEWELRY_SUPPLIES = {
       name: "Small display stands",
       qty: "1–2",
       estCost: "$5–15",
-      optional: true,
-    },
-    {
-      id: "mailers",
-      name: "Shipping mailers",
-      qty: "1 pack",
-      estCost: "$4–12",
-      notes: "Only if you ship",
+      notes: "Nice to have for markets",
       optional: true,
     },
   ],
@@ -298,388 +300,390 @@ export const BEACH_SHELL_JEWELRY_TOOLS: {
   optional?: boolean;
 }[] = [
   {
-    id: "pliers",
-    name: "Jewelry pliers",
-    freePlanAvailable: false,
+    id: "camera",
+    name: "Smartphone camera",
+    freePlanAvailable: true,
     planLabelApplicable: false,
-    costNote: "Design/making — basic jewelry tools",
-  },
-  {
-    id: "ruler",
-    name: "Measuring tape/ruler",
-    freePlanAvailable: false,
-    planLabelApplicable: false,
-    costNote: "Lengths for necklaces, bracelets, and anklets",
-  },
-  {
-    id: "drill",
-    name: "Appropriate shell drilling tool",
-    freePlanAvailable: false,
-    planLabelApplicable: false,
-    costNote: "Where needed — eye protection and adult supervision for minors",
-    optional: true,
+    costNote: "Daylight product photos — show size, color, and findings clearly",
   },
   {
     id: "canva",
     name: "Canva",
     freePlanAvailable: true,
-    costNote: "Cards, signage, and listing photos",
+    costNote: "Simple product cards, price tags, and social graphics",
     url: "https://www.canva.com/",
+  },
+  {
+    id: "sheets",
+    name: "Google Sheets / Excel",
+    freePlanAvailable: true,
+    costNote: "Inventory, material cost, sales, fees, and real profit",
+    url: "https://sheets.google.com/",
   },
   {
     id: "calculator",
     name: "Calculator",
     freePlanAvailable: false,
     planLabelApplicable: false,
-    costNote: "Cost per piece and estimated profit per piece",
+    costNote: "Pricing formula: materials + packaging + fees + labor + desired profit",
   },
   {
-    id: "sheets",
-    name: "Google Sheets",
+    id: "photo-edit",
+    name: "Simple photo-editing tool",
     freePlanAvailable: true,
-    costNote: "Track costs, sales, and bestsellers",
-    url: "https://sheets.google.com/",
-  },
-  {
-    id: "notes",
-    name: "Notes",
-    freePlanAvailable: true,
-    costNote: "Orders, shell source, and customer requests",
-    url: "https://docs.google.com/",
-  },
-  {
-    id: "markets",
-    name: "Approved craft/vendor markets & community events",
-    freePlanAvailable: false,
-    planLabelApplicable: false,
-    costNote: "In-person selling where permitted — follow venue rules",
-  },
-  {
-    id: "etsy",
-    name: "Etsy (or another approved marketplace)",
-    freePlanAvailable: false,
-    costNote:
-      "Online listings where eligibility requirements are met — verify fees, age rules, and prohibited-item/material policies",
-    url: "https://www.etsy.com/sell",
+    costNote: "Crop and brighten — do not hide defects or misrepresent the shell",
+    url: "https://www.canva.com/",
   },
   {
     id: "facebook",
-    name: "Facebook",
+    name: "Facebook / Instagram",
     freePlanAvailable: true,
-    costNote: "Local/community groups where appropriate — parent/guardian for minors",
+    costNote: "Local posts and product photos — age-appropriate or adult-managed accounts only",
     url: "https://www.facebook.com/",
+    optional: true,
   },
   {
-    id: "instagram",
-    name: "Instagram",
+    id: "payments",
+    name: "Payment tools",
     freePlanAvailable: true,
-    costNote: "Product photos — appropriate supervision",
-    url: "https://www.instagram.com/",
+    planLabelApplicable: false,
+    costNote: "Cash, parent-managed apps, or marketplace checkout — never put a child’s personal payment handle on a public listing",
+    optional: true,
   },
   {
-    id: "tiktok",
-    name: "TikTok",
-    freePlanAvailable: true,
-    costNote: "Short product videos where appropriate",
-    url: "https://www.tiktok.com/",
-  },
-  {
-    id: "pinterest",
-    name: "Pinterest",
-    freePlanAvailable: true,
-    costNote: "Product photos and ideas",
-    url: "https://www.pinterest.com/",
+    id: "etsy",
+    name: "Online marketplace tools where permitted",
+    freePlanAvailable: false,
+    costNote: "Etsy or similar — verify current fees, age rules, and prohibited materials before listing",
+    url: "https://www.etsy.com/sell",
+    optional: true,
   },
   {
     id: "beginner-stack",
-    name: "Beginner tool stack",
+    name: "Beginner Tool Stack",
     freePlanAvailable: false,
     planLabelApplicable: false,
-    costNote: "Basic Jewelry Tools + Calculator + Google Sheets + Canva + One Selling Channel",
+    costNote: "Smartphone Camera + Calculator + Google Sheets + Canva + One Selling Channel",
   },
 ];
 
 export const BEACH_SHELL_JEWELRY_PRICING = {
   tabLabel: "Suggested Pricing",
   intro: [
-    "BEACH SHELL JEWELRY STARTER EXAMPLES",
+    "BEACH SHELL JEWELRY PRICING EXAMPLES",
     "",
-    "Keep displayed pricing: $8 – $35 / piece (examples).",
+    "Displayed earning potential: $8 – $35 / piece (examples only).",
     "",
-    "Possible starter examples:",
-    "Simple shell charm/bracelet: $8–$15",
-    "Simple earrings: $10–$20",
-    "Shell necklace: $15–$25",
-    "More detailed/custom piece: $20–$35+",
+    "These are examples only, not guarantees. Revenue is not profit.",
     "",
-    "Find your cost first:",
-    "Shell Cost/Collection Allocation + Jewelry Findings + Cord/Chain + Packaging + Per-item Fees + Other Direct Costs = Cost Per Piece",
-    "Estimated Profit Per Piece = Selling Price - Cost Per Piece",
+    "Do not price a piece based only on the fact that the shell itself was free.",
+    "Time, findings, collection effort, jewelry components, packaging, selling costs, and labor still matter.",
     "",
-    "Example:",
-    "Findings/chain $3.00",
+    "PRICING FORMULA",
+    "Material Cost",
+    "+ Packaging Cost",
+    "+ Selling / Platform Fees",
+    "+ Labor Value",
+    "+ Desired Profit",
+    "= Suggested Selling Price",
+    "",
+    "STARTER RANGES — EXAMPLES ONLY",
+    "Simple shell earrings: approximately $8–$18",
+    "Simple bracelets: approximately $10–$22",
+    "Necklaces: approximately $15–$35+",
+    "Coordinated sets: approximately $20–$50+",
+    "Customized / premium pieces: price from materials, labor, complexity, packaging, and selling costs",
+    "",
+    "EXAMPLE",
+    "Findings / materials $3.00",
     "Packaging $1.00",
-    "Fees/other $1.00",
-    "Total cost $5.00",
-    "Selling price $18.00",
-    "Estimated profit $13.00",
+    "Selling fees $1.00",
+    "Labor value $6.00",
+    "Desired profit $5.00",
+    "Suggested selling price $16.00",
     "",
-    "Price may vary by materials, design time, customization, packaging, selling fees, and market.",
-    "Do not price only by copying another seller.",
+    "If the market will only support a price below your real costs, change the design or do not sell that piece yet.",
   ].join("\n"),
   raiseTip:
-    "Charge more for designs that require more materials/time or customization. Know YOUR costs first. Examples only — not income guarantees.",
+    "Charge more for designs that take more materials, time, or customization. Know YOUR costs first. Displayed $8 – $35 / piece is examples only — not income guarantees.",
   items: [
-    {
-      id: "charm",
-      label: "Simple shell charm/bracelet",
-      price: "$8–$15",
-    },
-    {
-      id: "earrings",
-      label: "Simple earrings",
-      price: "$10–$20",
-    },
-    {
-      id: "necklace",
-      label: "Shell necklace",
-      price: "$15–$25",
-    },
-    {
-      id: "custom",
-      label: "More detailed/custom piece",
-      price: "$20–$35+",
-    },
+    { id: "earrings", label: "Simple shell earrings", price: "$8–$18", notes: "Examples only — calculate materials, fees, labor, and profit" },
+    { id: "bracelet", label: "Simple bracelets", price: "$10–$22", notes: "Examples only" },
+    { id: "necklace", label: "Necklaces", price: "$15–$35+", notes: "Examples only" },
+    { id: "set", label: "Coordinated sets", price: "$20–$50+", notes: "Examples only" },
+    { id: "custom", label: "Customized / premium pieces", price: "Cost + labor + profit", notes: "Price from materials, labor, complexity, packaging, and selling costs" },
   ],
 };
 
 /** Exactly 11 authored core steps. Marketing = steps 6–8. Use ☐ only. */
 export const BEACH_SHELL_JEWELRY_DETAILED_STEPS: { title: string; desc: string }[] = [
   {
-    title: "Choose Your First Shell Jewelry Product",
+    title: "Choose Your Jewelry Styles",
     desc: [
-      "Pick ONE simple product:",
-      "☐ Earrings",
-      "☐ Bracelet",
-      "☐ Necklace",
-      "☐ Shell charm",
-      "☐ Anklet",
-      "☐ Keychain/jewelry accessory",
+      "Pick 1–2 styles you can make safely and consistently for a first batch.",
+      "",
+      "Options:",
+      "☐ Simple shell earrings",
+      "☐ Simple bracelets",
+      "☐ Necklaces",
+      "☐ Coordinated set (later)",
       "",
       "Write:",
-      "My First Product: ________",
+      "First product: ________",
+      "Who it is for: ________",
+      "Price range I will test: $____",
       "",
-      "Choose something you can make safely and consistently.",
+      "Do not start with 20 different designs.",
     ].join("\n"),
   },
   {
-    title: "Source Shells Legally & Responsibly",
+    title: "Collect or Purchase Shells Legally",
     desc: [
-      "Before collecting, check the exact location's rules.",
-      "Collect only empty shells where allowed.",
-      "Do not take live animals or protected/restricted specimens.",
-      "For minors, collect with parent/guardian supervision.",
-      "Alternative: buy craft shells from a legitimate supplier.",
-      "Record where your shells came from.",
-    ].join("\n"),
-  },
-  {
-    title: "Clean, Sort & Prep the Shells",
-    desc: [
-      "Sort shells by size, shape, color, condition, and possible use.",
-      "Clean using a method appropriate to the shell/material.",
-      "Dry completely.",
-      "Discard pieces that are sharp, cracked, foul-smelling, unstable, or otherwise unsuitable.",
-      "If drilling, use proper tools, eye protection, and supervision where needed.",
-    ].join("\n"),
-  },
-  {
-    title: "Make 3–5 Test Pieces & Find Your Cost",
-    desc: [
-      "Create a small test batch.",
-      "Track findings, chain/cord, beads, adhesive, packaging, fees, and other direct costs.",
-      "Calculate Cost Per Piece.",
-      "Check durability, comfort, closure, sharp edges, symmetry where intended, and overall finish.",
-      "Fix problems before selling.",
-    ].join("\n"),
-  },
-  {
-    title: "Set Your Starter Price",
-    desc: [
-      "Use Suggested Pricing and YOUR costs.",
-      "Selling Price - Cost Per Piece = Estimated Profit Per Piece.",
+      "Collect shells only where collection is allowed.",
+      "Respect beach, park, protected-area, wildlife, and local rules.",
+      "Do not collect live animals or occupied shells.",
+      "Avoid protected species and restricted materials.",
+      "Verify current local rules because restrictions vary. Do not invent laws.",
       "",
-      "Write:",
-      "Selling Price: $____",
-      "Cost Per Piece: $____",
-      "Estimated Profit: $____",
+      "For younger makers, collect with a parent/guardian.",
+      "A great alternative is legally purchased craft shells.",
+      "Record the source of every shell batch.",
+    ].join("\n"),
+  },
+  {
+    title: "Clean and Prepare the Shells",
+    desc: [
+      "Wash and sanitize materials appropriately for the shell type.",
+      "Dry completely so findings do not rust and pieces do not smell.",
+      "Sort by size, shape, color, and possible use (earrings vs bracelets vs necklaces).",
+      "Discard sharp, cracked, contaminated, or unsafe pieces.",
+      "If a design needs a hole, use a small drill only with eye protection and adult supervision.",
+    ].join("\n"),
+  },
+  {
+    title: "Practice Safe Assembly and Make a Starter Collection",
+    desc: [
+      "Practice with pliers, jump rings, hooks, cord/wire, and clasps before you sell.",
+      "Use adhesives and tools according to the instructions.",
+      "Younger makers: adult supervision for sharp tools, drilling, and glue.",
       "",
-      "Charge more for designs that require more materials/time or customization.",
+      "Make a small starter collection — about 5 pieces of one style, or a tiny mix of earrings, a bracelet, and a necklace.",
+      "Check durability, comfort, closures, sharp edges, and finish before anyone buys.",
+    ].join("\n"),
+  },
+  {
+    title: "Calculate Costs and Set Your Prices",
+    desc: [
+      "Do not price a piece based only on a free shell.",
+      "",
+      "Suggested selling price =",
+      "Material Cost + Packaging Cost + Selling/Platform Fees + Labor Value + Desired Profit.",
+      "",
+      "Write for each design:",
+      "Total cost: $____",
+      "Labor value: $____",
+      "Desired profit: $____",
+      "Selling price: $____",
+      "Estimated profit: $____",
+      "",
+      "Revenue is money collected. Profit is what remains after expenses.",
+      "If the market will not cover real costs, change the design.",
+      "",
+      "Open Google Sheets from the Tools tab (sign in with Google, or use an account you already have) and record the numbers.",
     ].join("\n"),
   },
   {
     title: "Choose Your Marketing Channels",
     desc: [
-      "A channel is one way people hear about your jewelry. Pick only 2 or 3 this month.",
+      "A channel is one way people hear about your jewelry. Pick only 2 or 3 at first.",
       "",
-      "Options:",
-      "☐ Friends/family",
-      "☐ Referrals",
-      "☐ Approved school/community fair",
-      "☐ Craft/vendor market",
-      "☐ Beach-town/tourist market where permitted",
-      "☐ Facebook",
-      "☐ Instagram",
-      "☐ TikTok",
-      "☐ Pinterest",
-      "☐ Etsy where eligibility requirements are met",
+      "Beginner options:",
+      "☐ Family / friends",
+      "☐ Local craft fairs",
+      "☐ Community events",
+      "☐ Social media with adult supervision",
+      "☐ Local boutiques / consignment where appropriate",
+      "☐ Online marketplaces where age and platform rules permit",
       "",
-      "Write product + price and ONE measurable goal per channel.",
-      "Examples: show 10 trusted people; apply to 1 market; post 3 product photos; list 5 pieces online.",
+      "Write ONE measurable goal per channel.",
+      "Examples:",
+      "- Show 10 trusted people this week.",
+      "- Apply to 1 craft fair or community table.",
+      "- Post 3 product photos with a parent-managed account.",
+      "",
+      "Protect personal information. Follow current marketplace age rules.",
     ].join("\n"),
   },
   {
     title: "Make Your Marketing Materials",
     desc: [
+      "Photograph every piece in daylight on a plain background.",
+      "Show size, color, findings, and any natural variation.",
+      "",
       "Create:",
       "☐ 3–6 clear jewelry photos",
-      "☐ Product name",
-      "☐ Price",
+      "☐ Product name and price",
       "☐ Materials description",
-      "☐ Short story/description",
-      "☐ Order/contact method",
-      "☐ Simple market sign/display card",
+      "☐ Short story / description",
+      "☐ Order / contact method (parent contact for minors)",
+      "☐ Display card or market sign",
       "",
       "Sample:",
-      "“BEACH SHELL JEWELRY — Handmade using responsibly sourced shells. [Product] $____. Each natural shell is unique, so color/shape may vary.”",
+      "“Handmade beach shell jewelry. [Product] $____. Shells are unique, so color and shape may vary. Collected or purchased only where allowed.”",
       "",
-      "Use parent-approved contact/payment information for minors.",
-      "Never claim a shell's source/species or material property unless you know it is accurate.",
+      "Open Canva from the Tools tab (sign in with Google, or use an account you already have) for cards and graphics.",
+      "Do not hide defects. Do not claim hypoallergenic or protected-species status unless you know it is accurate.",
     ].join("\n"),
   },
   {
     title: "Carry Out Your Marketing Plan",
     desc: [
       "Use ONLY the 2–3 channels selected.",
-      "Show pieces to 8–12 appropriate people, post approved photos, ask for referrals, prepare for an approved market, or list pieces in an approved shop.",
+      "",
+      "This week:",
+      "☐ Show pieces to trusted people",
+      "☐ Post approved photos if using social",
+      "☐ Prepare a small display for a fair or community table",
+      "☐ List pieces only where age and platform rules allow",
       "",
       "Sample:",
-      "“Hi! I’ve started making handmade beach shell jewelry using responsibly sourced shells. Pieces start at $____. Here are a few designs I have available.”",
+      "“I make handmade beach shell earrings, bracelets, and necklaces. Pieces start at $____. Here are a few designs ready now.”",
       "",
-      "Track Date | Channel | Product | People Reached | Orders/Sales.",
-      "Protect minors' and customers' private information.",
+      "Track Date | Channel | Product | People reached | Orders / sales.",
+      "Never put a child’s personal cell or payment handle on a public listing.",
     ].join("\n"),
   },
   {
-    title: "Make, Package & Sell Your Small Batch",
+    title: "Sell and Handle Orders",
     desc: [
-      "Make a manageable batch based on interest.",
-      "Quality-check each piece.",
-      "For each order confirm item, size/length where relevant, customization, total price, payment, delivery/shipping.",
-      "Package to protect delicate shells.",
-      "For online sales, accurately describe natural variations and materials.",
-      "Never arrange unsafe private meetups.",
+      "For every order confirm:",
+      "☐ Item and quantity",
+      "☐ Size / length if needed",
+      "☐ Total price",
+      "☐ Payment received",
+      "☐ Pickup, meetup, or ship",
+      "",
+      "Use safe meetup and delivery practices. Public places. Parent present for younger sellers.",
+      "Accurately describe natural shell variation and materials.",
+      "Follow current marketplace and platform rules. Do not invent laws.",
     ].join("\n"),
   },
   {
-    title: "Track Sales & Bestsellers",
+    title: "Package and Deliver Pieces",
+    desc: [
+      "Package to protect delicate shells: card, small bag or box, and a simple care note.",
+      "Include the price paid and your shop or first-name brand if you use one.",
+      "",
+      "If you ship:",
+      "☐ Adult-managed shipping account",
+      "☐ Padding so shells do not crack",
+      "☐ Correct address",
+      "☐ Tracking when the platform requires it",
+      "",
+      "Do not share extra personal information in the package.",
+    ].join("\n"),
+  },
+  {
+    title: "Track Revenue, Profit, and Best Sellers",
     desc: [
       "Record:",
-      "☐ Pieces Made",
-      "☐ Pieces Sold",
-      "☐ Gross Revenue",
-      "☐ Materials",
+      "☐ Gross revenue (money collected)",
+      "☐ Jewelry findings / materials",
       "☐ Packaging",
-      "☐ Selling Fees",
-      "☐ Market Fees",
-      "☐ Shipping Paid by Seller",
-      "☐ Other Expenses",
-      "☐ Estimated Profit",
+      "☐ Selling / platform fees",
+      "☐ Shipping paid by seller",
+      "☐ Advertising",
+      "☐ Booth / event fees",
+      "☐ Other expenses",
+      "☐ Estimated profit",
+      "☐ Pieces sold",
+      "☐ Hours worked",
+      "☐ Profit per piece and profit per hour",
       "",
       "Ask:",
-      "Which design sold best?",
-      "Which shell style/color was popular?",
-      "Which price worked?",
-      "Which channel produced sales?",
-      "Which piece took too long?",
-      "What did customers request?",
-    ].join("\n"),
-  },
-  {
-    title: "Reinvest & Grow What Sells",
-    desc: [
-      "Decide how much profit to Save, Enjoy, and Reinvest.",
+      "What sold best?",
+      "What should I make again?",
+      "What should I change?",
       "",
-      "Growth cycle:",
-      "MAKE A SMALL BATCH → SELL → TRACK → FIND WINNERS → REINVEST → MAKE MORE WINNERS",
-      "",
-      "Possible next moves:",
-      "☐ New color/cord",
-      "☐ Matching earrings + necklace",
-      "☐ Small gift set",
-      "☐ Custom length",
-      "☐ Better display",
-      "☐ Another approved market",
-      "☐ Restock bestseller",
-      "",
-      "Grow from actual demand.",
+      "Revenue is not profit. Grow from actual demand.",
     ].join("\n"),
   },
 ];
 
 export function beachShellJewelryToolsDisclaimer(): string {
   return [
-    "Beginner stack: Basic Jewelry Tools + Calculator + Google Sheets + Canva + One Selling Channel.",
+    "BEGINNER STACK: Smartphone Camera + Calculator + Google Sheets + Canva + One Selling Channel.",
     "",
-    "Verify current marketplace fees, seller eligibility, age requirements, and prohibited-item/material policies.",
+    "Apps belong here. Physical jewelry findings, pliers, shells, and packaging live on the Supply List.",
     "",
-    "For minors, a parent/guardian should supervise beach collecting, tools, online selling accounts, payments, shipping, and meetups.",
+    "For younger makers, a parent/guardian manages accounts, payments, shipping, and meetups. Verify current marketplace fees, age rules, and prohibited-item policies.",
   ].join("\n");
 }
 
-/** Beach shell jewelry profit math. */
+/** Handmade jewelry profit math. Revenue is not profit. */
 export function computeBeachShellJewelryProfit(input: {
-  sellingPricePerPiece: number;
-  piecesSold: number;
-  materialCostPerPiece?: number;
-  packagingCostPerPiece?: number;
+  earringPairs?: number;
+  earringPrice?: number;
+  braceletsSold?: number;
+  braceletPrice?: number;
+  necklacesSold?: number;
+  necklacePrice?: number;
+  setsSold?: number;
+  setPrice?: number;
+  findingsMaterials?: number;
+  packaging?: number;
   sellingFees?: number;
-  marketTableFee?: number;
   shippingPaidBySeller?: number;
   advertising?: number;
+  boothFees?: number;
   otherExpenses?: number;
+  laborHours?: number;
 }): {
+  earringRevenue: number;
+  braceletRevenue: number;
+  necklaceRevenue: number;
+  setRevenue: number;
   grossRevenue: number;
-  productCost: number;
+  totalPieces: number;
   totalExpenses: number;
   estimatedProfit: number;
-  estimatedProfitPerPiece: number;
+  estimatedProfitPerPiece: number | null;
   profitMarginPercent: number;
+  averageSellingPrice: number | null;
+  profitPerHour: number | null;
 } {
-  const price = Math.max(0, Number(input.sellingPricePerPiece) || 0);
-  const units = Math.max(0, Number(input.piecesSold) || 0);
-  const material = Math.max(0, Number(input.materialCostPerPiece) || 0);
-  const packaging = Math.max(0, Number(input.packagingCostPerPiece) || 0);
-  const sellingFees = Math.max(0, Number(input.sellingFees) || 0);
-  const marketFee = Math.max(0, Number(input.marketTableFee) || 0);
-  const shipping = Math.max(0, Number(input.shippingPaidBySeller) || 0);
-  const advertising = Math.max(0, Number(input.advertising) || 0);
-  const other = Math.max(0, Number(input.otherExpenses) || 0);
-
-  const grossRevenue = price * units;
-  const productCost = (material + packaging) * units;
+  const earringPairs = Math.max(0, Number(input.earringPairs) || 0);
+  const braceletsSold = Math.max(0, Number(input.braceletsSold) || 0);
+  const necklacesSold = Math.max(0, Number(input.necklacesSold) || 0);
+  const setsSold = Math.max(0, Number(input.setsSold) || 0);
+  const earringRevenue = earringPairs * Math.max(0, Number(input.earringPrice) || 0);
+  const braceletRevenue = braceletsSold * Math.max(0, Number(input.braceletPrice) || 0);
+  const necklaceRevenue = necklacesSold * Math.max(0, Number(input.necklacePrice) || 0);
+  const setRevenue = setsSold * Math.max(0, Number(input.setPrice) || 0);
+  const grossRevenue = earringRevenue + braceletRevenue + necklaceRevenue + setRevenue;
+  const totalPieces = earringPairs + braceletsSold + necklacesSold + setsSold;
   const totalExpenses =
-    productCost + sellingFees + marketFee + shipping + advertising + other;
+    Math.max(0, Number(input.findingsMaterials) || 0) +
+    Math.max(0, Number(input.packaging) || 0) +
+    Math.max(0, Number(input.sellingFees) || 0) +
+    Math.max(0, Number(input.shippingPaidBySeller) || 0) +
+    Math.max(0, Number(input.advertising) || 0) +
+    Math.max(0, Number(input.boothFees) || 0) +
+    Math.max(0, Number(input.otherExpenses) || 0);
   const estimatedProfit = grossRevenue - totalExpenses;
-  const estimatedProfitPerPiece = units > 0 ? estimatedProfit / units : 0;
-  const profitMarginPercent = grossRevenue > 0 ? (estimatedProfit / grossRevenue) * 100 : 0;
-
+  const hours = Math.max(0, Number(input.laborHours) || 0);
   return {
+    earringRevenue,
+    braceletRevenue,
+    necklaceRevenue,
+    setRevenue,
     grossRevenue,
-    productCost,
+    totalPieces,
     totalExpenses,
     estimatedProfit,
-    estimatedProfitPerPiece,
-    profitMarginPercent,
+    estimatedProfitPerPiece: totalPieces > 0 ? estimatedProfit / totalPieces : null,
+    profitMarginPercent: grossRevenue > 0 ? (estimatedProfit / grossRevenue) * 100 : 0,
+    averageSellingPrice: totalPieces > 0 ? grossRevenue / totalPieces : null,
+    profitPerHour: hours > 0 ? estimatedProfit / hours : null,
   };
 }

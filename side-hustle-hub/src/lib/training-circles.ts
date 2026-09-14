@@ -157,7 +157,7 @@ export const TRAINING_CIRCLES: TrainingCircle[] = [
   },
   {
     id: "ai-timing",
-    name: "AI Timing Scout",
+    name: "AI Rideshare Timing Scout",
     blurb: "ZipCode-level hotspot briefs for drivers — events, weather, and sellable weekly playbooks.",
     audience: "adult",
     level: "Intermediate",

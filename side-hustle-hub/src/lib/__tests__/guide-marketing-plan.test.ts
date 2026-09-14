@@ -33,7 +33,7 @@ describe("ensurePricingBeforeMarketingMaterials", () => {
     for (const e of uniqueGuideLibraryEntries()) {
       const steps = guideKitForId(e.id).steps ?? [];
       const materialsAt = steps.findIndex((s) =>
-        /make your marketing materials/i.test(s.title),
+        /make your (?:authority\s*&\s*)?marketing materials/i.test(s.title),
       );
       if (materialsAt < 0) continue;
       const after = steps

@@ -7,7 +7,7 @@
  */
 import { useEffect, useSyncExternalStore } from "react";
 import { fetchGuideCatalogStates } from "./guide-catalog-client";
-import type { GuideCatalogStateMap } from "./guide-catalog-state";
+import { overlayGuideCatalogState, type GuideCatalogStateMap } from "./guide-catalog-state";
 import {
   countActiveFreeGuideLibrary,
   countActiveGuideLibrary,
@@ -238,7 +238,7 @@ export function patchLiveGuideLibraryCatalogState(
 ): LiveGuideLibraryCounts {
   const id = String(guideId || "").trim();
   const states = { ...getLiveGuideLibraryCounts().states };
-  if (id) states[id] = state;
+  if (id) states[id] = overlayGuideCatalogState(states[id], state);
   return applyLiveGuideLibraryCountsFromStates(states);
 }
 

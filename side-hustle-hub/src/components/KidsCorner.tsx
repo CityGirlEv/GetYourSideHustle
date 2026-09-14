@@ -162,7 +162,7 @@ const JR_HUSTLES: JrHustle[] = [
   {
     id: "yard-help",
     name: "Yard & Garden Helper",
-    desc: "Help rake leaves, water flowers, pull weeds, or shovel snow — great for fresh air and pocket money.",
+    desc: "Earn money helping neighbors with light outdoor chores such as raking leaves, watering flowers, pulling weeds, picking up small yard debris, and shoveling light snow where appropriate.",
     pay: "$15 – $30 / yard",
     difficulty: "Easy",
     icon: <Gift size={24} style={{ color: "var(--accent-emerald)" }} />,
@@ -246,7 +246,7 @@ const JR_HUSTLES: JrHustle[] = [
   {
     id: "book-publishing-kids",
     name: "Book Publishing (Storybooks)",
-    desc: "Write and illustrate a short storybook — a Digital side hustle kids can do with a parent. Print copies for family, school fairs, or publish an ebook together (Amazon KDP with a guardian).",
+    desc: "Write and illustrate a short, original storybook as a parent-and-child publishing project. Create the story and artwork, format and proof the book, then let the parent manage publishing accounts, payments, royalties, customer communication, and in-person sales.",
     pay: "Gifts · fair sales · ebook royalties (parent-managed)",
     difficulty: "Medium",
     icon: <BookMarked size={24} style={{ color: "var(--crimson)" }} />,

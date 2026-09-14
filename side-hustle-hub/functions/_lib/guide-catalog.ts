@@ -12,7 +12,10 @@ import { canAccessTestingPortal } from "./roles";
 import { canSetGuideReviewedByDev } from "./roles";
 import type { GuideChangeLogAction, GuideChangeLogEntry } from "../../src/lib/guide-change-log";
 import { isGuideChangeLogAction } from "../../src/lib/guide-change-log";
-import { sanitizeGuideCatalogPatch } from "../../src/lib/guide-catalog-state";
+import {
+  defaultStatusForGuide,
+  sanitizeGuideCatalogPatch,
+} from "../../src/lib/guide-catalog-state";
 import { mergeNoteEntries } from "./note-entries";
 import {
   guideLibraryPendingFailNote,
@@ -576,7 +579,7 @@ async function writeGuideCatalogStatus(
 
   const prevStatus = existing
     ? statusFromCode(Number(existing.published) || 0)
-    : ("inactive" as GuideVisibilityStatus);
+    : defaultStatusForGuide(guideId);
   const prevDeleted = existing ? Number(existing.deleted) !== 0 : false;
   const prevPatch = parsePatchJson(existing?.patch_json);
   const prevMinTier = normalizeMinTier(prevPatch.minTier);
@@ -585,6 +588,9 @@ async function writeGuideCatalogStatus(
   let deleted = prevDeleted;
   const custom = existing ? Number(existing.custom) !== 0 : false;
   let patch = { ...prevPatch };
+  const hasContentPatch = Boolean(
+    input.contentPatch && Object.keys(input.contentPatch).length,
+  );
 
   if (input.status) {
     status = input.status;
@@ -603,6 +609,9 @@ async function writeGuideCatalogStatus(
   if (input.contentPatch) {
     const sanitized = sanitizeGuideCatalogPatch({ ...patch, ...input.contentPatch });
     if (sanitized) patch = { ...patch, ...sanitized };
+    if ("assignee" in input.contentPatch) {
+      patch.assignee = normalizeSyncedGuideAssignee(input.contentPatch.assignee);
+    }
   }
 
   const now = new Date().toISOString();
@@ -618,11 +627,20 @@ async function writeGuideCatalogStatus(
      ON CONFLICT(guide_id) DO UPDATE SET
        published = excluded.published,
        deleted = excluded.deleted,
-       patch_json = excluded.patch_json,
+       patch_json = CASE WHEN ? = 1 THEN excluded.patch_json ELSE guide_catalog_state.patch_json END,
        updated_at = excluded.updated_at,
        updated_by = excluded.updated_by`,
   )
-    .bind(guideId, publishedCode, deleted ? 1 : 0, custom ? 1 : 0, patchJson, now, by)
+    .bind(
+      guideId,
+      publishedCode,
+      deleted ? 1 : 0,
+      custom ? 1 : 0,
+      patchJson,
+      now,
+      by,
+      hasContentPatch || Boolean(input.minTier) ? 1 : 0,
+    )
     .run();
 
   const nextMinTier = normalizeMinTier(patch.minTier);
@@ -760,12 +778,19 @@ export async function bulkUpsertGuideCatalogStates(
   const existingRows = placeholders
     ? (
         await env.DB.prepare(
-          `SELECT guide_id, published FROM guide_catalog_state WHERE guide_id IN (${placeholders})`,
+          `SELECT guide_id, published, deleted, custom, patch_json FROM guide_catalog_state WHERE guide_id IN (${placeholders})`,
         )
           .bind(...guideIds)
-          .all<{ guide_id: string; published: number }>()
+          .all<{
+            guide_id: string;
+            published: number;
+            deleted: number;
+            custom: number;
+            patch_json: string;
+          }>()
       ).results ?? []
     : [];
+  const existingById = new Map(existingRows.map((r) => [r.guide_id, r] as const));
   const prevById = new Map(
     existingRows.map((r) => [r.guide_id, statusFromCode(Number(r.published) || 0)] as const),
   );
@@ -812,11 +837,13 @@ export async function bulkUpsertGuideCatalogStates(
 
   const states: Record<string, GuideCatalogPublicState> = {};
   for (const guideId of guideIds) {
+    const existing = existingById.get(guideId);
     states[guideId] = {
       published: holdsActive(status),
       status,
       deleted: false,
-      custom: false,
+      custom: existing ? Number(existing.custom) !== 0 : false,
+      patch: publicPatchFromJson(existing?.patch_json),
       updatedAt: now,
       updatedBy: by,
     };

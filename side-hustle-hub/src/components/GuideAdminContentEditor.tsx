@@ -38,6 +38,8 @@ function cloneSupplies(list: GuideSupplyList | undefined): GuideSupplyList {
 function clonePricing(list: GuideSuggestedPricing | undefined): GuideSuggestedPricing {
   return {
     raiseTip: list?.raiseTip ?? "",
+    ...(list?.intro ? { intro: list.intro } : {}),
+    ...(list?.tabLabel ? { tabLabel: list.tabLabel } : {}),
     items: (list?.items ?? []).map((i) => ({ ...i })),
   };
 }
@@ -176,6 +178,12 @@ export function GuideAdminContentEditor({
         ...(from.suggestedPricing.raiseTip?.trim()
           ? { raiseTip: from.suggestedPricing.raiseTip.trim() }
           : {}),
+        ...(from.suggestedPricing.intro?.trim()
+          ? { intro: from.suggestedPricing.intro.trim() }
+          : {}),
+        ...(from.suggestedPricing.tabLabel?.trim()
+          ? { tabLabel: from.suggestedPricing.tabLabel.trim() }
+          : {}),
       },
     };
   };
@@ -246,18 +254,9 @@ export function GuideAdminContentEditor({
     })();
   };
 
-  const deleteBullet = (
-    kind: "prerequisites" | "tools",
-    idx: number,
-    nextItems: GuidePrerequisite[] | GuideToolCost[],
-  ) => {
+  const persistImmediate = (next: Draft, flash: string, idx: number) => {
     if (busy || savingKey != null) return;
-    const next: Draft =
-      kind === "prerequisites"
-        ? { ...draft, prerequisites: nextItems as GuidePrerequisite[] }
-        : { ...draft, tools: nextItems as GuideToolCost[] };
     setDraft(next);
-    const flash = `${kind === "tools" ? "tool" : "prereq"}-delete`;
     setSavingKey(`${flash}-${idx}`);
     void (async () => {
       try {
@@ -271,6 +270,18 @@ export function GuideAdminContentEditor({
     })();
   };
 
+  const deleteBullet = (
+    kind: "prerequisites" | "tools",
+    idx: number,
+    nextItems: GuidePrerequisite[] | GuideToolCost[],
+  ) => {
+    const next: Draft =
+      kind === "prerequisites"
+        ? { ...draft, prerequisites: nextItems as GuidePrerequisite[] }
+        : { ...draft, tools: nextItems as GuideToolCost[] };
+    persistImmediate(next, `${kind === "tools" ? "tool" : "prereq"}-delete`, idx);
+  };
+
   const saveLocked = busy || savingKey != null;
   const showName =
     focusSection === "all" ||
@@ -281,6 +292,8 @@ export function GuideAdminContentEditor({
   const showSteps = focusSection === "all" || focusSection === "steps";
   const showPrereqs = focusSection === "all" || focusSection === "prereqs";
   const showTools = focusSection === "all" || focusSection === "tools";
+  const showPricing = focusSection === "all" || focusSection === "pricing";
+  const showSupplies = focusSection === "all" || focusSection === "supplies";
 
   const moveStep = (index: number, dir: -1 | 1) => {
     setDraft((d) => ({ ...d, steps: moveGuideKitItem(d.steps, index, dir) }));
@@ -627,6 +640,492 @@ export function GuideAdminContentEditor({
           )
         }
       />
+      ) : null}
+
+      {showPricing ? (
+      <div className="guide-admin-content-editor__block" data-testid="guide-admin-pricing-editor">
+        <div className="guide-admin-content-editor__block-head">
+          <h4>Suggested Pricing</h4>
+          <button
+            type="button"
+            className="btn btn-outline"
+            data-testid="guide-admin-pricing-add"
+            onClick={() =>
+              setDraft((d) => ({
+                ...d,
+                suggestedPricing: {
+                  ...d.suggestedPricing,
+                  items: [
+                    ...d.suggestedPricing.items,
+                    {
+                      id: newGuideKitItemId("price"),
+                      label: "",
+                      price: "",
+                    },
+                  ],
+                },
+              }))
+            }
+          >
+            <Plus size={16} aria-hidden /> Add price
+          </button>
+        </div>
+        <label className="guide-admin-content-editor__field">
+          <span>Tab label</span>
+          <input
+            type="text"
+            className="text-input"
+            value={draft.suggestedPricing.tabLabel ?? ""}
+            placeholder="Suggested Pricing"
+            maxLength={200}
+            data-testid="guide-admin-pricing-tab-label"
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                suggestedPricing: { ...d.suggestedPricing, tabLabel: e.target.value },
+              }))
+            }
+          />
+        </label>
+        <label className="guide-admin-content-editor__field">
+          <span>Intro</span>
+          <textarea
+            className="text-input guide-admin-richtext guide-admin-richtext--step"
+            value={draft.suggestedPricing.intro ?? ""}
+            rows={6}
+            placeholder="Starter examples, formulas, and disclaimers shown above the price list"
+            data-testid="guide-admin-pricing-intro"
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                suggestedPricing: { ...d.suggestedPricing, intro: e.target.value },
+              }))
+            }
+          />
+        </label>
+        <label className="guide-admin-content-editor__field">
+          <span>Raise tip</span>
+          <textarea
+            className="text-input guide-admin-richtext"
+            value={draft.suggestedPricing.raiseTip ?? ""}
+            rows={3}
+            placeholder="How to raise rates after a few happy customers"
+            data-testid="guide-admin-pricing-raise-tip"
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                suggestedPricing: { ...d.suggestedPricing, raiseTip: e.target.value },
+              }))
+            }
+          />
+        </label>
+        <div className="guide-admin-step__save-row">
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={saveLocked}
+            data-testid="guide-admin-pricing-copy-save"
+            onClick={() => void saveItem("pricing-copy")}
+          >
+            <Save size={16} aria-hidden />
+            {savingKey === "pricing-copy"
+              ? "Saving…"
+              : itemSavedFlash === "pricing-copy"
+                ? "Pricing copy saved"
+                : "Save pricing copy"}
+          </button>
+        </div>
+        {draft.suggestedPricing.items.length === 0 ? (
+          <p className="guide-admin-content-editor__empty">No prices yet — add the first one.</p>
+        ) : (
+          <ul className="guide-admin-bullets">
+            {draft.suggestedPricing.items.map((item, idx) => (
+              <li key={item.id || `price-${idx}`} className="guide-admin-bullet">
+                <span className="guide-admin-bullet__mark" aria-hidden>
+                  $
+                </span>
+                <div className="guide-admin-bullet__body">
+                  <div className="guide-admin-field-grid">
+                    <label className="guide-admin-content-editor__field">
+                      <span>Label</span>
+                      <input
+                        type="text"
+                        className="text-input"
+                        value={item.label}
+                        placeholder="Package or job type"
+                        aria-label={`Price ${idx + 1} label`}
+                        data-testid={`guide-admin-pricing-label-${idx}`}
+                        onChange={(e) =>
+                          setDraft((d) => {
+                            const items = d.suggestedPricing.items.slice();
+                            items[idx] = { ...items[idx]!, label: e.target.value };
+                            return {
+                              ...d,
+                              suggestedPricing: { ...d.suggestedPricing, items },
+                            };
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="guide-admin-content-editor__field">
+                      <span>Price</span>
+                      <input
+                        type="text"
+                        className="text-input"
+                        value={item.price}
+                        placeholder="$25 – $40"
+                        aria-label={`Price ${idx + 1} amount`}
+                        data-testid={`guide-admin-pricing-price-${idx}`}
+                        onChange={(e) =>
+                          setDraft((d) => {
+                            const items = d.suggestedPricing.items.slice();
+                            items[idx] = { ...items[idx]!, price: e.target.value };
+                            return {
+                              ...d,
+                              suggestedPricing: { ...d.suggestedPricing, items },
+                            };
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <textarea
+                    className="text-input guide-admin-richtext"
+                    value={item.notes ?? ""}
+                    rows={3}
+                    placeholder="Notes (optional)"
+                    aria-label={`Price ${idx + 1} notes`}
+                    data-testid={`guide-admin-pricing-notes-${idx}`}
+                    onChange={(e) =>
+                      setDraft((d) => {
+                        const items = d.suggestedPricing.items.slice();
+                        items[idx] = { ...items[idx]!, notes: e.target.value };
+                        return {
+                          ...d,
+                          suggestedPricing: { ...d.suggestedPricing, items },
+                        };
+                      })
+                    }
+                  />
+                  <div className="guide-admin-step__save-row">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={saveLocked}
+                      data-testid={`guide-admin-pricing-save-${idx}`}
+                      onClick={() => void saveItem(`price-${idx}`)}
+                    >
+                      <Save size={16} aria-hidden />
+                      {savingKey === `price-${idx}`
+                        ? "Saving…"
+                        : itemSavedFlash === `price-${idx}`
+                          ? "Price saved"
+                          : `Save price ${idx + 1}`}
+                    </button>
+                  </div>
+                </div>
+                <div className="guide-admin-bullet__actions">
+                  <button
+                    type="button"
+                    className="btn btn-outline guide-admin-step__icon-btn"
+                    aria-label={`Move price ${idx + 1} up`}
+                    disabled={idx === 0}
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        suggestedPricing: {
+                          ...d.suggestedPricing,
+                          items: moveGuideKitItem(d.suggestedPricing.items, idx, -1),
+                        },
+                      }))
+                    }
+                  >
+                    <ArrowUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline guide-admin-step__icon-btn"
+                    aria-label={`Move price ${idx + 1} down`}
+                    disabled={idx === draft.suggestedPricing.items.length - 1}
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        suggestedPricing: {
+                          ...d.suggestedPricing,
+                          items: moveGuideKitItem(d.suggestedPricing.items, idx, 1),
+                        },
+                      }))
+                    }
+                  >
+                    <ArrowDown size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline guide-admin-step__icon-btn"
+                    aria-label={`Delete price ${idx + 1}`}
+                    disabled={saveLocked}
+                    data-testid={`guide-admin-pricing-delete-${idx}`}
+                    onClick={() =>
+                      persistImmediate(
+                        {
+                          ...draft,
+                          suggestedPricing: {
+                            ...draft.suggestedPricing,
+                            items: draft.suggestedPricing.items.filter((_, i) => i !== idx),
+                          },
+                        },
+                        "price-delete",
+                        idx,
+                      )
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      ) : null}
+
+      {showSupplies ? (
+      <div className="guide-admin-content-editor__block" data-testid="guide-admin-supplies-editor">
+        <div className="guide-admin-content-editor__block-head">
+          <h4>Supply List</h4>
+          <button
+            type="button"
+            className="btn btn-outline"
+            data-testid="guide-admin-supplies-add"
+            onClick={() =>
+              setDraft((d) => ({
+                ...d,
+                supplies: {
+                  ...d.supplies,
+                  items: [
+                    ...d.supplies.items,
+                    {
+                      id: newGuideKitItemId("supply"),
+                      name: "",
+                      qty: "1",
+                      estCost: "",
+                    },
+                  ],
+                },
+              }))
+            }
+          >
+            <Plus size={16} aria-hidden /> Add supply
+          </button>
+        </div>
+        <label className="guide-admin-content-editor__field">
+          <span>Estimated cost to gather supplies before the first paid job</span>
+          <input
+            type="text"
+            className="text-input"
+            value={draft.supplies.starterKitTotal}
+            placeholder="About $25–55 if you buy everything new"
+            data-testid="guide-admin-supplies-starter-total"
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                supplies: { ...d.supplies, starterKitTotal: e.target.value },
+              }))
+            }
+          />
+        </label>
+        <div className="guide-admin-step__save-row">
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={saveLocked}
+            data-testid="guide-admin-supplies-total-save"
+            onClick={() => void saveItem("supplies-total")}
+          >
+            <Save size={16} aria-hidden />
+            {savingKey === "supplies-total"
+              ? "Saving…"
+              : itemSavedFlash === "supplies-total"
+                ? "Starter kit total saved"
+                : "Save starter kit total"}
+          </button>
+        </div>
+        {draft.supplies.items.length === 0 ? (
+          <p className="guide-admin-content-editor__empty">No supplies yet — add the first one.</p>
+        ) : (
+          <ul className="guide-admin-bullets">
+            {draft.supplies.items.map((item, idx) => (
+              <li key={item.id || `supply-${idx}`} className="guide-admin-bullet">
+                <span className="guide-admin-bullet__mark" aria-hidden>
+                  {idx + 1}.
+                </span>
+                <div className="guide-admin-bullet__body">
+                  <label className="guide-admin-content-editor__field">
+                    <span>Item</span>
+                    <input
+                      type="text"
+                      className="text-input"
+                      value={item.name}
+                      placeholder="Supply name"
+                      aria-label={`Supply ${idx + 1} name`}
+                      data-testid={`guide-admin-supplies-name-${idx}`}
+                      onChange={(e) =>
+                        setDraft((d) => {
+                          const items = d.supplies.items.slice();
+                          items[idx] = { ...items[idx]!, name: e.target.value };
+                          return { ...d, supplies: { ...d.supplies, items } };
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="guide-admin-field-grid">
+                    <label className="guide-admin-content-editor__field">
+                      <span>Qty</span>
+                      <input
+                        type="text"
+                        className="text-input"
+                        value={item.qty}
+                        placeholder="1"
+                        aria-label={`Supply ${idx + 1} quantity`}
+                        data-testid={`guide-admin-supplies-qty-${idx}`}
+                        onChange={(e) =>
+                          setDraft((d) => {
+                            const items = d.supplies.items.slice();
+                            items[idx] = { ...items[idx]!, qty: e.target.value };
+                            return { ...d, supplies: { ...d.supplies, items } };
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="guide-admin-content-editor__field">
+                      <span>Est. cost</span>
+                      <input
+                        type="text"
+                        className="text-input"
+                        value={item.estCost}
+                        placeholder="$6–12"
+                        aria-label={`Supply ${idx + 1} estimated cost`}
+                        data-testid={`guide-admin-supplies-cost-${idx}`}
+                        onChange={(e) =>
+                          setDraft((d) => {
+                            const items = d.supplies.items.slice();
+                            items[idx] = { ...items[idx]!, estCost: e.target.value };
+                            return { ...d, supplies: { ...d.supplies, items } };
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <textarea
+                    className="text-input guide-admin-richtext"
+                    value={item.notes ?? ""}
+                    rows={3}
+                    placeholder="Notes (optional)"
+                    aria-label={`Supply ${idx + 1} notes`}
+                    data-testid={`guide-admin-supplies-notes-${idx}`}
+                    onChange={(e) =>
+                      setDraft((d) => {
+                        const items = d.supplies.items.slice();
+                        items[idx] = { ...items[idx]!, notes: e.target.value };
+                        return { ...d, supplies: { ...d.supplies, items } };
+                      })
+                    }
+                  />
+                  <label className="guide-admin-bullet__check">
+                    <input
+                      type="checkbox"
+                      checked={item.optional === true}
+                      data-testid={`guide-admin-supplies-optional-${idx}`}
+                      onChange={(e) =>
+                        setDraft((d) => {
+                          const items = d.supplies.items.slice();
+                          items[idx] = { ...items[idx]!, optional: e.target.checked };
+                          return { ...d, supplies: { ...d.supplies, items } };
+                        })
+                      }
+                    />
+                    Optional
+                  </label>
+                  <div className="guide-admin-step__save-row">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={saveLocked}
+                      data-testid={`guide-admin-supplies-save-${idx}`}
+                      onClick={() => void saveItem(`supply-${idx}`)}
+                    >
+                      <Save size={16} aria-hidden />
+                      {savingKey === `supply-${idx}`
+                        ? "Saving…"
+                        : itemSavedFlash === `supply-${idx}`
+                          ? "Supply saved"
+                          : `Save supply ${idx + 1}`}
+                    </button>
+                  </div>
+                </div>
+                <div className="guide-admin-bullet__actions">
+                  <button
+                    type="button"
+                    className="btn btn-outline guide-admin-step__icon-btn"
+                    aria-label={`Move supply ${idx + 1} up`}
+                    disabled={idx === 0}
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        supplies: {
+                          ...d.supplies,
+                          items: moveGuideKitItem(d.supplies.items, idx, -1),
+                        },
+                      }))
+                    }
+                  >
+                    <ArrowUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline guide-admin-step__icon-btn"
+                    aria-label={`Move supply ${idx + 1} down`}
+                    disabled={idx === draft.supplies.items.length - 1}
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        supplies: {
+                          ...d.supplies,
+                          items: moveGuideKitItem(d.supplies.items, idx, 1),
+                        },
+                      }))
+                    }
+                  >
+                    <ArrowDown size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline guide-admin-step__icon-btn"
+                    aria-label={`Delete supply ${idx + 1}`}
+                    disabled={saveLocked}
+                    data-testid={`guide-admin-supplies-delete-${idx}`}
+                    onClick={() =>
+                      persistImmediate(
+                        {
+                          ...draft,
+                          supplies: {
+                            ...draft.supplies,
+                            items: draft.supplies.items.filter((_, i) => i !== idx),
+                          },
+                        },
+                        "supply-delete",
+                        idx,
+                      )
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       ) : null}
     </section>
   );

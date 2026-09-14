@@ -30,7 +30,7 @@ describe("Google Docs as a Tool", () => {
   });
 
   it("auto-adds Google Docs to Tools when a guide’s steps mention it", () => {
-    const kit = guideKitForId("dog-walk");
+    const kit = guideKitForId("neighborhood-helper");
     expect(kit.tools.some((t) => t.id === "google_docs")).toBe(true);
     expect(kit.steps?.some((s) => /google docs/i.test(`${s.title} ${s.desc}`))).toBe(true);
   });

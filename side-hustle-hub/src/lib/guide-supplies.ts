@@ -32,70 +32,63 @@ function s(
   return { id, name, qty, estCost, notes, optional };
 }
 
+import { TECH_HELPER_SUPPLIES } from "./tech-helper-guide";
+import { YARD_HELP_SUPPLIES } from "./yard-help-guide";
+import { CLEANING_SERVICE_SUPPLIES } from "./cleaning-service-guide";
+import { ERRAND_RUNNER_SUPPLIES } from "./errand-runner-guide";
+import { AI_AGENTS_SUPPLIES } from "./ai-agents-guide";
+import { AI_PROMO_VIDEO_SUPPLIES } from "./ai-promo-video-guide";
+import { STR_COHOST_SUPPLIES } from "./str-cohost-guide";
+import { BEACH_SHELL_JEWELRY_SUPPLIES } from "./beach-shell-jewelry-guide";
+import { GIFT_WRAPPING_SUPPLIES } from "./gift-wrapping-guide";
+import { AFFILIATE_SUPPLIES } from "./affiliate-guide";
+import { DROPSHIPPING_SUPPLIES } from "./dropshipping-guide";
+import { FB_MARKETPLACE_HELPER_SUPPLIES } from "./fb-marketplace-helper-guide";
+import { BASIC_INVITATION_SUPPLIES } from "./basic-invitation-creator-guide";
+import { POD_SUPPLIES } from "./pod-guide";
+import { PET_SITTING_SUPPLIES } from "./pet-sitting-guide";
+import { HANDYMAN_SUPPLIES } from "./handyman-guide";
+import { FRIENDSHIP_BRACELET_SUPPLIES } from "./friendship-bracelet-maker-guide";
+import { LEAF_RAKING_SUPPLIES } from "./leaf-raking-guide";
+import { LEMONADE_STAND_SUPPLIES } from "./lemonade-stand-guide";
+import { AIRBNB_HOSTING_SUPPLIES } from "./airbnb-hosting-guide";
+import { DIGITAL_COOKBOOK_SUPPLIES } from "./digital-cookbook-creator-guide";
+import { FAMILY_PHOTO_SLIDESHOW_SUPPLIES } from "./family-photo-slideshow-guide";
+import { LOCAL_RESOURCE_LIST_SUPPLIES } from "./local-resource-list-creator-guide";
+import { RECYCLING_HELPER_SUPPLIES } from "./recycling-helper-guide";
+import { PROOFREADER_SUPPLIES } from "./proofreader-guide";
+import { TOY_ORGANIZER_SUPPLIES } from "./toy-organizer-guide";
+import { TRASH_CAN_SERVICE_SUPPLIES } from "./trash-can-service-guide";
+import { HOMEWORK_HELPER_SUPPLIES } from "./homework-helper-guide";
+import { CANVA_FLYER_SUPPLIES } from "./canva-flyer-creator-guide";
+import { CAR_INTERIOR_SUPPLIES } from "./car-interior-cleanup-guide";
+import { NEIGHBORHOOD_DOG_WALKER_SUPPLIES } from "./neighborhood-dog-walker-guide";
+
 /** Free / local hustles that need a real supply list. */
 export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   "car-interior-cleanup": {
-    starterKitTotal:
-      "About $25–55 if you buy everything new (less if you borrow a vacuum)",
-    items: [
-      s("microfiber", "Microfiber cloths", "1 pack (6)", "$6–12"),
-      s("apc", "Mild all-purpose cleaner (dilute)", "1 bottle", "$3–8", "Avoid bleach on fabric seats"),
-      s("glass", "Interior glass cleaner", "1 bottle", "$3–7"),
-      s("trash", "Trash bags (kitchen size)", "1 box", "$4–8"),
-      s("lint", "Lint roller (pet hair)", "1", "$3–6", undefined, true),
-      s("crate", "Milk crate or tote for supplies", "1", "$5–10", undefined, true),
-      s("freshener", "Air freshener", "1–2", "$2–5", "Only if client asks", true),
-    ],
+    starterKitTotal: CAR_INTERIOR_SUPPLIES.starterKitTotal,
+    items: CAR_INTERIOR_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "dog-walk": {
-    starterKitTotal: "About $5–20 if you buy bags (and a backup leash)",
-    items: [
-      s("bags", "Dog waste bags", "1 roll", "$4–8"),
-      s("leash", "Backup leash", "1", "$8–15", "Most owners provide their own", true),
-      s("water", "Collapsible water bowl", "1", "$5–12", undefined, true),
-      s("treats", "Dog treats", "1 small bag", "$4–8", "Only if owner OK", true),
-    ],
+    starterKitTotal: NEIGHBORHOOD_DOG_WALKER_SUPPLIES.starterKitTotal,
+    items: NEIGHBORHOOD_DOG_WALKER_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "pet-sitting": {
-    starterKitTotal: "About $0–15 for extras (food and keys from owner)",
-    items: [
-      s("keys", "House key / lockbox code", "1", "$0", "from owner"),
-      s("bags", "Waste bags", "1 roll", "$4–8", undefined, true),
-      s("notebook", "Small care-log notebook", "1", "$2–4", undefined, true),
-      s("flashlight", "Small flashlight for evening visits", "1", "$5–10", undefined, true),
-    ],
+    starterKitTotal: PET_SITTING_SUPPLIES.starterKitTotal,
+    items: PET_SITTING_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "yard-help": {
-    starterKitTotal:
-      "About $10–40 if you buy gloves and bags (less if you borrow tools)",
-    items: [
-      s("gloves", "Work gloves", "1 pair", "$5–12"),
-      s("bags", "Lawn / leaf bags", "1 pack", "$5–12"),
-      s("sunscreen", "Sunscreen", "1 bottle", "$5–10", undefined, true),
-      s("water", "Reusable water bottle", "1", "$5–12", undefined, true),
-    ],
+    starterKitTotal: YARD_HELP_SUPPLIES.starterKitTotal,
+    items: YARD_HELP_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "leaf-raking": {
-    starterKitTotal:
-      "About $15–35 for bags and gloves (less if you borrow a rake); optional Mini Hand Held Blower purchase ~$40–80",
-    items: [
-      s("bags", "Paper or plastic yard bags", "1 pack", "$8–15"),
-      s("gloves", "Work gloves", "1 pair", "$5–12"),
-      s("tarp", "Tarp for dragging piles", "1", "$8–18", undefined, true),
-      s("rake", "Leaf rake", "1", "$12–22", "Borrow first when possible", true),
-      s(
-        "mini-blower",
-        "Mini Hand Held Blower",
-        "1",
-        "$40–80",
-        "Optional purchase — Side-Hustlers who pick this Side-Hustle are eligible for a Free Mini Hand-Held Blower drawing (conditions apply; inquire via Contact Form)",
-        true,
-      ),
-    ],
+    starterKitTotal: LEAF_RAKING_SUPPLIES.starterKitTotal,
+    items: LEAF_RAKING_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "plant-watering": {
@@ -108,12 +101,8 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   },
 
   "trash-can-service": {
-    starterKitTotal: "About $5–20 for gloves (headlamp optional)",
-    items: [
-      s("gloves", "Work gloves", "1 pair", "$5–12"),
-      s("light", "Headlamp for early curb days", "1", "$8–15", undefined, true),
-      s("sanitizer", "Hand sanitizer or wipes", "1", "$3–6", undefined, true),
-    ],
+    starterKitTotal: TRASH_CAN_SERVICE_SUPPLIES.starterKitTotal,
+    items: TRASH_CAN_SERVICE_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "neighborhood-helper": {
@@ -127,12 +116,18 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   },
 
   "errand-runner": {
-    starterKitTotal: "About $5–25 for tote (cooler optional)",
-    items: [
-      s("tote", "Sturdy tote / backpack", "1", "$8–15"),
-      s("envelope", "Envelope or zip pouch for receipts", "1", "$1–3"),
-      s("cooler", "Small cooler for groceries", "1", "$10–25", undefined, true),
-    ],
+    starterKitTotal: ERRAND_RUNNER_SUPPLIES.starterKitTotal,
+    items: ERRAND_RUNNER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "ai-agents": {
+    starterKitTotal: AI_AGENTS_SUPPLIES.starterKitTotal,
+    items: AI_AGENTS_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "ai-promo-video": {
+    starterKitTotal: AI_PROMO_VIDEO_SUPPLIES.starterKitTotal,
+    items: AI_PROMO_VIDEO_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "vacation-mail-plant-helper": {
@@ -145,12 +140,8 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   },
 
   "recycling-helper": {
-    starterKitTotal: "About $5–20 for gloves and bags",
-    items: [
-      s("gloves", "Work gloves", "1 pair", "$5–12"),
-      s("bags", "Clear recycle bags (if required locally)", "1 pack", "$5–10", undefined, true),
-      s("sanitizer", "Hand wipes or sanitizer", "1", "$3–6", undefined, true),
-    ],
+    starterKitTotal: RECYCLING_HELPER_SUPPLIES.starterKitTotal,
+    items: RECYCLING_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "garage-sale-helper": {
@@ -174,53 +165,43 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   },
 
   "gift-wrapping": {
-    starterKitTotal: "About $15–35 if you buy a starter wrap kit new",
-    items: [
-      s("paper", "Kraft or patterned wrapping paper", "2–3 rolls", "$8–18"),
-      s("tissue", "Tissue paper", "1 pack", "$4–8"),
-      s("ribbon", "Ribbon / twine", "1–2 rolls", "$4–10"),
-      s("tape", "Clear tape + double-sided tape", "1–2 rolls", "$4–8"),
-      s("scissors", "Scissors", "1", "$5–12"),
-      s("tags", "Gift tags", "1 pack", "$3–6", undefined, true),
-    ],
+    starterKitTotal: GIFT_WRAPPING_SUPPLIES.starterKitTotal,
+    items: GIFT_WRAPPING_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  affiliate: {
+    starterKitTotal: AFFILIATE_SUPPLIES.starterKitTotal,
+    items: AFFILIATE_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  dropshipping: {
+    starterKitTotal: DROPSHIPPING_SUPPLIES.starterKitTotal,
+    items: DROPSHIPPING_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  "fb-marketplace-helper": {
+    starterKitTotal: FB_MARKETPLACE_HELPER_SUPPLIES.starterKitTotal,
+    items: FB_MARKETPLACE_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  "basic-invitation-creator": {
+    starterKitTotal: BASIC_INVITATION_SUPPLIES.starterKitTotal,
+    items: BASIC_INVITATION_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  pod: {
+    starterKitTotal: POD_SUPPLIES.starterKitTotal,
+    items: POD_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "lemonade-stand": {
-    starterKitTotal: "About $15–30 for first weekend (ingredients + cups)",
-    items: [
-      s("lemons", "Lemons (or bottled lemon juice)", "8–12 / 1 bottle", "$6–12"),
-      s("sugar", "Sugar", "1 bag", "$3–5"),
-      s("cups", "Paper cups", "1 pack (50–100)", "$5–10"),
-      s("ice", "Bag of ice", "1–2", "$2–5"),
-      s("pitcher", "Pitcher", "1", "$5–12"),
-      s("sign", "Poster board + markers", "1 set", "$3–8"),
-    ],
+    starterKitTotal: LEMONADE_STAND_SUPPLIES.starterKitTotal,
+    items: LEMONADE_STAND_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "friendship-bracelet-maker": {
-    starterKitTotal: "About $12–30 for cords, beads, and bags",
-    items: [
-      s("cord", "Embroidery floss / bracelet cord assortment", "1 pack", "$6–12"),
-      s("beads", "Bead mix", "1 pack", "$5–12"),
-      s("scissors", "Scissors", "1", "$3–8"),
-      s("bags", "Small zip bags for finished pieces", "1 pack", "$3–6"),
-      s("tape", "Masking tape or clipboard clip", "1", "$2–5", undefined, true),
-      s("board", "Bracelet board", "1", "$8–15", undefined, true),
-    ],
+    starterKitTotal: FRIENDSHIP_BRACELET_SUPPLIES.starterKitTotal,
+    items: FRIENDSHIP_BRACELET_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "beach-shell-jewelry": {
-    starterKitTotal: "About $20–45 if you buy everything new (less if shells are free)",
-    items: [
-      s("bags", "Mesh or zip bags for collecting shells", "2–4", "$4–8"),
-      s("shells", "Cleaned shells (or bleach soak for found shells)", "1 small batch", "$0–10", "Beach finds are free; craft-store shells cost more"),
-      s("cord", "Jewelry cord / beading wire", "1–2 spools", "$5–12"),
-      s("jumps", "Jump rings", "1 pack (50+)", "$3–6"),
-      s("hooks", "Earring hooks", "1 pack", "$4–8"),
-      s("clasps", "Clasps (lobster / spring)", "1 pack", "$4–8"),
-      s("cards", "Jewelry display cards / small gift bags", "1 pack", "$5–10"),
-      s("pliers", "Needle-nose or jewelry pliers", "1 pair", "$8–15", undefined, true),
-    ],
+    starterKitTotal: BEACH_SHELL_JEWELRY_SUPPLIES.starterKitTotal,
+    items: BEACH_SHELL_JEWELRY_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   crafts: {
@@ -233,37 +214,48 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   },
 
   "toy-organizer": {
-    starterKitTotal: "About $8–25 for labels and bags (bins if needed)",
-    items: [
-      s("labels", "Masking tape + marker (or label pack)", "1 set", "$4–10"),
-      s("bags", "Donate / trash bags", "1 box", "$4–8"),
-      s("bins", "Clear bins or baskets", "2–4", "$8–20", "Prefer using what the client already owns", true),
-    ],
+    starterKitTotal: TOY_ORGANIZER_SUPPLIES.starterKitTotal,
+    items: TOY_ORGANIZER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  airbnb: {
+    starterKitTotal: AIRBNB_HOSTING_SUPPLIES.starterKitTotal,
+    items: AIRBNB_HOSTING_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  "digital-cookbook-creator": {
+    starterKitTotal: DIGITAL_COOKBOOK_SUPPLIES.starterKitTotal,
+    items: DIGITAL_COOKBOOK_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  "family-photo-slideshow": {
+    starterKitTotal: FAMILY_PHOTO_SLIDESHOW_SUPPLIES.starterKitTotal,
+    items: FAMILY_PHOTO_SLIDESHOW_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  "local-resource-list-creator": {
+    starterKitTotal: LOCAL_RESOURCE_LIST_SUPPLIES.starterKitTotal,
+    items: LOCAL_RESOURCE_LIST_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  proofreader: {
+    starterKitTotal: PROOFREADER_SUPPLIES.starterKitTotal,
+    items: PROOFREADER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  homework: {
+    starterKitTotal: HOMEWORK_HELPER_SUPPLIES.starterKitTotal,
+    items: HOMEWORK_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   handyman: {
-    starterKitTotal: "About $15–40 for consumables and PPE (tools separate)",
-    items: [
-      s("ppe", "Safety glasses + work gloves", "1 set", "$8–15"),
-      s("zip", "Zip ties", "1 pack", "$3–6"),
-      s("tape", "Painter’s tape", "1 roll", "$4–7"),
-      s("pencil", "Carpenter pencils", "2–4", "$2–5"),
-      s("screws", "Assorted screws / wall anchors", "1 assortment pack", "$6–12", undefined, true),
-    ],
+    starterKitTotal: HANDYMAN_SUPPLIES.starterKitTotal,
+    items: HANDYMAN_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "cleaning-service": {
-    starterKitTotal: "About $35–90 for a starter residential kit (vacuum/mop separate if needed)",
-    items: [
-      s("gloves", "Disposable or reusable cleaning gloves", "1 box / pair", "$4–10"),
-      s("microfiber", "Microfiber cloths", "6–12", "$8–16"),
-      s("spray", "All-purpose + bathroom cleaner", "2 bottles", "$8–14"),
-      s("glass", "Glass cleaner", "1 bottle", "$3–6"),
-      s("scrub", "Scrub brush / sponge pack", "1 set", "$4–8"),
-      s("bags", "Trash bags", "1 box", "$4–8"),
-      s("vacuum", "Portable vacuum (if client doesn’t provide)", "1", "$40–120", "Borrow first when possible", true),
-      s("mop", "Mop + bucket or spray mop (if client doesn’t provide)", "1", "$15–40", "Borrow first when possible", true),
-    ],
+    starterKitTotal: CLEANING_SERVICE_SUPPLIES.starterKitTotal,
+    items: CLEANING_SERVICE_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "str-cohost": {
+    starterKitTotal: STR_COHOST_SUPPLIES.starterKitTotal,
+    items: STR_COHOST_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "handyman-light": {
@@ -277,21 +269,8 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   },
 
   "tech-helper": {
-    starterKitTotal: "About $5–15 for wipes and a notebook",
-    items: [
-      s("wipes", "Screen-safe wipes", "1 pack", "$4–8"),
-      s("notebook", "Small notebook (client writes Wi‑Fi notes)", "1", "$2–4"),
-      s("cableties", "Cable ties / Velcro straps", "1 pack", "$4–8", undefined, true),
-    ],
-  },
-
-  homework: {
-    starterKitTotal: "About $5–12 for pencils and paper",
-    items: [
-      s("pencils", "Pencils + eraser", "1 pack", "$3–6"),
-      s("paper", "Scrap / notebook paper", "1 pad", "$2–5"),
-      s("flash", "Index cards (flashcards)", "1 pack", "$2–5", undefined, true),
-    ],
+    starterKitTotal: TECH_HELPER_SUPPLIES.starterKitTotal,
+    items: TECH_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   tutoring: {
@@ -304,30 +283,9 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
     ],
   },
 
-  proofreader: {
-    starterKitTotal: "About $5–15 for print markup supplies",
-    items: [
-      s("highlighters", "Highlighters", "1 pack (3–4)", "$4–8"),
-      s("sticky", "Sticky tabs / flags", "1 pack", "$3–6"),
-      s("paper", "Printer paper for marked drafts", "1 ream", "$5–10", undefined, true),
-    ],
-  },
-
   "canva-flyer-creator": {
-    starterKitTotal: "About $5–15 for proof-print paper (ink optional)",
-    items: [
-      s("paper", "Letter paper for proof prints", "1 ream", "$4–8"),
-      s("ink", "Printer ink (if you print at home)", "1 cartridge set", "$15–35", "Library or print shop avoids ink cost", true),
-    ],
-  },
-
-  "basic-invitation-creator": {
-    starterKitTotal: "About $10–25 if you print on cardstock",
-    items: [
-      s("cardstock", "Cardstock for printed invites", "1 pack", "$6–12"),
-      s("envelopes", "Envelopes", "1 pack", "$4–8", undefined, true),
-      s("paper", "Plain letter paper for drafts", "1 ream", "$4–8", undefined, true),
-    ],
+    starterKitTotal: CANVA_FLYER_SUPPLIES.starterKitTotal,
+    items: CANVA_FLYER_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "greeting-card-creator": {
@@ -337,22 +295,6 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
       s("pens", "Markers / colored pencils", "1 set", "$5–12"),
       s("stickers", "Stickers / washi tape", "1 pack", "$3–8", undefined, true),
       s("glue", "Glue stick", "1", "$1–3", undefined, true),
-    ],
-  },
-
-  "digital-cookbook-creator": {
-    starterKitTotal: "About $5–15 if you print samples",
-    items: [
-      s("paper", "Photo or letter paper for sample pages", "1 pack", "$5–10"),
-      s("binder", "Binder + sheet protectors", "1 set", "$6–12", undefined, true),
-    ],
-  },
-
-  "family-photo-slideshow": {
-    starterKitTotal: "About $5–20 for a delivery USB (prints optional)",
-    items: [
-      s("usb", "USB flash drive for delivering the slideshow", "1", "$6–12"),
-      s("paper", "Photo paper for optional still prints", "1 pack", "$8–15", undefined, true),
     ],
   },
 };

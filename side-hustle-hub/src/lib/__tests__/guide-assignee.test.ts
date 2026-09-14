@@ -3,8 +3,11 @@ import {
   DEFAULT_GUIDE_ASSIGNEE,
   effectiveGuideAssignee,
   formatGuideAssigneeIds,
+  guideAssigneeClickSelection,
   guideAssigneeFilterRoster,
+  guideAssigneeRoster,
   guideIdFromLinkedReviewCase,
+  guideLibraryAssigneeSelection,
   linkedGuideReviewCaseId,
   nextSingleGuideAssignee,
   normalizeGuideAssigneeId,
@@ -33,6 +36,20 @@ describe("guide assignee helpers", () => {
     expect(formatGuideAssigneeIds(["tina"])).toBe("tina");
   });
 
+  it("Library chips treat empty patch as Unassigned, not the Lyriq catalog default", () => {
+    expect(guideLibraryAssigneeSelection(undefined)).toEqual([]);
+    expect(guideLibraryAssigneeSelection("")).toEqual([]);
+    expect(guideLibraryAssigneeSelection("unassigned")).toEqual([]);
+    expect(guideLibraryAssigneeSelection("evelyn")).toEqual(["evelyn"]);
+  });
+
+  it("clicking a displayed-but-unsaved assignee still persists it", () => {
+    expect(guideAssigneeClickSelection("", ["lyriq"], "lyriq")).toEqual(["lyriq"]);
+    expect(guideAssigneeClickSelection("lyriq", ["lyriq"], "lyriq")).toBeNull();
+    expect(guideAssigneeClickSelection("", [], "evelyn")).toEqual(["evelyn"]);
+    expect(guideAssigneeClickSelection("tina", ["tina"], "evelyn")).toEqual(["evelyn"]);
+  });
+
   it("filter roster only includes QAs who already have guide assignments", () => {
     const roster = guideAssigneeFilterRoster({
       guidePatchAssignees: ["tina", "", "evelyn+lyriq", "unassigned"],
@@ -40,6 +57,13 @@ describe("guide assignee helpers", () => {
     expect(roster.map((t) => t.id).sort()).toEqual(["evelyn", "lyriq", "tina"]);
     expect(roster.some((t) => t.id === "candace")).toBe(false);
     expect(roster.some((t) => t.id === "teejay")).toBe(false);
+  });
+
+  it("nav/assign roster always lists catalog QAs even with no assignments yet", () => {
+    const roster = guideAssigneeRoster({ guidePatchAssignees: [] });
+    expect(roster.map((t) => t.id)).toEqual(
+      expect.arrayContaining(["candace", "evelyn", "lyriq", "teejay", "tina"]),
+    );
   });
 
   it("links guide id ↔ primary GUIDE-REV case", () => {

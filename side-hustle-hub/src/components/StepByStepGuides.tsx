@@ -45,6 +45,9 @@ import {
   guideStatusNoteMeetsRequirement,
   guideStatusRequiresNote,
   guideVisibilityStatusLabel,
+  mergeGuideCatalogStateMapsPreferNewer,
+  overlayGuideCatalogState,
+  overlayGuideCatalogStateMap,
   type GuideCatalogStateMap,
   type GuideVisibilityStatus,
 } from "../lib/guide-catalog-state";
@@ -66,7 +69,7 @@ import {
   type GuideNavStatusFilter,
 } from "../lib/guide-nav-filters";
 import {
-  guideAssigneeFilterRoster,
+  guideAssigneeRoster,
 } from "../lib/guide-assignee";
 import { testOwnerLabel } from "../lib/gysh-roles";
 import { toggleLibraryFilterSelection } from "../lib/guide-list-expand";
@@ -239,8 +242,11 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     fetchGuideCatalogStates()
       .then((states) => {
         if (cancelled) return;
-        applyLiveGuideLibraryCountsFromStates(states);
-        setCatalogStates(states);
+        setCatalogStates((prev) => {
+          const merged = mergeGuideCatalogStateMapsPreferNewer(states, prev);
+          applyLiveGuideLibraryCountsFromStates(merged);
+          return merged;
+        });
       })
       .catch(() => {
         /* keep defaults */
@@ -296,12 +302,15 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     try {
       if (single) {
         const next = await setGuideCatalogStatus(ids[0]!, status, note);
-        setCatalogStates((prev) => ({ ...prev, [ids[0]!]: next }));
+        setCatalogStates((prev) => ({
+          ...prev,
+          [ids[0]!]: overlayGuideCatalogState(prev[ids[0]!], next),
+        }));
         patchLiveGuideLibraryCatalogState(ids[0]!, next);
       } else {
         const saved = await setGuideCatalogStatusBulk(ids, status, note);
         setCatalogStates((prev) => {
-          const merged = { ...prev, ...saved };
+          const merged = overlayGuideCatalogStateMap(prev, saved);
           applyLiveGuideLibraryCountsFromStates(merged);
           return merged;
         });
@@ -624,10 +633,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     },
     {
       id: "ai-timing",
-      name: "AI Timing Scout",
+      name: "AI Rideshare Timing Scout",
       timeframe: "1 - 2 weeks",
-      estEarnings: "$300 - $3,000 / month",
-      bestFor: "Research-minded Side Hustlers who want to boost gig earnings or sell hotspot playbooks.",
+      estEarnings: "$300 – $3,000+ / month — examples only, not guarantees",
+      bestFor: "Adults, seniors/retirees, and licensed drivers who meet applicable platform requirements.",
       proTip: "Publish a weekly ZipCode brief (Fri for weekend, Sun for weekdays). Drivers pay for timely, local specificity — not generic national tips.",
       pitfall: "Overpromising guaranteed earnings. Frame guides as strategy + data, not income promises, and update them when markets shift.",
       steps: [
@@ -643,10 +652,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       id: "ai-agents",
       name: "AI Agents for Side Hustlers",
       timeframe: "2 - 4 weeks",
-      estEarnings: "$1,000 - $10,000 / month",
-      bestFor: "Builders who can productize agent setups (lead find, scheduling, research) for other Side Hustlers.",
-      proTip: "Sell outcomes, not tools: '20 local website leads every Monday' beats 'custom GPT.' Package agents with a short how-to and a care retainer.",
-      pitfall: "Building one-off snowflakes for every client. Standardize 3 agent products with clear inputs/outputs before custom work.",
+      estEarnings: "$1,000 – $10,000+ / month — examples only, not guarantees",
+      bestFor: "Adults, seniors/retirees, and experienced teens with adult-managed accounts who can sell one narrow supervised workflow.",
+      proTip: "Sell a solved business problem, not an AI agent. PROBLEM → WORKFLOW → NARROW AGENT → TEST → HUMAN REVIEW → DEPLOY → SUPPORT.",
+      pitfall: "Promising full autonomy or headcount savings. Keep human review, never collect passwords in plain text, and start with low-risk workflows.",
       steps: [
         { title: "Define 3 Agent Products", desc: "e.g. Local Lead Scout, Booking/Follow-up Agent, Research Brief Agent. Write I/O, tools, and success metrics for each." },
         { title: "Build Reference Agents", desc: "Use your Muntie Ev / Antigravity stack (or Cursor + APIs) to ship working demos with sample runs." },
@@ -661,9 +670,9 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       name: "Book Publishing",
       timeframe: "4 - 12 weeks",
       estEarnings: "$200 - $8,000 / month",
-      bestFor: "A Digital side hustle for writers and storytellers (Tina's lane); kids can publish storybooks with a parent.",
-      proTip: "Ship a minimum viable book first — clean formatting, strong cover, and a clear reader promise — then iterate with ads and a series plan. Don't wait for perfect.",
-      pitfall: "Spending months on a cover and zero weeks on distribution or launch. KDP + IngramSpark + a simple email/landing funnel beats a pretty unread manuscript.",
+      bestFor: "Adults and seniors/retirees who want to take a manuscript to KDP/IngramSpark; experienced teens only with guardian-approved accounts.",
+      proTip: "The publish button takes minutes. The business is a quality manuscript, professional package, accurate metadata, smart distribution, consistent marketing, and the next book.",
+      pitfall: "Never guarantee bestsellers, bookstore stocking, reviews, or income. “Available to bookstores” does not mean they will stock the book. Do not skip preview/proof or hard-code changing royalty rates.",
       steps: [
         {
           title: "Choose Format & Audience",
@@ -754,7 +763,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   );
 
   const assigneeFilterPeople = useMemo(
-    () => guideAssigneeFilterRoster({ guidePatchAssignees }),
+    () => guideAssigneeRoster({ guidePatchAssignees }),
     [guidePatchAssignees],
   );
 
@@ -1145,7 +1154,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             Filter Guides by Assignee
             <span className="launch-guide-detail__filters-hint">
               {" "}
-              (only Unassigned + QAs with guides assigned)
+              (filters the Select Guide list)
             </span>
           </span>
           <div
@@ -1193,7 +1202,6 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             </button>
             {assigneeFilterPeople.map((t) => {
               const count = assigneeCounts.byId[t.id] ?? 0;
-              if (count <= 0) return null;
               const active =
                 !guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes(t.id);
               return (
@@ -1432,6 +1440,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             {!guideNavFilterIsAll(ageFilters) ||
             !guideNavFilterIsAll(membershipFilters) ||
             !guideNavFilterIsAll(statusFilters) ||
+            !guideNavFilterIsAll(assigneeFilters) ||
             librarySearch.trim()
               ? " matching"
               : ""}
@@ -1673,8 +1682,9 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                         onSaved={(state) => {
                           setCatalogStates((prev) => ({
                             ...prev,
-                            [activeGuide.id]: state,
+                            [activeGuide.id]: overlayGuideCatalogState(prev[activeGuide.id], state),
                           }));
+                          patchLiveGuideLibraryCatalogState(activeGuide.id, state);
                           setGuideAuditRefreshKey((k) => k + 1);
                         }}
                       />
@@ -1688,7 +1698,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                       onSaved={(state) => {
                         setCatalogStates((prev) => ({
                           ...prev,
-                          [activeGuide.id]: state,
+                          [activeGuide.id]: overlayGuideCatalogState(prev[activeGuide.id], state),
                         }));
                         patchLiveGuideLibraryCatalogState(activeGuide.id, state);
                         setGuideAuditRefreshKey((k) => k + 1);
@@ -1754,11 +1764,13 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                   ? "tools"
                   : tab === "steps"
                     ? "steps"
-                    : tab === "all"
-                      ? "all"
-                      : null;
-            // Suggested Pricing + Supply List use the member-facing panels only
-            // (no empty “Edit Suggested Pricing / Supply List” chrome).
+                    : tab === "pricing"
+                      ? "pricing"
+                      : tab === "supplies"
+                        ? "supplies"
+                        : tab === "all"
+                          ? "all"
+                          : null;
             if (!focusSection) return null;
             return (
               <GuideAdminContentEditor
@@ -1788,7 +1800,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                 onSaved={(state) => {
                   setCatalogStates((prev) => ({
                     ...prev,
-                    [activeGuide.id]: state,
+                    [activeGuide.id]: overlayGuideCatalogState(prev[activeGuide.id], state),
                   }));
                   setGuideAuditRefreshKey((k) => k + 1);
                 }}

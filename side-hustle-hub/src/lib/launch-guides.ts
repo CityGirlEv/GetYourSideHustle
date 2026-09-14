@@ -106,18 +106,18 @@ const CORE_LAUNCH_GUIDES: LaunchGuideRef[] = [
   },
   {
     id: "ai-timing",
-    name: "AI Timing Scout",
-    peek: "Research-minded Side Hustlers who want to boost gig earnings or sell hotspot playbooks.",
+    name: "AI Rideshare Timing Scout",
+    peek: "Licensed drivers and researchers who study local ZIP, event, and commute windows — then test or sell dated playbooks.",
   },
   {
     id: "ai-agents",
     name: "AI Agents for Side Hustlers",
-    peek: "Builders who can productize agent setups (lead find, scheduling, research) for other Side Hustlers.",
+    peek: "Adults, seniors/retirees, and experienced teens with adult-managed accounts who can sell one narrow supervised workflow.",
   },
   {
     id: "book-publishing",
     name: "Book Publishing",
-    peek: "A Digital path for writers and storytellers (Tina's lane) — manuscripts to royalty income; kids can publish too.",
+    peek: "Write, edit, package, and publish print, ebook, and optional audio with KDP/IngramSpark — then market and measure profit.",
   },
 ];
 

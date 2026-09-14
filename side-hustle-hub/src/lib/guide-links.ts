@@ -26,7 +26,7 @@ export const GUIDE_AUDIENCES: Record<string, HustleAgeGroup[]> = {
   handyman: ["adult", "senior"],
   rideshare: ["adult", "senior"],
   "food-delivery": ["adult", "senior"],
-  "ai-timing": ["adult"],
+  "ai-timing": ["adult", "senior"],
   "ai-agents": ["adult"],
   "book-publishing": ["adult", "senior", "kids", "junior"],
   // Kids guides

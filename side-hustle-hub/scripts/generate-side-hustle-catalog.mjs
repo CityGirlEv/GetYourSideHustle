@@ -1285,8 +1285,8 @@ const proposedNew = [
   }),
   freeOnline({
     id: "ai-prompt-helper",
-    name: "AI Prompt Helper",
-    description: "Build reusable prompt packs for writing, planning, and customer replies tailored to a niche.",
+    name: "Learn AI using ChatGPT",
+    description: "Learn how to use ChatGPT for writing, planning, and everyday tasks — practice prompts and simple workflows you can reuse.",
     audiences: ["junior", "adult", "senior"],
     category: "AI",
     matchTags: ["ai", "tech", "creative", "online"],

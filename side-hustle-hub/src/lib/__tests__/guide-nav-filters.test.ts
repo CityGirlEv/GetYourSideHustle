@@ -169,6 +169,7 @@ describe("guideMatchesAny* helpers", () => {
   it("matches when any selected facet hits", () => {
     expect(guideMatchesAnyAgeFilter(["kids", "adult"], ["senior", "kids"])).toBe(true);
     expect(guideMatchesAnyMembershipFilter("elite", ["free", "elite"])).toBe(true);
+    expect(guideMatchesAnyStatusFilter("pending", ["inactive"])).toBe(true);
     expect(guideMatchesAnyStatusFilter("pending", ["inactive", "pending"])).toBe(true);
   });
 
@@ -194,10 +195,26 @@ describe("guide nav counts", () => {
     expect(countGuideNavByAge(guides, (id) => audiences[id] ?? []).adult).toBe(3);
     /** Active filter = live (Active + Reviewed by QA/Dev). */
     expect(countGuideNavByStatus(guides, states).active).toBe(3);
+    /** Inactive filter = hidden Inactive + Pending (Pending also holds Inactive). */
+    expect(countGuideNavByStatus(guides, states).inactive).toBe(2);
+    expect(countGuideNavByStatus(guides, states).pending).toBe(1);
     expect(countGuideNavByStatus(guides, states).reviewed_by_qa).toBe(1);
     expect(countGuideNavByStatus(guides, states).not_reviewed).toBe(3);
     expect(countGuideNavByStatus(guides, states).reviewed).toBe(2);
     expect(countGuideNavByMembership(guides, (id) => tiers[id as keyof typeof tiers]).free).toBe(2);
+  });
+
+  it("filters Inactive guides including Pending", () => {
+    const next = filterGuideNavItems(guides, {
+      catalogStates: states,
+      audiencesOf: (id) => audiences[id] ?? [],
+      minTierOf: (id) => tiers[id as keyof typeof tiers] ?? "free",
+      ageFilters: ["all"],
+      statusFilters: ["inactive"],
+      membershipFilters: ["all"],
+      isAdmin: true,
+    });
+    expect(next.map((g) => g.id).sort()).toEqual(["b", "c"]);
   });
 
   it("filters Not Reviewed guides", () => {

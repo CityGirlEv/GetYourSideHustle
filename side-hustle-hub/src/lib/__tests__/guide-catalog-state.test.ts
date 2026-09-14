@@ -6,7 +6,9 @@ import {
   getGuideVisibilityStatus,
   guideHeldVisibilityStatuses,
   guideHoldsActive,
+  guideHoldsInactive,
   guideIsHiddenReviewStatus,
+  guideMatchesStatusFilter,
   guideIsReviewed,
   guideStatusFromPublishedCode,
   guideStatusToPublishedCode,
@@ -16,8 +18,12 @@ import {
   isGuidePublished,
   isGuideVisibleToPublic,
   toggleGuideReviewed,
+  overlayGuideCatalogState,
+  overlayGuideCatalogStateMap,
+  mergeGuideCatalogStateMapsPreferNewer,
   withForcedFreeActivePolicy,
 } from "../guide-catalog-state";
+import { countGuideNavByAssignee } from "../guide-nav-filters";
 
 describe("guidesDefaultPublished", () => {
   it("defaults Active so the public library lists guides without a D1 row", () => {
@@ -171,6 +177,13 @@ describe("pending needs-further-review flags", () => {
     expect(guideIsReviewed("active")).toBe(false);
     expect(guideIsReviewed("inactive")).toBe(false);
     expect(guideIsReviewed("reviewed_by_qa")).toBe(true);
+    expect(guideHoldsInactive("pending")).toBe(true);
+    expect(guideHoldsInactive("inactive")).toBe(true);
+    expect(guideHoldsInactive("fixed_rereview")).toBe(false);
+    expect(guideHoldsInactive("active")).toBe(false);
+    expect(guideMatchesStatusFilter("pending", "inactive")).toBe(true);
+    expect(guideMatchesStatusFilter("inactive", "inactive")).toBe(true);
+    expect(guideMatchesStatusFilter("fixed_rereview", "inactive")).toBe(false);
     expect(guideHeldVisibilityStatuses("pending")).toEqual(["pending", "inactive"]);
     expect(guideIsReviewed("fixed_rereview")).toBe(false);
     expect(guideHeldVisibilityStatuses("fixed_rereview")).toEqual(["fixed_rereview"]);
@@ -237,5 +250,83 @@ describe("pending needs-further-review flags", () => {
         patch: {},
       },
     })).toBe(false);
+  });
+});
+
+describe("overlayGuideCatalogState", () => {
+  const assigned = {
+    guideId: "cleaning-service",
+    status: "active" as const,
+    published: true,
+    deleted: false,
+    custom: false,
+    patch: { assignee: "evelyn" },
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  it("keeps stored assignee when a status-only save returns an empty patch", () => {
+    const incoming = {
+      ...assigned,
+      status: "reviewed_by_qa" as const,
+      patch: {},
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    };
+    const next = overlayGuideCatalogState(assigned, incoming);
+    expect(next.patch.assignee).toBe("evelyn");
+    expect(next.status).toBe("reviewed_by_qa");
+  });
+
+  it("allows clearing assignee when the stored patch explicitly sets empty", () => {
+    const incoming = { ...assigned, patch: { assignee: "" } };
+    expect(overlayGuideCatalogState(assigned, incoming).patch.assignee).toBe("");
+  });
+
+  it("bulk-overlays many guides without dropping assignees", () => {
+    const prev = {
+      a: { ...assigned, guideId: "a" },
+      b: { ...assigned, guideId: "b", patch: { assignee: "tina" } },
+    };
+    const incoming = {
+      a: { ...assigned, guideId: "a", status: "inactive" as const, published: false, patch: {} },
+      b: { ...assigned, guideId: "b", status: "inactive" as const, published: false, patch: {} },
+    };
+    const merged = overlayGuideCatalogStateMap(prev, incoming);
+    expect(merged.a.patch.assignee).toBe("evelyn");
+    expect(merged.b.patch.assignee).toBe("tina");
+    expect(merged.a.status).toBe("inactive");
+    const counts = countGuideNavByAssignee([{ id: "a" }, { id: "b" }], merged);
+    expect(counts.unassigned).toBe(0);
+    expect(counts.byId.evelyn).toBe(1);
+    expect(counts.byId.tina).toBe(1);
+  });
+});
+
+describe("mergeGuideCatalogStateMapsPreferNewer", () => {
+  it("does not drop D1 assignees when a newer bulk status row has an empty patch", () => {
+    const remote = {
+      a: {
+        guideId: "a",
+        status: "active" as const,
+        published: true,
+        deleted: false,
+        custom: false,
+        patch: { assignee: "tina" },
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    };
+    const local = {
+      a: {
+        guideId: "a",
+        status: "inactive" as const,
+        published: false,
+        deleted: false,
+        custom: false,
+        patch: {},
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    };
+    const merged = mergeGuideCatalogStateMapsPreferNewer(remote, local);
+    expect(merged.a.patch.assignee).toBe("tina");
+    expect(merged.a.status).toBe("inactive");
   });
 });

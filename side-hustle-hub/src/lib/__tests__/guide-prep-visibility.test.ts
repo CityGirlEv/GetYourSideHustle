@@ -39,4 +39,19 @@ describe("guidePrepSectionIds", () => {
     ]);
     expect(ids).not.toContain("notes");
   });
+
+  it("always includes pricing and supplies tabs even when those lists are empty", () => {
+    expect(
+      guidePrepSectionIds({
+        kit: {
+          prerequisites: [],
+          suggestedPricing: { items: [] },
+          supplies: { items: [], starterKitTotal: "" },
+          tools: [],
+        },
+        includeSteps: true,
+        includeCalculator: true,
+      }),
+    ).toEqual(["all", "prereqs", "pricing", "supplies", "tools", "steps", "calculator"]);
+  });
 });

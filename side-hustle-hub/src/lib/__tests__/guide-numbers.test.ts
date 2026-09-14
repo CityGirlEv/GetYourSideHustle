@@ -58,6 +58,27 @@ describe("guide library numbers + status counts", () => {
     expect(counts.inactive).toBe(0);
   });
 
+  it("Inactive bubble includes Pending; partition still equals the pool", () => {
+    const pool = ["a", "b", "c", "d", "e"];
+    const counts = countGuideLibraryByStatus(
+      {
+        a: { guideId: "a", status: "active", published: true, deleted: false, custom: false, patch: {} },
+        b: { guideId: "b", status: "pending", published: false, deleted: false, custom: false, patch: {} },
+        c: { guideId: "c", status: "inactive", published: false, deleted: false, custom: false, patch: {} },
+        d: { guideId: "d", status: "reviewed_by_qa", published: true, deleted: false, custom: false, patch: {} },
+        e: { guideId: "e", status: "fixed_rereview", published: false, deleted: false, custom: false, patch: {} },
+      },
+      pool,
+    );
+    expect(counts.all).toBe(5);
+    expect(counts.active).toBe(2);
+    expect(counts.pending).toBe(1);
+    expect(counts.inactive).toBe(2);
+    expect(counts.reviewed_by_qa).toBe(1);
+    expect(counts.fixed_rereview).toBe(1);
+    expect(sumGuideStatusBuckets(counts)).toBe(5);
+  });
+
   it("exposes bulk status options including Reviewed by QA", () => {
     expect(GUIDE_BULK_STATUS_OPTIONS.map((o) => o.value)).toEqual([
       "active",

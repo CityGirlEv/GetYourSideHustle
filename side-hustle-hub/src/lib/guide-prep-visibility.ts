@@ -47,14 +47,7 @@ export function guidePrepSectionIds(opts: {
     return opts.includeNotes ? ["prereqs", "notes"] : ["prereqs"];
   }
 
-  const ids: GuidePrepSectionId[] = ["all", "prereqs"];
-  if (opts.kit.suggestedPricing && opts.kit.suggestedPricing.items.length > 0) {
-    ids.push("pricing");
-  }
-  if (opts.kit.supplies && opts.kit.supplies.items.length > 0) {
-    ids.push("supplies");
-  }
-  ids.push("tools");
+  const ids: GuidePrepSectionId[] = ["all", "prereqs", "pricing", "supplies", "tools"];
   if (opts.includeSteps) ids.push("steps");
   if (opts.includeCalculator) ids.push("calculator");
   if (opts.includeNotes) ids.push("notes");

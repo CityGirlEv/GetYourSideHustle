@@ -6,6 +6,7 @@ import {
   resolveGuideKit,
   sanitizeGuidePrerequisites,
   sanitizeGuideSteps,
+  sanitizeGuideSuggestedPricing,
   sanitizeGuideTools,
 } from "../guide-kit-overrides";
 import { sanitizeGuideCatalogPatch } from "../guide-catalog-state";
@@ -54,6 +55,19 @@ describe("sanitize guide kit content", () => {
     expect(sanitizeGuidePrerequisites([{ label: "", detail: "" }])).toEqual([]);
     expect(sanitizeGuideTools([{ name: "" }])).toEqual([]);
   });
+
+  it("keeps suggested pricing intro, tab label, and raise tip", () => {
+    const list = sanitizeGuideSuggestedPricing({
+      tabLabel: " Earnings ",
+      intro: "Examples only.\n\nStarter $10.",
+      raiseTip: "Raise later.",
+      items: [{ id: "starter", label: "Starter", price: "$10" }],
+    });
+    expect(list?.tabLabel).toBe("Earnings");
+    expect(list?.intro).toBe("Examples only.\n\nStarter $10.");
+    expect(list?.raiseTip).toBe("Raise later.");
+    expect(list?.items).toEqual([{ id: "starter", label: "Starter", price: "$10" }]);
+  });
 });
 
 describe("applyGuideKitPatch / resolveGuideKit", () => {
@@ -79,6 +93,47 @@ describe("applyGuideKitPatch / resolveGuideKit", () => {
   it("keeps an empty admin steps patch empty (no code-default fallback)", () => {
     const patched = resolveGuideKit("handyman", { steps: [] });
     expect(patched.steps).toEqual([]);
+  });
+
+  it("drops GYSH Free account (or higher) from overlays and code kits", () => {
+    const overlay = resolveGuideKit("handyman", {
+      prerequisites: [
+        {
+          id: "free-member",
+          label: "GYSH Free account (or higher)",
+          detail: "Guides are not public — sign in with at least a Free membership.",
+        },
+        { id: "transport", label: "Way to reach local jobs", detail: "Walk, bike, or parent-driven for youth." },
+      ],
+    });
+    expect(overlay.prerequisites.map((p) => p.id)).toEqual(["transport"]);
+    expect(overlay.prerequisites.some((p) => /GYSH Free account/i.test(p.label))).toBe(false);
+
+    const sanitized = sanitizeGuidePrerequisites([
+      {
+        id: "free-member",
+        label: "GYSH Free account (or higher)",
+        detail: "Guides are not public — sign in with at least a Free membership.",
+      },
+      { id: "computer", label: "Computer or tablet with internet", detail: "A laptop is easier for building." },
+    ]);
+    expect(sanitized?.map((p) => p.id)).toEqual(["computer"]);
+  });
+
+  it("keeps suggested pricing intro and tab label when an admin patch is present", () => {
+    const base = resolveGuideKit("handyman");
+    const patched = applyGuideKitPatch(base, {
+      suggestedPricing: {
+        tabLabel: "Custom prices",
+        intro: "Keep this intro.",
+        raiseTip: "Raise after five jobs.",
+        items: [{ id: "a", label: "Job", price: "$20" }],
+      },
+    });
+    expect(patched.suggestedPricing?.intro).toBe("Keep this intro.");
+    expect(patched.suggestedPricing?.tabLabel).toBe("Custom prices");
+    expect(patched.suggestedPricing?.raiseTip).toBe("Raise after five jobs.");
+    expect(patched.suggestedPricing?.items).toEqual([{ id: "a", label: "Job", price: "$20" }]);
   });
 });
 

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveGuideCatalogContent } from "../lib/guide-catalog-client";
 import {
-  DEFAULT_GUIDE_ASSIGNEE,
-  effectiveGuideAssignees,
   formatGuideAssigneeIds,
-  guideAssigneeFilterRoster,
-  nextSingleGuideAssignee,
+  guideAssigneeClickSelection,
+  guideAssigneeRoster,
+  guideLibraryAssigneeSelection,
   parseGuideAssigneeIds,
 } from "../lib/guide-assignee";
 import type { GuideCatalogState } from "../lib/guide-catalog-state";
@@ -15,8 +14,7 @@ import { testOwnerLabel, type QaTester } from "../lib/gysh-roles";
 
 /**
  * Admin Guide Library — single assignee for this Side Hustle.
- * Chips: Unassigned + only QAs who already have ≥1 guide assigned
- * (plus this guide’s current assignee so they stay visible).
+ * Chips: Unassigned + the QA roster (catalog partners and anyone already assigned).
  * Clicking a QA replaces the current assignee (one person only).
  */
 export function GuideAssigneeField({
@@ -36,27 +34,28 @@ export function GuideAssigneeField({
   onSaved: (state: GuideCatalogState) => void;
 }) {
   const [selected, setSelected] = useState<string[]>(() =>
-    effectiveGuideAssignees(patchAssignee, DEFAULT_GUIDE_ASSIGNEE).slice(0, 1),
+    guideLibraryAssigneeSelection(patchAssignee),
   );
-  const [hydratedFromTest, setHydratedFromTest] = useState(false);
+  const [linkedTestAssignee, setLinkedTestAssignee] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   /** Bump to ignore in-flight linked-test hydration after the user picks someone. */
   const hydrateEpochRef = useRef(0);
+  const busyRef = useRef(false);
 
   useEffect(() => {
+    if (busyRef.current) return;
     const epoch = ++hydrateEpochRef.current;
-    const fromPatch = parseGuideAssigneeIds(patchAssignee).slice(0, 1);
+    const fromPatch = guideLibraryAssigneeSelection(patchAssignee);
+    setSelected(fromPatch);
     if (fromPatch.length) {
-      setSelected(fromPatch);
-      setHydratedFromTest(false);
+      setLinkedTestAssignee("");
       return;
     }
-    setHydratedFromTest(false);
     const caseIds = guideReviewCaseIdsForGuide(guideId);
     if (!caseIds.length) {
-      setSelected([DEFAULT_GUIDE_ASSIGNEE]);
+      setLinkedTestAssignee("");
       return;
     }
     void (async () => {
@@ -68,17 +67,16 @@ export function GuideAssigneeField({
           linked = parseGuideAssigneeIds(payload.assignees?.[caseId]).slice(0, 1);
           if (linked.length) break;
         }
-        setSelected(linked.length ? linked : [DEFAULT_GUIDE_ASSIGNEE]);
-        setHydratedFromTest(linked.length > 0);
+        setLinkedTestAssignee(linked[0] ?? "");
       } catch {
-        if (epoch === hydrateEpochRef.current) setSelected([DEFAULT_GUIDE_ASSIGNEE]);
+        if (epoch === hydrateEpochRef.current) setLinkedTestAssignee("");
       }
     })();
   }, [guideId, patchAssignee]);
 
   const roster = useMemo(() => {
     if (testers?.length) return [...testers];
-    return guideAssigneeFilterRoster({
+    return guideAssigneeRoster({
       guidePatchAssignees,
       extraIds: selected,
     });
@@ -86,19 +84,26 @@ export function GuideAssigneeField({
 
   const save = async (nextIds: string[]) => {
     const next = formatGuideAssigneeIds(nextIds.slice(0, 1));
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     try {
       const state = await saveGuideCatalogContent(guideId, {
         assignee: next,
       });
-      setSelected(parseGuideAssigneeIds(state.patch?.assignee).slice(0, 1));
-      onSaved(state);
+      const persisted = parseGuideAssigneeIds(state.patch?.assignee).slice(0, 1);
+      setSelected(next ? (persisted.length ? persisted : [next]) : []);
+      onSaved({
+        ...state,
+        patch: { ...(state.patch ?? {}), assignee: next },
+      });
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1600);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save assignee.");
+      setSelected(guideLibraryAssigneeSelection(patchAssignee));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -106,7 +111,7 @@ export function GuideAssigneeField({
   /** One assignee only — clicking a QA replaces whoever was selected. */
   const selectOne = (id: string) => {
     if (busy) return;
-    const next = nextSingleGuideAssignee(selected, id);
+    const next = guideAssigneeClickSelection(patchAssignee, selected, id);
     if (!next) return;
     hydrateEpochRef.current += 1;
     setSelected(next);
@@ -147,14 +152,6 @@ export function GuideAssigneeField({
           aria-checked={selected.length === 0}
           onClick={clear}
         >
-          <input
-            type="radio"
-            className="qa-filter-chip__check"
-            checked={selected.length === 0}
-            readOnly
-            tabIndex={-1}
-            aria-hidden
-          />
           Unassigned
         </button>
         {roster.map((t) => {
@@ -177,14 +174,6 @@ export function GuideAssigneeField({
               }
               onClick={() => selectOne(t.id)}
             >
-              <input
-                type="radio"
-                className="qa-filter-chip__check"
-                checked={on}
-                readOnly
-                tabIndex={-1}
-                aria-hidden
-              />
               <span
                 className="qa-tester-dot"
                 style={{ background: t.accent }}
@@ -206,13 +195,18 @@ export function GuideAssigneeField({
             Saved — linked test updated
           </span>
         ) : null}
-        {hydratedFromTest && !parseGuideAssigneeIds(patchAssignee).length && !busy && !savedFlash ? (
-          <span className="guide-assignee-field__hint">From linked test</span>
+        {linkedTestAssignee &&
+        !parseGuideAssigneeIds(patchAssignee).length &&
+        !busy &&
+        !savedFlash ? (
+          <span className="guide-assignee-field__hint">
+            Linked test is {testOwnerLabel(linkedTestAssignee, roster)} — click a name to
+            save it on this guide.
+          </span>
         ) : null}
       </div>
       <p className="guide-assignee-field__lede">
-        Only Unassigned and QAs who already have guides appear here. Pick one assignee — it syncs the
-        linked GUIDE-REV test.
+        Pick one assignee — it syncs the linked GUIDE-REV test.
       </p>
       {error ? (
         <p className="guide-assignee-field__error" role="alert">

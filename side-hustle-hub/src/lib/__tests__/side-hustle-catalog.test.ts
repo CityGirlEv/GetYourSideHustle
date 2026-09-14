@@ -93,7 +93,7 @@ describe("side-hustle-catalog expansion", () => {
     expect(hustleById("airbnb")?.audiences).not.toContain("junior");
     expect(hustleById("consulting")?.audiences).not.toContain("junior");
     expect(hustleById("dropshipping")?.audiences).not.toContain("junior");
-    expect(hustleById("dropshipping")?.audiences).not.toContain("senior");
+    expect(hustleById("dropshipping")?.audiences).toContain("senior");
     expect(hustleById("amazon")?.audiences).not.toContain("senior");
     // Teen-coded stays on Teens
     expect(hustleById("create-games-junior")?.audiences).toContain("junior");
@@ -114,12 +114,11 @@ describe("side-hustle-catalog expansion", () => {
     expect(zero.every((h) => h.zeroStart)).toBe(true);
   });
 
-  it("keeps AI hustles at Elite (coffee chat stays Starter)", () => {
-    expect(hustleById("ai-peers")?.minTier).toBe("starter");
+  it("keeps AI hustles at Elite", () => {
+    expect(hustleById("ai-peers")?.minTier).toBe("elite");
     expect(hustleById("ai-peers")?.freeWizardEligible).toBe(false);
     expect(FREE_WIZARD_HUSTLE_IDS).not.toContain("ai-peers");
     for (const h of SIDE_HUSTLES.filter(isAiSideHustle)) {
-      if (h.id === "ai-peers") continue;
       expect(h.minTier).toBe("elite");
       expect(h.freeWizardEligible).toBe(false);
       expect(FREE_WIZARD_HUSTLE_IDS).not.toContain(h.id);

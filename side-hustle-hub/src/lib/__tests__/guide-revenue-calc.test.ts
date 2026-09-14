@@ -10,9 +10,9 @@ import {
 
 describe("guide-revenue-calc", () => {
   it("maps known hustles to calculator modes", () => {
-    expect(guideCalcModeForId("airbnb")).toBe("lodging");
-    expect(guideCalcModeForId("pod")).toBe("product");
-    expect(guideCalcModeForId("social")).toBe("social");
+    expect(guideCalcModeForId("airbnb")).toBe("service");
+    expect(guideCalcModeForId("pod")).toBe("service");
+    expect(guideCalcModeForId("social")).toBe("service");
     expect(guideCalcModeForId("cleaning-service")).toBe("service");
     expect(guideCalcModeForId("food-delivery")).toBe("delivery");
     expect(guideCalcModeForId("estate-sale-listing-helper")).toBe("resale");
@@ -65,7 +65,7 @@ describe("guide-revenue-calc", () => {
   });
 
   it("computes service profit from jobs × average sale − costs (no platform fee)", () => {
-    const profile = guideCalcProfileForId("cleaning-service", "Cleaning");
+    const profile = guideCalcProfileForId("handyman", "Handyman");
     const result = computeGuideCalc(
       "service",
       { jobsPerMonth: 10, avgTicket: 100 },
@@ -78,7 +78,7 @@ describe("guide-revenue-calc", () => {
   });
 
   it("computes lodging without platform fees or a ZIP", () => {
-    const profile = guideCalcProfileForId("airbnb");
+    const profile = guideCalcProfileForId("airbnb-cohost");
     expect(profile.defaults).not.toHaveProperty("zip");
     const budget = profile.budget.map((l) => ({ ...l, amount: l.id === "utilities" ? 100 : 0 }));
     const budgetTotal = sumBudget(budget);

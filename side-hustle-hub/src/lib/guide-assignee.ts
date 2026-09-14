@@ -85,6 +85,34 @@ export function effectiveGuideAssignees(
   return [DEFAULT_GUIDE_ASSIGNEE];
 }
 
+/**
+ * Guide Library chips / filter source of truth: saved patch only.
+ * Empty patch is Unassigned — never fake Lyriq (catalog test default).
+ */
+export function guideLibraryAssigneeSelection(patchAssignee: unknown): string[] {
+  return parseGuideAssigneeIds(patchAssignee).slice(0, 1);
+}
+
+/**
+ * Next assignee to persist when a Library chip is clicked.
+ * Clicking a new QA replaces the current one. Clicking the already-visible
+ * person still saves when the patch is empty (hydrated/default display).
+ */
+export function guideAssigneeClickSelection(
+  patchAssignee: unknown,
+  selected: readonly string[],
+  clickedId: string,
+): string[] | null {
+  const next = nextSingleGuideAssignee(selected, clickedId);
+  if (next) return next;
+  const id = normalizeQaAssigneeId(clickedId);
+  if (!id || id === "unassigned" || !isHumanQaTesterId(id)) return null;
+  if (!parseGuideAssigneeIds(patchAssignee).length && selected[0] === id) {
+    return [id];
+  }
+  return null;
+}
+
 /** Effective primary guide assignee (first selected). */
 export function effectiveGuideAssignee(
   patchAssignee: unknown,
@@ -182,9 +210,9 @@ export function guideAssigneeRoster(opts?: {
 }
 
 /**
- * Assignee filter chips: only QAs who already have ≥1 guide assigned
- * (plus optional extras, e.g. the open guide’s current assignees).
+ * QAs who already have ≥1 guide assigned (plus optional extras).
  * Unassigned is rendered separately by the UI — not returned here.
+ * Prefer {@link guideAssigneeRoster} for Filter Guides by Assignee / assign chips.
  */
 export function guideAssigneeFilterRoster(opts?: {
   guidePatchAssignees?: Iterable<unknown> | null;

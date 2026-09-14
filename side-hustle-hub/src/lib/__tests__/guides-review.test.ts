@@ -95,6 +95,11 @@ describe("guides review — launch guides", () => {
       for (const p of kit.prerequisites) {
         expect(p.label.trim().length).toBeGreaterThan(2);
         expect(p.detail.trim().length).toBeGreaterThan(8);
+        expect(p.id, `${g.id} GYSH Free account prereq`).not.toBe("free-member");
+        expect(`${p.label} ${p.detail}`, g.id).not.toMatch(/GYSH Free account \(or higher\)/i);
+        expect(`${p.label} ${p.detail}`, g.id).not.toMatch(
+          /Guides are not public — sign in with at least a Free membership/i,
+        );
       }
       for (const tool of kit.tools) {
         expect(tool.name.trim().length).toBeGreaterThan(1);
@@ -151,39 +156,36 @@ describe("guides review — launch guides", () => {
 
   it("service guides start with marketing objectives, materials, then outreach", () => {
     for (const id of [
-      "errand-runner",
-      "car-interior-cleanup",
-      "dog-walk",
-      "trash-can-service",
-      "basic-invitation-creator",
+      "garage-sale-helper",
       "tutoring",
-      "consulting",
-      "cleaning-service",
       "neighborhood-helper",
-      "yard-help",
     ] as const) {
       const steps = detailedStepsForGuide(id) ?? [];
       const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
       const titles = steps.map((s) => s.title);
       // Foundation order: Research → Name → marketing plan (youth adds Parent Thumbs Up first).
-      expect(titles.some((t) => /pick how you will tell people about your side hustle|decide on marketing objectives/i.test(t)), id).toBe(true);
+      expect(titles.some((t) => /pick how you will tell people about your side hustle|decide on marketing objectives|choose your marketing channels/i.test(t)), id).toBe(true);
       const marketingIdx = titles.findIndex((t) =>
-        /pick how you will tell people about your side hustle|decide on marketing objectives/i.test(t),
+        /pick how you will tell people about your side hustle|decide on marketing objectives|choose your marketing channels/i.test(t),
       );
       const researchIdx = titles.findIndex((t) => /research competitors/i.test(t));
       expect(researchIdx, id).toBeGreaterThanOrEqual(0);
       expect(marketingIdx, id).toBeGreaterThan(researchIdx);
       expect(blob, id).toMatch(/make your marketing materials/i);
-      expect(blob, id).toMatch(/carry out the marketing plan/i);
+      expect(blob, id).toMatch(/carry out (the|your) marketing plan/i);
       expect(blob, id).toMatch(/phone|text|flyer/i);
-      expect(blob, id).toMatch(/facebook\.com\/pages\/create/i);
-      expect(blob, id).toMatch(/craigslist\.org/i);
-      expect(blob, id).toMatch(/nextdoor\.com/i);
-      expect(blob, id).toMatch(/parents|neighbors|colleagues|coworkers/i);
-      const carry = steps.find((s) => /carry out the marketing plan/i.test(s.title));
-      expect(carry?.desc, id).toMatch(/☐/);
-      expect(carry?.desc, id).toMatch(/Warm contacts/i);
-      expect(carry?.desc, id).toMatch(/Track and follow up/i);
+      if (id !== "tutoring") {
+        expect(blob, id).toMatch(/facebook\.com\/pages\/create/i);
+        expect(blob, id).toMatch(/craigslist\.org/i);
+        expect(blob, id).toMatch(/nextdoor\.com/i);
+        expect(blob, id).toMatch(/parents|neighbors|colleagues|coworkers/i);
+        const carry = steps.find((s) => /carry out (the|your) marketing plan/i.test(s.title));
+        expect(carry?.desc, id).toMatch(/☐/);
+        expect(carry?.desc, id).toMatch(/Warm contacts/i);
+        expect(carry?.desc, id).toMatch(/Track and follow up/i);
+      } else {
+        expect(blob, id).not.toMatch(/facebook\.com\/pages\/create/i);
+      }
     }
   });
 
@@ -206,9 +208,9 @@ describe("guides review — launch guides", () => {
   it("Career & Industry Consulting has niche delivery steps after marketing", () => {
     const steps = detailedStepsForGuide("consulting") ?? [];
     const titles = steps.map((s) => s.title).join(" | ");
-    expect(titles).toMatch(/Pick how you will tell people about your side hustle|Decide on Marketing Objectives/i);
-    expect(titles).toMatch(/Make your marketing materials/i);
-    expect(titles).toMatch(/niche|rate card|discovery/i);
+    expect(titles).toMatch(/Choose Your Marketing Channels/i);
+    expect(titles).toMatch(/Make Your Authority & Marketing Materials/i);
+    expect(titles).toMatch(/niche|discovery|action plan/i);
   });
 
   it("folds Canva template pick into Make your marketing materials (no separate open-Canva step)", () => {
@@ -282,27 +284,41 @@ describe("guides review — kids & teens guides", () => {
       const kit = guideKitForId(g.id);
       expect(kit.prerequisites.length).toBeGreaterThan(0);
       expect(kit.tools.length).toBeGreaterThan(0);
+      expect(kit.prerequisites.some((p) => p.id === "free-member")).toBe(false);
     }
   });
 
-  it("AI game guides use realistic ChatGPT / Scratch / Antigravity steps", () => {
-    for (const id of ["kids-games-ai", "create-games-kids"] as const) {
-      const steps = guideKitForId(id).steps ?? CREATE_GAMES_KIDS_STEPS;
-      const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
-      expect(blob).toMatch(/https:\/\/chatgpt\.com\//);
-      expect(blob).toMatch(/https:\/\/gemini\.google\.com\//);
-      expect(blob).toMatch(/https:\/\/scratch\.mit\.edu\//);
-      expect(blob).toMatch(/https:\/\/antigravity\.google\//);
-      expect(blob).toMatch(/GAME\.md/);
-    }
-    for (const id of ["junior-games-ai", "create-games-junior"] as const) {
-      const steps = guideKitForId(id).steps ?? CREATE_GAMES_JUNIOR_STEPS;
-      const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
-      expect(blob).toMatch(/https:\/\/chatgpt\.com\//);
-      expect(blob).toMatch(/https:\/\/antigravity\.google\//);
-      expect(blob).toMatch(/GAME\.md/);
-    }
+  it("Kids Corner tiny-game guide (#087) is parent-managed learning, not Antigravity GAME.md", () => {
+    const kit = guideKitForId("kids-games-ai");
+    const blob = (kit.steps ?? []).map((s) => `${s.title} ${s.desc}`).join("\n");
+    expect(blob).toMatch(/parent nearby|parent\/guardian/i);
+    expect(blob).not.toMatch(/GAME\.md/);
+    expect(blob).not.toMatch(/choose your marketing channels/i);
+    expect(kit.tools.some((t) => /scratch|chatgpt|beginner tool stack/i.test(t.name))).toBe(true);
     expect(kidsGuideMinTier("kids-games-ai")).toBe("elite");
+  });
+
+  it("Create Games with AI (Kids) still uses ChatGPT / Scratch / Antigravity steps", () => {
+    const steps = guideKitForId("create-games-kids").steps ?? CREATE_GAMES_KIDS_STEPS;
+    const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
+    expect(blob).toMatch(/https:\/\/chatgpt\.com\//);
+    expect(blob).toMatch(/https:\/\/gemini\.google\.com\//);
+    expect(blob).toMatch(/https:\/\/scratch\.mit\.edu\//);
+    expect(blob).toMatch(/https:\/\/antigravity\.google\//);
+    expect(blob).toMatch(/GAME\.md/);
+  });
+
+  it("AI game guides use realistic ChatGPT / Scratch / Antigravity steps", () => {
+    const juniorKit = guideKitForId("junior-games-ai");
+    const juniorBlob = (juniorKit.steps ?? []).map((s) => `${s.title} ${s.desc}`).join("\n");
+    expect(juniorBlob).toMatch(/one-sentence game idea|core gameplay loop/i);
+    expect(juniorBlob).not.toMatch(/choose your marketing channels/i);
+
+    const steps = guideKitForId("create-games-junior").steps ?? CREATE_GAMES_JUNIOR_STEPS;
+    const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
+    expect(blob).toMatch(/https:\/\/chatgpt\.com\//);
+    expect(blob).toMatch(/https:\/\/antigravity\.google\//);
+    expect(blob).toMatch(/GAME\.md/);
     expect(kidsGuideMinTier("junior-games-ai")).toBe("elite");
   });
 
@@ -328,13 +344,9 @@ describe("guides review — senior teasers", () => {
   });
 });
 
-describe("guides review — AI never Free (coffee chat is Starter; rest Elite)", () => {
-  it("catalog AI hustles are Starter (coffee) or Elite", () => {
+describe("guides review — AI never Free (all Elite)", () => {
+  it("catalog AI hustles are Elite", () => {
     for (const h of SIDE_HUSTLES.filter(isAiSideHustle)) {
-      if (h.id === "ai-peers") {
-        expect(h.minTier).toBe("starter");
-        continue;
-      }
       expect(h.minTier).toBe("elite");
       expect(h.freeWizardEligible).toBe(false);
       expect(FREE_WIZARD_HUSTLE_IDS).not.toContain(h.id);

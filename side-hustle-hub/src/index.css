@@ -3904,6 +3904,7 @@ html.gysh-mobile-menu-open body {
 }
 
 .launch-guide-detail__filters-bar > .launch-guide-detail__filters--status,
+.launch-guide-detail__filters-bar > .launch-guide-detail__filters--assignee,
 .launch-guide-detail__filters-bar > .launch-guide-detail__bulk {
   padding: 10px 12px;
   border-top: 1px solid rgba(148, 125, 100, 0.4);
@@ -9108,6 +9109,14 @@ button.checklist-checkbox:hover {
   font-size: 0.88rem;
   line-height: 1.4;
   color: var(--text-secondary);
+}
+
+.gysh-section-panel__empty {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .gysh-section-panel__reality-check {
@@ -20625,6 +20634,18 @@ button.launch-checklist-item {
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--charcoal);
+}
+
+.guide-admin-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .guide-admin-field-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {

@@ -99,32 +99,29 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "games-ai",
     previewCount: 2,
     summary:
-      "Invent a mini maze, quiz, or story-game using kid-friendly AI tools — always with a parent. Join the Kids Corner GYSH Team for the full step-by-step guide.",
-    parentTip: "Stay in the room. Never share real names, school, address, or photos with tools or strangers.",
+      "Invent and build a tiny maze, quiz, choice-based story, or other simple game with kid-friendly AI help. A parent or guardian stays involved with account setup, privacy, publishing, purchases, messages, and any money-related activity.",
+    parentTip:
+      "Stay nearby. Parent handles accounts, privacy, publishing, messages, and money. Never enter a child’s full name, home address, school, phone, private photos, passwords, or exact location into an AI tool.",
     steps: [
       {
-        title: "Brainstorm one tiny idea",
-        body: "Pick something small: a 3-question quiz, a maze on paper, or a choose-your-adventure with 3 choices.",
+        title: "Pick one tiny game idea",
+        body: "Finish: “My game is a ________.” Keep it small — one goal, simple rules, playable in about 1–5 minutes.",
       },
       {
-        title: "Ask a parent to open a safe tool",
-        body: "Only use parent-approved apps. Parent types prompts; you dream up characters and rules.",
+        title: "Draw it on paper first",
+        body: "START → PLAYER DOES SOMETHING → GAME RESPONDS → WIN/TRY AGAIN → END. Maze, quiz, story, or catch game.",
       },
       {
-        title: "Create a character and a goal",
-        body: "Name a hero (made-up!), decide what they want, and draw or print one picture together.",
+        title: "Ask AI to help with the plan",
+        body: "Parent nearby. Safe topic only. No private information. The child chooses what goes into the game.",
       },
       {
-        title: "Build 3 levels or questions",
-        body: "Keep it short. Easy → medium → fun surprise. Write them on paper or in a shared doc.",
+        title: "Build a playable version",
+        body: "Start screen, one action, a win/end screen. Make it playable before making it fancy.",
       },
       {
-        title: "Playtest with family",
-        body: "Try it at family game night or a school fair project. Track any tips in the Piggy Bank.",
-      },
-      {
-        title: "Give back with your game",
-        body: "Offer one free play session for a friend or sibling — kindness counts as a team win.",
+        title: "Test, playtest, and share safely",
+        body: "Play 3 times yourself, then 1–3 trusted testers. Parent decides if it stays private or is shared.",
       },
     ],
   },
@@ -232,24 +229,48 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     parentTip: "Agree on realistic rates and school-first schedules together.",
     steps: [
       {
-        title: "Name what you are saving for",
-        body: "Write the thing you want — a tablet fund, class trip, gear, or another reachable goal. No business name needed; this is your savings goal.",
+        title: "Pick What You’re Saving For",
+        body: "Choose something meaningful. Write why you want it. You do not need a business name.",
       },
       {
-        title: "Write the cost",
-        body: "Look up a real price (or get a close estimate with a parent). Put that dollar amount next to your goal.",
+        title: "Find or Estimate the Total Cost",
+        body: "Look up a real price or a close estimate with a parent/guardian. Do not use credit or borrow money.",
       },
       {
-        title: "Plan how you will earn",
-        body: "Pick 1–2 teen hustles that fit your time (school comes first). Note what one job might earn toward the goal.",
+        title: "Pick a Target Date or Number of Weeks",
+        body: "How many weeks until you hope to reach it? School and rest come first. Goals may take longer than expected.",
       },
       {
-        title: "Set your weekly savings goal",
-        body: "Divide total cost by weeks until your deadline — that’s your weekly savings target (adjust for exams). Log every payout in the Piggy Bank.",
+        title: "Calculate Your Weekly Savings Goal",
+        body: "Savings Goal Cost ÷ Number of Weeks = Weekly Savings Goal. Put it in the Piggy Bank tracker.",
       },
       {
-        title: "Review with a guardian",
-        body: "Monthly check-in: what’s working, what to pause, and whether to raise or lower the weekly goal.",
+        title: "List Safe Ways You Could Earn Money",
+        body: "With parent/guardian approval only. Families decide which chores are paid.",
+      },
+      {
+        title: "Pick One or Two Earning Ideas to Try",
+        body: "Start small. Weekly savings goal ÷ expected earnings per task ≈ tasks needed per week.",
+      },
+      {
+        title: "Decide How Much of Each Earning You Will Save",
+        body: "You do not have to save every dollar. Optional habit: save some, spend some, share/give some.",
+      },
+      {
+        title: "Add Every Savings Amount to the Piggy Bank",
+        body: "Update goal cost, total saved, remaining, weeks, percent complete, and next weekly goal.",
+      },
+      {
+        title: "Check Your Progress at the End of Each Week",
+        body: "ON TRACK if you met (or almost met) the weekly goal. NEEDS ADJUSTMENT if you are far behind — without shaming yourself.",
+      },
+      {
+        title: "Adjust the Goal or Timeline if Needed",
+        body: "Extend the timeline, pick another safe earning idea, or change the goal with a parent/guardian. Never overwork.",
+      },
+      {
+        title: "Celebrate the Milestone and Choose Your Next Goal",
+        body: "At 100%, celebrate. Then decide whether to buy the planned item, keep saving, or choose a new goal.",
       },
     ],
   },
@@ -296,32 +317,29 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "games-ai",
     previewCount: 2,
     summary:
-      "Use AI for concepts, art ideas, and dialogue, then build a small web/mobile prototype with guardian-approved tools. Full guide for Teens Side Hustle Team members.",
-    parentTip: "Approve accounts and publishing. No personal info or payment cards in AI chats.",
+      "Use AI to help brainstorm a game concept, characters, art direction, dialogue, rules, levels, and testing ideas, then use guardian-approved tools to build a small playable web or mobile prototype.",
+    parentTip:
+      "Approve accounts, tools, and any publishing. No personal info, payment cards, passwords, or API keys in AI chats. Original/allowed assets only.",
     steps: [
       {
-        title: "Scope one tiny game",
-        body: "One-level platformer, quiz, or visual novel scene. Write a one-paragraph pitch.",
+        title: "Create the One-Sentence Game Idea",
+        body: "PLAYER + ACTION + GOAL + OBSTACLE. Pick one tiny idea — not Fortnite or Roblox.",
       },
       {
-        title: "Generate concepts safely",
-        body: "With guardian OK, use AI for mood boards, sprite ideas, and dialogue drafts — then edit heavily.",
+        title: "Write the Mini Game Design Document",
+        body: "One page: controls, win/lose, score, target device, and art/sound style.",
       },
       {
-        title: "Prototype with a coding helper",
-        body: "Tools like Cursor or Antigravity can help — keep the build tiny and document what you changed.",
+        title: "Build the Core Gameplay Loop",
+        body: "With guardian-approved tools, make the main action work, then add score and feedback.",
       },
       {
-        title: "Playtest + iterate",
-        body: "Friends or classmates try it. Fix one bug and one fun upgrade.",
+        title: "Test on the Target Device",
+        body: "Watch 2–3 trusted testers. Fix bugs before adding more features.",
       },
       {
-        title: "Share with approval",
-        body: "School project, portfolio piece, or free itch.io demo only after a guardian says yes.",
-      },
-      {
-        title: "Reinvest learning time",
-        body: "Put a slice of any tips toward a course, asset pack, or better tools — CEO reinvestment.",
+        title: "Package the Prototype & Create a Demo",
+        body: "Save a playable demo and a short “how I built it” note — guardian approval before sharing.",
       },
     ],
   },
@@ -430,7 +448,12 @@ export function kidsGuideToLaunchGuideData(guide: KidsGuide): {
   return {
     id: guide.id,
     name: guide.title,
-    timeframe: guide.audience === "junior" ? "1 - 2 weeks" : "A few days",
+    timeframe:
+      guide.id === "junior-savings-ceo"
+        ? "2 weeks"
+        : guide.audience === "junior"
+          ? "1 - 2 weeks"
+          : "A few days",
     estEarnings: guide.free ? "Free guide" : "Member guide",
     bestFor: guide.summary,
     steps: guide.steps.map((s) => ({ title: s.title, desc: s.body })),

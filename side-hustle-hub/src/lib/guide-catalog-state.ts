@@ -45,6 +45,14 @@ export function guideHoldsActive(status: GuideVisibilityStatus): boolean {
   return status === "active" || status === "reviewed_by_qa" || status === "reviewed_by_dev";
 }
 
+/**
+ * True when the guide is hidden as Inactive (exclusive Inactive, or Pending which also holds Inactive).
+ * Fixed/Re-Review is a separate hidden queue and does not hold Inactive.
+ */
+export function guideHoldsInactive(status: GuideVisibilityStatus): boolean {
+  return status === "inactive" || status === "pending";
+}
+
 /** Hidden review-cycle statuses: Pending and Fixed/Re-Review. */
 export function guideIsHiddenReviewStatus(status: GuideVisibilityStatus): boolean {
   return status === "pending" || status === "fixed_rereview";
@@ -142,6 +150,7 @@ export function guideMatchesStatusFilter(
   if (filter === "not_reviewed") return !guideIsReviewed(status);
   if (filter === "reviewed") return guideIsReviewed(status);
   if (filter === "active") return guideHoldsActive(status);
+  if (filter === "inactive") return guideHoldsInactive(status);
   return status === filter;
 }
 
@@ -350,6 +359,67 @@ export function emptyGuideCatalogState(guideId: string): GuideCatalogState {
     custom: false,
     patch: {},
   };
+}
+
+function catalogStateTimestampMs(state: GuideCatalogState | null | undefined): number {
+  const parsed = Date.parse(String(state?.updatedAt || ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * Apply a catalog row without dropping stored patch fields the payload omitted.
+ * Status-only bulk saves used to return `patch: {}` and wipe assignee in the UI.
+ */
+export function overlayGuideCatalogState(
+  prev: GuideCatalogState | undefined,
+  incoming: GuideCatalogState,
+): GuideCatalogState {
+  const prevPatch = prev?.patch ?? {};
+  const incomingPatch = incoming.patch ?? {};
+  return {
+    ...(prev ?? incoming),
+    ...incoming,
+    custom: incoming.custom === true || prev?.custom === true,
+    patch: { ...prevPatch, ...incomingPatch },
+  };
+}
+
+/** Overlay many catalog rows onto an existing map (status/assignee bulk results). */
+export function overlayGuideCatalogStateMap(
+  prev: GuideCatalogStateMap,
+  incoming: GuideCatalogStateMap,
+): GuideCatalogStateMap {
+  const out: GuideCatalogStateMap = { ...prev };
+  for (const [id, row] of Object.entries(incoming)) {
+    out[id] = overlayGuideCatalogState(prev[id], row);
+  }
+  return out;
+}
+
+/**
+ * Merge a remote catalog fetch into local state without clobbering a newer
+ * in-memory save (slow D1 GET vs assignee/status PUT).
+ * Always keep stored patch.assignee unless the newer row explicitly sets it.
+ */
+export function mergeGuideCatalogStateMapsPreferNewer(
+  remote: GuideCatalogStateMap,
+  local: GuideCatalogStateMap,
+): GuideCatalogStateMap {
+  const out: GuideCatalogStateMap = { ...remote };
+  for (const [id, row] of Object.entries(local)) {
+    const incoming = remote[id];
+    if (!incoming) {
+      out[id] = row;
+      continue;
+    }
+    const localTs = catalogStateTimestampMs(row);
+    const remoteTs = catalogStateTimestampMs(incoming);
+    out[id] =
+      localTs > remoteTs
+        ? overlayGuideCatalogState(incoming, row)
+        : overlayGuideCatalogState(row, incoming);
+  }
+  return out;
 }
 
 export function normalizeGuideCatalogState(
@@ -631,6 +701,26 @@ export function applyBulkGuideAction(
     default:
       return state;
   }
+}
+
+/** Persistable assignee for bulk update (`""` = Unassigned). */
+export function bulkGuideAssigneeFromInput(raw: unknown): string {
+  const patch = sanitizeGuideCatalogPatch({ assignee: raw });
+  return patch && "assignee" in patch ? String(patch.assignee ?? "") : "";
+}
+
+/** Apply a bulk assignee without changing status / published / deleted. */
+export function applyBulkGuideAssignee(
+  state: GuideCatalogState,
+  assignee: unknown,
+): GuideCatalogState {
+  return {
+    ...state,
+    patch: {
+      ...(state.patch ?? {}),
+      assignee: bulkGuideAssigneeFromInput(assignee),
+    },
+  };
 }
 
 export function slugifyGuideId(name: string): string {

@@ -2,6 +2,35 @@
  * Suggested charge prices for service / product hustles (examples only — not guarantees).
  */
 
+import { ERRAND_RUNNER_PRICING } from "./errand-runner-guide";
+import { AI_AGENTS_PRICING } from "./ai-agents-guide";
+import { AI_PROMO_VIDEO_PRICING } from "./ai-promo-video-guide";
+import { STR_COHOST_PRICING } from "./str-cohost-guide";
+import { BEACH_SHELL_JEWELRY_PRICING } from "./beach-shell-jewelry-guide";
+import { GIFT_WRAPPING_PRICING } from "./gift-wrapping-guide";
+import { AFFILIATE_PRICING } from "./affiliate-guide";
+import { DROPSHIPPING_PRICING } from "./dropshipping-guide";
+import { FB_MARKETPLACE_HELPER_PRICING } from "./fb-marketplace-helper-guide";
+import { BASIC_INVITATION_PRICING } from "./basic-invitation-creator-guide";
+import { POD_PRICING } from "./pod-guide";
+import { PET_SITTING_PRICING } from "./pet-sitting-guide";
+import { HANDYMAN_PRICING } from "./handyman-guide";
+import { FRIENDSHIP_BRACELET_PRICING } from "./friendship-bracelet-maker-guide";
+import { LEAF_RAKING_PRICING } from "./leaf-raking-guide";
+import { LEMONADE_STAND_PRICING } from "./lemonade-stand-guide";
+import { AIRBNB_HOSTING_PRICING } from "./airbnb-hosting-guide";
+import { DIGITAL_COOKBOOK_PRICING } from "./digital-cookbook-creator-guide";
+import { FAMILY_PHOTO_SLIDESHOW_PRICING } from "./family-photo-slideshow-guide";
+import { LOCAL_RESOURCE_LIST_PRICING } from "./local-resource-list-creator-guide";
+import { RECYCLING_HELPER_PRICING } from "./recycling-helper-guide";
+import { PROOFREADER_PRICING } from "./proofreader-guide";
+import { TOY_ORGANIZER_PRICING } from "./toy-organizer-guide";
+import { TRASH_CAN_SERVICE_PRICING } from "./trash-can-service-guide";
+import { HOMEWORK_HELPER_PRICING } from "./homework-helper-guide";
+import { CANVA_FLYER_PRICING } from "./canva-flyer-creator-guide";
+import { CAR_INTERIOR_PRICING } from "./car-interior-cleanup-guide";
+import { NEIGHBORHOOD_DOG_WALKER_PRICING } from "./neighborhood-dog-walker-guide";
+
 export type GuidePricingItem = {
   id: string;
   label: string;
@@ -30,49 +59,58 @@ const RAISE =
 /** Suggested customer prices by guide / hustle id. */
 export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
   "car-interior-cleanup": {
-    raiseTip: RAISE,
-    items: [
-      p("compact", "Compact / sedan interior", "$35–50 per car"),
-      p("suv", "SUV / crossover", "$50–70 per car"),
-      p("minivan", "Minivan / 3-row", "$65–85 per car"),
-      p("fleet", "3+ cars same driveway", "10% off the combined total"),
-      p("pets", "Heavy pet hair add-on", "+$10–15"),
-    ],
+    tabLabel: CAR_INTERIOR_PRICING.tabLabel,
+    raiseTip: CAR_INTERIOR_PRICING.raiseTip,
+    intro: CAR_INTERIOR_PRICING.intro,
+    items: CAR_INTERIOR_PRICING.items.map((item) => ({ ...item })),
   },
   "errand-runner": {
-    raiseTip: RAISE,
-    items: [
-      p("base", "Base run (1 stop)", "$10–15"),
-      p("extra", "Each extra stop", "+$5"),
-      p("percent", "Or % of purchase (optional)", "10–15% of receipt (agree cap first)"),
-      p("weekly", "Standing weekly senior slot", "$40–60 / month"),
-    ],
+    tabLabel: ERRAND_RUNNER_PRICING.tabLabel,
+    raiseTip: ERRAND_RUNNER_PRICING.raiseTip,
+    intro: ERRAND_RUNNER_PRICING.intro,
+    items: ERRAND_RUNNER_PRICING.items.map((item) => ({ ...item })),
+  },
+  "ai-agents": {
+    tabLabel: AI_AGENTS_PRICING.tabLabel,
+    raiseTip: AI_AGENTS_PRICING.raiseTip,
+    intro: AI_AGENTS_PRICING.intro,
+    items: AI_AGENTS_PRICING.items.map((item) => ({ ...item })),
+  },
+  "ai-promo-video": {
+    tabLabel: AI_PROMO_VIDEO_PRICING.tabLabel,
+    raiseTip: AI_PROMO_VIDEO_PRICING.raiseTip,
+    intro: AI_PROMO_VIDEO_PRICING.intro,
+    items: AI_PROMO_VIDEO_PRICING.items.map((item) => ({ ...item })),
+  },
+  "str-cohost": {
+    tabLabel: STR_COHOST_PRICING.tabLabel,
+    raiseTip: STR_COHOST_PRICING.raiseTip,
+    intro: STR_COHOST_PRICING.intro,
+    items: STR_COHOST_PRICING.items.map((item) => ({ ...item })),
   },
   "dog-walk": {
-    raiseTip: RAISE,
-    items: [
-      p("short", "20-minute walk (1 dog)", "$12–18"),
-      p("long", "30–40 minute walk", "$18–25"),
-      p("second", "Second dog same walk", "+$5–8"),
-      p("week", "3× / week package", "Price 3 walks − $5"),
-    ],
+    tabLabel: NEIGHBORHOOD_DOG_WALKER_PRICING.tabLabel,
+    raiseTip: NEIGHBORHOOD_DOG_WALKER_PRICING.raiseTip,
+    intro: NEIGHBORHOOD_DOG_WALKER_PRICING.intro,
+    items: NEIGHBORHOOD_DOG_WALKER_PRICING.items.map((item) => ({ ...item })),
   },
   "yard-help": {
-    raiseTip: RAISE,
+    raiseTip:
+      "A $15 quick rake is not the same job as two hours of weeds, leaves, and cleanup. Quote by tasks, area, and time. Displayed range: $15 – $30 / yard. Examples only — not income guarantees.",
+    intro:
+      "Keep displayed: $15 – $30 / yard. Define what “one yard” includes. Do not promise unlimited work for $15–$30.",
     items: [
-      p("hour", "Youth helper hourly", "$15–25 / hr"),
-      p("small", "Small yard flat (mow + tidy)", "$30–50"),
-      p("medium", "Medium yard", "$50–80"),
-      p("weed", "Weed beds only (1 hr)", "$20–35"),
+      p("small", "Small / Quick Yard Help", "$15"),
+      p("standard", "Standard Light Yard Job", "$20–$25"),
+      p("larger", "Larger / Heavier Beginner-Safe Job", "$25–$30+"),
+      p("bags", "Add-on: Extra bags", "Agree in advance"),
     ],
   },
   "pet-sitting": {
-    raiseTip: RAISE,
-    items: [
-      p("visit", "Daily drop-in visit", "$20–35 / day"),
-      p("overnight", "Overnight (adult only)", "$40–75 / night"),
-      p("extra-pet", "Extra pet", "+$5–10 / day"),
-    ],
+    tabLabel: PET_SITTING_PRICING.tabLabel,
+    raiseTip: PET_SITTING_PRICING.raiseTip,
+    intro: PET_SITTING_PRICING.intro,
+    items: PET_SITTING_PRICING.items.map((item) => ({ ...item })),
   },
   "plant-watering": {
     raiseTip: RAISE,
@@ -83,13 +121,10 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
     ],
   },
   handyman: {
-    raiseTip: RAISE,
-    items: [
-      p("hour", "Hourly (experienced)", "$40–75 / hr"),
-      p("ikea", "IKEA dresser assembly", "$60–90"),
-      p("tv", "TV mount (with stud finder)", "$75–125"),
-      p("min", "Minimum call-out", "$40–50"),
-    ],
+    tabLabel: HANDYMAN_PRICING.tabLabel,
+    raiseTip: HANDYMAN_PRICING.raiseTip,
+    intro: HANDYMAN_PRICING.intro,
+    items: HANDYMAN_PRICING.items.map((item) => ({ ...item })),
   },
   "handyman-light": {
     raiseTip: RAISE,
@@ -103,17 +138,18 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
   "tech-helper": {
     raiseTip: RAISE,
     items: [
-      p("visit", "In-home session (45–60 min)", "$25–45"),
-      p("wifi", "Wi‑Fi / printer setup", "$30–50"),
-      p("phone", "New phone transfer help", "$25–40"),
+      p("quick", "Quick tech lesson (30 minutes)", "$15–$25"),
+      p("standard", "Standard smartphone session (60 minutes)", "$25–$45"),
+      p("extended", "Extended / multi-topic session (90 minutes)", "$40–$65+"),
+      p("pack", "3-session package", "Agreed package price"),
+      p("addon", "Add-ons (cheat sheet, extra device, travel, follow-up)", "Quoted separately"),
     ],
   },
   homework: {
-    raiseTip: RAISE,
-    items: [
-      p("session", "Homework help session (45 min)", "$15–25"),
-      p("pack", "4-session pack", "$55–90"),
-    ],
+    tabLabel: HOMEWORK_HELPER_PRICING.tabLabel,
+    raiseTip: HOMEWORK_HELPER_PRICING.raiseTip,
+    intro: HOMEWORK_HELPER_PRICING.intro,
+    items: HOMEWORK_HELPER_PRICING.items.map((item) => ({ ...item })),
   },
   tutoring: {
     raiseTip: RAISE,
@@ -125,36 +161,58 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
     ],
   },
   proofreader: {
-    raiseTip: RAISE,
-    items: [
-      p("flyer", "1-page flyer / menu", "$15–25"),
-      p("essay", "School essay (≤1,000 words)", "$20–35"),
-      p("word", "Per-word rate (longer docs)", "$0.02–0.04 / word"),
-      p("retainer", "Monthly small-biz retainer", "$40–80 / mo"),
-    ],
+    tabLabel: PROOFREADER_PRICING.tabLabel,
+    raiseTip: PROOFREADER_PRICING.raiseTip,
+    intro: PROOFREADER_PRICING.intro,
+    items: PROOFREADER_PRICING.items.map((item) => ({ ...item })),
   },
   "gift-wrapping": {
-    raiseTip: RAISE,
-    items: [
-      p("single", "Simple gift wrap", "$3–6 / gift"),
-      p("fancy", "Bow + layered wrap", "$6–10 / gift"),
-      p("bundle", "10-gift holiday bundle", "$45–70"),
-    ],
+    tabLabel: GIFT_WRAPPING_PRICING.tabLabel,
+    raiseTip: GIFT_WRAPPING_PRICING.raiseTip,
+    intro: GIFT_WRAPPING_PRICING.intro,
+    items: GIFT_WRAPPING_PRICING.items.map((item) => ({ ...item })),
+  },
+  affiliate: {
+    tabLabel: AFFILIATE_PRICING.tabLabel,
+    raiseTip: AFFILIATE_PRICING.raiseTip,
+    intro: AFFILIATE_PRICING.intro,
+    items: AFFILIATE_PRICING.items.map((item) => ({ ...item })),
+  },
+  dropshipping: {
+    tabLabel: DROPSHIPPING_PRICING.tabLabel,
+    raiseTip: DROPSHIPPING_PRICING.raiseTip,
+    intro: DROPSHIPPING_PRICING.intro,
+    items: DROPSHIPPING_PRICING.items.map((item) => ({ ...item })),
+  },
+  "fb-marketplace-helper": {
+    tabLabel: FB_MARKETPLACE_HELPER_PRICING.tabLabel,
+    raiseTip: FB_MARKETPLACE_HELPER_PRICING.raiseTip,
+    intro: FB_MARKETPLACE_HELPER_PRICING.intro,
+    items: FB_MARKETPLACE_HELPER_PRICING.items.map((item) => ({ ...item })),
+  },
+  "basic-invitation-creator": {
+    tabLabel: BASIC_INVITATION_PRICING.tabLabel,
+    raiseTip: BASIC_INVITATION_PRICING.raiseTip,
+    intro: BASIC_INVITATION_PRICING.intro,
+    items: BASIC_INVITATION_PRICING.items.map((item) => ({ ...item })),
+  },
+  pod: {
+    tabLabel: POD_PRICING.tabLabel,
+    raiseTip: POD_PRICING.raiseTip,
+    intro: POD_PRICING.intro,
+    items: POD_PRICING.items.map((item) => ({ ...item })),
   },
   "lemonade-stand": {
-    raiseTip: RAISE,
-    items: [
-      p("cup", "Per cup", "$1–2"),
-      p("cookie", "Cookie add-on (if offered)", "$1–2"),
-    ],
+    tabLabel: LEMONADE_STAND_PRICING.tabLabel,
+    raiseTip: LEMONADE_STAND_PRICING.raiseTip,
+    intro: LEMONADE_STAND_PRICING.intro,
+    items: LEMONADE_STAND_PRICING.items.map((item) => ({ ...item })),
   },
   "trash-can-service": {
-    raiseTip: RAISE,
-    items: [
-      p("month", "Roll-out + return / month", "$20–40 / home"),
-      p("both", "Trash + recycling bundle", "$30–50 / mo"),
-      p("storm", "Storm / holiday reschedule", "Included or +$5"),
-    ],
+    tabLabel: TRASH_CAN_SERVICE_PRICING.tabLabel,
+    raiseTip: TRASH_CAN_SERVICE_PRICING.raiseTip,
+    intro: TRASH_CAN_SERVICE_PRICING.intro,
+    items: TRASH_CAN_SERVICE_PRICING.items.map((item) => ({ ...item })),
   },
   "neighborhood-helper": {
     raiseTip: RAISE,
@@ -165,22 +223,16 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
     ],
   },
   "leaf-raking": {
-    raiseTip: RAISE,
-    items: [
-      p("drive", "Driveway / walks blowing", "$20–35"),
-      p("front", "Front lawn blowing + bag", "$40–60"),
-      p("full", "Full-lot blowing + curb bags", "$70–110"),
-    ],
+    tabLabel: LEAF_RAKING_PRICING.tabLabel,
+    raiseTip: LEAF_RAKING_PRICING.raiseTip,
+    intro: LEAF_RAKING_PRICING.intro,
+    items: LEAF_RAKING_PRICING.items.map((item) => ({ ...item })),
   },
   "beach-shell-jewelry": {
-    raiseTip: RAISE,
-    items: [
-      p("earring", "Shell earring pair", "$8–15"),
-      p("necklace", "Shell pendant necklace", "$12–22"),
-      p("bracelet", "Shell bracelet", "$10–18"),
-      p("set", "Necklace + earring set", "$22–35"),
-      p("custom", "Custom beach-memory piece", "$18–30"),
-    ],
+    tabLabel: BEACH_SHELL_JEWELRY_PRICING.tabLabel,
+    raiseTip: BEACH_SHELL_JEWELRY_PRICING.raiseTip,
+    intro: BEACH_SHELL_JEWELRY_PRICING.intro,
+    items: BEACH_SHELL_JEWELRY_PRICING.items.map((item) => ({ ...item })),
   },
   "garage-sale-helper": {
     raiseTip: RAISE,
@@ -199,11 +251,10 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
     ],
   },
   "recycling-helper": {
-    raiseTip: RAISE,
-    items: [
-      p("month", "Recycling sort + roll / month", "$20–35"),
-      p("bundle", "With trash-can service", "$35–50 / mo combined"),
-    ],
+    tabLabel: RECYCLING_HELPER_PRICING.tabLabel,
+    raiseTip: RECYCLING_HELPER_PRICING.raiseTip,
+    intro: RECYCLING_HELPER_PRICING.intro,
+    items: RECYCLING_HELPER_PRICING.items.map((item) => ({ ...item })),
   },
   "vacation-mail-plant-helper": {
     raiseTip: RAISE,
@@ -213,19 +264,40 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
     ],
   },
   "toy-organizer": {
-    raiseTip: RAISE,
-    items: [
-      p("room", "One playroom / closet session", "$40–75"),
-      p("hour", "Hourly", "$20–35 / hr"),
-    ],
+    tabLabel: TOY_ORGANIZER_PRICING.tabLabel,
+    raiseTip: TOY_ORGANIZER_PRICING.raiseTip,
+    intro: TOY_ORGANIZER_PRICING.intro,
+    items: TOY_ORGANIZER_PRICING.items.map((item) => ({ ...item })),
   },
   "friendship-bracelet-maker": {
-    raiseTip: RAISE,
-    items: [
-      p("simple", "Simple bracelet", "$5–8"),
-      p("custom", "Custom name / beads", "$10–15"),
-      p("party", "Party pack of 10", "$60–80"),
-    ],
+    tabLabel: FRIENDSHIP_BRACELET_PRICING.tabLabel,
+    raiseTip: FRIENDSHIP_BRACELET_PRICING.raiseTip,
+    intro: FRIENDSHIP_BRACELET_PRICING.intro,
+    items: FRIENDSHIP_BRACELET_PRICING.items.map((item) => ({ ...item })),
+  },
+  airbnb: {
+    tabLabel: AIRBNB_HOSTING_PRICING.tabLabel,
+    raiseTip: AIRBNB_HOSTING_PRICING.raiseTip,
+    intro: AIRBNB_HOSTING_PRICING.intro,
+    items: AIRBNB_HOSTING_PRICING.items.map((item) => ({ ...item })),
+  },
+  "digital-cookbook-creator": {
+    tabLabel: DIGITAL_COOKBOOK_PRICING.tabLabel,
+    raiseTip: DIGITAL_COOKBOOK_PRICING.raiseTip,
+    intro: DIGITAL_COOKBOOK_PRICING.intro,
+    items: DIGITAL_COOKBOOK_PRICING.items.map((item) => ({ ...item })),
+  },
+  "family-photo-slideshow": {
+    tabLabel: FAMILY_PHOTO_SLIDESHOW_PRICING.tabLabel,
+    raiseTip: FAMILY_PHOTO_SLIDESHOW_PRICING.raiseTip,
+    intro: FAMILY_PHOTO_SLIDESHOW_PRICING.intro,
+    items: FAMILY_PHOTO_SLIDESHOW_PRICING.items.map((item) => ({ ...item })),
+  },
+  "local-resource-list-creator": {
+    tabLabel: LOCAL_RESOURCE_LIST_PRICING.tabLabel,
+    raiseTip: LOCAL_RESOURCE_LIST_PRICING.raiseTip,
+    intro: LOCAL_RESOURCE_LIST_PRICING.intro,
+    items: LOCAL_RESOURCE_LIST_PRICING.items.map((item) => ({ ...item })),
   },
   crafts: {
     raiseTip: RAISE,
@@ -235,40 +307,17 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
       p("custom", "Custom order", "2–3× materials + time"),
     ],
   },
-  "basic-invitation-creator": {
-    raiseTip: RAISE,
-    items: [
-      p("digital", "Digital invite (PDF + PNG)", "$10–25"),
-      p("print", "Design + print handling", "+$5–15"),
-      p("rush", "Same-day rush", "+$5–10"),
-    ],
-  },
   "canva-flyer-creator": {
-    raiseTip: RAISE,
-    items: [
-      p("design", "Flyer design only", "$15–40"),
-      p("print", "Design + print run help", "+$5–20"),
-    ],
+    tabLabel: CANVA_FLYER_PRICING.tabLabel,
+    raiseTip: CANVA_FLYER_PRICING.raiseTip,
+    intro: CANVA_FLYER_PRICING.intro,
+    items: CANVA_FLYER_PRICING.items.map((item) => ({ ...item })),
   },
   "greeting-card-creator": {
     raiseTip: RAISE,
     items: [
       p("hand", "Handmade card", "$3–8"),
       p("canva", "Custom Canva card set", "$5–15"),
-    ],
-  },
-  "digital-cookbook-creator": {
-    raiseTip: RAISE,
-    items: [
-      p("small", "10–20 recipe digital book", "$50–100"),
-      p("large", "40+ recipes + cover", "$100–175"),
-    ],
-  },
-  "family-photo-slideshow": {
-    raiseTip: RAISE,
-    items: [
-      p("short", "2–3 minute slideshow", "$40–75"),
-      p("long", "5+ minute with music", "$75–125"),
     ],
   },
 };

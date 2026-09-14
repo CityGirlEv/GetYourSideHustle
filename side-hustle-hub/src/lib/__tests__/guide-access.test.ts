@@ -233,9 +233,9 @@ describe("guide access gatekeeping", () => {
     expect(tierHasFeature("elite", "schedule")).toBe(true);
   });
 
-  it("gates AI guides — coffee chat Starter; other AI + Digital Cookbook Elite", () => {
-    expect(adultGuideMinTier("ai-peers")).toBe("starter");
-    expect(seniorGuideMinTier("ai-peer-class")).toBe("starter");
+  it("gates AI guides — coffee chat Elite; other AI + Digital Cookbook Elite", () => {
+    expect(adultGuideMinTier("ai-peers")).toBe("elite");
+    expect(seniorGuideMinTier("ai-peer-class")).toBe("elite");
     expect(adultGuideMinTier("amazon")).toBe("elite");
     expect(adultGuideMinTier("ai-social-helper")).toBe("elite");
     expect(adultGuideMinTier("ai-prompt-helper")).toBe("elite");
@@ -259,6 +259,13 @@ describe("guide access gatekeeping", () => {
       resolveGuideAccess({
         isMember: true,
         membershipTier: "starter",
+        minTier: adultGuideMinTier("ai-peers"),
+      }).unlocked,
+    ).toBe(false);
+    expect(
+      resolveGuideAccess({
+        isMember: true,
+        membershipTier: "elite",
         minTier: adultGuideMinTier("ai-peers"),
       }).unlocked,
     ).toBe(true);

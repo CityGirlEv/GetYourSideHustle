@@ -13,6 +13,198 @@ import {
   KIDS_KINDNESS_SHARE_REALITY_CHECK,
 } from "../lib/kids-kindness-share-guide";
 import {
+  BEACH_SHELL_JEWELRY_NOTES_WORKSHEET,
+  BEACH_SHELL_JEWELRY_REALITY_CHECK,
+} from "../lib/beach-shell-jewelry-guide";
+import {
+  GIFT_WRAPPING_NOTES_WORKSHEET,
+  GIFT_WRAPPING_REALITY_CHECK,
+} from "../lib/gift-wrapping-guide";
+import {
+  AFFILIATE_NOTES_WORKSHEET,
+  AFFILIATE_REALITY_CHECK,
+} from "../lib/affiliate-guide";
+import {
+  DROPSHIPPING_NOTES_WORKSHEET,
+  DROPSHIPPING_REALITY_CHECK,
+} from "../lib/dropshipping-guide";
+import {
+  FB_MARKETPLACE_HELPER_NOTES_WORKSHEET,
+  FB_MARKETPLACE_HELPER_REALITY_CHECK,
+} from "../lib/fb-marketplace-helper-guide";
+import {
+  PORCH_PACKAGE_NOTES_WORKSHEET,
+  PORCH_PACKAGE_REALITY_CHECK,
+} from "../lib/porch-package-helper-guide";
+import {
+  BOOK_PUBLISHING_KIDS_NOTES_WORKSHEET,
+  BOOK_PUBLISHING_KIDS_REALITY_CHECK,
+} from "../lib/book-publishing-kids-guide";
+import {
+  AI_PEERS_NOTES_WORKSHEET,
+  AI_PEERS_REALITY_CHECK,
+} from "../lib/ai-peers-guide";
+import {
+  TRAVEL_RESEARCH_NOTES_WORKSHEET,
+  TRAVEL_RESEARCH_REALITY_CHECK,
+} from "../lib/travel-research-assistant-guide";
+import {
+  TRANSCRIPTION_NOTES_NOTES_WORKSHEET,
+  TRANSCRIPTION_NOTES_REALITY_CHECK,
+} from "../lib/transcription-notes-helper-guide";
+import {
+  WEBSITE_TESTER_NOTES_WORKSHEET,
+  WEBSITE_TESTER_REALITY_CHECK,
+} from "../lib/website-tester-guide";
+import {
+  COMMUNITY_NEWSLETTER_NOTES_WORKSHEET,
+  COMMUNITY_NEWSLETTER_REALITY_CHECK,
+} from "../lib/community-newsletter-creator-guide";
+import {
+  COMMUNITY_TEACHING_NOTES_WORKSHEET,
+  COMMUNITY_TEACHING_REALITY_CHECK,
+} from "../lib/community-teaching-workshops-guide";
+import {
+  REVIEW_RESPONSE_NOTES_WORKSHEET,
+  REVIEW_RESPONSE_REALITY_CHECK,
+} from "../lib/review-response-assistant-guide";
+import {
+  CAREER_CONSULTING_NOTES_WORKSHEET,
+  CAREER_CONSULTING_REALITY_CHECK,
+} from "../lib/career-industry-consulting-guide";
+import {
+  PART_TIME_NOTARY_NOTES_WORKSHEET,
+  PART_TIME_NOTARY_REALITY_CHECK,
+} from "../lib/part-time-notary-guide";
+import {
+  RESUME_LINKEDIN_NOTES_WORKSHEET,
+  RESUME_LINKEDIN_REALITY_CHECK,
+} from "../lib/resume-linkedin-helper-guide";
+import {
+  SHORT_FORM_VIDEO_NOTES_WORKSHEET,
+  SHORT_FORM_VIDEO_REALITY_CHECK,
+} from "../lib/short-form-video-editor-guide";
+import {
+  GBP_HELPER_NOTES_WORKSHEET,
+  GBP_HELPER_REALITY_CHECK,
+} from "../lib/google-business-profile-helper-guide";
+import {
+  UGC_CREATOR_NOTES_WORKSHEET,
+  UGC_CREATOR_REALITY_CHECK,
+} from "../lib/ugc-creator-guide";
+import {
+  VIRTUAL_ASSISTANT_NOTES_WORKSHEET,
+  VIRTUAL_ASSISTANT_REALITY_CHECK,
+} from "../lib/virtual-assistant-guide";
+import {
+  VIRTUAL_RECEPTIONIST_NOTES_WORKSHEET,
+  VIRTUAL_RECEPTIONIST_REALITY_CHECK,
+} from "../lib/virtual-receptionist-guide";
+import {
+  SOCIAL_INFLUENCER_NOTES_WORKSHEET,
+  SOCIAL_INFLUENCER_REALITY_CHECK,
+} from "../lib/social-influencer-guide";
+import {
+  JUNIOR_SAVINGS_CEO_NOTES_WORKSHEET,
+  JUNIOR_SAVINGS_CEO_REALITY_CHECK,
+} from "../lib/junior-savings-ceo-guide";
+import {
+  COMMUNITY_MODERATOR_NOTES_WORKSHEET,
+  COMMUNITY_MODERATOR_REALITY_CHECK,
+} from "../lib/online-community-moderator-guide";
+import {
+  BASIC_INVITATION_NOTES_WORKSHEET,
+  BASIC_INVITATION_REALITY_CHECK,
+} from "../lib/basic-invitation-creator-guide";
+import {
+  POD_NOTES_WORKSHEET,
+  POD_REALITY_CHECK,
+} from "../lib/pod-guide";
+import {
+  PET_SITTING_NOTES_WORKSHEET,
+  PET_SITTING_REALITY_CHECK,
+} from "../lib/pet-sitting-guide";
+import {
+  FRIENDSHIP_BRACELET_NOTES_WORKSHEET,
+  FRIENDSHIP_BRACELET_REALITY_CHECK,
+} from "../lib/friendship-bracelet-maker-guide";
+import {
+  LEAF_RAKING_NOTES_WORKSHEET,
+  LEAF_RAKING_REALITY_CHECK,
+} from "../lib/leaf-raking-guide";
+import {
+  LEMONADE_STAND_NOTES_WORKSHEET,
+  LEMONADE_STAND_REALITY_CHECK,
+} from "../lib/lemonade-stand-guide";
+import {
+  AIRBNB_HOSTING_NOTES_WORKSHEET,
+  AIRBNB_HOSTING_REALITY_CHECK,
+} from "../lib/airbnb-hosting-guide";
+import {
+  DIGITAL_COOKBOOK_NOTES_WORKSHEET,
+  DIGITAL_COOKBOOK_REALITY_CHECK,
+} from "../lib/digital-cookbook-creator-guide";
+import {
+  FAMILY_PHOTO_SLIDESHOW_NOTES_WORKSHEET,
+  FAMILY_PHOTO_SLIDESHOW_REALITY_CHECK,
+} from "../lib/family-photo-slideshow-guide";
+import {
+  LOCAL_RESOURCE_LIST_NOTES_WORKSHEET,
+  LOCAL_RESOURCE_LIST_REALITY_CHECK,
+} from "../lib/local-resource-list-creator-guide";
+import {
+  RECYCLING_HELPER_NOTES_WORKSHEET,
+  RECYCLING_HELPER_REALITY_CHECK,
+} from "../lib/recycling-helper-guide";
+import {
+  PROOFREADER_NOTES_WORKSHEET,
+  PROOFREADER_REALITY_CHECK,
+} from "../lib/proofreader-guide";
+import {
+  TOY_ORGANIZER_NOTES_WORKSHEET,
+  TOY_ORGANIZER_REALITY_CHECK,
+} from "../lib/toy-organizer-guide";
+import {
+  TRASH_CAN_SERVICE_NOTES_WORKSHEET,
+  TRASH_CAN_SERVICE_REALITY_CHECK,
+} from "../lib/trash-can-service-guide";
+import {
+  HOMEWORK_HELPER_NOTES_WORKSHEET,
+  HOMEWORK_HELPER_REALITY_CHECK,
+} from "../lib/homework-helper-guide";
+import {
+  CANVA_FLYER_NOTES_WORKSHEET,
+  CANVA_FLYER_REALITY_CHECK,
+} from "../lib/canva-flyer-creator-guide";
+import {
+  CAR_INTERIOR_NOTES_WORKSHEET,
+  CAR_INTERIOR_REALITY_CHECK,
+} from "../lib/car-interior-cleanup-guide";
+import {
+  NEIGHBORHOOD_DOG_WALKER_NOTES_WORKSHEET,
+  NEIGHBORHOOD_DOG_WALKER_REALITY_CHECK,
+} from "../lib/neighborhood-dog-walker-guide";
+import {
+  GREETING_CARD_NOTES_WORKSHEET,
+  GREETING_CARD_REALITY_CHECK,
+} from "../lib/greeting-card-creator-guide";
+import {
+  HOLIDAY_DECORATING_NOTES_WORKSHEET,
+  HOLIDAY_DECORATING_REALITY_CHECK,
+} from "../lib/holiday-decorating-helper-guide";
+import {
+  LIGHT_HANDYMAN_NOTES_WORKSHEET,
+  LIGHT_HANDYMAN_REALITY_CHECK,
+} from "../lib/light-handyman-home-help-guide";
+import {
+  TUTORING_SKILLS_NOTES_WORKSHEET,
+  TUTORING_SKILLS_REALITY_CHECK,
+} from "../lib/tutoring-skills-coaching-guide";
+import {
+  VACATION_PLANT_NOTES_WORKSHEET,
+  VACATION_PLANT_REALITY_CHECK,
+} from "../lib/vacation-plant-helper-guide";
+import {
   KIDS_PIGGY_FIRST_GOAL_NOTES_WORKSHEET,
   KIDS_PIGGY_FIRST_GOAL_REALITY_CHECK,
 } from "../lib/kids-piggy-first-goal-guide";
@@ -30,16 +222,85 @@ import {
   juniorGiveBackTeachToolsDisclaimer,
   kidsKindnessShareToolsDisclaimer,
   kidsPiggyFirstGoalToolsDisclaimer,
+  beachShellJewelryToolsDisclaimer,
+  giftWrappingToolsDisclaimer,
+  affiliateToolsDisclaimer,
+  dropshippingToolsDisclaimer,
+  fbMarketplaceHelperToolsDisclaimer,
+  porchPackageHelperToolsDisclaimer,
+  bookPublishingKidsToolsDisclaimer,
+  aiPeersToolsDisclaimer,
+  travelResearchAssistantToolsDisclaimer,
+  transcriptionNotesHelperToolsDisclaimer,
+  websiteTesterToolsDisclaimer,
+  communityNewsletterCreatorToolsDisclaimer,
+  communityTeachingWorkshopsToolsDisclaimer,
+  reviewResponseAssistantToolsDisclaimer,
+  careerIndustryConsultingToolsDisclaimer,
+  partTimeNotaryToolsDisclaimer,
+  resumeLinkedInHelperToolsDisclaimer,
+  shortFormVideoEditorToolsDisclaimer,
+  googleBusinessProfileHelperToolsDisclaimer,
+  ugcCreatorToolsDisclaimer,
+  virtualAssistantToolsDisclaimer,
+  virtualReceptionistToolsDisclaimer,
+  socialInfluencerToolsDisclaimer,
+  juniorSavingsCeoToolsDisclaimer,
+  onlineCommunityModeratorToolsDisclaimer,
+  basicInvitationToolsDisclaimer,
+  podToolsDisclaimer,
+  petSittingToolsDisclaimer,
   appointmentSetterToolsDisclaimer,
   mothersHelperToolsDisclaimer,
   babysittingToolsDisclaimer,
+  errandRunnerToolsDisclaimer,
+  aiAgentsToolsDisclaimer,
+  aiPromoVideoToolsDisclaimer,
+  aiTimingToolsDisclaimer,
+  techHelperToolsDisclaimer,
+  yardHelpToolsDisclaimer,
+  homeworkOrganizerToolsDisclaimer,
+  groupSetupHelperToolsDisclaimer,
+  houseSitterToolsDisclaimer,
+  bookkeepingToolsDisclaimer,
+  closetCleanoutListingToolsDisclaimer,
+  nonprofitSocialHelperToolsDisclaimer,
   digitalProductsToolsDisclaimer,
+  bookPublishingToolsDisclaimer,
+  startGardeningClubToolsDisclaimer,
+  startBookClubToolsDisclaimer,
+  foreclosurePropertiesToolsDisclaimer,
+  cleaningServiceToolsDisclaimer,
+  kidsGamesAiToolsDisclaimer,
+  aiPromptHelperToolsDisclaimer,
+  juniorGamesAiToolsDisclaimer,
   rideshareToolsDisclaimer,
   localEventContentToolsDisclaimer,
   propertyMgmtToolsDisclaimer,
   juniorReinvestCeoToolsDisclaimer,
   kidsReinvestJarToolsDisclaimer,
   airbnbTurnoverCheckerToolsDisclaimer,
+  strCohostToolsDisclaimer,
+  friendshipBraceletToolsDisclaimer,
+  leafRakingToolsDisclaimer,
+  lemonadeStandToolsDisclaimer,
+  airbnbHostingToolsDisclaimer,
+  digitalCookbookToolsDisclaimer,
+  familyPhotoSlideshowToolsDisclaimer,
+  localResourceListToolsDisclaimer,
+  recyclingHelperToolsDisclaimer,
+  proofreaderToolsDisclaimer,
+  toyOrganizerToolsDisclaimer,
+  trashCanServiceToolsDisclaimer,
+  homeworkHelperToolsDisclaimer,
+  canvaFlyerToolsDisclaimer,
+  carInteriorToolsDisclaimer,
+  neighborhoodDogWalkerToolsDisclaimer,
+  greetingCardToolsDisclaimer,
+  holidayDecoratingToolsDisclaimer,
+  lightHandymanToolsDisclaimer,
+  tutoringSkillsToolsDisclaimer,
+  vacationPlantToolsDisclaimer,
   guideToolsDisclaimer,
   prerequisitesDisclaimer,
   pricingDisclaimer,
@@ -91,9 +352,89 @@ import {
   BABYSITTING_REALITY_CHECK,
 } from "../lib/babysitting-guide";
 import {
+  ERRAND_RUNNER_NOTES_WORKSHEET,
+  ERRAND_RUNNER_REALITY_CHECK,
+} from "../lib/errand-runner-guide";
+import {
+  AI_AGENTS_NOTES_WORKSHEET,
+  AI_AGENTS_REALITY_CHECK,
+} from "../lib/ai-agents-guide";
+import {
+  AI_PROMO_VIDEO_NOTES_WORKSHEET,
+  AI_PROMO_VIDEO_REALITY_CHECK,
+} from "../lib/ai-promo-video-guide";
+import {
+  AI_TIMING_NOTES_WORKSHEET,
+  AI_TIMING_REALITY_CHECK,
+} from "../lib/ai-timing-guide";
+import {
+  TECH_HELPER_NOTES_WORKSHEET,
+  TECH_HELPER_REALITY_CHECK,
+} from "../lib/tech-helper-guide";
+import {
+  YARD_HELP_NOTES_WORKSHEET,
+  YARD_HELP_REALITY_CHECK,
+} from "../lib/yard-help-guide";
+import {
+  HOMEWORK_ORGANIZER_NOTES_WORKSHEET,
+  HOMEWORK_ORGANIZER_REALITY_CHECK,
+} from "../lib/homework-organizer-guide";
+import {
+  GROUP_SETUP_HELPER_NOTES_WORKSHEET,
+  GROUP_SETUP_HELPER_REALITY_CHECK,
+} from "../lib/group-setup-helper-guide";
+import {
+  HOUSE_SITTER_NOTES_WORKSHEET,
+  HOUSE_SITTER_REALITY_CHECK,
+} from "../lib/house-sitter-guide";
+import {
+  BOOKKEEPING_NOTES_WORKSHEET,
+  BOOKKEEPING_REALITY_CHECK,
+} from "../lib/bookkeeping-guide";
+import {
+  CLOSET_CLEANOUT_LISTING_NOTES_WORKSHEET,
+  CLOSET_CLEANOUT_LISTING_REALITY_CHECK,
+} from "../lib/closet-cleanout-listing-guide";
+import {
+  NONPROFIT_SOCIAL_HELPER_NOTES_WORKSHEET,
+  NONPROFIT_SOCIAL_HELPER_REALITY_CHECK,
+} from "../lib/nonprofit-social-helper-guide";
+import {
   DIGITAL_PRODUCTS_NOTES_WORKSHEET,
   DIGITAL_PRODUCTS_REALITY_CHECK,
 } from "../lib/digital-products-guide";
+import {
+  BOOK_PUBLISHING_NOTES_WORKSHEET,
+  BOOK_PUBLISHING_REALITY_CHECK,
+} from "../lib/book-publishing-guide";
+import {
+  START_GARDENING_CLUB_NOTES_WORKSHEET,
+  START_GARDENING_CLUB_REALITY_CHECK,
+} from "../lib/start-gardening-club-guide";
+import {
+  START_BOOK_CLUB_NOTES_WORKSHEET,
+  START_BOOK_CLUB_REALITY_CHECK,
+} from "../lib/start-book-club-guide";
+import {
+  FORECLOSURE_PROPERTIES_NOTES_WORKSHEET,
+  FORECLOSURE_PROPERTIES_REALITY_CHECK,
+} from "../lib/foreclosure-properties-guide";
+import {
+  CLEANING_SERVICE_NOTES_WORKSHEET,
+  CLEANING_SERVICE_REALITY_CHECK,
+} from "../lib/cleaning-service-guide";
+import {
+  KIDS_GAMES_AI_NOTES_WORKSHEET,
+  KIDS_GAMES_AI_REALITY_CHECK,
+} from "../lib/kids-games-ai-guide";
+import {
+  AI_PROMPT_HELPER_NOTES_WORKSHEET,
+  AI_PROMPT_HELPER_REALITY_CHECK,
+} from "../lib/ai-prompt-helper-guide";
+import {
+  JUNIOR_GAMES_AI_NOTES_WORKSHEET,
+  JUNIOR_GAMES_AI_REALITY_CHECK,
+} from "../lib/junior-games-ai-guide";
 import {
   RIDESHARE_NOTES_WORKSHEET,
   RIDESHARE_REALITY_CHECK,
@@ -110,6 +451,10 @@ import {
   AIRBNB_TURNOVER_CHECKER_NOTES_WORKSHEET,
   AIRBNB_TURNOVER_CHECKER_REALITY_CHECK,
 } from "../lib/airbnb-turnover-checker-guide";
+import {
+  STR_COHOST_NOTES_WORKSHEET,
+  STR_COHOST_REALITY_CHECK,
+} from "../lib/str-cohost-guide";
 import {
   JUNIOR_REINVEST_CEO_NOTES_WORKSHEET,
   JUNIOR_REINVEST_CEO_REALITY_CHECK,
@@ -137,6 +482,298 @@ export type PrepTabId =
  * Prerequisites, Tools, Steps, Suggested Pricing, and Supply List always use the
  * normal member-facing panels; staff still get inline editors via afterTabs.
  */
+const COMPLETED_GUIDE_NOTES: Record<
+  string,
+  {
+    reality: { title: string; body: string };
+    worksheet: string;
+    summary: string;
+    testId: string;
+    toolsDisclaimer: () => string;
+  }
+> = {
+  "friendship-bracelet-maker": {
+    reality: FRIENDSHIP_BRACELET_REALITY_CHECK,
+    worksheet: FRIENDSHIP_BRACELET_NOTES_WORKSHEET,
+    summary: "My Friendship Bracelet Plan",
+    testId: "friendship-bracelet-worksheet",
+    toolsDisclaimer: friendshipBraceletToolsDisclaimer,
+  },
+  "leaf-raking": {
+    reality: LEAF_RAKING_REALITY_CHECK,
+    worksheet: LEAF_RAKING_NOTES_WORKSHEET,
+    summary: "My Leaf Blowing Plan",
+    testId: "leaf-raking-worksheet",
+    toolsDisclaimer: leafRakingToolsDisclaimer,
+  },
+  "lemonade-stand": {
+    reality: LEMONADE_STAND_REALITY_CHECK,
+    worksheet: LEMONADE_STAND_NOTES_WORKSHEET,
+    summary: "My Lemonade / Drink Stand Plan",
+    testId: "lemonade-stand-worksheet",
+    toolsDisclaimer: lemonadeStandToolsDisclaimer,
+  },
+  airbnb: {
+    reality: AIRBNB_HOSTING_REALITY_CHECK,
+    worksheet: AIRBNB_HOSTING_NOTES_WORKSHEET,
+    summary: "My Airbnb Hosting Plan",
+    testId: "airbnb-worksheet",
+    toolsDisclaimer: airbnbHostingToolsDisclaimer,
+  },
+  "digital-cookbook-creator": {
+    reality: DIGITAL_COOKBOOK_REALITY_CHECK,
+    worksheet: DIGITAL_COOKBOOK_NOTES_WORKSHEET,
+    summary: "My Digital Cookbook Plan",
+    testId: "digital-cookbook-worksheet",
+    toolsDisclaimer: digitalCookbookToolsDisclaimer,
+  },
+  "family-photo-slideshow": {
+    reality: FAMILY_PHOTO_SLIDESHOW_REALITY_CHECK,
+    worksheet: FAMILY_PHOTO_SLIDESHOW_NOTES_WORKSHEET,
+    summary: "My Family Photo Slideshow Plan",
+    testId: "family-photo-slideshow-worksheet",
+    toolsDisclaimer: familyPhotoSlideshowToolsDisclaimer,
+  },
+  "local-resource-list-creator": {
+    reality: LOCAL_RESOURCE_LIST_REALITY_CHECK,
+    worksheet: LOCAL_RESOURCE_LIST_NOTES_WORKSHEET,
+    summary: "My Local Resource List Plan",
+    testId: "local-resource-list-worksheet",
+    toolsDisclaimer: localResourceListToolsDisclaimer,
+  },
+  "recycling-helper": {
+    reality: RECYCLING_HELPER_REALITY_CHECK,
+    worksheet: RECYCLING_HELPER_NOTES_WORKSHEET,
+    summary: "My Recycling Helper Plan",
+    testId: "recycling-helper-worksheet",
+    toolsDisclaimer: recyclingHelperToolsDisclaimer,
+  },
+  proofreader: {
+    reality: PROOFREADER_REALITY_CHECK,
+    worksheet: PROOFREADER_NOTES_WORKSHEET,
+    summary: "My Proofreader Plan",
+    testId: "proofreader-worksheet",
+    toolsDisclaimer: proofreaderToolsDisclaimer,
+  },
+  "toy-organizer": {
+    reality: TOY_ORGANIZER_REALITY_CHECK,
+    worksheet: TOY_ORGANIZER_NOTES_WORKSHEET,
+    summary: "My Toy Organizer Plan",
+    testId: "toy-organizer-worksheet",
+    toolsDisclaimer: toyOrganizerToolsDisclaimer,
+  },
+  "trash-can-service": {
+    reality: TRASH_CAN_SERVICE_REALITY_CHECK,
+    worksheet: TRASH_CAN_SERVICE_NOTES_WORKSHEET,
+    summary: "My Trash Can Service Plan",
+    testId: "trash-can-service-worksheet",
+    toolsDisclaimer: trashCanServiceToolsDisclaimer,
+  },
+  homework: {
+    reality: HOMEWORK_HELPER_REALITY_CHECK,
+    worksheet: HOMEWORK_HELPER_NOTES_WORKSHEET,
+    summary: "My Tutor / Homework Helper Plan",
+    testId: "homework-helper-worksheet",
+    toolsDisclaimer: homeworkHelperToolsDisclaimer,
+  },
+  "canva-flyer-creator": {
+    reality: CANVA_FLYER_REALITY_CHECK,
+    worksheet: CANVA_FLYER_NOTES_WORKSHEET,
+    summary: "My Canva Flyer Creator Plan",
+    testId: "canva-flyer-worksheet",
+    toolsDisclaimer: canvaFlyerToolsDisclaimer,
+  },
+  "car-interior-cleanup": {
+    reality: CAR_INTERIOR_REALITY_CHECK,
+    worksheet: CAR_INTERIOR_NOTES_WORKSHEET,
+    summary: "My Car Interior Cleanup Plan",
+    testId: "car-interior-worksheet",
+    toolsDisclaimer: carInteriorToolsDisclaimer,
+  },
+  "dog-walk": {
+    reality: NEIGHBORHOOD_DOG_WALKER_REALITY_CHECK,
+    worksheet: NEIGHBORHOOD_DOG_WALKER_NOTES_WORKSHEET,
+    summary: "My Neighborhood Dog Walker Plan",
+    testId: "dog-walk-worksheet",
+    toolsDisclaimer: neighborhoodDogWalkerToolsDisclaimer,
+  },
+  "greeting-card-creator": {
+    reality: GREETING_CARD_REALITY_CHECK,
+    worksheet: GREETING_CARD_NOTES_WORKSHEET,
+    summary: "My Greeting Card Creator Plan",
+    testId: "greeting-card-worksheet",
+    toolsDisclaimer: greetingCardToolsDisclaimer,
+  },
+  "holiday-decorating-helper": {
+    reality: HOLIDAY_DECORATING_REALITY_CHECK,
+    worksheet: HOLIDAY_DECORATING_NOTES_WORKSHEET,
+    summary: "My Holiday Decorating Plan",
+    testId: "holiday-decorating-worksheet",
+    toolsDisclaimer: holidayDecoratingToolsDisclaimer,
+  },
+  "handyman-light": {
+    reality: LIGHT_HANDYMAN_REALITY_CHECK,
+    worksheet: LIGHT_HANDYMAN_NOTES_WORKSHEET,
+    summary: "My Light Handyman & Home Help Plan",
+    testId: "handyman-light-worksheet",
+    toolsDisclaimer: lightHandymanToolsDisclaimer,
+  },
+  tutoring: {
+    reality: TUTORING_SKILLS_REALITY_CHECK,
+    worksheet: TUTORING_SKILLS_NOTES_WORKSHEET,
+    summary: "My Tutoring & Skills Coaching Plan",
+    testId: "tutoring-worksheet",
+    toolsDisclaimer: tutoringSkillsToolsDisclaimer,
+  },
+  "vacation-mail-plant-helper": {
+    reality: VACATION_PLANT_REALITY_CHECK,
+    worksheet: VACATION_PLANT_NOTES_WORKSHEET,
+    summary: "My Vacation Plant Helper Plan",
+    testId: "vacation-plant-worksheet",
+    toolsDisclaimer: vacationPlantToolsDisclaimer,
+  },
+  "porch-package-helper": {
+    reality: PORCH_PACKAGE_REALITY_CHECK,
+    worksheet: PORCH_PACKAGE_NOTES_WORKSHEET,
+    summary: "My Porch Package Helper Plan",
+    testId: "porch-package-worksheet",
+    toolsDisclaimer: porchPackageHelperToolsDisclaimer,
+  },
+  "book-publishing-kids": {
+    reality: BOOK_PUBLISHING_KIDS_REALITY_CHECK,
+    worksheet: BOOK_PUBLISHING_KIDS_NOTES_WORKSHEET,
+    summary: "Book Plan",
+    testId: "book-publishing-kids-worksheet",
+    toolsDisclaimer: bookPublishingKidsToolsDisclaimer,
+  },
+  "ai-peers": {
+    reality: AI_PEERS_REALITY_CHECK,
+    worksheet: AI_PEERS_NOTES_WORKSHEET,
+    summary: "AI-for-Peers Coffee Chat Notes",
+    testId: "ai-peers-worksheet",
+    toolsDisclaimer: aiPeersToolsDisclaimer,
+  },
+  "travel-research-assistant": {
+    reality: TRAVEL_RESEARCH_REALITY_CHECK,
+    worksheet: TRAVEL_RESEARCH_NOTES_WORKSHEET,
+    summary: "My Travel Research Assistant Plan",
+    testId: "travel-research-worksheet",
+    toolsDisclaimer: travelResearchAssistantToolsDisclaimer,
+  },
+  "transcription-notes-helper": {
+    reality: TRANSCRIPTION_NOTES_REALITY_CHECK,
+    worksheet: TRANSCRIPTION_NOTES_NOTES_WORKSHEET,
+    summary: "My Transcription & Notes Helper Plan",
+    testId: "transcription-notes-worksheet",
+    toolsDisclaimer: transcriptionNotesHelperToolsDisclaimer,
+  },
+  "website-tester": {
+    reality: WEBSITE_TESTER_REALITY_CHECK,
+    worksheet: WEBSITE_TESTER_NOTES_WORKSHEET,
+    summary: "My Website Tester Plan",
+    testId: "website-tester-worksheet",
+    toolsDisclaimer: websiteTesterToolsDisclaimer,
+  },
+  "community-newsletter-creator": {
+    reality: COMMUNITY_NEWSLETTER_REALITY_CHECK,
+    worksheet: COMMUNITY_NEWSLETTER_NOTES_WORKSHEET,
+    summary: "My Community Newsletter Plan",
+    testId: "community-newsletter-worksheet",
+    toolsDisclaimer: communityNewsletterCreatorToolsDisclaimer,
+  },
+  teaching: {
+    reality: COMMUNITY_TEACHING_REALITY_CHECK,
+    worksheet: COMMUNITY_TEACHING_NOTES_WORKSHEET,
+    summary: "My Community Teaching Plan",
+    testId: "community-teaching-worksheet",
+    toolsDisclaimer: communityTeachingWorkshopsToolsDisclaimer,
+  },
+  "review-response-assistant": {
+    reality: REVIEW_RESPONSE_REALITY_CHECK,
+    worksheet: REVIEW_RESPONSE_NOTES_WORKSHEET,
+    summary: "My Customer Review Response Plan",
+    testId: "review-response-worksheet",
+    toolsDisclaimer: reviewResponseAssistantToolsDisclaimer,
+  },
+  consulting: {
+    reality: CAREER_CONSULTING_REALITY_CHECK,
+    worksheet: CAREER_CONSULTING_NOTES_WORKSHEET,
+    summary: "My Career & Industry Consulting Plan",
+    testId: "career-consulting-worksheet",
+    toolsDisclaimer: careerIndustryConsultingToolsDisclaimer,
+  },
+  notary: {
+    reality: PART_TIME_NOTARY_REALITY_CHECK,
+    worksheet: PART_TIME_NOTARY_NOTES_WORKSHEET,
+    summary: "My Part-Time Notary Plan",
+    testId: "part-time-notary-worksheet",
+    toolsDisclaimer: partTimeNotaryToolsDisclaimer,
+  },
+  "resume-linkedin-helper": {
+    reality: RESUME_LINKEDIN_REALITY_CHECK,
+    worksheet: RESUME_LINKEDIN_NOTES_WORKSHEET,
+    summary: "My Resume & LinkedIn Helper Plan",
+    testId: "resume-linkedin-worksheet",
+    toolsDisclaimer: resumeLinkedInHelperToolsDisclaimer,
+  },
+  "short-form-video-editor": {
+    reality: SHORT_FORM_VIDEO_REALITY_CHECK,
+    worksheet: SHORT_FORM_VIDEO_NOTES_WORKSHEET,
+    summary: "My Short-Form Video Editor Plan",
+    testId: "short-form-video-worksheet",
+    toolsDisclaimer: shortFormVideoEditorToolsDisclaimer,
+  },
+  "google-business-helper": {
+    reality: GBP_HELPER_REALITY_CHECK,
+    worksheet: GBP_HELPER_NOTES_WORKSHEET,
+    summary: "My Google Business Profile Helper Plan",
+    testId: "google-business-worksheet",
+    toolsDisclaimer: googleBusinessProfileHelperToolsDisclaimer,
+  },
+  "ugc-creator": {
+    reality: UGC_CREATOR_REALITY_CHECK,
+    worksheet: UGC_CREATOR_NOTES_WORKSHEET,
+    summary: "My UGC Creator Plan",
+    testId: "ugc-creator-worksheet",
+    toolsDisclaimer: ugcCreatorToolsDisclaimer,
+  },
+  "virtual-assistant": {
+    reality: VIRTUAL_ASSISTANT_REALITY_CHECK,
+    worksheet: VIRTUAL_ASSISTANT_NOTES_WORKSHEET,
+    summary: "My Virtual Assistant Plan",
+    testId: "virtual-assistant-worksheet",
+    toolsDisclaimer: virtualAssistantToolsDisclaimer,
+  },
+  "virtual-receptionist": {
+    reality: VIRTUAL_RECEPTIONIST_REALITY_CHECK,
+    worksheet: VIRTUAL_RECEPTIONIST_NOTES_WORKSHEET,
+    summary: "My Virtual Receptionist Plan",
+    testId: "virtual-receptionist-worksheet",
+    toolsDisclaimer: virtualReceptionistToolsDisclaimer,
+  },
+  social: {
+    reality: SOCIAL_INFLUENCER_REALITY_CHECK,
+    worksheet: SOCIAL_INFLUENCER_NOTES_WORKSHEET,
+    summary: "My Social Influencer Plan",
+    testId: "social-influencer-worksheet",
+    toolsDisclaimer: socialInfluencerToolsDisclaimer,
+  },
+  "junior-savings-ceo": {
+    reality: JUNIOR_SAVINGS_CEO_REALITY_CHECK,
+    worksheet: JUNIOR_SAVINGS_CEO_NOTES_WORKSHEET,
+    summary: "My Savings Goal Plan",
+    testId: "junior-savings-ceo-worksheet",
+    toolsDisclaimer: juniorSavingsCeoToolsDisclaimer,
+  },
+  "online-community-moderator": {
+    reality: COMMUNITY_MODERATOR_REALITY_CHECK,
+    worksheet: COMMUNITY_MODERATOR_NOTES_WORKSHEET,
+    summary: "My Online Community Moderator Plan",
+    testId: "online-community-moderator-worksheet",
+    toolsDisclaimer: onlineCommunityModeratorToolsDisclaimer,
+  },
+};
+
 export function guidePrepAfterTabsOwnsPanel(canEditGuideContent: boolean): PrepTabId[] | undefined {
   return canEditGuideContent ? ["notes"] : undefined;
 }
@@ -213,6 +850,7 @@ export function GuidePrepSections({
   }, [guideId, expandAllSections]);
 
   const tabs = useMemo((): PrepTab[] => {
+    const completedNotes = guideId ? COMPLETED_GUIDE_NOTES[guideId] : undefined;
     const realityCheck =
       guideId === "food-delivery" ? (
         <aside
@@ -304,6 +942,126 @@ export function GuidePrepSections({
           </strong>
           <p style={{ whiteSpace: "pre-line" }}>{BABYSITTING_REALITY_CHECK.body}</p>
         </aside>
+      ) : guideId === "errand-runner" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {ERRAND_RUNNER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{ERRAND_RUNNER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "ai-agents" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {AI_AGENTS_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{AI_AGENTS_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "ai-promo-video" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {AI_PROMO_VIDEO_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{AI_PROMO_VIDEO_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "ai-timing" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {AI_TIMING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{AI_TIMING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "tech-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {TECH_HELPER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{TECH_HELPER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "yard-help" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {YARD_HELP_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{YARD_HELP_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "homework-organizer" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {HOMEWORK_ORGANIZER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{HOMEWORK_ORGANIZER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "group-setup-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {GROUP_SETUP_HELPER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{GROUP_SETUP_HELPER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "house-sitter" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {HOUSE_SITTER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{HOUSE_SITTER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "bookkeeping" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {BOOKKEEPING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{BOOKKEEPING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "closet-cleanout-listing" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {CLOSET_CLEANOUT_LISTING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{CLOSET_CLEANOUT_LISTING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "nonprofit-social-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {NONPROFIT_SOCIAL_HELPER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{NONPROFIT_SOCIAL_HELPER_REALITY_CHECK.body}</p>
+        </aside>
       ) : guideId === "digital-products" ? (
         <aside
           className="gysh-section-panel__reality-check"
@@ -313,6 +1071,86 @@ export function GuidePrepSections({
             {DIGITAL_PRODUCTS_REALITY_CHECK.title}
           </strong>
           <p style={{ whiteSpace: "pre-line" }}>{DIGITAL_PRODUCTS_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "book-publishing" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {BOOK_PUBLISHING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{BOOK_PUBLISHING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "start-gardening-club" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {START_GARDENING_CLUB_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{START_GARDENING_CLUB_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "start-book-club" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {START_BOOK_CLUB_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{START_BOOK_CLUB_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "foreclosure-properties" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {FORECLOSURE_PROPERTIES_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{FORECLOSURE_PROPERTIES_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "cleaning-service" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {CLEANING_SERVICE_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{CLEANING_SERVICE_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "kids-games-ai" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {KIDS_GAMES_AI_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{KIDS_GAMES_AI_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "ai-prompt-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {AI_PROMPT_HELPER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{AI_PROMPT_HELPER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "junior-games-ai" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {JUNIOR_GAMES_AI_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{JUNIOR_GAMES_AI_REALITY_CHECK.body}</p>
         </aside>
       ) : guideId === "rideshare" ? (
         <aside
@@ -353,6 +1191,16 @@ export function GuidePrepSections({
             {AIRBNB_TURNOVER_CHECKER_REALITY_CHECK.title}
           </strong>
           <p style={{ whiteSpace: "pre-line" }}>{AIRBNB_TURNOVER_CHECKER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "str-cohost" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {STR_COHOST_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{STR_COHOST_REALITY_CHECK.body}</p>
         </aside>
       ) : guideId === "junior-reinvest-ceo" ? (
         <aside
@@ -424,6 +1272,96 @@ export function GuidePrepSections({
           </strong>
           <p>{KIDS_KINDNESS_SHARE_REALITY_CHECK.body}</p>
         </aside>
+      ) : guideId === "beach-shell-jewelry" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {BEACH_SHELL_JEWELRY_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{BEACH_SHELL_JEWELRY_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "gift-wrapping" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {GIFT_WRAPPING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{GIFT_WRAPPING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "affiliate" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {AFFILIATE_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{AFFILIATE_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "dropshipping" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {DROPSHIPPING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{DROPSHIPPING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "fb-marketplace-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {FB_MARKETPLACE_HELPER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{FB_MARKETPLACE_HELPER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "basic-invitation-creator" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {BASIC_INVITATION_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{BASIC_INVITATION_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "pod" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {POD_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{POD_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "pet-sitting" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {PET_SITTING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{PET_SITTING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : completedNotes ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {completedNotes.reality.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{completedNotes.reality.body}</p>
+        </aside>
       ) : guideId === "kids-piggy-first-goal" ? (
         <aside
           className="gysh-section-panel__reality-check"
@@ -458,53 +1396,55 @@ export function GuidePrepSections({
       },
     ];
 
-    if (pricing && pricing.items.length > 0) {
-      list.push({
-        id: "pricing",
-        label: pricing.tabLabel?.trim() || "Suggested Pricing",
-        panelClass: "gysh-section-panel--pricing",
-        testId: `${testIdPrefix}-pricing`,
-        content: (
-          <>
-            <p className="gysh-section-panel__lede">{pricingDisclaimer()}</p>
-            {pricing.intro ? (
-              <div
-                className="gysh-section-panel__intro"
-                data-testid={`${testIdPrefix}-pricing-intro`}
-              >
-                {pricing.intro.split(/\n\n+/).map((para, i) => (
-                  <p key={i}>{para}</p>
-                ))}
-              </div>
-            ) : null}
+    list.push({
+      id: "pricing",
+      label: pricing?.tabLabel?.trim() || "Suggested Pricing",
+      panelClass: "gysh-section-panel--pricing",
+      testId: `${testIdPrefix}-pricing`,
+      content: (
+        <>
+          <p className="gysh-section-panel__lede">{pricingDisclaimer()}</p>
+          {pricing?.intro ? (
+            <div
+              className="gysh-section-panel__intro"
+              data-testid={`${testIdPrefix}-pricing-intro`}
+            >
+              {pricing.intro.split(/\n\n+/).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          ) : null}
+          {pricing?.items?.length ? (
             <ul className="gysh-section-panel__list">
               {pricing.items.map((item) => (
                 <li key={item.id}>{formatPricingLine(item)}</li>
               ))}
             </ul>
-            {pricing.raiseTip ? (
-              <p className="gysh-section-panel__foot">
-                <strong>Raise tip:</strong> {pricing.raiseTip}
-              </p>
-            ) : null}
-          </>
-        ),
-      });
-    }
-
-    if (supplies && supplies.items.length > 0) {
-      list.push({
-        id: "supplies",
-        label: "Supply List",
-        panelClass: "gysh-section-panel--supplies",
-        testId: `${testIdPrefix}-supplies`,
-        content: (
-          <>
-            <p className="gysh-section-panel__lede">{suppliesDisclaimer()}</p>
-            <p className="gysh-section-panel__highlight">
-              <strong>Estimated cost to gather supplies before your first paid job:</strong>{" "}
-              {supplies.starterKitTotal}
+          ) : (
+            <p className="gysh-section-panel__empty">No suggested prices listed yet.</p>
+          )}
+          {pricing?.raiseTip ? (
+            <p className="gysh-section-panel__foot">
+              <strong>Raise tip:</strong> {pricing.raiseTip}
             </p>
+          ) : null}
+        </>
+      ),
+    });
+
+    list.push({
+      id: "supplies",
+      label: "Supply List",
+      panelClass: "gysh-section-panel--supplies",
+      testId: `${testIdPrefix}-supplies`,
+      content: (
+        <>
+          <p className="gysh-section-panel__lede">{suppliesDisclaimer()}</p>
+          <p className="gysh-section-panel__highlight">
+            <strong>Estimated cost to gather supplies before your first paid job:</strong>{" "}
+            {supplies?.starterKitTotal?.trim() || "Not listed yet."}
+          </p>
+          {supplies?.items?.length ? (
             <ol className="gysh-supply-checklist" data-testid={`${testIdPrefix}-supply-checklist`}>
               {supplies.items.map((item, index) => {
                 const checked = !!checkedSupplies[item.id];
@@ -538,13 +1478,15 @@ export function GuidePrepSections({
                 );
               })}
             </ol>
-            <p className="gysh-section-panel__foot gysh-supply-checklist__print-hint">
-              Tip: use Download PDF for a printable numbered checklist with empty checkboxes.
-            </p>
-          </>
-        ),
-      });
-    }
+          ) : (
+            <p className="gysh-section-panel__empty">No supply list items yet.</p>
+          )}
+          <p className="gysh-section-panel__foot gysh-supply-checklist__print-hint">
+            Tip: use Download PDF for a printable numbered checklist with empty checkboxes.
+          </p>
+        </>
+      ),
+    });
 
     list.push({
       id: "tools",
@@ -633,9 +1575,209 @@ export function GuidePrepSections({
                   </p>
                 ))}
             </div>
+          ) : guideId === "errand-runner" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {errandRunnerToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "ai-agents" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {aiAgentsToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "ai-promo-video" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {aiPromoVideoToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "ai-timing" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {aiTimingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "tech-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {techHelperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "yard-help" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {yardHelpToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "homework-organizer" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {homeworkOrganizerToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "group-setup-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {groupSetupHelperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "house-sitter" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {houseSitterToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "bookkeeping" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {bookkeepingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "closet-cleanout-listing" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {closetCleanoutListingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "nonprofit-social-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {nonprofitSocialHelperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
           ) : guideId === "digital-products" ? (
             <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
               {digitalProductsToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "book-publishing" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {bookPublishingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "start-gardening-club" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {startGardeningClubToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "start-book-club" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {startBookClubToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "foreclosure-properties" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {foreclosurePropertiesToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "cleaning-service" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {cleaningServiceToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "kids-games-ai" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {kidsGamesAiToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "ai-prompt-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {aiPromptHelperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "junior-games-ai" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {juniorGamesAiToolsDisclaimer()
                 .split(/\n\n+/)
                 .map((para, i) => (
                   <p key={i} style={{ whiteSpace: "pre-line" }}>
@@ -676,6 +1818,16 @@ export function GuidePrepSections({
           ) : guideId === "airbnb-turnover-checker" ? (
             <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
               {airbnbTurnoverCheckerToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "str-cohost" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {strCohostToolsDisclaimer()
                 .split(/\n\n+/)
                 .map((para, i) => (
                   <p key={i} style={{ whiteSpace: "pre-line" }}>
@@ -746,6 +1898,97 @@ export function GuidePrepSections({
           ) : guideId === "kids-kindness-share" ? (
             <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
               {kidsKindnessShareToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "beach-shell-jewelry" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {beachShellJewelryToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "gift-wrapping" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {giftWrappingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "affiliate" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {affiliateToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "dropshipping" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {dropshippingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "fb-marketplace-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {fbMarketplaceHelperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "basic-invitation-creator" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {basicInvitationToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "pod" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {podToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "pet-sitting" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {petSittingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : completedNotes ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {completedNotes
+                .toolsDisclaimer()
                 .split(/\n\n+/)
                 .map((para, i) => (
                   <p key={i} style={{ whiteSpace: "pre-line" }}>
@@ -951,6 +2194,162 @@ export function GuidePrepSections({
                   Copy what you need into your notes below, or keep this open while you plan sits.
                 </p>
               </details>
+            ) : guideId === "errand-runner" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-errand-runner-worksheet`}
+              >
+                <summary>My Errand Runner Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {ERRAND_RUNNER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan runs.
+                </p>
+              </details>
+            ) : guideId === "ai-agents" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-ai-agents-worksheet`}
+              >
+                <summary>My AI Agent Offer</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {AI_AGENTS_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you scope the workflow.
+                </p>
+              </details>
+            ) : guideId === "ai-promo-video" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-ai-promo-video-worksheet`}
+              >
+                <summary>My AI Promo Video Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {AI_PROMO_VIDEO_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan the promo.
+                </p>
+              </details>
+            ) : guideId === "ai-timing" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-ai-timing-worksheet`}
+              >
+                <summary>My AI Rideshare Timing Scout Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {AI_TIMING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you research windows.
+                </p>
+              </details>
+            ) : guideId === "tech-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-tech-helper-worksheet`}
+              >
+                <summary>My Tech-Help Service</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {TECH_HELPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you teach.
+                </p>
+              </details>
+            ) : guideId === "yard-help" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-yard-help-worksheet`}
+              >
+                <summary>My Yard & Garden Helper Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {YARD_HELP_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan jobs.
+                </p>
+              </details>
+            ) : guideId === "homework-organizer" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-homework-organizer-worksheet`}
+              >
+                <summary>My Homework Organizer Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {HOMEWORK_ORGANIZER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan sessions.
+                </p>
+              </details>
+            ) : guideId === "group-setup-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-group-setup-helper-worksheet`}
+              >
+                <summary>My TikTok/Facebook Setup Service</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {GROUP_SETUP_HELPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan projects.
+                </p>
+              </details>
+            ) : guideId === "house-sitter" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-house-sitter-worksheet`}
+              >
+                <summary>My House-Sitting Service</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {HOUSE_SITTER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan check-ins.
+                </p>
+              </details>
+            ) : guideId === "bookkeeping" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-bookkeeping-worksheet`}
+              >
+                <summary>My Bookkeeping & Admin Service</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {BOOKKEEPING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan the month.
+                </p>
+              </details>
+            ) : guideId === "closet-cleanout-listing" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-closet-cleanout-listing-worksheet`}
+              >
+                <summary>My Closet Listing Service</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {CLOSET_CLEANOUT_LISTING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan the batch.
+                </p>
+              </details>
+            ) : guideId === "nonprofit-social-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-nonprofit-social-helper-worksheet`}
+              >
+                <summary>My Church/Nonprofit Social Media Service</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {NONPROFIT_SOCIAL_HELPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan the month.
+                </p>
+              </details>
             ) : guideId === "digital-products" ? (
               <details
                 className="gysh-section-panel__worksheet"
@@ -962,6 +2361,110 @@ export function GuidePrepSections({
                 </pre>
                 <p className="gysh-section-panel__foot">
                   Copy what you need into your notes below, or keep this open while you launch.
+                </p>
+              </details>
+            ) : guideId === "book-publishing" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-book-publishing-worksheet`}
+              >
+                <summary>My Book Publishing Dashboard</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {BOOK_PUBLISHING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you publish.
+                </p>
+              </details>
+            ) : guideId === "start-gardening-club" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-start-gardening-club-worksheet`}
+              >
+                <summary>My Gardening Club Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {START_GARDENING_CLUB_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan the club.
+                </p>
+              </details>
+            ) : guideId === "start-book-club" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-start-book-club-worksheet`}
+              >
+                <summary>My Book Club Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {START_BOOK_CLUB_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan the club.
+                </p>
+              </details>
+            ) : guideId === "foreclosure-properties" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-foreclosure-properties-worksheet`}
+              >
+                <summary>Buy Box & Deal Notes</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {FORECLOSURE_PROPERTIES_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you underwrite.
+                </p>
+              </details>
+            ) : guideId === "cleaning-service" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-cleaning-service-worksheet`}
+              >
+                <summary>Cleaning Service Notes</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {CLEANING_SERVICE_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan jobs.
+                </p>
+              </details>
+            ) : guideId === "kids-games-ai" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-kids-games-ai-worksheet`}
+              >
+                <summary>My Tiny Game</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {KIDS_GAMES_AI_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you build.
+                </p>
+              </details>
+            ) : guideId === "ai-prompt-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-ai-prompt-helper-worksheet`}
+              >
+                <summary>My AI Learning Goal</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {AI_PROMPT_HELPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you practice.
+                </p>
+              </details>
+            ) : guideId === "junior-games-ai" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-junior-games-ai-worksheet`}
+              >
+                <summary>My Game</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {JUNIOR_GAMES_AI_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you build.
                 </p>
               </details>
             ) : guideId === "rideshare" ? (
@@ -1014,6 +2517,19 @@ export function GuidePrepSections({
                 </pre>
                 <p className="gysh-section-panel__foot">
                   Copy what you need into your notes below. Never store access codes in public notes.
+                </p>
+              </details>
+            ) : guideId === "str-cohost" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-str-cohost-worksheet`}
+              >
+                <summary>My Airbnb Arbitrage Hosting Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {STR_COHOST_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below. Do not sign a lease until written permission and the numbers work.
                 </p>
               </details>
             ) : guideId === "junior-reinvest-ceo" ? (
@@ -1105,6 +2621,121 @@ export function GuidePrepSections({
                 </pre>
                 <p className="gysh-section-panel__foot">
                   Copy what you need into your notes below, or keep this open while you help.
+                </p>
+              </details>
+            ) : guideId === "beach-shell-jewelry" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-beach-shell-jewelry-worksheet`}
+              >
+                <summary>My Beach Shell Jewelry Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {BEACH_SHELL_JEWELRY_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you make and sell.
+                </p>
+              </details>
+            ) : guideId === "gift-wrapping" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-gift-wrapping-worksheet`}
+              >
+                <summary>My Gift Wrapping Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {GIFT_WRAPPING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you wrap and hand off gifts.
+                </p>
+              </details>
+            ) : guideId === "affiliate" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-affiliate-worksheet`}
+              >
+                <summary>My Affiliate Marketing Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {AFFILIATE_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you publish and track.
+                </p>
+              </details>
+            ) : guideId === "dropshipping" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-dropshipping-worksheet`}
+              >
+                <summary>My Dropshipping Business Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {DROPSHIPPING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you test products.
+                </p>
+              </details>
+            ) : guideId === "fb-marketplace-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-fb-marketplace-helper-worksheet`}
+              >
+                <summary>My Facebook Marketplace Listing Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {FB_MARKETPLACE_HELPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you list items.
+                </p>
+              </details>
+            ) : guideId === "basic-invitation-creator" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-basic-invitation-creator-worksheet`}
+              >
+                <summary>My Basic Invitation Creator Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {BASIC_INVITATION_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you design and proof.
+                </p>
+              </details>
+            ) : guideId === "pod" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-pod-worksheet`}
+              >
+                <summary>My Print-on-Demand Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">{POD_NOTES_WORKSHEET}</pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you test products.
+                </p>
+              </details>
+            ) : guideId === "pet-sitting" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-pet-sitting-worksheet`}
+              >
+                <summary>My Pet Sitting & Dog Walking Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {PET_SITTING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you care for pets.
+                </p>
+              </details>
+            ) : completedNotes ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-${completedNotes.testId}`}
+              >
+                <summary>{completedNotes.summary}</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {completedNotes.worksheet}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you work the plan.
                 </p>
               </details>
             ) : guideId === "kids-piggy-first-goal" ? (

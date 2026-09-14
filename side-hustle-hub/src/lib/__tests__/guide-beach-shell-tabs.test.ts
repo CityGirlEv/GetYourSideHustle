@@ -26,7 +26,7 @@ describe("Beach Shell Jewelry template — all guides", () => {
     const kit = guideKitForId("beach-shell-jewelry");
     const titles = (kit.steps ?? []).map((s) => s.title).join(" | ");
     expect(titles).toMatch(/Make your marketing materials/i);
-    expect(titles).toMatch(/Carry out the marketing plan/i);
+    expect(titles).toMatch(/Carry out (the|your) marketing plan/i);
     const tabs = guidePrepSectionIds({
       kit,
       includeSteps: true,
@@ -58,6 +58,17 @@ describe("Beach Shell Jewelry template — all guides", () => {
     for (const e of uniqueGuideLibraryEntries()) {
       const kit = guideKitForId(e.id);
       expect(kit.prerequisites?.length, e.id).toBeGreaterThan(0);
+      expect(
+        kit.prerequisites?.some(
+          (p) =>
+            p.id === "free-member" ||
+            /GYSH Free account \(or higher\)/i.test(`${p.label} ${p.detail}`) ||
+            /Guides are not public — sign in with at least a Free membership/i.test(
+              `${p.label} ${p.detail}`,
+            ),
+        ),
+        e.id,
+      ).toBe(false);
       expect(kit.tools?.length, e.id).toBeGreaterThan(0);
       expect(kit.suggestedPricing?.items.length, e.id).toBeGreaterThan(0);
       expect(kit.supplies?.items.length, e.id).toBeGreaterThan(0);
@@ -84,11 +95,45 @@ describe("Beach Shell Jewelry template — all guides", () => {
   });
 
   it("backfilled guides default to Pending / Needs Further Review", () => {
-    expect(guideMarkedPendingAfterPrepBackfill("airbnb")).toBe(true);
-    expect(defaultStatusForGuide("airbnb")).toBe("pending");
+    expect(guideMarkedPendingAfterPrepBackfill("amazon")).toBe(true);
+    expect(defaultStatusForGuide("amazon")).toBe("pending");
+    expect(guideMarkedPendingAfterPrepBackfill("airbnb")).toBe(false);
+    expect(defaultStatusForGuide("airbnb")).toBe("active");
     expect(guideMarkedPendingAfterPrepBackfill("beach-shell-jewelry")).toBe(false);
     expect(defaultStatusForGuide("beach-shell-jewelry")).toBe("active");
     expect(guideMarkedPendingAfterPrepBackfill("babysitting")).toBe(false);
     expect(defaultStatusForGuide("babysitting")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("errand-runner")).toBe(false);
+    expect(defaultStatusForGuide("errand-runner")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("ai-agents")).toBe(false);
+    expect(defaultStatusForGuide("ai-agents")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("ai-promo-video")).toBe(false);
+    expect(defaultStatusForGuide("ai-promo-video")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("start-book-club")).toBe(false);
+    expect(defaultStatusForGuide("start-book-club")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("ai-timing")).toBe(false);
+    expect(defaultStatusForGuide("ai-timing")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("str-cohost")).toBe(false);
+    expect(defaultStatusForGuide("str-cohost")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("homework-organizer")).toBe(false);
+    expect(defaultStatusForGuide("homework-organizer")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("group-setup-helper")).toBe(false);
+    expect(defaultStatusForGuide("group-setup-helper")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("house-sitter")).toBe(false);
+    expect(defaultStatusForGuide("house-sitter")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("bookkeeping")).toBe(false);
+    expect(defaultStatusForGuide("bookkeeping")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("closet-cleanout-listing")).toBe(false);
+    expect(defaultStatusForGuide("closet-cleanout-listing")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("nonprofit-social-helper")).toBe(false);
+    expect(defaultStatusForGuide("nonprofit-social-helper")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("ugc-creator")).toBe(false);
+    expect(defaultStatusForGuide("ugc-creator")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("virtual-assistant")).toBe(false);
+    expect(defaultStatusForGuide("virtual-assistant")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("virtual-receptionist")).toBe(false);
+    expect(defaultStatusForGuide("virtual-receptionist")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("social")).toBe(false);
+    expect(defaultStatusForGuide("social")).toBe("active");
   });
 });

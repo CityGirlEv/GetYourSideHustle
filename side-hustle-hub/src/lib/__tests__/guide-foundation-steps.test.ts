@@ -169,7 +169,7 @@ describe("youth parent thumbs-up step", () => {
       expect(steps.some((s) => /make your marketing materials/i.test(s.title)), id).toBe(false);
       expect(
         steps.some((s) =>
-          /pick your goal|name what you are saving for|find the price|write the cost/i.test(
+          /pick what you.?re saving for|find or estimate the total cost|name what you are saving for|pick your goal|find the price|write the cost/i.test(
             s.title,
           ),
         ),
