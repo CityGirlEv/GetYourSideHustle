@@ -1,0 +1,67 @@
+-- #021, #065, #067: show code kits. Assign Evelyn. Do not change published/minTier.
+UPDATE guide_catalog_state
+SET patch_json = json_set(
+      json_remove(
+        CASE WHEN patch_json IS NULL OR trim(patch_json) = '' THEN '{}' ELSE patch_json END,
+        '$.steps',
+        '$.tools',
+        '$.supplies',
+        '$.prerequisites',
+        '$.suggestedPricing'
+      ),
+      '$.assignee',
+      json_quote('evelyn'),
+      '$.name',
+      json_quote('Affiliate Marketing')
+    ),
+    updated_at = '2026-09-13T11:15:00.000Z',
+    updated_by = 'Evelyn Irving'
+WHERE guide_id = 'affiliate';
+
+UPDATE guide_catalog_state
+SET patch_json = json_set(
+      json_remove(
+        CASE WHEN patch_json IS NULL OR trim(patch_json) = '' THEN '{}' ELSE patch_json END,
+        '$.steps',
+        '$.tools',
+        '$.supplies',
+        '$.prerequisites',
+        '$.suggestedPricing'
+      ),
+      '$.assignee',
+      json_quote('evelyn'),
+      '$.name',
+      json_quote('Dropshipping Business')
+    ),
+    updated_at = '2026-09-13T11:15:00.000Z',
+    updated_by = 'Evelyn Irving'
+WHERE guide_id = 'dropshipping';
+
+UPDATE guide_catalog_state
+SET patch_json = json_set(
+      json_remove(
+        CASE WHEN patch_json IS NULL OR trim(patch_json) = '' THEN '{}' ELSE patch_json END,
+        '$.steps',
+        '$.tools',
+        '$.supplies',
+        '$.prerequisites',
+        '$.suggestedPricing'
+      ),
+      '$.assignee',
+      json_quote('evelyn'),
+      '$.name',
+      json_quote('Facebook Marketplace Listing Helper')
+    ),
+    updated_at = '2026-09-13T11:15:00.000Z',
+    updated_by = 'Evelyn Irving'
+WHERE guide_id = 'fb-marketplace-helper';
+
+UPDATE test_case_status
+SET assignee = 'evelyn',
+    updated_at = '2026-09-13T11:15:00.000Z',
+    updated_by = 'Evelyn Irving',
+    assigned_by = CASE WHEN assigned_by IS NULL OR trim(assigned_by) = '' THEN 'Evelyn Irving' ELSE assigned_by END,
+    date_assigned = CASE WHEN date_assigned IS NULL OR trim(date_assigned) = '' THEN date('now') ELSE date_assigned END
+WHERE case_id GLOB 'GUIDE-REV-*-affiliate'
+   OR case_id GLOB 'GUIDE-REV-*-dropshipping'
+   OR case_id GLOB 'GUIDE-REV-*-fb-marketplace-helper';
