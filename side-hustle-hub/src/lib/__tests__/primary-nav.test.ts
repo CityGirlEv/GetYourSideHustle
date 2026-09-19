@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dashboardNavTone } from "../membership";
+import { dashboardNavPlanLabel, dashboardNavTone } from "../membership";
 import { COMMUNITY_NAV_CHILDREN, isCommunityNavView } from "../primary-nav";
 
 describe("primary nav", () => {
@@ -24,5 +24,13 @@ describe("primary nav", () => {
     expect(dashboardNavTone("PRO")).toBe("pro");
     expect(dashboardNavTone("elite")).toBe("elite");
     expect(dashboardNavTone(null)).toBe("free");
+  });
+
+  it("labels the Dashboard bubble with the membership level", () => {
+    expect(dashboardNavPlanLabel("free")).toBe("Free");
+    expect(dashboardNavPlanLabel("starter")).toBe("Starter");
+    expect(dashboardNavPlanLabel("PRO")).toBe("Pro");
+    expect(dashboardNavPlanLabel("elite")).toBe("Elite");
+    expect(dashboardNavPlanLabel(null)).toBe("Free");
   });
 });

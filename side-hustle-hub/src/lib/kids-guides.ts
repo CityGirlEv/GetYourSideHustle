@@ -190,7 +190,7 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "give-back",
     previewCount: 2,
     summary:
-      "Make a tiny sticker or charm set, price it with a parent, and add a Glow Getter kindness extra inspired by Kevina Starr.",
+      "Make a tiny set of original stickers, charms, kindness cards, or another simple craft; price it with a parent; sell only through parent-approved channels; and include a Kevina-inspired kindness extra. Tagline: Make Something Bright. Sell It Safely. Share a Little Kindness.",
     parentTip: "Supervise oven clay or shipping. Sell only to family, school fairs, or people you know.",
     steps: [
       {
@@ -384,7 +384,7 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "games-ai",
     previewCount: 2,
     summary:
-      "Practice wholesome content for school, portfolio, or family brand — privacy-first, no stranger DMs.",
+      "Practice wholesome content for school, a portfolio, or a family brand — privacy-first, parent-approved, and without stranger direct messages. Tagline: Create Something Helpful. Share It Safely.",
     parentTip: "Private accounts preferred; approve every public post.",
     steps: [
       {

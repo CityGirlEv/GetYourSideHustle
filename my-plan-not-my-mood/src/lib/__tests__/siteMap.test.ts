@@ -8,6 +8,7 @@ import {
   siteBranches,
   treemapCoversUnitSquare,
 } from '../siteMap';
+import { storeRouteFromSitePath } from '../storeRoutes';
 
 describe('siteMap', () => {
   it('maps public, tools, admin, and email branches from the root', () => {
@@ -20,14 +21,27 @@ describe('siteMap', () => {
     const publicLeaves = flattenLeaves(filterSiteTree(APP_SITE_TREE, false));
     expect(publicLeaves.some((leaf) => leaf.id === 'join')).toBe(false);
     expect(publicLeaves.some((leaf) => leaf.id === 'memberships')).toBe(false);
+    expect(publicLeaves.map((leaf) => leaf.label)).toContain("What's Your Mood?");
+    expect(publicLeaves.map((leaf) => leaf.label)).toContain('Hero mood bubbles');
+    expect(publicLeaves.map((leaf) => leaf.label)).toContain('Mood workflow map');
     expect(publicLeaves.map((leaf) => leaf.label)).toContain('Home / Storefront');
     expect(publicLeaves.map((leaf) => leaf.label)).toContain('Make Payment');
     expect(publicLeaves.map((leaf) => leaf.label)).toContain('Privacy Policy');
     expect(publicLeaves.map((leaf) => leaf.label)).toContain('Logos');
     expect(publicLeaves.find((leaf) => leaf.id === 'gear')?.status).toBe('live');
     expect(publicLeaves.find((leaf) => leaf.id === 'privacy')?.status).toBe('live');
-    expect(publicLeaves.map((leaf) => leaf.label)).toContain('Mailing List');
+    expect(publicLeaves.map((leaf) => leaf.label)).not.toContain('Mailing List');
+    expect(flattenLeaves(APP_SITE_TREE).find((leaf) => leaf.id === 'mailing-list')?.path).toBe('/admin/mailing-list');
+    expect(flattenLeaves(APP_SITE_TREE).find((leaf) => leaf.id === 'mailing-list')?.status).toBe('gated');
     expect(publicLeaves.find((leaf) => leaf.id === 'budget')?.status).toBe('gated');
+    expect(publicLeaves.find((leaf) => leaf.id === 'inventory-pricing')?.status).toBe('gated');
+    const publicPaths = publicLeaves.map((leaf) => leaf.path).filter(Boolean) as string[];
+    expect(publicPaths).toEqual(expect.arrayContaining(['/', '/about', '/gear', '/privacy-policy', '/contact', '/faq']));
+    expect(
+      publicPaths
+        .filter((path) => !path.startsWith('/admin'))
+        .every((path) => storeRouteFromSitePath(path) !== null),
+    ).toBe(true);
     const adminLeaves = flattenLeaves(filterSiteTree(APP_SITE_TREE, true));
     expect(adminLeaves.map((leaf) => leaf.label)).toContain('Join / Memberships (Coming Soon)');
     expect(adminLeaves.map((leaf) => leaf.label)).toContain('Memberships (Coming Soon)');

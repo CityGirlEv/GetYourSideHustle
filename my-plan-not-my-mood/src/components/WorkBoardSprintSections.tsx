@@ -5,6 +5,7 @@ import {
   SPRINT_SECTION_TONES,
   defaultOpenSprintSections,
   groupAndSortItemsBySprint,
+  formatRolledOverCount,
   sprintSectionStats,
   toggleSprintSection,
   type SprintCategory,
@@ -105,6 +106,7 @@ export function WorkBoardSprintSections<T extends { id: string; title: string; s
               <span className={`text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-lg ${tone.chip}`}>
                 {stat?.done ?? 0}/{stat?.total ?? 0} done · {stat?.percent ?? 0}%
                 {(stat?.blocked ?? 0) > 0 ? ` · ${stat?.blocked} blocked` : ''}
+                {(stat?.rolledOver ?? 0) > 0 ? ` · ${formatRolledOverCount(stat?.rolledOver ?? 0)}` : ''}
               </span>
             </button>
             {isOpen && (

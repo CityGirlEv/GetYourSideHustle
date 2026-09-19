@@ -238,7 +238,7 @@ export const JUNIOR_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   "virtual-receptionist": "pro",
   // Elite — premium teen creative / digital (on top of Digital/AI elite policy)
   "canva-flyer-creator": "elite",
-  "digital-product-formatter": "elite",
+  "digital-product-formatter": "starter",
 };
 
 /** Senior teaser ids → minimum membership tier (live guides use launchGuideId for adult map). */
@@ -416,11 +416,23 @@ export function membershipLockedBadgeLabel(minTier: GuideMinTier): string {
 /** Minimum tier for Schedule Suite features (tracker, progress, email). P&L is Elite. */
 export const SCHEDULE_SUITE_MIN_TIER: GuideMinTier = "pro";
 
-/** Minimum tier to download a launch-guide PDF (viewing Free guides still allowed on Free). */
-export const GUIDE_PDF_MIN_TIER: GuideMinTier = "starter";
+/**
+ * Membership floor for launch-guide PDF downloads.
+ * Guests cannot download. Logged-in members download only guides they can already view
+ * (Free members: Free guides; Starter/Pro/Elite follow the same ladder as on-screen unlock).
+ */
+export const GUIDE_PDF_MIN_TIER: GuideMinTier = "free";
 
-export function guidePdfAvailableLabel(): string {
-  return `Available on ${tierAndAboveLabel(GUIDE_PDF_MIN_TIER)}`;
+export function guidePdfAvailableLabel(minTier: GuideMinTier = GUIDE_PDF_MIN_TIER): string {
+  if (minTier === "free") return "Join to download";
+  return `Available on ${tierAndAboveLabel(minTier)}`;
+}
+
+/** Gate badge on the Download PDF button (guest vs upgrade). */
+export function guidePdfGateLabel(access: Pick<GuideAccessResult, "needsJoin" | "needsUpgrade" | "minTier">): string {
+  if (access.needsJoin) return "Join to download";
+  if (access.needsUpgrade) return `Available on ${tierAndAboveLabel(access.minTier)}`;
+  return guidePdfAvailableLabel(access.minTier);
 }
 
 export function membershipFeatureLockedBadgeLabel(

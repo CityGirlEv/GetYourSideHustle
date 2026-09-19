@@ -35,6 +35,7 @@ import {
   merchItemCount,
   mergeMerchNote,
   parseMerchChoices,
+  parseMerchTshirtSizes,
   type TierId,
 } from "../../src/lib/membership";
 import {
@@ -265,6 +266,7 @@ export async function handleStripeCheckoutCreate(
     /** Kid Credits to apply toward this charge (logged-in members). */
     creditsToApply?: number;
     merchChoices?: unknown;
+    merchTshirtSizes?: unknown;
     /** Browser app origin (e.g. http://localhost:5173) for success/cancel URLs. */
     returnOrigin?: string;
   };
@@ -387,11 +389,16 @@ export async function handleStripeCheckoutCreate(
     }
 
     let merchChoicesPaid: string[] = [];
+    let merchTshirtSizesPaid: string[] = [];
     if (kind === "membership") {
       const merchTier = String(body.tierId || "").toLowerCase() as TierId;
-      const merchErr = merchChoicesError(merchTier, body.merchChoices);
+      const merchErr = merchChoicesError(merchTier, body.merchChoices, body.merchTshirtSizes);
       if (merchErr) return error(merchErr, 400);
       merchChoicesPaid = parseMerchChoices(body.merchChoices, merchItemCount(merchTier)) ?? [];
+      merchTshirtSizesPaid = parseMerchTshirtSizes(
+        merchChoicesPaid as ("tshirt" | "hat")[],
+        body.merchTshirtSizes,
+      );
     }
 
     const creditSessionId = `cred-${user.id}-${Date.now().toString(36)}`;
@@ -411,31 +418,33 @@ export async function handleStripeCheckoutCreate(
     const { publicUser: toPublic, getUserById } = await import("./auth");
     let paidUser = user;
     const now = new Date().toISOString();
+    let membershipTierPaid: string | undefined;
+    let membershipAudiencePaid: string | undefined;
 
     if (kind === "membership") {
       const tier = String(body.tierId || "").toLowerCase();
       const audience = String(body.audience || "").toLowerCase();
-      const nextTier = ["starter", "pro", "elite"].includes(tier) ? tier : undefined;
-      const nextAudience = ["kids", "junior", "adult", "senior"].includes(audience)
+      membershipTierPaid = ["starter", "pro", "elite"].includes(tier) ? tier : undefined;
+      membershipAudiencePaid = ["kids", "junior", "adult", "senior"].includes(audience)
         ? audience
         : undefined;
       const prevNotes = String(user.notes || "");
       const stamp = `Credit checkout ${tier || "plan"} (${audience || "audience"}) ${now}`;
       let notes = `${prevNotes}${prevNotes ? " · " : ""}${stamp}`.slice(0, 1900);
       if (merchChoicesPaid.length) {
-        notes = mergeMerchNote(notes, merchChoicesPaid as ("tshirt" | "hat")[]);
+        notes = mergeMerchNote(notes, merchChoicesPaid as ("tshirt" | "hat")[], merchTshirtSizesPaid);
       }
-      if (nextTier && nextAudience) {
+      if (membershipTierPaid && membershipAudiencePaid) {
         await env.DB.prepare(
           `UPDATE users SET membership_tier = ?, audience = ?, notes = ?, updated_at = ? WHERE id = ?`,
         )
-          .bind(nextTier, nextAudience, notes, now, user.id)
+          .bind(membershipTierPaid, membershipAudiencePaid, notes, now, user.id)
           .run();
-      } else if (nextTier) {
+      } else if (membershipTierPaid) {
         await env.DB.prepare(
           `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
         )
-          .bind(nextTier, notes, now, user.id)
+          .bind(membershipTierPaid, notes, now, user.id)
           .run();
       } else {
         await env.DB.prepare(`UPDATE users SET notes = ?, updated_at = ? WHERE id = ?`)
@@ -448,7 +457,7 @@ export async function handleStripeCheckoutCreate(
         env.DB,
         "membership_plan_update",
         paidUser.email,
-        `${nextTier || tier}:${nextAudience || audience} paid with ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
+        `${membershipTierPaid || tier}:${membershipAudiencePaid || audience} paid with ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
       );
       try {
         const { sendMembershipSubscriptionEmails } = await import("./email");
@@ -457,8 +466,8 @@ export async function handleStripeCheckoutCreate(
             id: paidUser.id,
             email: paidUser.email,
             name: paidUser.name,
-            membership_tier: nextTier || String(paidUser.membership_tier || ""),
-            audience: nextAudience || String(paidUser.audience || ""),
+            membership_tier: membershipTierPaid || String(paidUser.membership_tier || ""),
+            audience: membershipAudiencePaid || String(paidUser.audience || ""),
           },
           previousTier: String(user.membership_tier || "free"),
           source: "credits",
@@ -518,7 +527,9 @@ export async function handleStripeCheckoutCreate(
           email: paidUser.email,
           userId: paidUser.id,
           kind: "membership",
-          item: String(body.tierId || ""),
+          tier: membershipTierPaid || String(body.tierId || ""),
+          audience: membershipAudiencePaid || String(body.audience || ""),
+          interval: body.interval === "year" ? "year" : "month",
           amountCents: 0,
           paidAt: now,
           source: "credits",
@@ -550,13 +561,19 @@ export async function handleStripeCheckoutCreate(
 
   const merchTier = String(body.tierId || "").toLowerCase() as TierId;
   let merchChoices: string[] = [];
+  let merchTshirtSizes: string[] = [];
   if (kind === "membership") {
-    const merchErr = merchChoicesError(merchTier, body.merchChoices);
+    const merchErr = merchChoicesError(merchTier, body.merchChoices, body.merchTshirtSizes);
     if (merchErr) return error(merchErr, 400);
     merchChoices = parseMerchChoices(body.merchChoices, merchItemCount(merchTier)) ?? [];
+    merchTshirtSizes = parseMerchTshirtSizes(merchChoices as ("tshirt" | "hat")[], body.merchTshirtSizes);
     if (user && merchChoices.length) {
       const now = new Date().toISOString();
-      const notes = mergeMerchNote(String(user.notes || ""), merchChoices as ("tshirt" | "hat")[]);
+      const notes = mergeMerchNote(
+        String(user.notes || ""),
+        merchChoices as ("tshirt" | "hat")[],
+        merchTshirtSizes,
+      );
       try {
         await env.DB.prepare(`UPDATE users SET notes = ?, updated_at = ? WHERE id = ?`)
           .bind(notes, now, user.id)
@@ -576,7 +593,11 @@ export async function handleStripeCheckoutCreate(
     gysh_item: cartMeta,
     gysh_previous_tier: String(user?.membership_tier || "free").toLowerCase(),
     gysh_credits_applied: String(quote.creditsApplied),
-    gysh_merch: merchChoices.join(","),
+    gysh_merch: merchChoices
+      .map((id, i) =>
+        id === "tshirt" && merchTshirtSizes[i] ? `tshirt:${merchTshirtSizes[i]}` : id,
+      )
+      .join(","),
   };
 
   const form: Record<string, string | number | undefined | null> = {

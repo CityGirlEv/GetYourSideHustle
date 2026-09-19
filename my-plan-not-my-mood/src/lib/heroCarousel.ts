@@ -9,6 +9,10 @@ export const HERO_CAROUSEL_ASPECT_WIDTH = 3;
 export const HERO_CAROUSEL_ASPECT_HEIGHT = 4;
 export const HERO_CAROUSEL_ASPECT_RATIO = `${HERO_CAROUSEL_ASPECT_WIDTH} / ${HERO_CAROUSEL_ASPECT_HEIGHT}`;
 export const HERO_CAROUSEL_ASPECT_CLASS = 'aspect-[3/4]';
+/** Compact portrait carousel width on the gear hub. Height follows 3:4. */
+export const HERO_CAROUSEL_COMPACT_WIDTH_REM = 18;
+export const HERO_CAROUSEL_COMPACT_HEIGHT_REM =
+  (HERO_CAROUSEL_COMPACT_WIDTH_REM * HERO_CAROUSEL_ASPECT_HEIGHT) / HERO_CAROUSEL_ASPECT_WIDTH;
 export const HERO_CAROUSEL_MATTE = '#FAF8F5';
 export const HERO_CAROUSEL_SOURCE_FOLDER = 'C:\\Documents\\AngelaHarris\\MyPlanNotMood\\Images\\WebsiteSS';
 export const HERO_CAROUSEL_PUBLIC_DIR = '/images/hero-carousel';
@@ -100,8 +104,16 @@ export function heroCarouselObjectFitFor(name: string): 'cover' | 'contain' {
 }
 
 /** Crop toward the chest so the shirt fills the frame. Hoodie+hat stays high enough to keep the cap. */
-export function heroCarouselObjectPositionFor(name: string): string {
+export function heroCarouselObjectPositionFor(name: string, preferFace = false): string {
   const file = sanitizeHeroCarouselFileName(name);
+  if (preferFace) {
+    if (file === 'angela-white-hoodie-hat.jpg') return 'center 8%';
+    if (file === 'angela-red-hoodie.jpg') return 'center 6%';
+    if (isAngelaHeroPhoto(file)) return 'center 10%';
+    if (file === HERO_CAROUSEL_LEAD_FILES[1]) return '72% 4%';
+    if (file === HERO_CAROUSEL_LEAD_FILES[0] || file === HERO_CAROUSEL_LEAD_FILES[2]) return '70% 8%';
+    return 'center top';
+  }
   if (file === 'angela-white-hoodie-hat.jpg') return 'center 18%';
   if (file === 'angela-red-hoodie.jpg') return 'center 14%';
   if (isAngelaHeroPhoto(file)) return 'center 28%';

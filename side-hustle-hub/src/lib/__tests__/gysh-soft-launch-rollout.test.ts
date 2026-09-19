@@ -6,6 +6,7 @@ import {
   ROLLOUT_CHANNELS,
   ROLLOUT_OWNERS,
   SOFT_LAUNCH_FACTORY_SPRINTS,
+  SOFT_LAUNCH_SEED_ALL_RANGE,
   SOFT_LAUNCH_ITEM_STATUSES,
   SOFT_LAUNCH_ITEM_STATUS_LABELS,
   contentFactoryItemStatusClass,
@@ -58,6 +59,7 @@ describe("gysh-soft-launch-rollout", () => {
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 8, 8))).toEqual([6]); // Sep 8 → Sprint 6
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 9, 7))).toEqual([10]); // Oct 7 → Sprint 10
     expect(SOFT_LAUNCH_FACTORY_SPRINTS).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(SOFT_LAUNCH_SEED_ALL_RANGE).toBe("S2–S10");
     for (const sprint of [6, 7, 8, 9, 10]) {
       expect(SOFT_LAUNCH_ROLLOUT.some((i) => i.sprint === sprint)).toBe(true);
     }

@@ -58,4 +58,16 @@ describe("purchase payment receipts", () => {
     expect(mixed.html).toContain("Credits applied:");
     expect(mixed.html).toContain("Cash charged:");
   });
+
+  it("labels admin complimentary grants as $0 with no Stripe session", () => {
+    expect(resolvePurchasePaymentSource({ source: "admin" })).toBe("admin");
+    expect(purchasePaymentMethodLabel("admin")).toBe("Admin complimentary grant (no card charge)");
+    const detail = formatPurchasePaymentDetail({
+      source: "admin",
+      amountCents: 0,
+    });
+    expect(detail.cashLabel).toBe("$0");
+    expect(detail.html).toContain("Admin complimentary grant (no card charge)");
+    expect(detail.html).not.toContain("Stripe session");
+  });
 });

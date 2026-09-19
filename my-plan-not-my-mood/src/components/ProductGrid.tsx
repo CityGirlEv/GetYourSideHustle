@@ -12,6 +12,8 @@ import {
   type ShopifyGearSection,
 } from '../lib/shopifyStore';
 import { ShoppingBag, Check, Sparkles } from 'lucide-react';
+import { ComingSoonBadge } from './ComingSoonBadge';
+import { plannerAddToCartIsEnabled } from '../lib/accessories';
 
 type HomeGearTab = 'all' | ShopifyGearKind | 'planners';
 
@@ -164,25 +166,39 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                       <p className="text-xs text-[#3F3832] leading-relaxed font-medium">{product.description}</p>
                     </div>
                     <div className="pt-4 border-t border-[#E5DFD3] flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleAdd(product.id)}
-                        className={`min-h-[44px] px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border border-[#1F1917] ${
-                          isJustAdded
-                            ? 'bg-[#10B981] text-white shadow-md'
-                            : 'bg-[#C2410C] hover:bg-[#9A3412] text-white shadow-md'
-                        }`}
-                      >
-                        {isJustAdded ? (
-                          <>
-                            <Check className="w-4 h-4" /> Added!
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingBag className="w-4 h-4" /> Add To Cart
-                          </>
-                        )}
-                      </button>
+                      {plannerAddToCartIsEnabled() ? (
+                        <button
+                          type="button"
+                          data-testid={`planner-add-to-cart-${product.id}`}
+                          onClick={() => handleAdd(product.id)}
+                          className={`min-h-[44px] px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border border-[#1F1917] ${
+                            isJustAdded
+                              ? 'bg-[#10B981] text-white shadow-md'
+                              : 'bg-[#C2410C] hover:bg-[#9A3412] text-white shadow-md'
+                          }`}
+                        >
+                          {isJustAdded ? (
+                            <>
+                              <Check className="w-4 h-4" /> Added!
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBag className="w-4 h-4" /> Add To Cart
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          data-testid={`planner-add-to-cart-${product.id}`}
+                          title="Coming soon"
+                          className="relative min-h-[44px] px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider inline-flex items-center gap-1.5 shrink-0 border border-[#1F1917] bg-[#C2410C] text-white shadow-md cursor-not-allowed"
+                        >
+                          <ShoppingBag className="w-4 h-4" /> Add To Cart
+                          <ComingSoonBadge className="absolute -top-2 -right-2 bg-white shadow-sm" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

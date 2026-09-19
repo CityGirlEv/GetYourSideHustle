@@ -6,12 +6,16 @@ interface BetaWelcomeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSignUpAsBetaTester: () => void;
+  onSeeRewards?: () => void;
+  onSeeGuide?: () => void;
 }
 
 export const BetaWelcomeModal: React.FC<BetaWelcomeModalProps> = ({
   isOpen,
   onClose,
   onSignUpAsBetaTester,
+  onSeeRewards,
+  onSeeGuide,
 }) => {
   if (!isOpen) return null;
 
@@ -64,6 +68,26 @@ export const BetaWelcomeModal: React.FC<BetaWelcomeModalProps> = ({
           >
             <TestTube className="w-4 h-4" /> Count Me In for Beta
           </button>
+          {onSeeRewards ? (
+            <button
+              type="button"
+              onClick={onSeeRewards}
+              className="w-full min-h-[44px] text-xs font-black uppercase tracking-wider text-[#C2410C] hover:text-[#9A3412] cursor-pointer"
+              data-testid="beta-welcome-rewards"
+            >
+              See Beta Tester Rewards
+            </button>
+          ) : null}
+          {onSeeGuide ? (
+            <button
+              type="button"
+              onClick={onSeeGuide}
+              className="w-full min-h-[44px] text-xs font-black uppercase tracking-wider text-[#C2410C] hover:text-[#9A3412] cursor-pointer"
+              data-testid="beta-welcome-guide"
+            >
+              See the Beta Testing Guide
+            </button>
+          ) : null}
         </div>
 
         <button

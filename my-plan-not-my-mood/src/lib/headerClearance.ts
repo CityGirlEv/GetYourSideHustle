@@ -30,5 +30,17 @@ export const HEADER_MOBILE_MENU_CLASS =
 /** Room under the sticky nav. Quote bubble is not sticky so it does not cover the hero. */
 export const QUOTE_BAR_TRAILING_SPACE = 'pb-2 sm:pb-3';
 export const HEADER_CONTENT_OFFSET = 'pt-28 sm:pt-32 lg:pt-36';
+/** About, FAQ, Contact, Privacy, and Terms sit just under the in-flow header — no extra band. */
+export const HEADER_COMPACT_PAGE_OFFSET = 'pt-0';
+
+const COMPACT_LAUNCH_PAGE_IDS = new Set(['about', 'faq', 'contact', 'privacy', 'terms']);
+
+export function isCompactLaunchPage(pageId: string | null | undefined): boolean {
+  return COMPACT_LAUNCH_PAGE_IDS.has(String(pageId ?? ''));
+}
+
+export function launchPageContentOffset(pageId: string | null | undefined): string {
+  return isCompactLaunchPage(pageId) ? HEADER_COMPACT_PAGE_OFFSET : HEADER_CONTENT_OFFSET;
+}
 
 export const MOBILE_NAV_SECTION_LABELS = ['Shop', 'Tools', 'Account'] as const;

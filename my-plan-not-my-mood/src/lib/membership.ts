@@ -8,6 +8,10 @@ export function canSeeMemberships(user?: AppUser | null): boolean {
 
 export const MEMBERSHIP_JOINED_STORAGE_KEY = 'myplan_membership_joined_v1';
 
+/** Affirmations stay a membership perk. Public/free access without Join is a Phase 1 scope change. */
+export const AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE =
+  'Daily Affirmations and the 7-Day Challenge stay with membership (Join to Unlock). Offering them free on the public site is a Phase 1 scope change.';
+
 export interface MembershipTier {
   id: string;
   name: string;

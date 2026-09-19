@@ -75,10 +75,12 @@ export function parseAdminPortalTab(pathname: string): AdminPortalTab {
   if (path === '/admin/budget' || path.startsWith('/admin/budget/')) return BUDGET_TAB_ID;
   if (path === '/admin/pay' || path.startsWith('/admin/pay/')) return 'pay';
   if (path === '/admin/previous-budget' || path.startsWith('/admin/previous-budget/')) return 'previous-budget';
+  if (path === '/admin/inventory-pricing' || path.startsWith('/admin/inventory-pricing/')) return 'inventory-pricing';
   if (path === '/admin/testing' || path.startsWith('/admin/testing/')) return 'testing';
   if (path === '/admin/tasks' || path.startsWith('/admin/tasks/')) return 'tasks';
   if (path === '/admin/users' || path.startsWith('/admin/users/')) return 'users';
   if (path === '/admin/emails' || path.startsWith('/admin/emails/')) return 'emails';
+  if (path === '/admin/mailing-list' || path.startsWith('/admin/mailing-list/')) return 'mailing-list';
   if (path === '/admin/agenda' || path.startsWith('/admin/agenda/')) return 'agenda';
   if (path === '/admin/timesheet' || path.startsWith('/admin/timesheet/')) return 'timesheet';
   if (path === '/admin/daily-progress' || path.startsWith('/admin/daily-progress/')) return 'daily-progress';
@@ -157,6 +159,7 @@ const HEADER_ADMIN_LABELS: Partial<Record<AdminStudioTab, string>> = {
   'logo-concepts': 'Logos',
   users: 'Users',
   emails: 'Emails',
+  'mailing-list': 'List',
   factory: 'Content Factory',
   calendar: 'Posting Schedule',
   budget: 'Admin Hub',

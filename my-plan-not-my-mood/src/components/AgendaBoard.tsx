@@ -572,7 +572,7 @@ export const AgendaBoard: React.FC<{ tasks?: TaskItem[]; actor?: AgendaActor | n
                   : 'This is still a draft. Save Final Agenda to lock it in as the Working Agenda.'}
               </p>
               <p className="text-[11px] text-[#3F3832] mt-1">
-                {meeting.whenLabel} · Created by Evelyn Harris · {meta.attendees.length} attendees · {formatAgendaDuration(minutes)} · {progress.done}/{progress.total} topics done
+                {meeting.whenLabel} · Created by Evelyn Irving · {meta.attendees.length} attendees · {formatAgendaDuration(minutes)} · {progress.done}/{progress.total} topics done
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

@@ -20,6 +20,7 @@ const ACTION_LABELS: Record<string, string> = {
   user_deleted: "Account deleted",
   membership_cleared: "Membership removed",
   membership_plan_update: "Membership plan updated",
+  membership_admin_updated: "Membership updated by admin",
   purchase_credit_pack: "Kid Credit pack purchased",
   purchase_alacarte: "A-la-carte purchased",
   purchase_membership: "Membership purchased",

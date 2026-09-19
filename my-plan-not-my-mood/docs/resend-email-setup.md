@@ -65,6 +65,7 @@ This repo includes Cloudflare Pages Functions:
 | `POST /api/email/send` | Admin Hub test send, or manual signup confirmation |
 | `POST /api/email/user-approved` | When admin sets user **pending → active** |
 | `POST /api/email/password-reset` | When an activated account requests a lost-password link |
+| `POST /api/email/contact` | Contact form notes to `info@nonnegotiation.com` (falls back to `/api/email/send` until this Function is deployed) |
 
 Deploy as usual:
 

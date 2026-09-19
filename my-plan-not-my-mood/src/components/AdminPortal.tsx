@@ -32,6 +32,7 @@ import {
   ChevronRight,
   PenLine,
   Phone,
+  Mic,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { MAKE_PAYMENT_TASK_ID, PAY_PAGE_PATH } from '../lib/phasePayments';
@@ -56,6 +57,7 @@ import {
   hydrateWorkBoardFromRemote,
   saveWorkBoardStore,
   shouldApplyRemoteWorkBoardPull,
+  WORKBOARD_POLL_MS,
   workBoardFingerprint,
   workBoardHasUnsavedChanges,
   taskRowFingerprint,
@@ -110,6 +112,7 @@ import {
 } from '../lib/planIntro';
 import { ADMIN_STUDIO_HEADER_CLASS, ADMIN_STUDIO_HEADER_INNER_CLASS, ADMIN_STUDIO_MAIN_CLASS, HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
 import { EmailTemplatesPanel } from './EmailTemplatesPanel';
+import { LaunchPage } from './LaunchPage';
 import { AgendaBoard } from './AgendaBoard';
 import { ADD_TO_AGENDA_LABEL, ON_AGENDA_LABEL, syncTaskToUpcomingAgenda } from '../lib/taskAgenda';
 import { AdminStudioNav } from './AdminStudioNav';
@@ -123,6 +126,8 @@ import { AssetLibraryPage } from './AssetLibraryPage';
 import { LogoConceptsPage } from './LogoConceptsPage';
 import { SiteMapPage } from './SiteMapPage';
 import { MakePaymentPage } from './MakePaymentPage';
+import { InventoryPricingPage } from './InventoryPricingPage';
+import { BetaTestingGuideAdminPage } from './BetaTestingGuideAdminPage';
 import type { AdminPortalTab } from '../lib/adminPortalTabs';
 import { ADMIN_HUB_TITLE, canOpenStudioTab, isFinancialsTab, mapLegacyAdminTab, type AdminStudioTab } from '../lib/adminStudio';
 import {
@@ -148,11 +153,13 @@ import {
 import { WorkBoardColumnBar } from './WorkBoardColumnBar';
 import { WorkBoardFilterPanel } from './WorkBoardFilterPanel';
 import { WorkBoardBulkBar } from './WorkBoardBulkBar';
+import { BlockedNoteDialog } from './BlockedNoteDialog';
 import { WorkBoardSprintSections, useSprintSectionState } from './WorkBoardSprintSections';
 import {
   WorkBoardExpandableRow,
   WorkBoardField,
   WorkBoardFieldGrid,
+  WorkBoardHeaderDate,
   WorkBoardHeaderSelect,
   RolledOverStatusBadge,
   workBoardFieldClassName,
@@ -180,6 +187,7 @@ import {
   PHASE_1_LABEL,
   PHASE_2_LABEL,
   PHASE_3_LABEL,
+  upgradeDeliverableLabel,
 } from '../lib/gearSalesPlan';
 import { PaymentScheduleCard } from './PaymentScheduleCard';
 import {
@@ -234,10 +242,10 @@ import {
   type WorkAssignee,
   type TaskCategory,
   type QaCategory,
-  defaultWorkBoardFilters,
+  defaultTaskBoardFilters,
+  defaultTestingPortalFilters,
   filterTasks,
   filterQaTests,
-  formatWorkDueDateShort,
   isWorkDueDatePast,
   DEFAULT_WORK_BOARD_SORT,
   buildSprintChipCounts,
@@ -253,6 +261,8 @@ import {
   QA_STATUS_FILTER_LABELS,
   QA_STATUS_FILTER_OPTIONS,
   appendRolledOverStatusChip,
+  countRolledOverItems,
+  formatRolledOverCount,
   QA_STATUSES,
   PRIORITY_OPTIONS,
   ASSIGNEE_OPTIONS,
@@ -270,6 +280,8 @@ import {
   applyBulkTaskPatch,
   applyQaInlinePatchToList,
   applyBulkQaPatch,
+  applyTasksBlockedWithNote,
+  taskNeedsBlockedNote,
   currentSprintLabel,
   defaultOpenSprintSections,
   SPRINT_SECTION_TONES,
@@ -284,7 +296,8 @@ import {
   taskStatusLegend,
   qaStatusLegend,
   PRIORITY_TONES,
-  workPriorityTextClass,
+  workDueDateTextClass,
+  workDueDateControlClass,
   toggleSelectedId,
   setManySelected,
   allIdsSelected,
@@ -352,7 +365,10 @@ function normalizeLineItem(item: LineItemSeed): SprintLineItem {
     sprint: item.sprint ?? sprintFromBudgetItemId(item.id),
     status: item.status ?? 'not_started',
     assignee: item.assignee ?? 'unassigned',
-    deliverables: normalizeDeliverables(item.id, item.deliverables),
+    deliverables: normalizeDeliverables(item.id, item.deliverables).map((entry) => ({
+      ...entry,
+      label: upgradeDeliverableLabel(entry.label),
+    })),
   });
 }
 
@@ -988,10 +1004,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     if (!permissions.canManageUsers && activeTab === 'users') {
       setActiveTab(permissions.canViewTesting ? 'testing' : 'tasks');
     }
-    if (!permissions.canManageEmailTemplates && activeTab === 'emails') {
+    if (!permissions.canManageEmailTemplates && (activeTab === 'emails' || activeTab === 'mailing-list')) {
       setActiveTab(permissions.canViewTesting ? 'testing' : 'tasks');
     }
-    if ((activeTab === 'budget' || activeTab === 'pay' || activeTab === 'previous-budget') && !canOpenBudgetTab(permissions.canViewBudget)) {
+    if ((activeTab === 'budget' || activeTab === 'pay' || activeTab === 'previous-budget' || activeTab === 'inventory-pricing') && !canOpenBudgetTab(permissions.canViewBudget)) {
       setActiveTab(canOpenPlanTab(permissions.canViewProposal, permissions.canViewIP) ? 'plan' : 'testing');
     }
     if (activeTab === 'agenda' && !canOpenAgendaTab(permissions.canViewAgenda)) {
@@ -1013,7 +1029,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   }, [currentUser, activeTab]);
 
   const selectAdminTab = (tab: AdminPortalTab) => {
-    if (tab === 'budget' || tab === 'pay' || tab === 'previous-budget') {
+    if (tab === 'budget' || tab === 'pay' || tab === 'previous-budget' || tab === 'inventory-pricing') {
       setProposalAudience('internal');
       localStorage.setItem('myplan_proposal_audience', 'internal');
     }
@@ -1222,14 +1238,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   const [newTaskPriority, setNewTaskPriority] = useState<WorkPriority>('medium');
   const [newTaskAssignee, setNewTaskAssignee] = useState<WorkAssignee>('unassigned');
   const [taskSearch, setTaskSearch] = useState('');
-  const [taskFilters, setTaskFilters] = useState(() => defaultWorkBoardFilters<TaskStatusFilter>());
+  const [taskFilters, setTaskFilters] = useState(() =>
+    defaultTaskBoardFilters<TaskStatusFilter>(getCurrentUserSession() ?? currentUser),
+  );
   const [taskSort, setTaskSort] = useState<WorkBoardSort>(DEFAULT_WORK_BOARD_SORT);
   const [qaSearch, setQaSearch] = useState('');
-  const [qaFilters, setQaFilters] = useState(() => defaultWorkBoardFilters<QaStatusFilter>());
+  const [qaFilters, setQaFilters] = useState(() =>
+    defaultTestingPortalFilters<QaStatusFilter>(getCurrentUserSession() ?? currentUser),
+  );
   const [qaSort, setQaSort] = useState<WorkBoardSort>(DEFAULT_WORK_BOARD_SORT);
   const [qaSuiteFilter, setQaSuiteFilter] = useState<Set<TestSuite>>(() => defaultQaSuiteFilter());
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(() => new Set());
   const [selectedQaIds, setSelectedQaIds] = useState<Set<string>>(() => new Set());
+  const [blockedNoteTaskIds, setBlockedNoteTaskIds] = useState<string[] | null>(null);
   const { openSections: taskOpenSections, toggleSection: toggleTaskSection } = useSprintSectionState(defaultOpenSprintSections());
   const { openSections: qaOpenSections, toggleSection: toggleQaSection } = useSprintSectionState(defaultOpenSprintSections());
   const [openTaskRows, setOpenTaskRows] = useState<Record<string, boolean>>({});
@@ -1246,6 +1267,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     }, 50);
     return () => window.clearTimeout(timer);
   }, [activeTab, tasks]);
+
+  useEffect(() => {
+    if (activeTab !== 'tasks') return;
+    setTaskFilters(defaultTaskBoardFilters<TaskStatusFilter>(getCurrentUserSession() ?? currentUser));
+  }, [activeTab, currentUser?.email]);
+
+  useEffect(() => {
+    setQaFilters(defaultTestingPortalFilters<QaStatusFilter>(getCurrentUserSession() ?? currentUser));
+  }, [currentUser?.email]);
 
   const [dirtyTaskIds, setDirtyTaskIds] = useState<Set<string>>(() => new Set());
   const [dirtyTestIds, setDirtyTestIds] = useState<Set<string>>(() => new Set());
@@ -1374,10 +1404,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
       });
     };
     pull();
+    if (WORKBOARD_POLL_MS <= 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'hidden') return;
       pull();
-    }, 4000);
+    }, WORKBOARD_POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
@@ -1698,9 +1733,29 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     persistProposalVersions(savedProposalVersions.filter((v) => v.id !== id));
   };
 
+  const handleOpenPhase1ContractSignoff = () => {
+    setSignoffError('');
+    setIsSignoffOpen(true);
+  };
+
+  const handleAngelaPlanSignoff = () => {
+    const check = canSignAngelaPlan(signoffName);
+    if (!check.ok) {
+      setSignoffError(check.reason);
+      return;
+    }
+    try {
+      setAngelaSignoff(signAngelaPlan(signoffName));
+      setSignoffError('');
+      setIsSignoffOpen(false);
+    } catch (err) {
+      setSignoffError(err instanceof Error ? err.message : 'Could not complete sign-off.');
+    }
+  };
+
   const proposalPreviewHtml = useMemo(
     () => (documentPreview ? getProposalDocumentHtmlFor(documentPreview.showPricing) : ''),
-    [documentPreview, proposalNotes, lineItems, totalBasePrice, selectedDiscountTier, proposalViewPhase],
+    [documentPreview, proposalNotes, lineItems, totalBasePrice, selectedDiscountTier, proposalViewPhase, angelaSignoff],
   );
 
   const proposalAudienceSlug = (withPricing: boolean) => (withPricing ? 'Internal' : 'Angela-Plan');
@@ -1781,6 +1836,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
 
   const handleUpdateTask = (id: string, patch: TaskInlinePatch) => {
     const actor = workAssigneeFromActor(permissionActor ?? currentUser);
+    if (patch.status === 'blocked' && patch.notes === undefined) {
+      const current = tasksRef.current.find((task) => task.id === id);
+      if (current && taskNeedsBlockedNote(current.status, 'blocked')) {
+        setBlockedNoteTaskIds([id]);
+        return;
+      }
+    }
     const next = applyTaskInlinePatchToList(tasksRef.current, id, patch, actor);
     tasksRef.current = next;
     flagWorkBoardDirty('task', [id]);
@@ -1789,12 +1851,37 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
 
   const handleBulkUpdateTasks = (ids: string[], patch: TaskInlinePatch) => {
     const actor = workAssigneeFromActor(permissionActor ?? currentUser);
+    if (patch.status === 'blocked' && patch.notes === undefined) {
+      const needingNote = ids.filter((id) => {
+        const current = tasksRef.current.find((task) => task.id === id);
+        return current && taskNeedsBlockedNote(current.status, 'blocked');
+      });
+      if (needingNote.length > 0) {
+        setBlockedNoteTaskIds(needingNote);
+        return;
+      }
+    }
     flagWorkBoardDirty('task', ids);
     setTasks((prev) => {
       const next = applyBulkTaskPatch(prev, ids, patch, actor);
       tasksRef.current = next;
       return next;
     });
+  };
+
+  const confirmBlockedNote = (note: string) => {
+    const ids = blockedNoteTaskIds ?? [];
+    const noteActor = {
+      name: permissionActor?.name ?? currentUser?.name ?? 'Unknown',
+      email: permissionActor?.email ?? currentUser?.email,
+    };
+    const patchActor = workAssigneeFromActor(permissionActor ?? currentUser);
+    const result = applyTasksBlockedWithNote(tasksRef.current, ids, note, noteActor, patchActor);
+    if (!result.ok) return result.error;
+    tasksRef.current = result.tasks;
+    flagWorkBoardDirty('task', ids);
+    setTasks(result.tasks);
+    setBlockedNoteTaskIds(null);
   };
 
   const handleUpdateQa = (id: string, patch: QaInlinePatch) => {
@@ -1874,6 +1961,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     });
   };
 
+  const handleDeleteQa = (id: string) => {
+    removedTestIdsRef.current = [...new Set([...removedTestIdsRef.current, id])];
+    const nextTests = qaTestsRef.current.filter((t) => t.id !== id);
+    qaTestsRef.current = nextTests;
+    flagWorkBoardDirty('test', [id]);
+    setQaTests(nextTests);
+    setSelectedQaIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
   const handleToggleTaskAgenda = (task: TaskItem) => {
     const onAgenda = !task.onAgenda;
     handleUpdateTask(task.id, { onAgenda });
@@ -1890,9 +1991,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   };
 
   const completedTaskCount = tasks.filter((t) => t.status === 'done').length;
+  const rolledOverTaskCount = countRolledOverItems(tasks);
   const taskProgressPercent = tasks.length > 0 ? Math.round((completedTaskCount / tasks.length) * 100) : 0;
   const suiteScopedQaTests = qaTests.filter((t) => matchesSuiteFilter(t, qaSuiteFilter));
   const passedQaCount = suiteScopedQaTests.filter((t) => t.status === 'passed').length;
+  const rolledOverQaCount = countRolledOverItems(suiteScopedQaTests);
   const filteredTasks = filterTasks(tasks, taskFilters, taskSearch);
   const filteredQaTests = filterQaTests(suiteScopedQaTests, qaFilters, qaSearch);
   const qaSuiteChips = buildSuiteChipCounts(qaTests, qaIsDone);
@@ -2218,6 +2321,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                 audience: proposalAudience === 'internal' ? 'internal' : 'angela',
                 onAudienceChange: (next) => setProposalAudienceMode(next),
                 onOpenBudget: canViewBudget ? () => selectAdminTab('budget') : undefined,
+                onApprovePhase1Contract: handleOpenPhase1ContractSignoff,
+                phase1Signoff: angelaSignoff,
               }}
             />
             </div>
@@ -2505,7 +2610,80 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
               </div>
             )}
 
-            {/* Interactive Internal budget â€” shown first when Internal is selected */}
+            {isSignoffOpen && (
+              <div
+                className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1F1917]/80 backdrop-blur-sm animate-fadeIn"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="phase1-signoff-title"
+                data-testid="phase1-contract-signoff-modal"
+              >
+                <div className="bg-white border-4 border-[#1F1917] rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5">
+                  <div className="flex items-start justify-between gap-3 border-b-2 border-[#1F1917] pb-4">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FFEDD5] text-[#C2410C] text-[10px] font-mono font-black uppercase tracking-wider mb-1">
+                        <PenLine className="w-3.5 h-3.5" /> Electronic Signature
+                      </div>
+                      <h3 id="phase1-signoff-title" className="text-xl font-black text-[#1F1917] font-serif uppercase">
+                        Approve Phase 1 Contract
+                      </h3>
+                      <p className="text-sm text-[#3F3832] font-medium mt-1">
+                        Typing your name and confirming is the electronic signature for Angela&apos;s Plan and the Phase 1 Merchandise Hosting Agreement.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsSignoffOpen(false)}
+                      className="p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-[#3F3832] hover:text-[#1F1917] rounded-xl cursor-pointer"
+                      aria-label="Close Phase 1 contract sign-off"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div>
+                    <label htmlFor="phase1-signoff-name" className="block text-[10px] font-mono font-bold uppercase text-[#3F3832] mb-1">
+                      Signer name
+                    </label>
+                    <input
+                      id="phase1-signoff-name"
+                      data-testid="phase1-signoff-name"
+                      type="text"
+                      value={signoffName}
+                      onChange={(e) => {
+                        setSignoffName(e.target.value);
+                        if (signoffError) setSignoffError('');
+                      }}
+                      className="w-full min-h-[44px] px-3 py-2 border-2 border-[#1F1917] rounded-xl font-bold text-[#1F1917] focus:border-[#C2410C] focus:outline-none"
+                      autoComplete="name"
+                    />
+                    {signoffError ? (
+                      <p className="text-xs font-bold text-[#C2410C] mt-2" data-testid="phase1-signoff-error">
+                        {signoffError}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsSignoffOpen(false)}
+                      className="min-h-[44px] px-5 py-2.5 bg-[#FAF8F5] text-[#1F1917] font-bold text-xs uppercase rounded-xl border border-[#1F1917] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="phase1-signoff-confirm"
+                      onClick={handleAngelaPlanSignoff}
+                      className="min-h-[44px] px-6 py-2.5 bg-[#C2410C] hover:bg-[#9A3412] text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg border border-[#1F1917] inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <PenLine className="w-4 h-4" /> Sign Phase 1
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Interactive Internal budget — shown first when Internal is selected */}
             {(activeTab === 'budget' || viewingPrevious) && canViewBudget && (
             <div
               id={PLAN_BUDGET_SECTION_ID}
@@ -2919,8 +3097,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                           : 'MANUAL & FEATURE QA TESTS'}
                   </h3>
                 </div>
-                <span className="text-xs font-mono font-bold text-[#5C3328] bg-[#F6EBE4] px-3 py-1 rounded-xl border border-[#C9A08C]">
+                <span
+                  className="text-xs font-mono font-bold text-[#5C3328] bg-[#F6EBE4] px-3 py-1 rounded-xl border border-[#C9A08C]"
+                  data-testid="qa-board-counts"
+                >
                   {passedQaCount}/{suiteScopedQaTests.length} Passed
+                  {rolledOverQaCount > 0 ? ` · ${formatRolledOverCount(rolledOverQaCount)}` : ''}
                 </span>
               </div>
 
@@ -2968,6 +3150,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                     label: 'Category',
                     options: QA_CATEGORIES.map((category) => ({ value: category, label: category })),
                     onApply: (value) => handleBulkUpdateQa([...selectedQaIds], { category: value as QaCategory }),
+                  },
+                ]}
+                dateFields={[
+                  {
+                    id: 'dueDate',
+                    label: 'Due date',
+                    onApply: (value) => handleBulkUpdateQa([...selectedQaIds], { dueDate: value }),
                   },
                 ]}
               />
@@ -3025,6 +3214,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                       className={qaStatusRowClass(test.status)}
                       status={test.status}
                       priority={test.priority}
+                      overdue={isWorkDueDatePast(test.dueDate) && test.status !== 'passed'}
                       saving={false}
                       canSave={
                         workItemIsDirty(dirtyTestIds, test.id) ||
@@ -3032,6 +3222,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                       }
                       onSave={saveWorkBoardNow}
                       saveLabel={`Save ${formatQaCode(test.id, qaTests)} to database`}
+                      onDelete={() => handleDeleteQa(test.id)}
+                      deleteLabel={`Delete ${test.title}`}
                       badges={
                         <>
                           <WorkBoardHeaderSelect
@@ -3082,16 +3274,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                               className="bg-[#F6EBE4] text-[#6B3A2C] border-[#C9A08C]/60"
                             />
                           )}
-                          <span
-                            className={`text-[9px] font-mono font-bold px-1.5 min-h-[44px] inline-flex items-center rounded border ${
-                              isWorkDueDatePast(test.dueDate) && test.status !== 'passed'
-                                ? 'bg-[#E4B8A4] text-[#5C3328] border-[#C9A08C]'
-                                : 'bg-white text-[#1F1917] border-[#E5DFD3]'
-                            }`}
-                            data-testid={`work-row-due-${test.id}`}
-                          >
-                            {formatWorkDueDateShort(test.dueDate)}
-                          </span>
+                          <WorkBoardHeaderDate
+                            value={test.dueDate ?? ''}
+                            overdue={isWorkDueDatePast(test.dueDate) && test.status !== 'passed'}
+                            testId={`work-row-due-${test.id}`}
+                            onChange={(value) => handleUpdateQa(test.id, { dueDate: value })}
+                          />
                         </>
                       }
                     >
@@ -3101,7 +3289,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             type="text"
                             value={test.title}
                             onChange={(e) => handleUpdateQa(test.id, { title: e.target.value })}
-                            className={`${workBoardFieldClassName} ${workPriorityTextClass(test.priority)}`}
+                            className={`${workBoardFieldClassName} ${workDueDateTextClass(test.dueDate, { done: test.status === 'passed' })}`}
                             aria-label="Test title"
                           />
                         </WorkBoardField>
@@ -3197,7 +3385,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             type="date"
                             value={test.dueDate ?? ''}
                             onChange={(e) => handleUpdateQa(test.id, { dueDate: e.target.value })}
-                            className={workBoardFieldClassName}
+                            className={`${workBoardFieldClassName} ${workDueDateControlClass(isWorkDueDatePast(test.dueDate) && test.status !== 'passed')}`}
                             aria-label="Due date"
                           />
                         </WorkBoardField>
@@ -3243,9 +3431,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
               <div className="bg-[#1F1917] text-white rounded-2xl p-5 border-2 border-amber-500/40 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">ðŸŽ™ï¸</span>
+                    <Mic className="w-4 h-4 text-amber-300 shrink-0" aria-hidden />
                     <h4 className="font-serif font-black text-sm text-white uppercase">
-                      Voice Trust Layer â€” Planned Feature Architecture
+                      Voice Trust Layer {'\u2014'} Planned Feature Architecture
                     </h4>
                   </div>
                   <span className="text-[9px] font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded uppercase font-black">
@@ -3265,7 +3453,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
           <div className="space-y-3 animate-fadeIn">
             <WorkBoardCollapsibleSummary
               title="Sprint work board"
-              countLabel={`${completedTaskCount} of ${tasks.length} tasks completed`}
+              countLabel={`${completedTaskCount} of ${tasks.length} tasks completed${rolledOverTaskCount > 0 ? ` · ${formatRolledOverCount(rolledOverTaskCount)}` : ''}`}
               percentLabel={`${taskProgressPercent}% done`}
               open={taskSummaryOpen}
               onToggle={() => setTaskSummaryOpen((prev) => !prev)}
@@ -3330,8 +3518,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                     SPRINT TASKS &amp; ROADMAP
                   </h3>
                 </div>
-                <span className="text-xs font-mono font-bold text-[#5C3328] bg-[#F6EBE4] px-3 py-1 rounded-xl border border-[#C9A08C]">
+                <span
+                  className="text-xs font-mono font-bold text-[#5C3328] bg-[#F6EBE4] px-3 py-1 rounded-xl border border-[#C9A08C]"
+                  data-testid="task-board-counts"
+                >
                   {completedTaskCount}/{tasks.length} Done
+                  {rolledOverTaskCount > 0 ? ` · ${formatRolledOverCount(rolledOverTaskCount)}` : ''}
                 </span>
               </div>
 
@@ -3434,6 +3626,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                     onApply: (value) => handleBulkUpdateTasks([...selectedTaskIds], { category: value as TaskCategory }),
                   },
                 ]}
+                dateFields={[
+                  {
+                    id: 'dueDate',
+                    label: 'Due date',
+                    onApply: (value) => handleBulkUpdateTasks([...selectedTaskIds], { dueDate: value }),
+                  },
+                ]}
               />
 
               {filteredTasks.length === 0 ? (
@@ -3491,6 +3690,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                       className={taskStatusRowClass(t.status)}
                       status={t.status}
                       priority={t.priority}
+                      overdue={isWorkDueDatePast(t.dueDate) && t.status !== 'done'}
                       saving={false}
                       canSave={
                         workItemIsDirty(dirtyTaskIds, t.id) ||
@@ -3545,16 +3745,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             />
                             {t.onAgenda ? ON_AGENDA_LABEL : ADD_TO_AGENDA_LABEL}
                           </label>
-                          <span
-                            className={`text-[9px] font-mono font-bold px-1.5 min-h-[44px] inline-flex items-center rounded border ${
-                              isWorkDueDatePast(t.dueDate) && t.status !== 'done'
-                                ? 'bg-[#E4B8A4] text-[#5C3328] border-[#C9A08C]'
-                                : 'bg-white text-[#1F1917] border-[#E5DFD3]'
-                            }`}
-                            data-testid={`work-row-due-${t.id}`}
-                          >
-                            {formatWorkDueDateShort(t.dueDate)}
-                          </span>
+                          <WorkBoardHeaderDate
+                            value={t.dueDate ?? ''}
+                            overdue={isWorkDueDatePast(t.dueDate) && t.status !== 'done'}
+                            testId={`work-row-due-${t.id}`}
+                            onChange={(value) => handleUpdateTask(t.id, { dueDate: value })}
+                          />
                         </>
                       }
                     >
@@ -3600,7 +3796,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                               handleUpdateTask(t.id, { title: next || 'Untitled task' });
                             }}
                             className={`${workBoardFieldClassName} ${
-                              t.status === 'done' ? 'line-through text-[#3F3832]' : workPriorityTextClass(t.priority)
+                              t.status === 'done' ? 'line-through text-[#3F3832]' : workDueDateTextClass(t.dueDate)
                             }`}
                             aria-label="Task title"
                             data-testid={`task-title-${t.id}`}
@@ -3682,7 +3878,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             type="date"
                             value={t.dueDate ?? ''}
                             onChange={(e) => handleUpdateTask(t.id, { dueDate: e.target.value })}
-                            className={workBoardFieldClassName}
+                            className={`${workBoardFieldClassName} ${workDueDateControlClass(isWorkDueDatePast(t.dueDate) && t.status !== 'done')}`}
                             aria-label="Due date"
                           />
                         </WorkBoardField>
@@ -3732,6 +3928,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
           <EmailTemplatesPanel actor={currentUser} />
         )}
 
+        {activeTab === 'mailing-list' && getRolePermissions(currentUser).canManageEmailTemplates && (
+          <LaunchPage pageId="list" embedded />
+        )}
+
         {activeTab === 'agenda' && getRolePermissions(permissionActor).canViewAgenda && (
           <AgendaBoard
             tasks={tasks}
@@ -3744,6 +3944,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         )}
 
         {activeTab === 'pay' && canViewBudget && <MakePaymentPage embedded />}
+
+        {activeTab === 'inventory-pricing' && getRolePermissions(permissionActor).canViewBudget && (
+          <InventoryPricingPage embedded actorEmail={permissionActor?.email ?? currentUser.email} />
+        )}
 
         {activeTab === 'sitemap' && (
           <SiteMapPage embedded onNavigate={() => onBackToStore()} canSeeMemberships />
@@ -3785,7 +3989,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
           />
         )}
 
-        {(['timesheet', 'daily-progress', 'memberships', 'certificates', 'growth', 'guides'] as const).map((tab) =>
+        {activeTab === 'guides' ? (
+          <BetaTestingGuideAdminPage
+            actorName={currentUser.name.split(' ')[0] || 'House'}
+            actorEmail={currentUser.email}
+          />
+        ) : null}
+
+        {(['timesheet', 'daily-progress', 'memberships', 'certificates', 'growth'] as const).map((tab) =>
           activeTab === tab ? <AdminStudioPlaceholder key={tab} tab={tab} /> : null,
         )}
 
@@ -4289,6 +4500,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
           </div>
         )}
       </main>
+      <BlockedNoteDialog
+        open={Boolean(blockedNoteTaskIds?.length)}
+        itemCount={blockedNoteTaskIds?.length ?? 0}
+        onCancel={() => setBlockedNoteTaskIds(null)}
+        onConfirm={confirmBlockedNote}
+      />
     </div>
   );
 };

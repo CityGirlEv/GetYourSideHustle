@@ -106,6 +106,7 @@ describe('planPage', () => {
       'memberships',
       'certificates',
       'emails',
+      'mailing-list',
       'factory',
       'calendar',
       'gear-selections',
@@ -156,6 +157,10 @@ describe('planPage', () => {
     expect(adminPortalPath('pay')).toBe('/admin/pay');
     expect(parseAdminPortalTab('/admin/previous-budget')).toBe('previous-budget');
     expect(adminPortalPath('previous-budget')).toBe('/admin/previous-budget');
+    expect(parseAdminPortalTab('/admin/inventory-pricing')).toBe('inventory-pricing');
+    expect(adminPortalPath('inventory-pricing')).toBe('/admin/inventory-pricing');
+    expect(parseAdminPortalTab('/admin/mailing-list')).toBe('mailing-list');
+    expect(adminPortalPath('mailing-list')).toBe('/admin/mailing-list');
     expect(openPlanFromHeader('budget')).toBe(BUDGET_TAB_ID);
     expect(parseAdminPortalTab('/admin/testing')).toBe('testing');
     expect(parseAdminPortalTab('/admin/agenda')).toBe('agenda');

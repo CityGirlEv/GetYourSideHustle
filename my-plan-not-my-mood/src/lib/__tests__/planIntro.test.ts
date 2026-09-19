@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ANGELA_FOUNDER_LINE,
   ANGELA_NIECE_ORIGIN,
+  ANGELA_PUBLIC_BIO,
+  ANGELA_PUBLIC_ROLE,
+  ANGELA_SITE_URL,
   DEFAULT_PROPOSAL_TEXT,
   ensureAngelaNieceOrigin,
   MUNTIE_EV_BIO,
@@ -22,7 +26,7 @@ describe('planIntro', () => {
     expect(intro.execSummary).toContain('Do not let a temporary mood determine a permanent outcome');
     expect(intro.execSummary).toContain('niece');
     expect(intro.originStory).toBe(ANGELA_NIECE_ORIGIN);
-    expect(intro.partnerBio).toContain('Evelyn Harris');
+    expect(intro.partnerBio).toContain('Evelyn Irving');
     expect(intro.partnerBio).toContain("Muntie Ev's AI Studio");
     expect(DEFAULT_PROPOSAL_TEXT).toContain(CLIENT_DISPLAY_NAME);
     expect(DEFAULT_PROPOSAL_TEXT).toContain('niece');
@@ -33,6 +37,8 @@ describe('planIntro', () => {
     expect(PROJECT_OVERVIEW_TEXT).toContain('Coming Soon');
     expect(PROJECT_OVERVIEW_TEXT).toMatch(/Orders on SnatchVault/);
     expect(PROJECT_OVERVIEW_TEXT).toMatch(/3 T-shirt sales videos/);
+    expect(PROJECT_OVERVIEW_TEXT).toMatch(/4 marketing videos/);
+    expect(PROJECT_OVERVIEW_TEXT).toMatch(/complimentary at no charge/);
     expect(PROJECT_OVERVIEW_TEXT).toMatch(/organic hoodie sales/i);
     expect(PROJECT_OVERVIEW_TEXT).toMatch(/6\.2K/);
     expect(PROJECT_OVERVIEW_TEXT).toContain(CLIENT_DISPLAY_NAME);
@@ -44,5 +50,10 @@ describe('planIntro', () => {
     expect(MUNTIE_EV_BIO).toContain('over 30 years');
     expect(ensureAngelaNieceOrigin('Feel it.')).toContain('niece');
     expect(ensureAngelaNieceOrigin(DEFAULT_PROPOSAL_TEXT)).toBe(DEFAULT_PROPOSAL_TEXT);
+    expect(ANGELA_SITE_URL).toBe('https://www.angelasharris.com/you');
+    expect(ANGELA_FOUNDER_LINE).toMatch(/founder/i);
+    expect(ANGELA_PUBLIC_ROLE).toMatch(/Author/);
+    expect(ANGELA_PUBLIC_BIO).toMatch(/unique writing style/i);
+    expect(ANGELA_PUBLIC_BIO).toMatch(/healthy relationships/i);
   });
 });

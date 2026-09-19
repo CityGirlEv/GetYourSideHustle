@@ -16,6 +16,7 @@ import {
   fetchMemberCredits,
   formatKidCreditBalance,
   friendlyCreditsLoadError,
+  portalWelcomeCreditLabel,
   summarizeMemberCredits,
   type MemberCreditsSummary,
 } from "../lib/member-credits";
@@ -155,6 +156,20 @@ export function KidDashboard({
                 </button>
               ) : null}
             </div>
+            <button
+              type="button"
+              className="user-portal-welcome-credits"
+              data-testid="kid-dashboard-welcome-credits"
+              onClick={() => setTab("credits")}
+            >
+              <span className="user-portal-welcome-credits-label">
+                <Coins size={16} aria-hidden /> Credit balance
+              </span>
+              <strong data-testid="kid-dashboard-welcome-credits-balance">
+                {portalWelcomeCreditLabel(credits?.balance, creditsLoading)}
+              </strong>
+              <span className="user-portal-credits-muted">On this membership account</span>
+            </button>
             <InviteFriendCard isLoggedIn testId="kid-dashboard-invite" />
           </div>
         </div>

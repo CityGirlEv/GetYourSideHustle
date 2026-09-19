@@ -36,6 +36,22 @@ import { TECH_HELPER_SUPPLIES } from "./tech-helper-guide";
 import { YARD_HELP_SUPPLIES } from "./yard-help-guide";
 import { CLEANING_SERVICE_SUPPLIES } from "./cleaning-service-guide";
 import { ERRAND_RUNNER_SUPPLIES } from "./errand-runner-guide";
+import { NEIGHBORHOOD_HELPER_SUPPLIES } from "./neighborhood-helper-guide";
+import { AI_ASSETS_SUPPLIES } from "./ai-assets-guide";
+import { AIRBNB_COHOST_SUPPLIES } from "./airbnb-cohost-guide";
+import { AMAZON_FBA_SELLER_SUPPLIES } from "./amazon-fba-seller-guide";
+import { VIRTUAL_CALL_ASSISTANT_SUPPLIES } from "./virtual-call-assistant-guide";
+import { AI_SOCIAL_HELPER_SUPPLIES } from "./ai-social-helper-guide";
+import { BIRTHDAY_PARTY_HELPER_SUPPLIES } from "./birthday-party-helper-guide";
+import { CLOSET_ORGANIZER_SUPPLIES } from "./closet-organizer-guide";
+import { LIEN_TAX_SALES_SUPPLIES } from "./lien-tax-sales-guide";
+import { JUNIOR_CONTENT_CREATE_SUPPLIES } from "./junior-content-create-guide";
+import { KIDS_CRAFT_HUSTLE_SUPPLIES } from "./kids-craft-hustle-guide";
+import { CREATE_GAMES_KIDS_SUPPLIES } from "./create-games-kids-guide";
+import { CREATE_GAMES_JUNIOR_SUPPLIES } from "./create-games-junior-guide";
+import { CUSTOM_BOOKMARK_CREATOR_SUPPLIES } from "./custom-bookmark-creator-guide";
+import { WEB_LEADS_SUPPLIES } from "./web-leads-guide";
+import { MAILBOX_CLEANING_SUPPLIES } from "./mailbox-cleaning-guide";
 import { AI_AGENTS_SUPPLIES } from "./ai-agents-guide";
 import { AI_PROMO_VIDEO_SUPPLIES } from "./ai-promo-video-guide";
 import { STR_COHOST_SUPPLIES } from "./str-cohost-guide";
@@ -106,13 +122,83 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
   },
 
   "neighborhood-helper": {
-    starterKitTotal: "About $8–20 for gloves, sanitizer, and flyers",
-    items: [
-      s("gloves", "Disposable or work gloves", "1 pack / pair", "$4–8"),
-      s("sanitizer", "Hand sanitizer", "1 bottle", "$2–5"),
-      s("flyer", "Printed rate flyers (paper)", "20–50 sheets", "$3–8"),
-      s("bags", "Reusable shopping bags for grocery carry-in", "2–4", "$5–12", undefined, true),
-    ],
+    starterKitTotal: NEIGHBORHOOD_HELPER_SUPPLIES.starterKitTotal,
+    items: NEIGHBORHOOD_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "ai-assets": {
+    starterKitTotal: AI_ASSETS_SUPPLIES.starterKitTotal,
+    items: AI_ASSETS_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "airbnb-cohost": {
+    starterKitTotal: AIRBNB_COHOST_SUPPLIES.starterKitTotal,
+    items: AIRBNB_COHOST_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  amazon: {
+    starterKitTotal: AMAZON_FBA_SELLER_SUPPLIES.starterKitTotal,
+    items: AMAZON_FBA_SELLER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "virtual-call-assistant": {
+    starterKitTotal: VIRTUAL_CALL_ASSISTANT_SUPPLIES.starterKitTotal,
+    items: VIRTUAL_CALL_ASSISTANT_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "ai-social-helper": {
+    starterKitTotal: AI_SOCIAL_HELPER_SUPPLIES.starterKitTotal,
+    items: AI_SOCIAL_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "birthday-party-helper": {
+    starterKitTotal: BIRTHDAY_PARTY_HELPER_SUPPLIES.starterKitTotal,
+    items: BIRTHDAY_PARTY_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "closet-organizer": {
+    starterKitTotal: CLOSET_ORGANIZER_SUPPLIES.starterKitTotal,
+    items: CLOSET_ORGANIZER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "lien-tax-sales": {
+    starterKitTotal: LIEN_TAX_SALES_SUPPLIES.starterKitTotal,
+    items: LIEN_TAX_SALES_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "junior-content-create": {
+    starterKitTotal: JUNIOR_CONTENT_CREATE_SUPPLIES.starterKitTotal,
+    items: JUNIOR_CONTENT_CREATE_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "kids-craft-hustle": {
+    starterKitTotal: KIDS_CRAFT_HUSTLE_SUPPLIES.starterKitTotal,
+    items: KIDS_CRAFT_HUSTLE_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "create-games-kids": {
+    starterKitTotal: CREATE_GAMES_KIDS_SUPPLIES.starterKitTotal,
+    items: CREATE_GAMES_KIDS_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "create-games-junior": {
+    starterKitTotal: CREATE_GAMES_JUNIOR_SUPPLIES.starterKitTotal,
+    items: CREATE_GAMES_JUNIOR_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "custom-bookmark-creator": {
+    starterKitTotal: CUSTOM_BOOKMARK_CREATOR_SUPPLIES.starterKitTotal,
+    items: CUSTOM_BOOKMARK_CREATOR_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "web-leads": {
+    starterKitTotal: WEB_LEADS_SUPPLIES.starterKitTotal,
+    items: WEB_LEADS_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+
+  "mailbox-cleaning": {
+    starterKitTotal: MAILBOX_CLEANING_SUPPLIES.starterKitTotal,
+    items: MAILBOX_CLEANING_SUPPLIES.items.map((item) => ({ ...item })),
   },
 
   "errand-runner": {

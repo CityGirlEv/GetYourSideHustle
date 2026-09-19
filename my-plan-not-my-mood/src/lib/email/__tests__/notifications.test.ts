@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  isMissingEmailRoute,
+  sendContactFormEmail,
   sendPasswordResetEmail,
   sendSignupConfirmationEmail,
   sendSignupPendingEmail,
@@ -128,6 +130,93 @@ describe('email notifications', () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body.resetUrl).toContain('reset=abc123');
     expect(body.email).toBe('pat@example.com');
+  });
+
+  it('sendContactFormEmail posts a validated note to the contact endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await sendContactFormEmail({
+      name: 'Pat',
+      email: 'Pat@Example.com',
+      subject: 'Shop question',
+      message: 'I want to know when the next drop lands.',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/email/contact',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body).toEqual({
+      name: 'Pat',
+      email: 'pat@example.com',
+      subject: 'Shop question',
+      message: 'I want to know when the next drop lands.',
+    });
+  });
+
+  it('rejects an incomplete contact note before calling the API', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await sendContactFormEmail({ name: 'Pat' });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/email/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a contact send failure instead of pretending it skipped', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ skipped: true, error: 'Email service not configured' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await sendContactFormEmail({
+      name: 'Pat',
+      email: 'pat@example.com',
+      subject: 'Shop question',
+      message: 'I want to know when the next drop lands.',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      skipped: true,
+      error: 'Email service not configured',
+    });
+  });
+
+  it('falls back to the live send API when the contact route is not deployed', async () => {
+    expect(isMissingEmailRoute(405)).toBe(true);
+    expect(isMissingEmailRoute(404)).toBe(true);
+    expect(isMissingEmailRoute(502)).toBe(false);
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 405, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await sendContactFormEmail({
+      name: 'Pat',
+      email: 'pat@example.com',
+      subject: 'Shop question',
+      message: 'I want to know when the next drop lands.',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/email/contact', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/email/send', expect.objectContaining({ method: 'POST' }));
+    const sendBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body)) as {
+      to?: string;
+      subject?: string;
+      html?: string;
+    };
+    expect(sendBody.to).toBe('info@nonnegotiation.com');
+    expect(sendBody.subject).toBe('Contact: Shop question');
+    expect(sendBody.html).toContain('Pat');
+    expect(sendBody.html).toContain('next drop lands');
   });
 
   it('treats network failure as skipped without blocking UX', async () => {

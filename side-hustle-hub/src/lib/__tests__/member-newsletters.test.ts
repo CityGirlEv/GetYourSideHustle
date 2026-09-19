@@ -19,9 +19,9 @@ describe("member newsletters", () => {
     expect(titleForView("newsletter")).toMatch(/Newsletter/);
   });
 
-  it("uses a weekly Friday cadence", () => {
-    expect(NEWSLETTER_CADENCE).toBe("weekly");
-    expect(NEWSLETTER_CADENCE_LABEL).toBe("Weekly Newsletter");
+  it("uses a bi-weekly Friday cadence", () => {
+    expect(NEWSLETTER_CADENCE).toBe("biweekly");
+    expect(NEWSLETTER_CADENCE_LABEL).toBe("Bi-Weekly Newsletter");
   });
 
   it("builds soft-launch archive issues with readable copy", () => {

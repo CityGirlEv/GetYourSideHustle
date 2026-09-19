@@ -36,6 +36,7 @@ import {
   planSoftLaunchSprintRollovers,
   withSoftLaunchRolloverNote,
   SOFT_LAUNCH_FACTORY_SPRINTS,
+  SOFT_LAUNCH_SEED_ALL_RANGE,
   SOFT_LAUNCH_ITEM_STATUSES,
   SOFT_LAUNCH_ITEM_STATUS_LABELS,
   contentFactoryItemStatusClass,
@@ -792,7 +793,7 @@ export function ContentFactory({
           <Sparkles size={20} style={{ color: "var(--bronze)" }} /> Content Factory
         </h2>
         <p style={{ color: "var(--text-primary)", marginTop: 4, marginBottom: 0, fontSize: "0.95rem" }}>
-          GYSH Marketing/Launch Plan (Sprints 3–5): Facebook, Kevina Starr, website/newsletter, ads, and new channels. Admin only.
+          GYSH Marketing/Launch Plan ({SOFT_LAUNCH_SEED_ALL_RANGE}): Facebook, Kevina Starr, website/newsletter, ads, and new channels. Admin only.
         </p>
         {error && (
           <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.9rem" }}>
@@ -923,8 +924,15 @@ export function ContentFactory({
                 <button type="button" className="btn btn-primary" onClick={() => void seedRollout("visible")} disabled={loading}>
                   <Wand2 size={14} /> Seed visible → drafts
                 </button>
-                <button type="button" className="btn btn-outline" onClick={() => void seedRollout("all")} disabled={loading}>
-                  Seed all S2–S5
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => void seedRollout("all")}
+                  disabled={loading}
+                  data-testid="factory-seed-all"
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  Seed all {SOFT_LAUNCH_SEED_ALL_RANGE}
                 </button>
                 <button type="button" className="btn btn-outline" onClick={() => setShowSeeded((v) => !v)} disabled={loading}>
                   Seeded drafts ({seededDrafts.length})
@@ -1318,7 +1326,9 @@ export function ContentFactory({
                 Editable working copies of plan items. Advance status as you publish.
               </p>
               {seededDrafts.length === 0 ? (
-                <p style={{ marginTop: 12, color: "var(--text-primary)" }}>None yet — use Seed visible sprint or Seed all S2–S5.</p>
+                <p style={{ marginTop: 12, color: "var(--text-primary)" }}>
+                  None yet — use Seed visible sprint or Seed all {SOFT_LAUNCH_SEED_ALL_RANGE}.
+                </p>
               ) : (
                 <div className="content-factory__seeded-grid">
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

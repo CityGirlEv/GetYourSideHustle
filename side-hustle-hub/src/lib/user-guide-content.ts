@@ -825,7 +825,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "eu-nl1",
-            text: "Members-only Weekly Newsletter page at /newsletter — Friday dual-audience issue (kids glow + adult hustle tip).",
+            text: "Members-only Bi-Weekly Newsletter page at /newsletter — two issues a month (kids glow + adult hustle tip).",
           },
           {
             id: "eu-nl2",
@@ -844,7 +844,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "eu-j2",
-            text: "Free — open free guides. Starter — member guides, community, weekly newsletter, workshop discount, one 60-minute or two 30-minute sessions (credits for Kids/Teens).",
+            text: "Free — open free guides. Starter — member guides, community, bi-weekly newsletter (2× per month), workshop discount, one 60-minute or two 30-minute sessions (credits for Kids/Teens).",
           },
           {
             id: "eu-j3",

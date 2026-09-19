@@ -81,7 +81,8 @@ export function applyFirstStepPageHref(
   steps: WorkChecklistStep[],
   pageUrl: string | undefined,
 ): WorkChecklistStep[] {
-  const href = String(pageUrl ?? '').trim();
+  const inferred = steps[0] ? inferHrefFromOpenLabel(steps[0].label) : undefined;
+  const href = String(pageUrl ?? '').trim() || inferred || '';
   if (!href) return steps;
   if (steps.length === 0) {
     return [createChecklistStep({ label: 'Open the page under test', href, checked: false })];
@@ -133,7 +134,7 @@ export function updateChecklistStep(
     const next = { ...step };
     if (patch.label !== undefined) next.label = String(patch.label);
     if (patch.href !== undefined) {
-      next.href = String(patch.href);
+      next.href = String(patch.href).trim() || undefined;
     }
     if (patch.checked !== undefined) next.checked = Boolean(patch.checked);
     return next;
@@ -211,4 +212,55 @@ export function applyChecklistStepAdd(
 export function looksLikePageLink(value: string): boolean {
   const raw = String(value ?? '').trim();
   return /^(https?:\/\/|\/[a-z0-9])/i.test(raw);
+}
+
+const OPEN_PAGE_HREFS: Array<[RegExp, string]> = [
+  [/\bprivacy/i, '/privacy'],
+  [/\bterms/i, '/terms'],
+  [/\babout\b/i, '/about'],
+  [/\bcontact\b/i, '/contact'],
+  [/\bfaq\b/i, '/faq'],
+  [/\bjoin\b|\bmembership/i, '/join'],
+  [/\bmake payment|\bpayment page|\b\/pay\b/i, '/pay'],
+  [/\bsite map|\bsitemap/i, '/sitemap'],
+  [/\bplanners?/i, '/planners'],
+  [/\bhoodies?\b/i, '/gear/hoodies'],
+  [/\bhats?\b/i, '/gear/hats'],
+  [/\bshop gear|\baccountability gear/i, '/gear'],
+  [/\bmailing list|\b\/list\b/i, '/list'],
+  [/\bbeta tester|\bbeta-rewards/i, '/beta-rewards'],
+  [/\bbeta testing guide|\bbeta-guide/i, '/beta-guide'],
+  [/\bhome\b|\bstorefront\b/i, '/'],
+];
+
+/** True when step 1 is an Open/Visit row aimed at a page. */
+export function firstStepPointsToPage(step?: Pick<WorkChecklistStep, 'label' | 'href'> | null): boolean {
+  if (!step) return false;
+  if (String(step.href ?? '').trim()) return true;
+  const label = String(step.label ?? '').trim();
+  if (looksLikePageLink(label)) return true;
+  return /^(open|go to|visit)\b/i.test(label);
+}
+
+/** Map “Open About” copy to the page path when href was not saved. */
+export function inferHrefFromOpenLabel(label: string): string | undefined {
+  const raw = String(label ?? '').trim();
+  if (looksLikePageLink(raw)) return raw.split(/\s+/)[0];
+  if (!/^(open|go to|visit)\b/i.test(raw)) return undefined;
+  for (const [pattern, href] of OPEN_PAGE_HREFS) {
+    if (pattern.test(raw)) return href;
+  }
+  return undefined;
+}
+
+/** Visible link text for a stored page href. */
+export function formatStepPageHref(href: string): string {
+  const raw = String(href ?? '').trim();
+  if (!raw) return '';
+  try {
+    if (/^https?:\/\//i.test(raw)) return new URL(raw).pathname === '/' ? raw.replace(/\/$/, '') : raw;
+  } catch {
+    return raw;
+  }
+  return raw;
 }

@@ -33,7 +33,8 @@ describe('heroCarouselProducts', () => {
   });
 
   it('reads gear kind and product handle from the URL', () => {
-    expect(parseGearKindFromPath('/gear')).toBe('tee');
+    expect(parseGearKindFromPath('/gear')).toBe('all');
+    expect(parseGearKindFromPath('/gear/tees')).toBe('tee');
     expect(parseGearKindFromPath('/gear/hoodies')).toBe('hoodie');
     expect(parseGearKindFromPath('/gear/hats?x=1')).toBe('hat');
     expect(parseGearProductHandle('#product-unisex-softstyle-logo-tee')).toBe('unisex-softstyle-logo-tee');

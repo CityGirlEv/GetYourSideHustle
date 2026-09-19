@@ -9,6 +9,7 @@ import {
   clampCreditsByItem,
   clampCreditsToApply,
   mixedCheckoutButtonLabel,
+  shouldShowApplyAllCredits,
   parseCreditSpendRequest,
   quoteCreditPurchase,
   quoteMixedCartPayment,
@@ -154,6 +155,9 @@ describe("credit checkout", () => {
     expect(payWithCredits.creditsAvailable).toBe(145);
     expect(payWithCredits.fullyCoveredByCredits).toBe(true);
     expect(mixedCheckoutButtonLabel(payWithCredits)).toBe("Pay 15 credits");
+    expect(shouldShowApplyAllCredits(payWithCredits)).toBe(false);
+    expect(shouldShowApplyAllCredits({ creditsApplied: 10, creditsMax: 15 })).toBe(true);
+    expect(shouldShowApplyAllCredits({ creditsApplied: 0, creditsMax: 0 })).toBe(false);
   });
 
   it("clamps per-item credit qty to line cost and remaining balance", () => {

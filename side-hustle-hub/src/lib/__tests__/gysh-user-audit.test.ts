@@ -36,6 +36,7 @@ describe("gysh-user-audit", () => {
     expect(userAuditActionLabel("user_deleted")).toBe("Account deleted");
     expect(userAuditActionLabel("purchase_credit_pack")).toBe("Kid Credit pack purchased");
     expect(userAuditActionLabel("credits_granted")).toBe("Kid Credits granted");
+    expect(userAuditActionLabel("membership_admin_updated")).toBe("Membership updated by admin");
     expect(userAuditActionLabel("custom_event")).toBe("custom event");
   });
 

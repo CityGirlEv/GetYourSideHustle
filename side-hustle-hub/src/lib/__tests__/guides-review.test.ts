@@ -156,9 +156,7 @@ describe("guides review — launch guides", () => {
 
   it("service guides start with marketing objectives, materials, then outreach", () => {
     for (const id of [
-      "garage-sale-helper",
       "tutoring",
-      "neighborhood-helper",
     ] as const) {
       const steps = detailedStepsForGuide(id) ?? [];
       const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");

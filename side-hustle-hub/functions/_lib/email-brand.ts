@@ -60,10 +60,10 @@ const PERKS: Record<TierId, Record<PerkAudience, string[]>> = {
     senior: ["Senior lane preview", "Flexible Match Wizard pacing", "Interest-list updates"],
   },
   starter: {
-    adult: ["Full member guides", "GYSH Community", "Weekly Newsletter", "Priority workshop access", "One 60-minute or two 30-minute sessions with Tina & Evelyn"],
-    kids: ["Kids Team member guides", "Weekly Newsletter", "Training videos", "Kevina Glow Getter extras", "Piggy Bank challenges"],
-    junior: ["Teens Team guides", "Weekly Newsletter", "Training videos", "CEO starter checklists", "My Bank goals"],
-    senior: ["Senior Side Hustle team", "Weekly Newsletter", "Peer learning circle", "Priority workshop access", "One 60-minute or two 30-minute sessions"],
+    adult: ["Full member guides", "GYSH Community", "Bi-weekly newsletter (2× per month)", "Priority workshop access", "One 60-minute or two 30-minute sessions with Tina & Evelyn"],
+    kids: ["Kids Team member guides", "Bi-weekly newsletter (2× per month)", "Training videos", "Kevina Glow Getter extras", "Piggy Bank challenges"],
+    junior: ["Teens Team guides", "Bi-weekly newsletter (2× per month)", "Training videos", "CEO starter checklists", "My Bank goals"],
+    senior: ["Senior Side Hustle team", "Bi-weekly newsletter (2× per month)", "Peer learning circle", "Priority workshop access", "One 60-minute or two 30-minute sessions"],
   },
   pro: {
     adult: ["Hustle schedule suite", "Two 60-minute sessions", "Family kid-credit pool"],

@@ -3,17 +3,20 @@
  * Checkout stays on Snatch Vault; this site lists tees, hoodies, and hats.
  */
 
-import { collectionPhotoForHandle, isCollectionPhotoUrl } from './collectionPhotos';
+import { COLLECTION_PHOTOS_BY_HANDLE, collectionPhotoForHandle, isCollectionPhotoUrl } from './collectionPhotos';
 
 export const SHOPIFY_STORE_ORIGIN = 'https://snatchvault.com';
 export const SHOPIFY_GEAR_API_PATH = '/api/shopify/gear';
 export const SHOPIFY_TEES_API_PATH = '/api/shopify/tees';
-export const SHOPIFY_TEE_COLLECTION_HANDLE = 'all-tees';
+export const SHOPIFY_ALL_GEAR_COLLECTION_HANDLE = 'my-plan-gear';
+export const SHOPIFY_TEE_COLLECTION_HANDLE = 'non-negotiables-letter-tees';
 export const SHOPIFY_HOODIE_COLLECTION_HANDLE = 'my-plan-hoodie-collection';
 export const SHOPIFY_HAT_COLLECTION_HANDLE = 'my-plan-sports-hat';
-export const SHOPIFY_TEE_PAGE_LABEL = 'My Plan All Tees';
-export const SHOPIFY_HOODIE_PAGE_LABEL = 'My Plan Hoodies';
-export const SHOPIFY_HAT_PAGE_LABEL = 'My Plan Sports Hat';
+export const SHOPIFY_ALL_GEAR_PAGE_LABEL = 'All Gear';
+export const SHOPIFY_TEE_PAGE_LABEL = 'Tee Collection';
+export const SHOPIFY_HOODIE_PAGE_LABEL = 'Hoodies';
+export const SHOPIFY_HAT_PAGE_LABEL = 'Hats';
+export const SHOPIFY_ALL_GEAR_CTA_LABEL = 'Shop all gear';
 export const SHOPIFY_TEES_CTA_LABEL = 'Shop tees';
 export const SHOPIFY_HOODIES_CTA_LABEL = 'Shop hoodies';
 export const SHOPIFY_HATS_CTA_LABEL = 'Shop hats';
@@ -21,7 +24,10 @@ export const SHOPIFY_BUY_LABEL = 'Buy';
 export const SHOPIFY_TEES_EMPTY =
   'Tees, hoodies, and hats are sold on Shopify. Open a collection to pick a size and check out.';
 export const SHOPIFY_GEAR_EMPTY = SHOPIFY_TEES_EMPTY;
+export const SHOPIFY_GEAR_HUB_BLURB =
+  'Open a collection to shop the live drop. Sizes, shipping, and checkout stay on the store.';
 export type ShopifyGearKind = 'tee' | 'hoodie' | 'hat';
+export type ShopifyPublicCollectionId = 'all' | ShopifyGearKind;
 
 export const SHOPIFY_GEAR_SITE_PATHS: Record<ShopifyGearKind, string> = {
   tee: '/gear',
@@ -40,6 +46,60 @@ export type ShopifyGearCollection = {
   heading: string;
   cta: string;
 };
+
+export type ShopifyPublicCollection = {
+  id: ShopifyPublicCollectionId;
+  handle: string;
+  heading: string;
+  label: string;
+  cta: string;
+  blurb: string;
+  image: string;
+  imageAlt: string;
+};
+
+export const SHOPIFY_PUBLIC_COLLECTIONS: ShopifyPublicCollection[] = [
+  {
+    id: 'all',
+    handle: SHOPIFY_ALL_GEAR_COLLECTION_HANDLE,
+    heading: SHOPIFY_ALL_GEAR_PAGE_LABEL,
+    label: 'My Plan Gear',
+    cta: SHOPIFY_ALL_GEAR_CTA_LABEL,
+    blurb: 'The full drop — tees, hoodies, and hats in one collection.',
+    image: COLLECTION_PHOTOS_BY_HANDLE['unisex-softstyle-logo-tee'],
+    imageAlt: 'MY PLAN, NOT MY MOOD gear',
+  },
+  {
+    id: 'hoodie',
+    handle: SHOPIFY_HOODIE_COLLECTION_HANDLE,
+    heading: SHOPIFY_HOODIE_PAGE_LABEL,
+    label: 'My Plan Hoodie Collection',
+    cta: SHOPIFY_HOODIES_CTA_LABEL,
+    blurb: 'The heavy days still have to move. Shop the hoodie collection.',
+    image: COLLECTION_PHOTOS_BY_HANDLE['my-plan-unisex-college-hoodie-6-colors'],
+    imageAlt: 'MY PLAN, NOT MY MOOD hoodie',
+  },
+  {
+    id: 'hat',
+    handle: SHOPIFY_HAT_COLLECTION_HANDLE,
+    heading: SHOPIFY_HAT_PAGE_LABEL,
+    label: 'My Plan Sports Hat',
+    cta: SHOPIFY_HATS_CTA_LABEL,
+    blurb: 'A small reminder for a big decision. Shop the hat collection.',
+    image: COLLECTION_PHOTOS_BY_HANDLE['low-profile-baseball-cap'],
+    imageAlt: 'MY PLAN, NOT MY MOOD sports hat',
+  },
+  {
+    id: 'tee',
+    handle: SHOPIFY_TEE_COLLECTION_HANDLE,
+    heading: SHOPIFY_TEE_PAGE_LABEL,
+    label: 'Non-Negotiables Letter Tees',
+    cta: SHOPIFY_TEES_CTA_LABEL,
+    blurb: 'Letter tees you can wear when the plan has to win.',
+    image: COLLECTION_PHOTOS_BY_HANDLE['unisex-softstyle-letters1-tee'],
+    imageAlt: 'MY PLAN, NOT MY MOOD letter tee',
+  },
+];
 
 export const SHOPIFY_GEAR_COLLECTIONS: ShopifyGearCollection[] = [
   {
@@ -102,6 +162,51 @@ export function shopifyProductUrl(handle: string, origin = SHOPIFY_STORE_ORIGIN)
     .trim()
     .replace(/^\/+|\/+$/g, '');
   return `${origin.replace(/\/$/, '')}/products/${slug}`;
+}
+
+export const SHOPIFY_PUBLIC_HUB_COLLECTION_IDS: ShopifyPublicCollectionId[] = ['all', 'tee', 'hoodie', 'hat'];
+
+export function shopifyPublicCollection(id: ShopifyPublicCollectionId): ShopifyPublicCollection {
+  return SHOPIFY_PUBLIC_COLLECTIONS.find((row) => row.id === id) ?? SHOPIFY_PUBLIC_COLLECTIONS[0];
+}
+
+export function shopifyPublicHubCollections(): ShopifyPublicCollection[] {
+  return SHOPIFY_PUBLIC_HUB_COLLECTION_IDS.map((id) => shopifyPublicCollection(id));
+}
+
+export const GEAR_HUB_JOURNAL_CTA_LABEL = 'Coming soon';
+export type GearHubJournalPlaceholderId = '90day' | 'deskpad';
+export type GearHubJournalPlaceholder = {
+  id: GearHubJournalPlaceholderId;
+  heading: string;
+  blurb: string;
+  cta: string;
+};
+
+export const GEAR_HUB_JOURNAL_PLACEHOLDERS: GearHubJournalPlaceholder[] = [
+  {
+    id: '90day',
+    heading: '90-Day Journal',
+    blurb: 'Follow-through journal with goal pages, weekly reviews, and daily execution. Placeholder until this drop is live.',
+    cta: GEAR_HUB_JOURNAL_CTA_LABEL,
+  },
+  {
+    id: 'deskpad',
+    heading: 'Daily Desk Pad',
+    blurb: 'Tear-off journal pad for top 3 non-negotiables and a What Won Today? check. Placeholder until this drop is live.',
+    cta: GEAR_HUB_JOURNAL_CTA_LABEL,
+  },
+];
+
+export function shopifyPublicCollectionUrl(
+  id: ShopifyPublicCollectionId,
+  origin = SHOPIFY_STORE_ORIGIN,
+): string {
+  return shopifyCollectionUrl(shopifyPublicCollection(id).handle, origin);
+}
+
+export function shopifyAllGearPageUrl(origin = SHOPIFY_STORE_ORIGIN): string {
+  return shopifyPublicCollectionUrl('all', origin);
 }
 
 export function shopifyGearPageUrl(kind: ShopifyGearKind, origin = SHOPIFY_STORE_ORIGIN): string {

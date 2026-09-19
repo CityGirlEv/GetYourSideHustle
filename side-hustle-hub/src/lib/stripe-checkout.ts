@@ -33,6 +33,7 @@ export async function startMembershipCheckout(input: {
   interval: MembershipBillingInterval;
   creditsToApply?: number;
   merchChoices?: MerchItemId[];
+  merchTshirtSizes?: Array<string>;
 }): Promise<StripeCheckoutResult> {
   return api("stripe/checkout", {
     method: "POST",
@@ -46,6 +47,7 @@ export async function startMembershipCheckout(input: {
       interval: input.interval,
       creditsToApply: input.creditsToApply ?? 0,
       merchChoices: input.merchChoices,
+      merchTshirtSizes: input.merchTshirtSizes,
       returnOrigin: typeof window !== "undefined" ? window.location.origin : undefined,
     },
     timeoutMs: 60_000,

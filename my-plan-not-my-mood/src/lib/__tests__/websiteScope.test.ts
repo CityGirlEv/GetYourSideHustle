@@ -7,6 +7,7 @@ import {
   INCLUDED_EMAIL_TEMPLATES,
   INCLUDED_WEBSITE_PAGE_LIMIT,
   INCLUDED_WEBSITE_PAGES,
+  MEMBERSHIPS_SCOPE_NOTE,
   ORDER_EMAIL_FROM_NOTE,
   ORDER_STORE_MENU,
   ORDER_STORE_SUBMENUS,
@@ -47,6 +48,8 @@ describe('websiteScope', () => {
     expect(html).toContain(ADDITIONAL_EMAIL_TEMPLATES_ADDON_NOTE);
     expect(INCLUDED_WEBSITE_PAGES[0].id).toBe('home');
     expect(INCLUDED_EMAIL_TEMPLATES[0].id).toBe('sv-hosting');
+    expect(html).toMatch(/Affirmations/);
+    expect(MEMBERSHIPS_SCOPE_NOTE).toMatch(/scope change/i);
   });
 
   it('hosts Orders on SnatchVault my-plan-gear with Non-Negotiable menus and a 70/30 split', () => {

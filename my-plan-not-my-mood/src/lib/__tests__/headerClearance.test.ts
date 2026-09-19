@@ -4,6 +4,7 @@ import {
   ADMIN_STUDIO_HEADER_INNER_CLASS,
   ADMIN_STUDIO_MAIN_CLASS,
   HEADER_BRAND_SLOT_CLASS,
+  HEADER_COMPACT_PAGE_OFFSET,
   HEADER_CONTENT_OFFSET,
   HEADER_MOBILE_MENU_CLASS,
   HEADER_MOBILE_OVERLAY_CLASS,
@@ -12,6 +13,8 @@ import {
   QUOTE_BAR_TRAILING_SPACE,
   headerBrandCanOverlapPage,
   headerOverflowClipsMenu,
+  isCompactLaunchPage,
+  launchPageContentOffset,
 } from '../headerClearance';
 
 describe('headerClearance', () => {
@@ -51,5 +54,16 @@ describe('headerClearance', () => {
   it('reserves space under the sticky nav without pinning the quote over the hero', () => {
     expect(QUOTE_BAR_TRAILING_SPACE).toMatch(/pb-[23]/);
     expect(HEADER_CONTENT_OFFSET).toMatch(/pt-28|pt-32|pt-36/);
+    expect(isCompactLaunchPage('about')).toBe(true);
+    expect(isCompactLaunchPage('faq')).toBe(true);
+    expect(isCompactLaunchPage('contact')).toBe(true);
+    expect(isCompactLaunchPage('privacy')).toBe(true);
+    expect(isCompactLaunchPage('terms')).toBe(true);
+    expect(launchPageContentOffset('about')).toBe(HEADER_COMPACT_PAGE_OFFSET);
+    expect(launchPageContentOffset('faq')).toBe(HEADER_COMPACT_PAGE_OFFSET);
+    expect(launchPageContentOffset('contact')).toBe(HEADER_COMPACT_PAGE_OFFSET);
+    expect(launchPageContentOffset('privacy')).toBe(HEADER_COMPACT_PAGE_OFFSET);
+    expect(launchPageContentOffset('terms')).toBe(HEADER_COMPACT_PAGE_OFFSET);
+    expect(HEADER_COMPACT_PAGE_OFFSET).toMatch(/pt-0/);
   });
 });

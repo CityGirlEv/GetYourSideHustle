@@ -63,8 +63,9 @@ export function ShopPage({
         </span>
         <h2>Wear the hustle</h2>
         <p>
-          {SITE_NAME} tees, caps, and Gang merch — Ideas. Action. Income. Freedom. Message us to
-          order, and we’ll point you to the current drop.
+          {SITE_NAME} tees, caps, and Gang merch — Ideas. Action. Income. Freedom. Paid memberships
+          include complimentary T-shirt(s) or hat(s); extra gear will check out from this shop when
+          the drop is live. Message us in the meantime.
         </p>
         <button type="button" className="btn btn-primary" onClick={onContact} data-testid="shop-contact">
           Contact us to order

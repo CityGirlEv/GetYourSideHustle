@@ -1,5 +1,5 @@
 import { HERO_CAROUSEL_SEED_FILES, sanitizeHeroCarouselFileName } from './heroCarousel';
-import { shopifyGearSitePath, type ShopifyGearKind } from './shopifyStore';
+import { shopifyGearSitePath, type ShopifyGearKind, type ShopifyPublicCollectionId } from './shopifyStore';
 
 export const GEAR_PRODUCT_ANCHOR_PREFIX = 'product-';
 
@@ -46,11 +46,12 @@ export function gearProductAnchorId(handle: string): string {
   return `${GEAR_PRODUCT_ANCHOR_PREFIX}${String(handle ?? '').trim()}`;
 }
 
-export function parseGearKindFromPath(pathname: string): ShopifyGearKind {
+export function parseGearKindFromPath(pathname: string): ShopifyPublicCollectionId {
   const path = String(pathname ?? '').split('?')[0].split('#')[0];
   if (path.includes('/hoodies')) return 'hoodie';
   if (path.includes('/hats')) return 'hat';
-  return 'tee';
+  if (path.includes('/tees')) return 'tee';
+  return 'all';
 }
 
 export function parseGearProductHandle(hash: string): string {

@@ -2,20 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   INTERNAL_CREDITS_MAX,
   INTERNAL_CREDITS_REASON,
+  INTERNAL_CREDITS_REMOVED_REASON,
+  internalCreditDelta,
+  internalCreditReason,
   internalCreditUserOptionLabel,
+  parseInternalCreditAction,
   parseInternalCreditGrant,
   sortUsersForInternalCreditGrant,
 } from "../internal-credits";
 import { formatLedgerReason } from "../credit-pack-purchase";
 
 describe("parseInternalCreditGrant", () => {
-  it("accepts a parent email and whole credits", () => {
+  it("accepts a member email and whole credits", () => {
     expect(
       parseInternalCreditGrant({ email: "nonnegotiation@gmail.com", credits: 100 }),
     ).toEqual({
       ok: true,
       email: "nonnegotiation@gmail.com",
       credits: 100,
+      action: "add",
     });
   });
 
@@ -28,7 +33,26 @@ describe("parseInternalCreditGrant", () => {
       ok: true,
       email: "nonnegotiation@gmail.com",
       credits: 5,
+      action: "add",
     });
+  });
+
+  it("accepts an explicit remove action with a positive amount", () => {
+    expect(
+      parseInternalCreditGrant({
+        email: "member@example.com",
+        credits: 25,
+        action: "remove",
+      }),
+    ).toEqual({
+      ok: true,
+      email: "member@example.com",
+      credits: 25,
+      action: "remove",
+    });
+    expect(internalCreditDelta(25, "remove")).toBe(-25);
+    expect(internalCreditReason("remove")).toBe(INTERNAL_CREDITS_REMOVED_REASON);
+    expect(parseInternalCreditAction("remove")).toBe("remove");
   });
 
   it("rejects missing or invalid email", () => {
@@ -38,28 +62,40 @@ describe("parseInternalCreditGrant", () => {
     expect(parseInternalCreditGrant({ email: "", credits: 10 }).ok).toBe(false);
   });
 
-  it("rejects zero, negative, fractional, and oversized amounts", () => {
+  it("rejects zero, negative, fractional, oversized amounts, and bad actions", () => {
     expect(parseInternalCreditGrant({ email: "a@b.com", credits: 0 }).ok).toBe(false);
     expect(parseInternalCreditGrant({ email: "a@b.com", credits: -5 }).ok).toBe(false);
     expect(parseInternalCreditGrant({ email: "a@b.com", credits: 1.5 }).ok).toBe(false);
     expect(
       parseInternalCreditGrant({ email: "a@b.com", credits: INTERNAL_CREDITS_MAX + 1 }).ok,
     ).toBe(false);
+    expect(parseInternalCreditGrant({ email: "a@b.com", credits: 5, action: "gift" }).ok).toBe(
+      false,
+    );
   });
 });
 
-describe("Internal Credits Added ledger copy", () => {
-  it("shows Internal Credits Added on the member ledger", () => {
+describe("Internal Credits ledger copy", () => {
+  it("shows add and remove reasons on the member ledger", () => {
     expect(INTERNAL_CREDITS_REASON).toBe("Internal Credits Added");
+    expect(INTERNAL_CREDITS_REMOVED_REASON).toBe("Internal Credits Removed");
     expect(formatLedgerReason(INTERNAL_CREDITS_REASON)).toBe("Internal Credits Added");
+    expect(formatLedgerReason(INTERNAL_CREDITS_REMOVED_REASON)).toBe("Internal Credits Removed");
   });
 });
 
 describe("internal credit user dropdown", () => {
-  it("labels members with name and email", () => {
+  it("labels members with name, email, and wallet balance", () => {
     expect(
       internalCreditUserOptionLabel({ name: "Jordan Lee", email: "jordan@example.com" }),
     ).toBe("Jordan Lee — jordan@example.com");
+    expect(
+      internalCreditUserOptionLabel({
+        name: "Jordan Lee",
+        email: "jordan@example.com",
+        creditBalance: 40,
+      }),
+    ).toBe("Jordan Lee — jordan@example.com · 40 credits");
     expect(internalCreditUserOptionLabel({ name: "", email: "solo@example.com" })).toBe(
       "solo@example.com",
     );

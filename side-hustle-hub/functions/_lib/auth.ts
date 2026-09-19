@@ -32,8 +32,10 @@ import {
   merchItemCount,
   mergeMerchNote,
   parseMerchChoices,
+  parseMerchTshirtSizes,
   type TierId,
 } from "../../src/lib/membership";
+import { heardAboutFromNotes, mergeHeardAboutNote, parseHeardAboutInput } from "../../src/lib/heard-about";
 
 export type Env = {
   DB: D1Database;
@@ -118,6 +120,7 @@ export function publicUser(u: DbUser & { last_login_at?: string | null }) {
     canLogin: Boolean(u.password_hash && u.password_salt),
     membershipTier: (u.membership_tier || "free").toLowerCase(),
     audience: (u.audience || "adult").toLowerCase(),
+    heardAbout: heardAboutFromNotes(u.notes),
     lastLoginAt: lastLoginAt || null,
   };
 }
@@ -489,6 +492,7 @@ export async function handleRegister(
     };
     membershipTier?: string;
     merchChoices?: unknown;
+    merchTshirtSizes?: unknown;
     /** Public applicants may add the Beta Tester role; admin/QA/Dev stay admin-assigned. */
     applyBetaTester?: boolean;
     betaNda?: {
@@ -517,10 +521,13 @@ export async function handleRegister(
   const membershipTier = ["free", "starter", "pro", "elite"].includes(requestedTier)
     ? (requestedTier as TierId)
     : "free";
-  const merchErr = merchChoicesError(membershipTier, body.merchChoices);
+  const merchErr = merchChoicesError(membershipTier, body.merchChoices, body.merchTshirtSizes);
   if (merchErr) return error(merchErr);
   const merchChoices =
     parseMerchChoices(body.merchChoices, merchItemCount(membershipTier)) ?? [];
+  const merchTshirtSizes = parseMerchTshirtSizes(merchChoices, body.merchTshirtSizes);
+  const heardAbout = parseHeardAboutInput(body);
+  if (!heardAbout.ok) return error(heardAbout.error);
   const applyBetaTester = body.applyBetaTester === true;
   const ndaErr = betaNdaRegisterError(applyBetaTester, body.betaNda, email);
   if (ndaErr) return error(ndaErr);
@@ -566,9 +573,13 @@ export async function handleRegister(
         ? "Parent family account (Kids Side Hustle Blueprint)"
         : "Free GYSH member"
       : `Requested ${membershipTier} plan · Stripe checkout for Adult/Senior · ${ageGroup}`;
-  const notes = mergeMerchNote(
-    applyBetaTester ? `${notesBase} · Applied as Beta Tester · ${BETA_NDA_VERSION}` : notesBase,
-    merchChoices,
+  const notes = mergeHeardAboutNote(
+    mergeMerchNote(
+      applyBetaTester ? `${notesBase} · Applied as Beta Tester · ${BETA_NDA_VERSION}` : notesBase,
+      merchChoices,
+      merchTshirtSizes,
+    ),
+    heardAbout.stamp,
   );
 
   // New members start pending — admins must activate before login.
@@ -715,7 +726,7 @@ export async function handleRegister(
     env.DB,
     "register_ok",
     email,
-    `${membershipTier} register pending · ${ageGroup}${applyBetaTester ? ` · beta · NDA ${BETA_NDA_VERSION}` : ""}`,
+    `${membershipTier} register pending · ${ageGroup} · ${heardAbout.stamp}${applyBetaTester ? ` · beta · NDA ${BETA_NDA_VERSION}` : ""}`,
   );
 
   // Attach the Match Wizard they just finished — keep on the critical path so the UI can deep-link.
@@ -766,7 +777,7 @@ export async function handleRegister(
           audience: String(audience),
           membership_tier: membershipTier,
         },
-        { includeCertificate: false },
+        { includeCertificate: false, heardAbout: heardAbout.label },
       );
     } catch {
       /* non-fatal — admin can resend on activation */
@@ -877,6 +888,7 @@ export async function handleUpdateMembershipPlan(
     membershipTier?: string;
     audience?: string;
     merchChoices?: unknown;
+    merchTshirtSizes?: unknown;
     adminSimulatePayment?: unknown;
   };
   try {
@@ -895,10 +907,11 @@ export async function handleUpdateMembershipPlan(
   }
   const adminSimulatePayment = adminSimulateRequested && actorIsAdmin;
 
-  const merchErr = merchChoicesError(parsed.membershipTier as TierId, body.merchChoices);
+  const merchErr = merchChoicesError(parsed.membershipTier as TierId, body.merchChoices, body.merchTshirtSizes);
   if (merchErr) return error(merchErr, 400);
   const merchChoices =
     parseMerchChoices(body.merchChoices, merchItemCount(parsed.membershipTier as TierId)) ?? [];
+  const merchTshirtSizes = parseMerchTshirtSizes(merchChoices, body.merchTshirtSizes);
 
   const before = (await getUserById(env.DB, actor.id)) ?? actor;
   const previousTier = String(before.membership_tier || "free").toLowerCase();
@@ -922,7 +935,7 @@ export async function handleUpdateMembershipPlan(
     ? `Admin simulated payment → ${parsed.membershipTier} (${parsed.audience}) ${new Date().toISOString()}`
     : `Membership set to ${parsed.membershipTier} (${parsed.audience}) ${new Date().toISOString()}`;
   const prev = String(before.notes || "");
-  const notes = mergeMerchNote(`${prev}${prev ? " · " : ""}${stamp}`, merchChoices);
+  const notes = mergeMerchNote(`${prev}${prev ? " · " : ""}${stamp}`, merchChoices, merchTshirtSizes);
   const now = new Date().toISOString();
 
   try {

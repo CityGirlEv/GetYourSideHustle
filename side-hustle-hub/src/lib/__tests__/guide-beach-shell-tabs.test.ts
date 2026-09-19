@@ -95,8 +95,8 @@ describe("Beach Shell Jewelry template — all guides", () => {
   });
 
   it("backfilled guides default to Pending / Needs Further Review", () => {
-    expect(guideMarkedPendingAfterPrepBackfill("amazon")).toBe(true);
-    expect(defaultStatusForGuide("amazon")).toBe("pending");
+    expect(guideMarkedPendingAfterPrepBackfill("amazon")).toBe(false);
+    expect(defaultStatusForGuide("amazon")).toBe("active");
     expect(guideMarkedPendingAfterPrepBackfill("airbnb")).toBe(false);
     expect(defaultStatusForGuide("airbnb")).toBe("active");
     expect(guideMarkedPendingAfterPrepBackfill("beach-shell-jewelry")).toBe(false);

@@ -20,6 +20,7 @@ import {
   gyshUserDeleteBlockReason,
 } from "../../lib/gysh-user-delete";
 import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
+import { FoundingStarterTracker } from "./FoundingStarterTracker";
 
 const AUDIENCE_LABELS: Record<string, string> = {
   kids: "Kids",
@@ -225,9 +226,10 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
               Memberships
             </h2>
             <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem" }}>
-              Members grouped by Free → Elite level from D1. Remove plan drops a paid member to Free
-              without deleting the account. Delete member asks “Are you sure?” on that member’s row
-              (Tina and Evelyn stay protected).
+              Members grouped by Free → Elite level from D1. Change a member’s plan on their Users
+              Area profile (including the first-5 complimentary Starter). Remove plan drops a paid
+              member to Free without deleting the account. Delete member asks “Are you sure?” on
+              that member’s row (Tina and Evelyn stay protected).
             </p>
           </div>
           <button
@@ -283,6 +285,8 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
           ))}
         </div>
       </div>
+
+      <FoundingStarterTracker users={users} />
 
       {saveMsg && (
         <div

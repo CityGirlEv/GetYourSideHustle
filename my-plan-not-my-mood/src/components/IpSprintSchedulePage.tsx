@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Clock, CheckCircle2, Download, Eye, Layers, List, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Download, Eye, Layers, List, PenLine, Plus, Trash2 } from 'lucide-react';
 import type { IpItemPhase } from '../lib/ipLineItems';
 import type { TaskItem } from '../lib/workBoard';
 import { taskIsDone } from '../lib/workBoard';
@@ -23,6 +23,15 @@ import {
 } from '../lib/ipToc';
 import { savedKickoffPlanLink } from '../lib/savedMeetings';
 import { MEMBERSHIPS_COMING_SOON_NOTE, PHASE_1_LABEL, PHASE_2_LABEL, PHASE_3_LABEL } from '../lib/gearSalesPlan';
+import { HOSTING_AGREEMENT_DOM_ID, HOSTING_AGREEMENT_TITLE } from '../lib/hostingAgreement';
+import {
+  PHASE_1_CONTRACT_APPROVE_LABEL,
+  PHASE_1_CONTRACT_BUTTON_TEST_ID,
+  PHASE_1_CONTRACT_SIGNED_LABEL,
+  formatSignoffLine,
+  phase1ContractButtonLabel,
+  type AngelaPlanSignoff,
+} from '../lib/planSignoff';
 import { phase1DateRange, sprintIdWithDates, sprintLabelWithDates, sprintWindowById } from '../lib/sprintCalendar';
 import { planRoadmapIntro } from '../lib/planIntro';
 import {
@@ -113,6 +122,8 @@ export interface AngelaPlanDocActions {
   onAudienceChange?: (audience: PlanDocAudience) => void;
   extraLinks?: { id: string; label: string; targetId: string }[];
   onOpenBudget?: () => void;
+  onApprovePhase1Contract?: () => void;
+  phase1Signoff?: AngelaPlanSignoff | null;
 }
 
 export type IpScheduleItemPatch = Partial<
@@ -503,6 +514,27 @@ export const IpSprintSchedulePage: React.FC<{
                   </button>
                 );
               })}
+              {angelaPlanDocs.onApprovePhase1Contract && (
+                <button
+                  type="button"
+                  data-testid={PHASE_1_CONTRACT_BUTTON_TEST_ID}
+                  onClick={() => {
+                    if (angelaPlanDocs.phase1Signoff) {
+                      scrollToIpSection(HOSTING_AGREEMENT_DOM_ID);
+                      return;
+                    }
+                    angelaPlanDocs.onApprovePhase1Contract?.();
+                  }}
+                  className={`min-h-[48px] px-4 inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide cursor-pointer border-r border-[#E5DFD3] ${
+                    angelaPlanDocs.phase1Signoff
+                      ? 'text-[#047857] bg-[#D1FAE5] hover:bg-[#A7F3D0]'
+                      : 'text-white bg-[#C2410C] hover:bg-[#9A3412]'
+                  }`}
+                >
+                  <PenLine className="w-3.5 h-3.5" />
+                  {phase1ContractButtonLabel(Boolean(angelaPlanDocs.phase1Signoff))}
+                </button>
+              )}
               {angelaPlanDocs.onOpenBudget && (
                 <button
                   type="button"
@@ -798,7 +830,8 @@ export const IpSprintSchedulePage: React.FC<{
         </h3>
         <p className="text-sm text-[#3F3832] font-medium leading-relaxed max-w-3xl">
           Phase 1 is the $10,000 gear launch — shirts first, plus About, Contact, Privacy, and Orders on SnatchVault.
-          Each sprint creates 3 T-shirt sales videos. Memberships stay Coming Soon until Phase 2. Phase 3 is open for later discussion.
+          Each sprint creates 3 T-shirt sales videos. Angela’s Phase 1 includes 4 marketing videos, complimentary at no charge.
+          Memberships stay Coming Soon until Phase 2. Phase 3 is open for later discussion.
           {canEdit ? ' Add or remove items in each phase. Changes save to this plan and the Word/PDF exports.' : ''}
         </p>
       </div>
@@ -812,6 +845,45 @@ export const IpSprintSchedulePage: React.FC<{
           </h4>
           {renderAddItemButton('phase1_build', 'Add Phase 1 item')}
         </div>
+        {angelaPlanDocs?.onApprovePhase1Contract && (
+          <div
+            id={HOSTING_AGREEMENT_DOM_ID}
+            className="border-2 border-[#1F1917] rounded-2xl bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 scroll-mt-28"
+            data-testid="phase1-contract-card"
+          >
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FFEDD5] text-[#C2410C] text-[10px] font-mono font-black uppercase tracking-wider mb-2">
+                Phase 1 Contract
+              </div>
+              <h5 className="text-lg font-black uppercase font-serif text-[#1F1917]">{HOSTING_AGREEMENT_TITLE}</h5>
+              <p className="text-sm text-[#3F3832] font-medium mt-1 max-w-2xl">
+                Electronic signature accepts Angela&apos;s Plan and this hosting agreement as the current Phase 1 scope of work.
+              </p>
+              {angelaPlanDocs.phase1Signoff ? (
+                <p className="text-sm font-bold text-[#047857] mt-2">{formatSignoffLine(angelaPlanDocs.phase1Signoff)}</p>
+              ) : (
+                <p className="text-xs text-[#3F3832] font-medium mt-2">
+                  Use the orange button to electronically sign Phase 1.
+                </p>
+              )}
+            </div>
+            {angelaPlanDocs.phase1Signoff ? (
+              <div className="shrink-0 min-h-[44px] px-4 inline-flex items-center justify-center rounded-xl bg-[#D1FAE5] text-[#047857] text-[11px] font-black uppercase tracking-wide border border-[#6EE7B7]">
+                {PHASE_1_CONTRACT_SIGNED_LABEL}
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-testid={`${PHASE_1_CONTRACT_BUTTON_TEST_ID}-card`}
+                onClick={angelaPlanDocs.onApprovePhase1Contract}
+                className="shrink-0 min-h-[44px] px-5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-[11px] font-black uppercase tracking-wide cursor-pointer border-2 border-[#1F1917]"
+              >
+                <PenLine className="w-4 h-4" />
+                {PHASE_1_CONTRACT_APPROVE_LABEL}
+              </button>
+            )}
+          </div>
+        )}
         <div className="hidden lg:flex items-center gap-1 px-2 py-3 bg-white border border-[#E8DFD2] rounded-2xl overflow-x-auto">
           {['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'].map((label, i) => (
             <React.Fragment key={label}>

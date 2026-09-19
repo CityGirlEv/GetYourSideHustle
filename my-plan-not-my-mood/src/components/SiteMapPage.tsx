@@ -15,6 +15,7 @@ import {
 import type { StoreRoute } from '../lib/storeRoutes';
 import { storeRouteFromSitePath } from '../lib/storeRoutes';
 import { Logo } from './Logo';
+import { MoodWorkflowMap } from './MoodWorkflowMap';
 
 const BRANCH_TONE: Record<SiteBranch, { fill: string; text: string; border: string; chip: string }> = {
   public: { fill: '#C2410C', text: '#FFFFFF', border: '#9A3412', chip: 'bg-[#C2410C] text-white' },
@@ -115,6 +116,8 @@ export const SiteMapPage: React.FC<SiteMapPageProps> = ({ onNavigate, canSeeMemb
             ))}
           </div>
         </section>
+
+        <MoodWorkflowMap />
 
         <section className="bg-white border-2 border-[#1F1917] rounded-3xl p-5 sm:p-8 space-y-4" aria-labelledby="sitemap-treemap-heading">
           <div className="flex flex-wrap items-center justify-between gap-3">

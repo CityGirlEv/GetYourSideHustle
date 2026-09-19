@@ -5,6 +5,7 @@
 import { currentSprintWindow, dueDateForSprintLabel, sprintLabelWithDates } from './sprintCalendar';
 
 import { normalizeWorkAttachments, type WorkAttachmentMeta } from './workAttachments';
+import { addWorkNote, workNotesHaveText, type WorkNoteActor } from './workNoteEntries';
 import {
   checkAllChecklistSteps,
   checklistAllChecked,
@@ -25,7 +26,35 @@ import {
 import { AUTOMATED_TEST_SEEDS } from './automatedTests';
 import { buildSiteAnalyticsSeedTasks } from './siteAnalyticsCadence';
 import {
+  isTodaysNewTestId,
+  isTodaysNewTestParentId,
+} from './todaysReviewDueDates';
+import {
+  buildPhase1WebsiteReviewQaSeeds,
+  buildPhase1WebsiteReviewTask,
+} from './phase1WebsiteReview';
+import {
+  buildSprint2WebsiteReviewQaSeeds,
+  buildSprint2WebsiteReviewTask,
+} from './sprint2WebsiteReview';
+import {
+  buildFormWalkthroughQaSeeds,
+  buildFormWalkthroughTask,
+} from './formWalkthroughTests';
+import {
+  buildMoodWorkflowQaSeeds,
+  buildMoodWorkflowTask,
+} from './moodWorkflow';
+import {
+  buildJournalMakeReviewQaSeeds,
+  buildJournalMakeReviewTasks,
+  isJournalMakeReviewTaskId,
+} from './journalMakeReview';
+import {
   canAssignSprint,
+  countRolledOverItems,
+  formatRolledOverCount,
+  isOutstandingWorkStatus,
   isSprintLocked,
   matchesRolledOverStatusFilter,
   rolloverLockedSprintItems,
@@ -33,6 +62,7 @@ import {
   ROLLOVER_STATUS_ID,
   ROLLOVER_STATUS_LABEL,
 } from './sprintRollover';
+import { parseWorkItemAudit, type WorkItemAuditEntry } from './workItemAudit';
 import {
   isAutomatedQaTest,
   isInflatedQaId,
@@ -270,6 +300,9 @@ export interface TaskItem {
   onAgenda?: boolean;
   /** Closed-sprint carryover. Work status stays Not Started / In Progress / Done. */
   rolledOver?: boolean;
+  /** ISO date `YYYY-MM-DD` when the task first reached Done. */
+  completedOn?: string;
+  audit?: WorkItemAuditEntry[];
 }
 
 export interface QaTestItem {
@@ -299,6 +332,9 @@ export interface QaTestItem {
   suite?: TestSuite;
   /** Closed-sprint carryover. Work status stays Not Started / Passed / Failed. */
   rolledOver?: boolean;
+  /** ISO date `YYYY-MM-DD` when the test first reached Passed. */
+  completedOn?: string;
+  audit?: WorkItemAuditEntry[];
 }
 
 /** Display code for a task id (`t-12` → `T-12`). Never uses Date.now()-style ids. */
@@ -816,6 +852,38 @@ export function defaultWorkBoardFilters<T extends string>(
   return emptyFilters<T>();
 }
 
+const PERSON_SPRINT_BOARD_ASSIGNEES = new Set<WorkAssignee>(['angela', 'evelyn', 'dev']);
+
+/** Current sprint + the signed-in person's work. Status, priority, and category stay All. */
+export function defaultPersonSprintBoardFilters<T extends string>(
+  actor?: { email?: string; name?: string } | null,
+  now = new Date(),
+): WorkBoardFilters<T> {
+  const filters = emptyFilters<T>();
+  filters.sprint = new Set([currentSprintLabel(now)]);
+  const assignee = workAssigneeFromActor(actor);
+  if (PERSON_SPRINT_BOARD_ASSIGNEES.has(assignee)) {
+    filters.assignee = new Set([assignee]);
+  }
+  return filters;
+}
+
+/** Task List landing filters: current sprint, signed-in name, All statuses. */
+export function defaultTaskBoardFilters<T extends string>(
+  actor?: { email?: string; name?: string } | null,
+  now = new Date(),
+): WorkBoardFilters<T> {
+  return defaultPersonSprintBoardFilters<T>(actor, now);
+}
+
+/** Testing Portal: current sprint + the signed-in person's work. Status, priority, and category stay All. */
+export function defaultTestingPortalFilters<T extends string>(
+  actor?: { email?: string; name?: string } | null,
+  now = new Date(),
+): WorkBoardFilters<T> {
+  return defaultPersonSprintBoardFilters<T>(actor, now);
+}
+
 export function isWorkBoardFilterActive<T extends string>(
   filters: WorkBoardFilters<T>,
   search = '',
@@ -975,6 +1043,8 @@ export function normalizeTask(raw: Record<string, unknown>): TaskItem {
   const id = String(raw.id ?? 'task-new');
   const seed = taskContentSeed(id);
   const seededSteps = seed ? buildSeededSteps(id, seed.steps) : [];
+  const audit = parseWorkItemAudit(raw.audit);
+  const completedOn = parseWorkDueDate(raw.completedOn) || undefined;
 
   return rolloverWorkItemSprint({
     id,
@@ -997,6 +1067,8 @@ export function normalizeTask(raw: Record<string, unknown>): TaskItem {
     attachments: normalizeWorkAttachments(raw.attachments),
     onAgenda: raw.onAgenda === true,
     rolledOver: raw.rolledOver === true,
+    completedOn,
+    ...(audit.length > 0 ? { audit } : {}),
   });
 }
 
@@ -1026,6 +1098,48 @@ export type TaskInlinePatch = Partial<
   >
 >;
 
+export const BLOCKED_NOTE_REQUIRED_MESSAGE = 'Enter a note explaining why this task is blocked.';
+
+export function taskNeedsBlockedNote(
+  currentStatus: string | undefined,
+  nextStatus: string | undefined,
+): boolean {
+  return nextStatus === 'blocked' && currentStatus !== 'blocked';
+}
+
+export function applyTaskBlockedWithNote(
+  task: TaskItem,
+  noteText: string,
+  noteActor: WorkNoteActor,
+  patchActor?: WorkAssignee,
+): { ok: true; task: TaskItem } | { ok: false; error: string } {
+  const note = noteText.trim();
+  if (!note) return { ok: false, error: BLOCKED_NOTE_REQUIRED_MESSAGE };
+  if (task.status === 'blocked') return { ok: true, task };
+  const notes = addWorkNote(task.notes, noteActor, note);
+  return { ok: true, task: applyTaskInlinePatch(task, { status: 'blocked', notes }, patchActor) };
+}
+
+export function applyTasksBlockedWithNote(
+  tasks: TaskItem[],
+  ids: Iterable<string>,
+  noteText: string,
+  noteActor: WorkNoteActor,
+  patchActor?: WorkAssignee,
+): { ok: true; tasks: TaskItem[] } | { ok: false; error: string } {
+  const note = noteText.trim();
+  if (!note) return { ok: false, error: BLOCKED_NOTE_REQUIRED_MESSAGE };
+  const selected = new Set(ids);
+  return {
+    ok: true,
+    tasks: tasks.map((task) => {
+      if (!selected.has(task.id) || !taskNeedsBlockedNote(task.status, 'blocked')) return task;
+      const applied = applyTaskBlockedWithNote(task, note, noteActor, patchActor);
+      return applied.ok ? applied.task : task;
+    }),
+  };
+}
+
 export function applyTaskInlinePatch(task: TaskItem, patch: TaskInlinePatch, actor?: WorkAssignee): TaskItem {
   const next: TaskItem = { ...task };
   if (patch.title !== undefined) {
@@ -1044,10 +1158,20 @@ export function applyTaskInlinePatch(task: TaskItem, patch: TaskInlinePatch, act
   }
   if (patch.priority !== undefined && PRIORITY_OPTIONS.includes(patch.priority)) next.priority = patch.priority;
   if (patch.status !== undefined && TASK_STATUSES.includes(patch.status)) {
-    if (patch.status === 'done') {
-      next.steps = checkAllChecklistSteps(next.steps ?? task.steps);
+    const blockedMissingNote =
+      taskNeedsBlockedNote(task.status, patch.status) &&
+      (patch.notes === undefined || !workNotesHaveText(patch.notes));
+    if (!blockedMissingNote) {
+      if (patch.status === 'done') {
+        next.steps = checkAllChecklistSteps(next.steps ?? task.steps);
+      }
+      next.status = patch.status;
+      if (patch.status === 'done') {
+        next.completedOn = next.completedOn || workBoardTodayIso();
+      } else if (isOutstandingWorkStatus(patch.status)) {
+        next.completedOn = undefined;
+      }
     }
-    next.status = patch.status;
   }
   if (patch.assignee !== undefined && ASSIGNEE_OPTIONS.includes(patch.assignee)) next.assignee = patch.assignee;
   if (patch.assignor !== undefined) {
@@ -1167,6 +1291,11 @@ export function applyQaInlinePatch(test: QaTestItem, patch: QaInlinePatch, actor
     // Only auto-route assignee/assignor when status changed and caller did not override them.
     if (patch.assignee === undefined) next.assignee = workflow.assignee;
     if (patch.assignor === undefined) next.assignor = workflow.assignor;
+    if (next.status === 'passed') {
+      next.completedOn = next.completedOn || workBoardTodayIso();
+    } else if (isOutstandingWorkStatus(next.status)) {
+      next.completedOn = undefined;
+    }
   }
   if (patch.assignee !== undefined && TEST_ASSIGNEE_OPTIONS.includes(patch.assignee)) next.assignee = patch.assignee;
   if (patch.assignor !== undefined) next.assignor = normalizeAssignor(patch.assignor);
@@ -1214,9 +1343,12 @@ export interface SprintSectionStats {
   done: number;
   percent: number;
   blocked: number;
+  rolledOver: number;
 }
 
-export function sprintSectionStats<T extends { sprint: SprintCategory; status: string }>(
+export { countRolledOverItems, formatRolledOverCount };
+
+export function sprintSectionStats<T extends { sprint: SprintCategory; status: string; rolledOver?: boolean }>(
   items: T[],
   isDone: (item: T) => boolean,
 ): SprintSectionStats[] {
@@ -1230,6 +1362,7 @@ export function sprintSectionStats<T extends { sprint: SprintCategory; status: s
       done,
       percent: inSprint.length ? Math.round((done / inSprint.length) * 100) : 0,
       blocked,
+      rolledOver: countRolledOverItems(inSprint),
     };
   });
 }
@@ -1339,8 +1472,10 @@ export function sprintControlClass(sprint: SprintCategory): string {
   return `${tone.chip} ${tone.ink}`;
 }
 
-export const FILTER_SECTION_IDS = ['assignee', 'sprint', 'priority', 'category', 'status'] as const;
+export const FILTER_SECTION_IDS = ['sprint', 'assignee', 'status', 'category', 'priority'] as const;
 export type FilterSectionId = (typeof FILTER_SECTION_IDS)[number];
+export const PRIMARY_FILTER_SECTION_IDS = ['sprint', 'assignee'] as const;
+export const COLLAPSED_FILTER_SECTION_IDS = ['status', 'category', 'priority'] as const;
 
 export const FILTER_SECTION_LABELS: Record<FilterSectionId, string> = {
   assignee: 'Assignee',
@@ -1351,7 +1486,7 @@ export const FILTER_SECTION_LABELS: Record<FilterSectionId, string> = {
 };
 
 export const FILTER_TABS_HINT =
-  'Click a tab to switch filters · Click bubbles to multi-select · All shows every item';
+  'Open a section for its bubbles · Click bubbles to multi-select · All shows every item';
 
 export function defaultFilterSectionTab(): FilterSectionId {
   return 'assignee';
@@ -1364,11 +1499,19 @@ export function isFilterSectionTab(value: unknown): value is FilterSectionId {
 export function defaultOpenFilterSections(): Record<FilterSectionId, boolean> {
   return {
     assignee: true,
-    sprint: false,
+    sprint: true,
     priority: false,
     category: false,
     status: false,
   };
+}
+
+export function defaultMoreFiltersOpen(): boolean {
+  return false;
+}
+
+export function isCollapsedFilterSection(id: FilterSectionId): boolean {
+  return (COLLAPSED_FILTER_SECTION_IDS as readonly string[]).includes(id);
 }
 
 export function selectFilterSection(id: FilterSectionId): Record<FilterSectionId, boolean> {
@@ -1385,8 +1528,17 @@ export function toggleFilterSection(
   open: Record<FilterSectionId, boolean>,
   id: FilterSectionId,
 ): Record<FilterSectionId, boolean> {
-  if (open[id]) return open;
-  return selectFilterSection(id);
+  return { ...open, [id]: !open[id] };
+}
+
+export function filterSectionSummary(
+  selected: Set<string>,
+  ordered: readonly string[],
+  chips: FilterChipCount[],
+): string {
+  if (isFilterShowingAll(selected, ordered) || selected.size === 0) return 'All';
+  const labels = chips.filter((chip) => selected.has(chip.id)).map((chip) => chip.label);
+  return labels.length ? labels.join(', ') : `${selected.size} selected`;
 }
 
 export const FILTER_SECTION_TONES: Record<FilterSectionId, BoardTone> = {
@@ -1496,9 +1648,30 @@ export const PRIORITY_TONES: Record<WorkPriority, string> = {
   low: 'bg-[#D4CCC0] text-[#3F3832] border-[#B8AFA3]',
 };
 
-/** Title/code color: high priority is red so those rows read first. */
+/** Title/code color: past due is red. High priority no longer paints the row. */
 export function workPriorityTextClass(priority?: WorkPriority | string): string {
   return priority === 'high' ? 'text-[#DC2626]' : 'text-[#1F1917]';
+}
+
+export const WORK_PAST_DUE_TEXT_CLASS = 'text-[#DC2626]';
+export const WORK_DUE_OK_TEXT_CLASS = 'text-[#1F1917]';
+
+export function workOverdueTextClass(overdue: boolean): string {
+  return overdue ? WORK_PAST_DUE_TEXT_CLASS : WORK_DUE_OK_TEXT_CLASS;
+}
+
+export function workDueDateTextClass(
+  dueDate?: string,
+  options?: { done?: boolean; today?: string },
+): string {
+  if (options?.done) return WORK_DUE_OK_TEXT_CLASS;
+  return workOverdueTextClass(isWorkDueDatePast(dueDate, options?.today));
+}
+
+export function workDueDateControlClass(overdue: boolean): string {
+  return overdue
+    ? `bg-[#FEE2E2] border-[#FECACA] ${WORK_PAST_DUE_TEXT_CLASS} [&::-webkit-datetime-edit]:text-[#DC2626] [&::-webkit-datetime-edit-fields-wrapper]:text-[#DC2626]`
+    : `bg-white border-[#E5DFD3] ${WORK_DUE_OK_TEXT_CLASS} [&::-webkit-datetime-edit]:text-[#1F1917] [&::-webkit-datetime-edit-fields-wrapper]:text-[#1F1917]`;
 }
 
 export const INITIAL_TASKS: TaskItem[] = rolloverLockedSprintItems([
@@ -1574,8 +1747,13 @@ export const INITIAL_TASKS: TaskItem[] = rolloverLockedSprintItems([
   { id: 't-80', title: 'Introduce the Phase 1 website — About, Contact, Privacy, Terms, and FAQ go live', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
   { id: 't-81', title: 'Add mailing list sign-up — email capture, not a membership', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Features', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
   { id: 't-82', title: 'Review the live website and mailing list sign-up', sprint: 'Sprint 3', phase: 'Phase 1', category: 'QA & Testing', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  buildPhase1WebsiteReviewTask(),
+  buildSprint2WebsiteReviewTask(),
+  buildFormWalkthroughTask(),
+  buildMoodWorkflowTask(),
+  ...buildJournalMakeReviewTasks(),
   ...buildSiteAnalyticsSeedTasks(),
-]);
+], { migrateOutstandingLocked: true });
 
 export const WORK_BOARD_STATUS_RESET_KEY = 'myplan_work_board_status_reset_rev';
 export const WORK_BOARD_STATUS_RESET_REV = 1;
@@ -1618,7 +1796,7 @@ const SUPERSEDED_SEED_TITLES: Record<string, string[]> = {
   't-17': ['Configure Phase 1 email (orders, fulfillment, contact, admin)'],
   't-19': ['QA Shop Gear, launch pages, and Phase 1 email'],
   't-83': [
-    'Provide site analytics for the socials no less than every 2 days',
+    'Provide site analytics for the socials no less than every 3 days',
     'Upload site analytics — Mon Sep 7 (Sprint 1)',
   ],
   't-84': [
@@ -1632,12 +1810,51 @@ export function overlaySupersededSeedTasks(
   seeds: TaskItem[] = INITIAL_TASKS,
 ): TaskItem[] {
   const seedById = new Map(seeds.map((seed) => [seed.id, seed]));
-  return existing.map((task) => {
+  const retitled = existing.map((task) => {
     const seed = seedById.get(task.id);
     const oldTitles = SUPERSEDED_SEED_TITLES[task.id];
     if (!seed || !oldTitles || task.status !== 'not_started') return task;
     if (!oldTitles.includes(task.title)) return task;
     return { ...task, title: seed.title, priority: seed.priority, assignee: seed.assignee };
+  });
+  return overlayCatalogTaskSchedule(retitled, seeds);
+}
+
+export function overlayCatalogTaskSchedule(
+  existing: TaskItem[],
+  seeds: TaskItem[] = INITIAL_TASKS,
+): TaskItem[] {
+  const seedById = new Map(seeds.map((seed) => [seed.id, seed]));
+  return existing.map((task) => {
+    const seed = seedById.get(task.id);
+    if (!seed || task.status === 'done') return task;
+    const isAnalytics = String(seed.groupId ?? task.groupId ?? '').startsWith('analytics-');
+    const isParent = isTodaysNewTestParentId(task.id);
+    const isJournal = isJournalMakeReviewTaskId(task.id);
+    if (!isAnalytics && !isParent && !isJournal) return task;
+    return {
+      ...task,
+      title: isAnalytics ? seed.title : task.title,
+      dueDate: seed.dueDate,
+      sprint: seed.sprint,
+      groupId: seed.groupId ?? task.groupId,
+    };
+  });
+}
+
+export function overlayCatalogQaSchedule(
+  existing: QaTestItem[],
+  seeds: QaTestItem[] = allSeedQaTests(),
+): QaTestItem[] {
+  const seedById = new Map(seeds.filter((seed) => isTodaysNewTestId(seed.id)).map((seed) => [seed.id, seed]));
+  return existing.map((test) => {
+    const seed = seedById.get(test.id);
+    if (!seed || test.status === 'passed') return test;
+    return {
+      ...test,
+      dueDate: seed.dueDate,
+      sprint: seed.sprint,
+    };
   });
 }
 
@@ -1710,8 +1927,13 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'cf-s4-qa', title: 'Content Factory Sprint 4 — launch week cadence', desc: 'Sprint 4 CF includes drop announcement and launch-week organic posts.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'website-qa1', title: 'Phase 1 website — launch pages live', desc: 'About, Contact, Privacy, Terms, and FAQ load from the footer. Home introduces the website. Mobile has no horizontal scroll.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'list-qa1', title: 'Mailing list sign-up — email only, not a membership', desc: 'Sign-up accepts a valid email (optional first name), rejects empty/invalid/duplicate, and does not open Join / memberships.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'analytics-qa1', title: 'Site analytics — Mon/Wed/Fri gather screens per platform', desc: 'Angela has a gather task for Facebook, Instagram, TikTok, YouTube, and Personal each Monday, Wednesday, and Friday from Sprint 1 on. Each task lists the screens to capture and she uploads those screenshots on that task.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'angela' },
-  { id: 'analytics-qa2', title: 'Site analytics review — each platform upload guides the next create', desc: 'Evelyn has an associated review task for each platform gather. Recommendations from that review guide the next create on that platform.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
+  { id: 'analytics-qa1', title: 'Site analytics — latest screens per platform every 3 days', desc: 'Angela uploads the latest analytics for Facebook, Instagram, TikTok, YouTube, and Personal starting tomorrow, then every 3 days. Do not re-upload today’s already-captured screenshots. Each task lists the screens to capture.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'angela' },
+  { id: 'analytics-qa2', title: 'Site analytics review — each platform upload guides the next create', desc: 'Evelyn has an associated review task due the day after each platform gather. Recommendations from that review guide the next create on that platform.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
+  ...buildPhase1WebsiteReviewQaSeeds(),
+  ...buildSprint2WebsiteReviewQaSeeds(),
+  ...buildFormWalkthroughQaSeeds(),
+  ...buildMoodWorkflowQaSeeds(),
+  ...buildJournalMakeReviewQaSeeds(),
 ];
 
 export const INITIAL_QA_TESTS: QaTestItem[] = rolloverLockedSprintItems(
@@ -1719,6 +1941,7 @@ export const INITIAL_QA_TESTS: QaTestItem[] = rolloverLockedSprintItems(
     ...test,
     assignee: normalizeTestAssignee(test.assignee),
   })),
+  { migrateOutstandingLocked: true },
 );
 
 function automatedQaItems(): QaTestItem[] {
@@ -1734,7 +1957,7 @@ function automatedQaItems(): QaTestItem[] {
     assignee: seed.suite,
     suite: seed.suite,
     steps: [{ id: `s-${seed.id}-1`, label: `Run: ${seed.command}`, href: pageHrefForWorkItem(seed.id), checked: false }],
-  })));
+  })), { migrateOutstandingLocked: true });
 }
 
 /** Manual walkthroughs + Vitest catalog + Playwright catalog. */
@@ -1742,9 +1965,11 @@ export function allSeedQaTests(): QaTestItem[] {
   return [...INITIAL_QA_TESTS, ...automatedQaItems()];
 }
 
-export function normalizeQaTests(rawList: unknown[], legacyChecks?: Record<string, boolean>): QaTestItem[] {
+export function normalizeQaTests(rawList: unknown[] | null | undefined, legacyChecks?: Record<string, boolean>): QaTestItem[] {
+  // An explicit empty list is a saved board (including after deletes). Do not resurrect catalog seeds.
+  if (Array.isArray(rawList) && rawList.length === 0) return [];
   const source =
-    !Array.isArray(rawList) || rawList.length === 0
+    !Array.isArray(rawList)
       ? INITIAL_QA_TESTS.map((t) => ({
           ...t,
           status: legacyChecks?.[t.id] ? ('passed' as QaStatus) : t.status,
@@ -1766,6 +1991,7 @@ export function normalizeQaTests(rawList: unknown[], legacyChecks?: Record<strin
       ? (item.sprint as SprintCategory)
       : 'Sprint 2';
     const sprint = parsedSprint;
+    const catalog = INITIAL_QA_TESTS.find((row) => row.id === id);
     const seed = qaContentSeed(id);
     const rawDesc = String(item.desc ?? '');
     const rawDescription = String(item.description ?? '').trim();
@@ -1774,11 +2000,13 @@ export function normalizeQaTests(rawList: unknown[], legacyChecks?: Record<strin
     const notesRaw = legacyPlainDesc && !rawDescription ? '' : rawDesc;
     const seededSteps = seed ? buildSeededSteps(id, seed.steps) : [];
     const suite = suiteForQaTest({ id, suite: item.suite, category: item.category });
+    const audit = parseWorkItemAudit(item.audit);
+    const completedOn = parseWorkDueDate(item.completedOn) || undefined;
 
     return [
       rolloverWorkItemSprint({
         id,
-        title: String(item.title ?? ''),
+        title: String(item.title ?? '').trim() || catalog?.title || '',
         description: rawDescription || seed?.description || legacyPlainDesc || String(item.title ?? '').trim(),
         desc: notesRaw,
         steps: resolvePersistedSteps(item.steps, seededSteps, pageHrefForWorkItem(id)),
@@ -1800,6 +2028,8 @@ export function normalizeQaTests(rawList: unknown[], legacyChecks?: Record<strin
         attachments: normalizeWorkAttachments(item.attachments),
         suite,
         rolledOver: item.rolledOver === true,
+        completedOn,
+        ...(audit.length > 0 ? { audit } : {}),
       } satisfies QaTestItem),
     ];
   });

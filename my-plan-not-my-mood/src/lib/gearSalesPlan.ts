@@ -1,3 +1,4 @@
+import { SITE_ANALYTICS_SPRINT_DELIVERABLE } from './siteAnalyticsCadence';
 import { sprintWindowById } from './sprintCalendar';
 import type { IpItemPhase } from './ipLineItems';
 
@@ -17,6 +18,19 @@ export const TEE_SALES_VIDEOS_PER_SPRINT = 3;
 
 export const TEE_SALES_VIDEOS_DELIVERABLE =
   'Create 3 T-shirt sales videos this sprint — shop link in each';
+
+/** Phase 1 marketing videos for Angela — complimentary package, not the per-sprint tee-sales clips. */
+export const MARKETING_VIDEOS_COUNT = 4;
+export const MARKETING_VIDEOS_DELIVERABLE =
+  '4 marketing videos — complimentary at no charge';
+export const MARKETING_VIDEOS_COMP_NAME = '4 marketing videos (complimentary, no charge)';
+
+const LEGACY_PROFESSIONAL_VIDEOS_DELIVERABLE =
+  '3 professional videos — Evelyn delivered 4 at no charge';
+
+export function upgradeDeliverableLabel(label: string): string {
+  return label === LEGACY_PROFESSIONAL_VIDEOS_DELIVERABLE ? MARKETING_VIDEOS_DELIVERABLE : label;
+}
 
 export interface GearLineItemSeed {
   id: string;
@@ -127,6 +141,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Canonical domain and SSL (nonnegotiation.com / localhost:3001)',
       'Angela $10,000 in three payments — $3,500 received; Payment 2 due Sprint 1',
       TEE_SALES_VIDEOS_DELIVERABLE,
+      MARKETING_VIDEOS_DELIVERABLE,
     ],
     description:
       'Phase 1 start is shirt sales. Socials grow beside the shop. Memberships stay Coming Soon.',
@@ -150,7 +165,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'T-shirt design stays inside the $10,000 Phase 1 budget',
       TEE_SALES_VIDEOS_DELIVERABLE,
       'Collect Payment 2 ($3,500) — Sprint 1 installment',
-      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
+      SITE_ANALYTICS_SPRINT_DELIVERABLE,
     ],
     description:
       'Selling does not pause for design. Samples unlock the on-body live. Socials stay parallel.',
@@ -172,7 +187,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Keep checkout on Shopify — sizes, shipping, payment',
       'Do not pause hoodie sales for page polish',
       TEE_SALES_VIDEOS_DELIVERABLE,
-      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
+      SITE_ANALYTICS_SPRINT_DELIVERABLE,
     ],
     description: 'Sales stay on. Catalog and socials catch up around the live shop.',
     hours: 20,
@@ -197,7 +212,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       TEE_SALES_VIDEOS_DELIVERABLE,
       'Introduce the Phase 1 website — launch pages go live on nonnegotiation.com',
       'Mailing list sign-up (email + optional first name — not a membership)',
-      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
+      SITE_ANALYTICS_SPRINT_DELIVERABLE,
     ],
     description:
       'A real website needs About, Contact, Privacy, Terms, and FAQ. The mailing list captures email without opening memberships. Orders are hosted on SnatchVault. Memberships stay Coming Soon.',
@@ -218,7 +233,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Cloudflare Pages stays production-live',
       'Phase 1 close-out against the $10,000 budget',
       TEE_SALES_VIDEOS_DELIVERABLE,
-      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
+      SITE_ANALYTICS_SPRINT_DELIVERABLE,
     ],
     description: 'Launch week is on-body selling. Pages and email already ride beside the shop.',
     hours: 13,
@@ -332,6 +347,15 @@ export const COMPLIMENTARY_WORK: ComplimentaryWorkItem[] = [
     sprintId: 'sprint0',
     sprintLabel: 'Sprint 0',
     retailAmount: 750,
+    chargedAmount: 0,
+    complimentary: true,
+  },
+  {
+    id: 'comp-videos',
+    name: MARKETING_VIDEOS_COMP_NAME,
+    sprintId: 'sprint0',
+    sprintLabel: 'Sprint 0',
+    retailAmount: 1_500,
     chargedAmount: 0,
     complimentary: true,
   },

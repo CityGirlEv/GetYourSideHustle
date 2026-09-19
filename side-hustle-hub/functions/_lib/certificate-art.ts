@@ -25,7 +25,6 @@ const GOLD = "#c9a227";
 const GOLD_DEEP = "#8d6b2c";
 const CREAM = "#f8f3e8";
 const PAPER = "#fffcf6";
-const SERIF = `Georgia, 'Palatino Linotype', 'Times New Roman', serif`;
 
 export type CertAudienceKey = "kids" | "teens" | "adults" | "seniors";
 
@@ -152,12 +151,52 @@ export type CertificateArtInput = {
   background?: Pick<CertificateBackground, "mime" | "width" | "height" | "base64">;
 };
 
-function nameFontSize(name: string): number {
+/** Gold/navy rule inside the name plate on the official 1024×682 mockup. */
+export const CERT_NAME_RULE_RATIO = 465 / 682;
+/** Member-name baseline — sits on the signature line (SVG text baseline). */
+export const CERT_NAME_BASELINE_RATIO = 461 / 682;
+/** Cover the printed “YOUR NAME HERE” caption under the rule. */
+export const CERT_NAME_CAPTION_RATIO = 470 / 682;
+
+const NAME_SCRIPT = `'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', 'Palatino Linotype', Georgia, cursive`;
+
+export function certificateNameFontSize(name: string, lineCount = 1): number {
+  if (lineCount > 1) return 26;
   const n = String(name || "").trim().length;
-  if (n > 36) return 16;
-  if (n > 28) return 18;
-  if (n > 22) return 20;
-  return 24;
+  if (n > 36) return 22;
+  if (n > 28) return 26;
+  if (n > 20) return 32;
+  return 40;
+}
+
+export function certificateNamePlacement(
+  name: string,
+  w: number,
+  h: number,
+): {
+  lines: string[];
+  size: number;
+  firstBaseline: number;
+  lineGap: number;
+  captionCoverY: number;
+  captionCoverH: number;
+  captionCoverW: number;
+} {
+  const lines = wrapLines(name, 28, 2);
+  const size = certificateNameFontSize(name, lines.length);
+  const ruleY = h * CERT_NAME_RULE_RATIO;
+  const lineGap = size + 2;
+  const baseline = h * CERT_NAME_BASELINE_RATIO;
+  const firstBaseline = lines.length > 1 ? ruleY - 8 - lineGap : baseline;
+  return {
+    lines,
+    size,
+    firstBaseline,
+    lineGap,
+    captionCoverY: h * CERT_NAME_CAPTION_RATIO,
+    captionCoverH: Math.max(16, Math.round(h * (20 / 682))),
+    captionCoverW: Math.round(w * (420 / 1024)),
+  };
 }
 
 function wrapLines(text: string, maxChars: number, maxLines = 3): string[] {
@@ -179,22 +218,23 @@ function wrapLines(text: string, maxChars: number, maxLines = 3): string[] {
   return lines.slice(0, maxLines);
 }
 
-/** Cover the mockup "YOUR NAME HERE" line and print the member name. */
+/** Print the member name in the name plate, above the gold rule. */
 function nameOverlay(cx: number, name: string, w: number, h: number): string {
-  const lines = wrapLines(name, 32, 2);
-  const size = lines.length > 1 ? Math.max(14, Math.round(h * 0.023)) : nameFontSize(name);
-  const coverY = Math.round(h * (392 / 682));
-  const coverH = Math.max(28, Math.round(h * (34 / 682)));
-  const coverW = Math.round(w * (500 / 1024));
-  const startY = lines.length > 1 ? coverY + 14 : coverY + Math.round(coverH * 0.65);
+  const place = certificateNamePlacement(name, w, h);
+  const texts = place.lines
+    .map((line, i) => {
+      const y = place.firstBaseline + i * place.lineGap;
+      return `<text x="${cx}" y="${y.toFixed(1)}" text-anchor="middle" font-family="${NAME_SCRIPT}" font-size="${place.size}" font-weight="700" font-style="italic" fill="${GOLD}" stroke="#fff8e8" stroke-width="${Math.max(3, Math.round(place.size / 10))}" paint-order="stroke fill" filter="url(#certNamePop)">${escapeHtml(line)}</text>`;
+    })
+    .join("\n    ");
   return `<g>
-    <rect x="${cx - coverW / 2}" y="${coverY}" width="${coverW}" height="${coverH}" fill="#f4ead6"/>
-    ${lines
-      .map(
-        (line, i) =>
-          `<text x="${cx}" y="${startY + i * (size + 2)}" text-anchor="middle" font-family="${SERIF}" font-size="${size}" font-weight="700" fill="${NAVY}">${escapeHtml(line)}</text>`,
-      )
-      .join("\n    ")}
+    <defs>
+      <filter id="certNamePop" x="-25%" y="-40%" width="150%" height="180%">
+        <feDropShadow dx="0" dy="1.6" stdDeviation="1.1" flood-color="${GOLD_DEEP}" flood-opacity="0.5"/>
+      </filter>
+    </defs>
+    <rect x="${cx - place.captionCoverW / 2}" y="${place.captionCoverY.toFixed(1)}" width="${place.captionCoverW}" height="${place.captionCoverH}" fill="#fbf6ec"/>
+    ${texts}
   </g>`;
 }
 
@@ -263,11 +303,12 @@ export function buildCertificatePdfBase64(input: CertificateArtInput): string {
   const imgY = (pageH - imgH) / 2;
   const escapePdf = (s: string) =>
     s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-  const navy = hexToRgb(NAVY).map((n) => n.toFixed(3)).join(" ");
-  const nameSize = memberName.length > 28 ? 11 : memberName.length > 22 ? 13 : 15;
-  const namePdfX = pageW / 2 - memberName.length * nameSize * 0.22;
-  const nameSvgY = bg.height * (414 / 682);
-  const namePdfY = imgY + (1 - nameSvgY / bg.height) * imgH;
+  const gold = hexToRgb(GOLD).map((n) => n.toFixed(3)).join(" ");
+  const place = certificateNamePlacement(memberName, bg.width, bg.height);
+  const nameSize = Math.max(14, Math.round(place.size * imgScale));
+  const displayName = memberName.slice(0, 80);
+  const namePdfX = pageW / 2 - displayName.length * nameSize * 0.22;
+  const namePdfY = imgY + (1 - place.firstBaseline / bg.height) * imgH;
 
   const stream = [
     "q",
@@ -275,10 +316,10 @@ export function buildCertificatePdfBase64(input: CertificateArtInput): string {
     "/Im1 Do",
     "Q",
     "BT",
-    `/F3 ${nameSize} Tf`,
-    `${navy} rg`,
+    `/F4 ${nameSize} Tf`,
+    `${gold} rg`,
     `${Math.max(36, namePdfX).toFixed(1)} ${namePdfY.toFixed(1)} Td`,
-    `(${escapePdf(memberName.slice(0, 80))}) Tj`,
+    `(${escapePdf(displayName)}) Tj`,
     "ET",
   ].join("\n");
 
@@ -289,10 +330,10 @@ export function buildCertificatePdfBase64(input: CertificateArtInput): string {
   objects.push("1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n");
   objects.push("2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n");
   objects.push(
-    `3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /Font << /F3 5 0 R >> /XObject << /Im1 6 0 R >> >> >>endobj\n`,
+    `3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /Font << /F4 5 0 R >> /XObject << /Im1 6 0 R >> >> >>endobj\n`,
   );
   objects.push(`4 0 obj<< /Length ${stream.length} >>stream\n${stream}\nendstream\nendobj\n`);
-  objects.push("5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>endobj\n");
+  objects.push("5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Times-BoldItalic >>endobj\n");
   objects.push(
     `6 0 obj<< /Type /XObject /Subtype /Image /Width ${bg.width} /Height ${bg.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>stream\n${jpegAscii}\nendstream\nendobj\n`,
   );

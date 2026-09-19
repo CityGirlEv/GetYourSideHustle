@@ -2,7 +2,10 @@
 
 import { api } from "./api";
 import {
+  SOFT_LAUNCH_FACTORY_MAX_SPRINT,
+  SOFT_LAUNCH_FACTORY_MIN_SPRINT,
   SOFT_LAUNCH_ROLLOUT,
+  SOFT_LAUNCH_SEED_ALL_RANGE,
   draftBelongsToSoftLaunchItem,
   rolloutItemToDraftFields,
   type SoftLaunchItem,
@@ -209,7 +212,9 @@ export function seedSoftLaunchDrafts(
     opts?.items ??
     (opts?.sprint != null
       ? SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint === opts.sprint)
-      : SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint >= 2 && i.sprint <= 5));
+      : SOFT_LAUNCH_ROLLOUT.filter(
+          (i) => i.sprint >= SOFT_LAUNCH_FACTORY_MIN_SPRINT && i.sprint <= SOFT_LAUNCH_FACTORY_MAX_SPRINT,
+        ));
 
   const existingTitles = new Set(existing.drafts.map((d) => d.title));
   const createdAt = new Date().toISOString();
@@ -239,7 +244,10 @@ export function seedSoftLaunchDrafts(
 
   const batch: ContentBatch = {
     id: batchId,
-    name: opts?.sprint != null ? `Soft Launch — Sprint ${opts.sprint}` : "Soft Launch — S2–S5",
+    name:
+      opts?.sprint != null
+        ? `Soft Launch — Sprint ${opts.sprint}`
+        : `Soft Launch — ${SOFT_LAUNCH_SEED_ALL_RANGE}`,
     topic: "GYSH soft launch marketing rollout",
     createdAt,
     draftIds: newDrafts.map((d) => d.id),

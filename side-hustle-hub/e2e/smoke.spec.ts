@@ -311,6 +311,9 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("kids-mode-pick-hint")).toContainText(
       "Pick the tab below based on your age group",
     );
+    await expect(page.getByTestId("kids-mode-pick-hint")).toContainText("Start here");
+    await expect(page.getByTestId("kids-mode-pick-hint")).toContainText("Kids 4–12");
+    await expect(page.getByTestId("kids-mode-pick-hint")).toContainText("Teens 13–17");
     await expect(page.getByTestId("kids-stories-tab")).toBeVisible();
     await expect(page.getByTestId("kids-stories-tab")).toHaveText(/Stories/i);
   });
@@ -733,6 +736,8 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByRole("heading", { name: /Create your GYSH Membership/i })).toBeVisible();
     await expect(page.getByTestId("membership-signup-tier")).toHaveValue("starter");
     await expect(page.getByTestId("membership-signup-submit")).toContainText(/Starter/i);
+    await expect(page.getByTestId("membership-signup-heard-about")).toBeVisible();
+    await expect(page.getByLabel(/How did you hear about us/i)).toBeVisible();
     await expect(page.getByTestId("membership-signup-beta-role")).toBeVisible();
     await expect(page.getByLabel(/Apply as a Beta Tester/i)).toBeVisible();
     await expect(page.getByTestId("membership-merch-choice")).toBeVisible();

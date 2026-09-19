@@ -3,9 +3,13 @@ import {
   CERT_DEFAULT_BODY,
   CERT_MOTTO,
   CERT_ORG_NAME,
+  CERT_NAME_BASELINE_RATIO,
+  CERT_NAME_RULE_RATIO,
   GLOW_GETTER_CERT_LINE,
   buildCertificatePdfBase64,
   buildCertificateSvg,
+  certificateNameFontSize,
+  certificateNamePlacement,
   certificateThemeFor,
   isGlowGetterAudience,
   liveCertificateArtInput,
@@ -38,6 +42,22 @@ describe("family certificate art", () => {
     expect(svg).not.toMatch(/>GYSH</);
     expect(pdf).toContain("Jordan Glow");
     expect(pdf).toContain("/DCTDecode");
+  });
+
+  it("places a large gold name on the signature line in the name plate", () => {
+    const place = certificateNamePlacement("Evietest again", 1024, 682);
+    expect(place.lines).toEqual(["Evietest again"]);
+    expect(place.size).toBe(40);
+    expect(place.firstBaseline).toBe(682 * CERT_NAME_BASELINE_RATIO);
+    expect(place.firstBaseline).toBeLessThan(682 * CERT_NAME_RULE_RATIO);
+    // Name rests on the plate rule (~465px), not floating in the upper plate.
+    expect(place.firstBaseline).toBeGreaterThan(450);
+    expect(place.firstBaseline).toBeLessThan(465);
+    const svg = buildCertificateSvg({ ...baseSvgInput, memberName: "Evietest again" });
+    expect(svg).toContain('fill="#c9a227"');
+    expect(svg).toContain("Evietest again");
+    expect(svg).toContain(`y="${place.firstBaseline.toFixed(1)}"`);
+    expect(certificateNameFontSize("Evietest again")).toBe(40);
   });
 
   it("expands the GYSH acronym in stored template copy", () => {

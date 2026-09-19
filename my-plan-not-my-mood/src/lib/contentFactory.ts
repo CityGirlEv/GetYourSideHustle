@@ -11,6 +11,7 @@ import {
   TEE_SALES_SHOP_URL,
   TEE_LIFESTYLE_MOCKUP_PATH,
   HOUSE_INTRO_LINE,
+  HOUSE_BRAND_KICKER,
   HOUSE_WELCOME_HOOK,
 } from './teeSalesPlaybook';
 import {
@@ -201,12 +202,12 @@ type CfPostMedia = { image: string; video?: string; imageOnly?: boolean };
 /** Still + video directions per post. Video is the default sell; image-only is for reshares, FAQ, and story crops. */
 export const CF_POST_MEDIA: Record<string, CfPostMedia> = {
   'cf-s0-welcome-facebook': {
-    image: 'Angela wearing the white MY PLAN, NOT MY MOOD tee, seal readable. Overlay: A NonNegotiation brand.',
+    image: `Angela wearing the white MY PLAN, NOT MY MOOD tee, seal readable. Overlay: ${HOUSE_BRAND_KICKER}.`,
     video:
       '2 scenes, 15 seconds max each. Angela wears the white tee. Scene 1: to camera — “Your mood can ride. It cannot drive.” Beat. “Feel it. Follow the plan anyway.” Scene 2: point at the chest seal — “This is MY PLAN, NOT MY MOOD — a brand under NonNegotiation. Tees are live. nonnegotiation.com/gear.” Vertical 9:16 for Reels; 16:9 for Facebook. No family faces, no names, no PII.',
   },
   'cf-s0-welcome-tiktok': {
-    image: 'Tight 9:16 of Angela in the white tee. Overlay: A NonNegotiation brand.',
+    image: `Tight 9:16 of Angela in the white tee. Overlay: ${HOUSE_BRAND_KICKER}.`,
     video:
       '1 scene, 15 seconds max. Angela wears the white tee. Hook in 2 seconds: “Your mood can ride. It cannot drive.” Hold the seal to camera. “MY PLAN, NOT MY MOOD — a brand under NonNegotiation. Shop: nonnegotiation.com/gear.” 9:16.',
   },
@@ -216,14 +217,14 @@ export const CF_POST_MEDIA: Record<string, CfPostMedia> = {
       '2 scenes, 15 seconds max each. Angela wears the white tee. Scene 1: “This is NonNegotiation. One of our brands: MY PLAN, NOT MY MOOD.” Scene 2: “Your mood can ride. It cannot drive.” Point to the seal. “Tees live — nonnegotiation.com/gear.” 16:9.',
   },
   'cf-s0-welcome-personal': {
-    image: 'Angela in the white tee, personal still — no family faces. Overlay: A NonNegotiation brand.',
+    image: `Angela in the white tee, personal still — no family faces. Overlay: ${HOUSE_BRAND_KICKER}.`,
     video:
       '2 scenes, 15 seconds max each. Angela wears the white tee. Scene 1: “Hey — this is me. NonNegotiation is the house. MY PLAN, NOT MY MOOD is my brand under it.” Scene 2: point at the seal. “Your mood can ride. It cannot drive. Tees: nonnegotiation.com/gear.” No names, no PII.',
   },
   'cf-s0-welcome-website': {
-    image: 'Home hero with kicker “A NonNegotiation brand” and Shop Gear visible.',
+    image: `Home hero with kicker “${HOUSE_BRAND_KICKER}” and Shop Gear visible.`,
     video:
-      '2 scenes, 15 seconds max each. Scene 1: screen-record Home — kicker A NonNegotiation brand, then MY PLAN, NOT MY MOOD. Scene 2: tap Shop Gear. Voiceover: “The house is NonNegotiation. This brand lives here. The pin goes to this shop.”',
+      `2 scenes, 15 seconds max each. Scene 1: screen-record Home — kicker ${HOUSE_BRAND_KICKER}, then MY PLAN, NOT MY MOOD. Scene 2: tap Shop Gear. Voiceover: “The house is NonNegotiation. This brand lives here. The pin goes to this shop.”`,
   },
   'cf-s0-mon-angela': {
     image: 'Lifestyle tee mockup — white tee, denim jacket, MY PLAN / NOT MY MOOD seal. Cream wall. Overlay: Feel it. Follow the Plan anyway.',
@@ -431,7 +432,7 @@ export const PHASE_1_CONTENT_FACTORY: ContentFactoryItem[] = [
     assignee: 'angela',
     title: 'Welcome — NonNegotiation Facebook',
     copy: `Welcome to NonNegotiation.\n\n${HOUSE_INTRO_LINE}\n\n${HOUSE_WELCOME_HOOK} Feel it. Follow the plan anyway.\n\nThe longer story lives here. Short clips on TikTok. Teaching on YouTube. If you want the reminder you can wear: https://nonnegotiation.com/gear`,
-    visualPrompt: 'Angela in the white tee. Overlay: A NonNegotiation brand.',
+    visualPrompt: `Angela in the white tee. Overlay: ${HOUSE_BRAND_KICKER}.`,
     assetHint: TEE_LIFESTYLE_MOCKUP_PATH,
     taskId: 't-74',
   }),
@@ -447,7 +448,7 @@ export const PHASE_1_CONTENT_FACTORY: ContentFactoryItem[] = [
     assignee: 'angela',
     title: 'Welcome — TikTok',
     copy: `NonNegotiation. One of our brands: MY PLAN, NOT MY MOOD.\n\n${HOUSE_WELCOME_HOOK}\n\nFeel it. Follow the plan anyway.\n\nTees: https://nonnegotiation.com/gear`,
-    visualPrompt: 'Angela in the white tee, 9:16. Overlay: A NonNegotiation brand.',
+    visualPrompt: `Angela in the white tee, 9:16. Overlay: ${HOUSE_BRAND_KICKER}.`,
     assetHint: TEE_LIFESTYLE_MOCKUP_PATH,
     taskId: 't-74',
   }),
@@ -494,8 +495,8 @@ export const PHASE_1_CONTENT_FACTORY: ContentFactoryItem[] = [
     kind: 'post',
     assignee: 'evelyn',
     title: 'Welcome — Home intro on the website',
-    copy: `${HOUSE_INTRO_LINE}\n\nHome kicker: A NonNegotiation brand. Then MY PLAN, NOT MY MOOD. Feel it. Follow the plan anyway. The tees are live.\n\nDo not send social traffic here until this intro is on Home. Shop CTA stays https://nonnegotiation.com/gear`,
-    visualPrompt: 'Home hero with A NonNegotiation brand kicker and Shop Gear.',
+    copy: `${HOUSE_INTRO_LINE}\n\nHome kicker: ${HOUSE_BRAND_KICKER}. Then MY PLAN, NOT MY MOOD. Feel it. Follow the plan anyway. The tees are live.\n\nDo not send social traffic here until this intro is on Home. Shop CTA stays https://nonnegotiation.com/gear`,
+    visualPrompt: `Home hero with ${HOUSE_BRAND_KICKER} kicker and Shop Gear.`,
     assetHint: 'Home + /gear',
     visualSrc: '',
     taskId: 't-74',

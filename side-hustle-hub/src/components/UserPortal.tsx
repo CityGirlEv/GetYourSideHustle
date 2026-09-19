@@ -1,12 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { 
-  Award, 
-  CheckSquare, 
-  Bookmark, 
+import {
   CalendarDays,
-  Star,
-  Zap,
-  Check,
   BookOpen,
   Coins,
   Compass,
@@ -38,12 +32,16 @@ import {
 import {
   creditsBalanceHeadline,
   emptyMemberCreditsSummary,
+  enrolledPlanLabel,
   fetchMemberCredits,
   formatKidCreditBalance,
   formatCreditCount,
   formatLedgerDelta,
   formatLedgerWhen,
   friendlyCreditsLoadError,
+  higherMembershipTier,
+  monthlyKidCreditAllowance,
+  portalWelcomeCreditLabel,
   summarizeMemberCredits,
   type MemberCreditsSummary,
 } from "../lib/member-credits";
@@ -66,6 +64,10 @@ import {
   type MemberPurchaseWithCredits,
 } from "../lib/member-purchases";
 import { buildReferralUrl, getOrCreateReferralCode } from "../lib/referral";
+import {
+  DASHBOARD_PORTAL_TAB_IDS,
+  type DashboardPortalTabId,
+} from "../lib/member-dashboard";
 import { inviteFriendCredits, inviteFriendSteps } from "../lib/invite-friend";
 import {
   assignSavedBlueprint,
@@ -92,19 +94,8 @@ import {
 import type { ProgressReportCadence } from "../lib/family-logic";
 import { HustleScheduleSuite } from "./HustleScheduleSuite";
 import { PageCollapse } from "./PageCollapse";
-
-interface Goal {
-  id: string;
-  title: string;
-  done: boolean;
-}
-
-interface Badge {
-  name: string;
-  desc: string;
-  icon: string;
-  unlocked: boolean;
-}
+import { MembershipMerchClaim } from "./MembershipMerchClaim";
+import type { AuthUser } from "../lib/auth";
 
 type PortalBlueprint = {
   id: string;
@@ -120,6 +111,7 @@ type PortalBlueprint = {
 type UserPortalProps = {
   memberName?: string | null;
   membershipTier?: string | null;
+  memberNotes?: string | null;
   isAdmin?: boolean;
   /** Open Schedule Suite tab on mount / when set. */
   initialPortalTab?: PortalTab;
@@ -129,6 +121,8 @@ type UserPortalProps = {
   onOpenJoin?: () => void;
   /** After cancel-to-free — refresh auth/membership in the shell. */
   onMembershipChanged?: (tier: string) => void;
+  /** After complimentary merch is saved. */
+  onMerchSaved?: (user: AuthUser) => void;
   /** After account soft-delete — sign out in the shell. */
   onAccountDeactivated?: () => void;
   /** Open the Launch Guide / Corner guides for a Blueprint match. */
@@ -235,32 +229,39 @@ function MatchRow({
   );
 }
 
-export type PortalTab =
-  | "blueprint"
-  | "schedule"
-  | "family"
-  | "credits"
-  | "referral"
-  | "purchases"
-  | "earn"
-  | "milestones"
-  | "bookmarks";
+export type PortalTab = DashboardPortalTabId;
 
-const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ReactNode }[] = [
-  { id: "blueprint", label: "Blueprint", icon: <Compass size={15} aria-hidden /> },
-  { id: "schedule", label: "Schedule Suite", icon: <CalendarDays size={15} aria-hidden /> },
-  { id: "family", label: "Family", icon: <Users size={15} aria-hidden /> },
-  { id: "credits", label: "Credits", icon: <Coins size={15} aria-hidden /> },
-  { id: "referral", label: "Referral", icon: <Link2 size={15} aria-hidden /> },
-  { id: "purchases", label: "Billing/Access", icon: <Receipt size={15} aria-hidden /> },
-  { id: "earn", label: "Ways to Earn", icon: <Sparkles size={15} aria-hidden /> },
-  { id: "milestones", label: "Milestones", icon: <CheckSquare size={15} aria-hidden /> },
-  { id: "bookmarks", label: "Bookmarks", icon: <Bookmark size={15} aria-hidden /> },
-];
+const PORTAL_TAB_LABELS: Record<PortalTab, string> = {
+  blueprint: "Blueprint",
+  schedule: "Schedule Suite",
+  family: "Family",
+  credits: "Credits",
+  referral: "Referral",
+  purchases: "Billing/Access",
+  earn: "Ways to Earn",
+};
+
+const PORTAL_TAB_ICONS: Record<PortalTab, React.ReactNode> = {
+  blueprint: <Compass size={15} aria-hidden />,
+  schedule: <CalendarDays size={15} aria-hidden />,
+  family: <Users size={15} aria-hidden />,
+  credits: <Coins size={15} aria-hidden />,
+  referral: <Link2 size={15} aria-hidden />,
+  purchases: <Receipt size={15} aria-hidden />,
+  earn: <Sparkles size={15} aria-hidden />,
+};
+
+const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ReactNode }[] =
+  DASHBOARD_PORTAL_TAB_IDS.map((id) => ({
+    id,
+    label: PORTAL_TAB_LABELS[id],
+    icon: PORTAL_TAB_ICONS[id],
+  }));
 
 export const UserPortal: React.FC<UserPortalProps> = ({
   memberName,
   membershipTier: membershipTierProp,
+  memberNotes,
   isAdmin = false,
   initialPortalTab,
   focusScheduleId,
@@ -268,19 +269,13 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   onOpenMatchWizard,
   onOpenJoin,
   onMembershipChanged,
+  onMerchSaved,
   onAccountDeactivated,
   onOpenGuide,
   onOpenKidDashboard,
 }) => {
   const [portalTab, setPortalTab] = useState<PortalTab>(initialPortalTab ?? "blueprint");
-  const [goals, setGoals] = useState<Goal[]>([
-    { id: "1", title: "Complete the GYSH Match Wizard", done: true },
-    { id: "2", title: "Run profit estimates on two side hustles", done: true },
-    { id: "3", title: "Select a niche keyword list for POD shirts", done: false },
-    { id: "4", title: "Request sample packaging from manufacturer", done: false },
-    { id: "5", title: "Verify local city STR/Airbnb permit guidelines", done: false },
-  ]);
-  const [referralCode, setReferralCode] = useState("GYSHHOME");
+  const [referralCode, setReferralCode] = useState("");
   const [referralUrl, setReferralUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [credits, setCredits] = useState<MemberCreditsSummary | null>(null);
@@ -374,6 +369,17 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   }, [focusScheduleId]);
 
   useEffect(() => {
+    if (portalTab !== "purchases") return;
+    if (!/#merch$|#gear$/i.test(window.location.hash)) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById("user-portal-merch-claim")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [portalTab]);
+
+  useEffect(() => {
     const code = getOrCreateReferralCode();
     setReferralCode(code);
     setReferralUrl(buildReferralUrl(code));
@@ -383,7 +389,13 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     setCreditsLoading(true);
     void fetchMemberCredits()
       .then((payload) => {
-        setCredits(summarizeMemberCredits(payload));
+        const summary = summarizeMemberCredits(payload);
+        setCredits(summary);
+        setLocalMembershipTier((prev) => {
+          const next = higherMembershipTier(prev, summary.membershipTier);
+          if (next !== prev) onMembershipChanged?.(next);
+          return next;
+        });
         setCreditsError(null);
       })
       .catch((err: unknown) => {
@@ -398,14 +410,14 @@ export const UserPortal: React.FC<UserPortalProps> = ({
       .finally(() => {
         setCreditsLoading(false);
       });
-  }, [effectiveMembershipTier]);
+  }, [effectiveMembershipTier, onMembershipChanged]);
 
   useEffect(() => {
     loadCredits();
   }, [loadCredits]);
 
   useEffect(() => {
-    if (portalTab !== "purchases" || purchasesLoaded) return;
+    if ((portalTab !== "purchases" && portalTab !== "credits") || purchasesLoaded) return;
     let cancelled = false;
     setPurchasesLoading(true);
     void fetchMemberPurchases()
@@ -511,34 +523,20 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   }, []);
 
   const audience: AudienceGroup = credits?.audience ?? "adult";
+  const displayMembershipTier = higherMembershipTier(
+    credits?.membershipTier,
+    effectiveMembershipTier,
+    purchasesAccess?.membershipTier,
+  );
+  const displayEnrolledLabel = enrolledPlanLabel(displayMembershipTier, audience);
+  const displayMonthlyAllowance = monthlyKidCreditAllowance(displayMembershipTier, audience);
 
   const earnActions = useMemo(
     () => CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes(audience)),
     [audience],
   );
 
-  const tierLabel = credits
-    ? credits.enrolledLabel
-    : membershipTierProp
-      ? MEMBERSHIP_TIERS.find((t) => t.id === membershipTierProp)?.name ?? "Free"
-      : null;
-
-  const badges: Badge[] = [
-    { name: "Scout Apprentice 🏷️", desc: "Searched product databases for profitable margins", icon: "🏷️", unlocked: true },
-    { name: "Hustle Rookie 🚀", desc: "Completed your first GYSH Match Wizard questionnaire", icon: "🚀", unlocked: true },
-    { name: "Superhost Trainee 🏡", desc: "Calculated Airbnb nightly yields and operating costs", icon: "🏡", unlocked: true },
-    { name: "First Sale 🎉", desc: "Receive your first customer purchase confirmation", icon: "🎉", unlocked: false },
-    { name: "Ad Manager 📊", desc: "Set up Facebook/TikTok business manager tracking pixels", icon: "📊", unlocked: false },
-  ];
-
-  const toggleGoal = (id: string) => {
-    setGoals((prev) =>
-      prev.map((g) => {
-      if (g.id === id) return { ...g, done: !g.done };
-      return g;
-      }),
-    );
-  };
+  const tierLabel = displayEnrolledLabel;
 
   const copyReferral = async () => {
     if (!referralUrl) return;
@@ -551,8 +549,6 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     }
   };
 
-  const completedGoalsCount = goals.filter((g) => g.done).length;
-  const progressPercent = Math.round((completedGoalsCount / goals.length) * 100);
   const displayName = (memberName || "").trim() || "there";
 
   const childNameById = useMemo(() => {
@@ -701,39 +697,57 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     <div className="user-portal" data-testid="user-portal">
       <div className="user-portal-main">
         <div className="glass user-portal-welcome">
-          <h2>Welcome back, {displayName}!</h2>
-          <p>
-            Your Side Hustle Blueprint, family coach tools, and credits live here — use the tabs
-            below to review matches, register kids, share your referral link, and earn more credits.
-          </p>
-          <p className="user-portal-welcome-links">
+          <div className="user-portal-welcome-row">
+            <div>
+              <h2>Welcome back, {displayName}!</h2>
+              <p>
+                Your Side Hustle Blueprint, family coach tools, and credits live here — use the tabs
+                below to review matches, register kids, share your referral link, and earn more credits.
+              </p>
+              <p className="user-portal-welcome-links">
+                <button
+                  type="button"
+                  className="user-portal-inline-link"
+                  data-testid="user-portal-open-purchases"
+                  onClick={() => setPortalTab("purchases")}
+                >
+                  <Receipt size={14} aria-hidden /> View billing &amp; access
+                </button>
+                {" · "}
+                <button
+                  type="button"
+                  className="user-portal-inline-link"
+                  data-testid="user-portal-open-credits"
+                  onClick={() => setPortalTab("credits")}
+                >
+                  <Coins size={14} aria-hidden /> Credits &amp; enrollment
+                </button>
+                {" · "}
+                <button
+                  type="button"
+                  className="user-portal-inline-link"
+                  data-testid="user-portal-open-referral"
+                  onClick={() => setPortalTab("referral")}
+                >
+                  <Link2 size={14} aria-hidden /> Referral
+                </button>
+              </p>
+            </div>
             <button
               type="button"
-              className="user-portal-inline-link"
-              data-testid="user-portal-open-purchases"
-              onClick={() => setPortalTab("purchases")}
-            >
-              <Receipt size={14} aria-hidden /> View billing &amp; access
-            </button>
-            {" · "}
-            <button
-              type="button"
-              className="user-portal-inline-link"
-              data-testid="user-portal-open-credits"
+              className="user-portal-welcome-credits"
+              data-testid="user-portal-welcome-credits"
               onClick={() => setPortalTab("credits")}
             >
-              <Coins size={14} aria-hidden /> Credits &amp; enrollment
+              <span className="user-portal-welcome-credits-label">
+                <Coins size={16} aria-hidden /> Credit balance
+              </span>
+              <strong data-testid="user-portal-welcome-credits-balance">
+                {portalWelcomeCreditLabel(credits?.balance, creditsLoading)}
+              </strong>
+              <span className="user-portal-credits-muted">On this membership account</span>
             </button>
-            {" · "}
-            <button
-              type="button"
-              className="user-portal-inline-link"
-              data-testid="user-portal-open-referral"
-              onClick={() => setPortalTab("referral")}
-            >
-              <Link2 size={14} aria-hidden /> Referral
-            </button>
-          </p>
+          </div>
         </div>
 
         <ChipScroller
@@ -1358,11 +1372,11 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                       className="user-portal-credits-enrolled-plan"
                       data-testid="user-portal-credits-enrolled-plan"
                     >
-                      {credits.enrolledLabel}
+                      {displayEnrolledLabel}
                     </p>
                     <p className="user-portal-credits-muted">
-                      {credits.monthlyAllowance > 0
-                        ? `Plan includes ${credits.monthlyAllowance} credits / month`
+                      {displayMonthlyAllowance > 0
+                        ? `Plan includes ${displayMonthlyAllowance} credits / month`
                         : "Free plan — earn or purchase credits anytime"}
                       {onOpenJoin ? (
                         <>
@@ -1445,9 +1459,9 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                     <p data-testid="user-portal-credits-tier">
                       Plan: <strong>{tierLabel}</strong>
                     </p>
-                    {credits.monthlyAllowance > 0 ? (
+                    {displayMonthlyAllowance > 0 ? (
                       <p data-testid="user-portal-credits-allowance">
-                        Plan includes up to <strong>{credits.monthlyAllowance}</strong> credits /
+                        Plan includes up to <strong>{displayMonthlyAllowance}</strong> credits /
                         month
                       </p>
                     ) : (
@@ -1600,6 +1614,12 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               <p className="user-portal-panel-lead">
                 Your membership access, paid sessions, and Stripe billing history in one place.
               </p>
+
+              <MembershipMerchClaim
+                membershipTier={effectiveMembershipTier}
+                notes={memberNotes}
+                onSaved={onMerchSaved}
+              />
 
               <PortalSection
                 testId="user-portal-plan-manage"
@@ -1974,113 +1994,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               <ShareWinForm />
             </section>
           )}
-
-          {portalTab === "milestones" && (
-            <section
-              id="user-portal-panel-milestones"
-              role="tabpanel"
-              aria-labelledby="user-portal-tab-milestones"
-              data-testid="user-portal-milestones"
-            >
-              <h3>
-                <CheckSquare size={20} style={{ color: "var(--accent-purple)" }} /> My Active
-                Milestones
-              </h3>
-              <div className="user-portal-goal-list">
-                {goals.map((g) => (
-              <div 
-                key={g.id} 
-                onClick={() => toggleGoal(g.id)}
-                className={`checklist-item ${g.done ? "completed" : ""}`}
-                style={{ margin: 0 }}
-              >
-                    <div className="checklist-checkbox">{g.done && <Check size={12} />}</div>
-                <div className="checklist-text">
-                  <span style={{ fontSize: "0.925rem" }}>{g.title}</span>
-                </div>
-              </div>
-            ))}
-              </div>
-              <div className="user-portal-progress">
-                <div className="user-portal-progress-labels">
-                  <span>Overall Roadmap Completion</span>
-                  <span>{progressPercent}% Complete</span>
-                </div>
-                <div className="user-portal-progress-track">
-                  <div
-                    className="user-portal-progress-fill"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-          </div>
         </div>
-            </section>
-          )}
-
-          {portalTab === "bookmarks" && (
-            <section
-              id="user-portal-panel-bookmarks"
-              role="tabpanel"
-              aria-labelledby="user-portal-tab-bookmarks"
-              data-testid="user-portal-bookmarks"
-            >
-              <h3>
-            <Bookmark size={20} style={{ color: "var(--accent-pink)" }} /> Bookmarked Hustles
-          </h3>
-              <div className="user-portal-bookmarks">
-                <div className="user-portal-bookmark-card">
-                  <span className="glow-badge pink">Real Estate</span>
-                  <h4>Airbnb Hosting</h4>
-                  <p>Active guide progress: 33%</p>
-            </div>
-                <div className="user-portal-bookmark-card">
-                  <span className="glow-badge purple">E-Commerce</span>
-                  <h4>Print-on-Demand</h4>
-                  <p>Active guide progress: 50%</p>
-            </div>
-          </div>
-            </section>
-          )}
-        </div>
-      </div>
-
-      <div className="user-portal-side">
-        <PortalSection
-          testId="user-portal-unlocked-badges"
-          title="Unlocked Badges"
-          headingTag="h3"
-          icon={<Award size={20} aria-hidden />}
-        >
-          <div className="user-portal-badges">
-            {badges.map((b, idx) => (
-              <div key={idx} className={`user-portal-badge${b.unlocked ? " is-unlocked" : ""}`}>
-                <div className="user-portal-badge-icon">
-                  {b.unlocked ? (
-                    <Star size={20} style={{ color: "white", fill: "white" }} />
-                  ) : (
-                    <Zap size={20} style={{ color: "var(--text-primary)" }} />
-                  )}
-                </div>
-                <div>
-                  <h4>{b.name}</h4>
-                  <p>{b.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </PortalSection>
-
-        <PortalSection
-          testId="user-portal-hustle-level"
-          title="Hustle Level: 3"
-          headingTag="h3"
-        >
-          <p>
-            Earn 120 more XP by completing milestones to unlock &quot;Level 4: Affiliate Expert&quot;.
-          </p>
-          <div className="user-portal-progress-track">
-            <div className="user-portal-progress-fill is-pink" style={{ width: "60%" }} />
-          </div>
-        </PortalSection>
       </div>
     </div>
   );

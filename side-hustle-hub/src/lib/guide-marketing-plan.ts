@@ -171,27 +171,8 @@ export function ensureMarketingPlanSteps(
  * Active/Reviewed rows must not be forced back to Pending.
  */
 export const GUIDES_PENDING_AFTER_PREP_TAB_BACKFILL: readonly string[] = [
-  "amazon",
-  "web-leads",
-  "airbnb-cohost",
-  "virtual-call-assistant",
-  "flipping-properties",
-  "lien-tax-sales",
   "digital-organizer",
-  "digital-photo-organizer",
-  "digital-product-formatter",
-  "closet-organizer",
-  "birthday-party-helper",
-  "create-games-junior",
-  "mailbox-cleaning",
-  "custom-bookmark-creator",
   "junior-games-ai",
-  "junior-content-create",
-  "create-games-kids",
-  "kids-craft-hustle",
-  "ai-assets",
-  "ai-social-helper",
-  "local-business-ai-setup",
 ] as const;
 
 export function guideMarkedPendingAfterPrepBackfill(guideId: string): boolean {

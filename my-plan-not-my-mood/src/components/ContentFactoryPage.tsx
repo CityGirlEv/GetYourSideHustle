@@ -94,7 +94,7 @@ export const ContentFactoryPage: React.FC<{
   const [openSprints, setOpenSprints] = useState<Record<string, boolean>>({
     'Sprint 0': false,
     'Sprint 1': true,
-    'Sprint 2': false,
+    'Sprint 2': true,
     'Sprint 3': false,
     'Sprint 4': false,
   });
@@ -254,7 +254,7 @@ export const ContentFactoryPage: React.FC<{
                   className={brandTabClass(active)}
                   data-testid={`cf-status-${status}`}
                 >
-                  {status === ROLLOVER_STATUS_ID ? ROLLOVER_STATUS_LABEL : TASK_STATUS_LABELS[status]} {total}
+                  {status === ROLLOVER_STATUS_ID ? ROLLOVER_STATUS_LABEL : TASK_STATUS_LABELS[status as TaskStatus]} {total}
                 </button>
               );
             })}
@@ -270,6 +270,7 @@ export const ContentFactoryPage: React.FC<{
           const isOpen = openSprints[sprint];
           const tone = SPRINT_SECTION_TONES[sprint];
           const done = sectionItems.filter((row) => row.status === 'done').length;
+          const rolledOver = sectionItems.filter((row) => row.rolledOver).length;
           const dates = sprintDatesForLabel(sprint);
           return (
             <section
@@ -299,6 +300,7 @@ export const ContentFactoryPage: React.FC<{
                 </span>
                 <span className={`text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-lg ${tone.chip}`}>
                   {done}/{sectionItems.length} done
+                  {rolledOver > 0 ? ` · ${rolledOver} rolled over` : ''}
                 </span>
               </button>
               {isOpen && (

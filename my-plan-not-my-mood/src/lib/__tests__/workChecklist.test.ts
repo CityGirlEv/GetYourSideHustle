@@ -6,6 +6,9 @@ import {
   checkAllChecklistSteps,
   checklistAllChecked,
   ensurePageLinkAsStepOne,
+  firstStepPointsToPage,
+  formatStepPageHref,
+  inferHrefFromOpenLabel,
   normalizeWorkChecklist,
   toggleChecklistStep,
   updateChecklistStep,
@@ -63,6 +66,26 @@ describe('workChecklist + completion gates', () => {
     expect(steps[0].href).toBe('/admin/budget');
     expect(steps[0].checked).toBe(true);
     expect(steps[0].label).toMatch(/Plan \/ Budget/i);
+  });
+
+  it('infers a page link from an Open-the-page first step when href is missing', () => {
+    const about = applyFirstStepPageHref(
+      [{ id: 's1', label: 'Open About', checked: false }],
+      undefined,
+    );
+    expect(about[0]?.href).toBe('/about');
+    const home = applyFirstStepPageHref(
+      [{ id: 's1', label: 'Open the home page', checked: false }],
+      undefined,
+    );
+    expect(home[0]?.href).toBe('/');
+    expect(inferHrefFromOpenLabel('Open Shop Gear')).toBe('/gear');
+    expect(inferHrefFromOpenLabel('Open Privacy Policy')).toBe('/privacy');
+    expect(inferHrefFromOpenLabel('Go to Beta Testing Guide page')).toBe('/beta-guide');
+    expect(firstStepPointsToPage({ label: 'Open FAQ', href: undefined })).toBe(true);
+    expect(firstStepPointsToPage({ label: 'Confirm contrast is readable' })).toBe(false);
+    expect(formatStepPageHref('/about')).toBe('/about');
+    expect(formatStepPageHref('https://nonnegotiation.com/gear')).toBe('https://nonnegotiation.com/gear');
   });
 
   it('marks remaining steps checked when status is set to Done or Passed', () => {

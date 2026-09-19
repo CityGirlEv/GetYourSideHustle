@@ -17,7 +17,7 @@ export const TEE_SALES_BIO_LINE =
 export const HOUSE_NAME = 'NonNegotiation';
 export const HOUSE_SITE = 'nonnegotiation.com';
 export const HOUSE_BRAND_NAME = 'MY PLAN, NOT MY MOOD';
-export const HOUSE_BRAND_KICKER = 'A NonNegotiation brand';
+export const HOUSE_BRAND_KICKER = 'A Non-Negotiable brand';
 export const HOUSE_INTRO_LINE =
   'NonNegotiation.com is the house. MY PLAN, NOT MY MOOD is one of the brands under it.';
 export const HOUSE_FOOTER_LINE =

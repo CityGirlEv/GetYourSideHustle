@@ -18,7 +18,7 @@ export const HOSTING_AGREEMENT_PATH = '/admin/plan';
 export const HOSTING_AGREEMENT_DOM_ID = 'ip-hosting-agreement';
 export const HOSTING_AGREEMENT_TITLE = 'Phase 1 Merchandise Hosting Agreement';
 
-export const HOST_NAME = 'Evelyn Harris';
+export const HOST_NAME = 'Evelyn Irving';
 export const HOST_STUDIO = "Muntie Ev's AI Studio";
 export const HOST_ROLE = 'Host / Technical Execution Partner';
 export const HOSTED_STOREFRONT = 'nonnegotiation.com';
@@ -80,7 +80,7 @@ export const HOSTING_CLAUSES: HostingClause[] = [
   {
     id: 'host-provides',
     heading: '4. Host provides',
-    body: `Storefront hosting, SSL, catalog and checkout for the first drop, Gear Selections mockup uploads, and Phase 1 store operation. Logo design and apparel mockups are delivered as complimentary work (see Fees). The Host does not manufacture, ship, or insure the physical shirts.`,
+    body: `Storefront hosting, SSL, catalog and checkout for the first drop, Gear Selections mockup uploads, and Phase 1 store operation. Logo design, apparel mockups, and 4 marketing videos are complimentary work (see Fees). The Host does not manufacture, ship, or insure the physical shirts.`,
   },
   {
     id: 'brand-provides',
@@ -90,7 +90,7 @@ export const HOSTING_CLAUSES: HostingClause[] = [
   {
     id: 'fees',
     heading: '6. Fees',
-    body: `The brand logo and apparel mockup set are complimentary — charged $0 — and are not part of the $10,000 sprint budget. Phase 1 hosting is not a separate invoice: Evelyn’s 30% of gear sales covers hosting, processing sales, administrative fees, and application fees. Each complimentary line shows the retail price if the Host were selling that work separately. The $10,000 still covers the five paid sprints only.`,
+    body: `The brand logo, apparel mockup set, and 4 marketing videos are complimentary — charged $0 — and are not part of the $10,000 sprint budget. Phase 1 hosting is not a separate invoice: Evelyn’s 30% of gear sales covers hosting, processing sales, administrative fees, and application fees. Each complimentary line shows the retail price if the Host were selling that work separately. The $10,000 still covers the five paid sprints only.`,
   },
   {
     id: 'merch-orders',
@@ -100,7 +100,7 @@ export const HOSTING_CLAUSES: HostingClause[] = [
   {
     id: 'ip',
     heading: '8. Intellectual property',
-    body: `${CLIENT_NAME} owns ${BRAND_NAME} names, slogans, and garment artwork. ${HOST_NAME} / ${HOST_STUDIO} owns the website code, admin studio, and hosting platform. Complimentary logo and mockup files are licensed to Angela for ${BRAND_NAME} merch and marketing; the Host may keep copies for the storefront and archive.`,
+    body: `${CLIENT_NAME} owns ${BRAND_NAME} names, slogans, and garment artwork. ${HOST_NAME} / ${HOST_STUDIO} owns the website code, admin studio, and hosting platform. Complimentary logo, mockup files, and marketing videos are licensed to Angela for ${BRAND_NAME} merch and marketing; the Host may keep copies for the storefront and archive.`,
   },
   {
     id: 'data',
@@ -272,7 +272,7 @@ export function buildHostingAgreementPlanHtml(): string {
   return `<div class="overview-box" id="doc-hosting-agreement">
     <div class="kicker">Hosting Agreement</div>
     <h2 class="plain">${escapeHtml(HOSTING_AGREEMENT_TITLE)}</h2>
-    <p class="lede">${HOST_NAME} (${HOST_STUDIO}) hosts ${CLIENT_NAME}’s shirts on SnatchVault (${ORDER_OPS_STORE_URL}). Home menu: ${ORDER_OPS_MENU}; submenus: ${ORDER_OPS_SUBMENUS}. ${GEAR_SALES_SPLIT_NOTE} Logo and mockups are complimentary. Retail if sold: ${formatUsdAmount(hostingRetailTotal())}. Charged: $0. The $10,000 sprint budget does not include these lines.</p>
+    <p class="lede">${HOST_NAME} (${HOST_STUDIO}) hosts ${CLIENT_NAME}’s shirts on SnatchVault (${ORDER_OPS_STORE_URL}). Home menu: ${ORDER_OPS_MENU}; submenus: ${ORDER_OPS_SUBMENUS}. ${GEAR_SALES_SPLIT_NOTE} Logo, mockups, and 4 marketing videos are complimentary. Retail if sold: ${formatUsdAmount(hostingRetailTotal())}. Charged: $0. The $10,000 sprint budget does not include these lines.</p>
     <ul class="deliverable-list">${fees}</ul>
     ${clauses}
   </div>`;

@@ -1,7 +1,7 @@
 import { Coins } from "lucide-react";
 import { formatUsd } from "../lib/membership";
 import { formatKidCreditBalance } from "../lib/member-credits";
-import { creditApplyView, type MixedPayQuote } from "../lib/credit-checkout";
+import { creditApplyView, shouldShowApplyAllCredits, type MixedPayQuote } from "../lib/credit-checkout";
 import { CART_CREDITS_WAIT_MS } from "../lib/wait-estimate";
 import { WaitIndicator, WaitLabel } from "./WaitFeedback";
 
@@ -138,14 +138,16 @@ export function CreditApplyControls({
                   onChange={(e) => onCreditsChange(Number(e.target.value))}
                 />
               </div>
-              <button
-                type="button"
-                className="btn btn-primary credit-apply-all"
-                data-testid="checkout-apply-all-credits"
-                onClick={() => onCreditsChange(quote.creditsMax)}
-              >
-                Apply {quote.creditsMax} credit{quote.creditsMax === 1 ? "" : "s"} to this cart
-              </button>
+              {shouldShowApplyAllCredits(quote) ? (
+                <button
+                  type="button"
+                  className="btn btn-outline credit-apply-all"
+                  data-testid="checkout-apply-all-credits"
+                  onClick={() => onCreditsChange(quote.creditsMax)}
+                >
+                  Use all {quote.creditsMax} credit{quote.creditsMax === 1 ? "" : "s"}
+                </button>
+              ) : null}
               <ul className="credit-apply-summary">
                 <li>
                   <span>Subtotal</span>

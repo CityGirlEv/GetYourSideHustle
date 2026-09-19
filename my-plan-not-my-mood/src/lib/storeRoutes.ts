@@ -1,11 +1,28 @@
-import { LAUNCH_PAGE_IDS, type LaunchPageId } from './launchPages';
+import { BETA_REWARDS_PATH, isBetaRewardsPath } from './betaRewards';
+import { BETA_TESTING_GUIDE_PATH, isBetaTestingGuidePath } from './betaTestingGuide';
+import { launchPageById, resolveLaunchPageId, type LaunchPageId } from './launchPages';
 
-export type StoreRoute = 'home' | 'gear' | 'planners' | 'join' | 'pay' | 'sitemap' | LaunchPageId;
+export type StoreRoute =
+  | 'home'
+  | 'gear'
+  | 'planners'
+  | 'join'
+  | 'pay'
+  | 'sitemap'
+  | 'beta-rewards'
+  | 'beta-guide'
+  | LaunchPageId;
 
-const LAUNCH_ROUTE_SET = new Set<string>(LAUNCH_PAGE_IDS);
+export const HEADER_PRIMARY_NAV_ORDER = ['home', 'shop', 'join', 'about', 'faq', 'contact'] as const;
+export const HEADER_TRAILING_LINKS = [
+  { route: 'about', label: 'About' },
+  { route: 'faq', label: 'FAQ' },
+  { route: 'contact', label: 'Contact' },
+] as const;
+export const HEADER_PUBLIC_LINKS = HEADER_TRAILING_LINKS;
 
 export function isLaunchStoreRoute(route: string): route is LaunchPageId {
-  return LAUNCH_ROUTE_SET.has(route);
+  return resolveLaunchPageId(route) === route;
 }
 
 export function parseStoreRoute(pathname: string): StoreRoute {
@@ -15,8 +32,11 @@ export function parseStoreRoute(pathname: string): StoreRoute {
   if (path === '/join' || path.startsWith('/join/')) return 'join';
   if (path === '/pay' || path.startsWith('/pay/')) return 'pay';
   if (path === '/sitemap' || path.startsWith('/sitemap/')) return 'sitemap';
-  const launchId = path.replace(/^\/+/, '').split('/')[0];
-  if (isLaunchStoreRoute(launchId) && (path === `/${launchId}` || path.startsWith(`/${launchId}/`))) {
+  if (isBetaRewardsPath(path)) return 'beta-rewards';
+  if (isBetaTestingGuidePath(path)) return 'beta-guide';
+  const segment = path.replace(/^\/+/, '').split('/')[0];
+  const launchId = resolveLaunchPageId(segment);
+  if (launchId && (path === `/${segment}` || path.startsWith(`/${segment}/`))) {
     return launchId;
   }
   return 'home';
@@ -34,10 +54,14 @@ export function routePath(route: StoreRoute): string {
       return '/pay';
     case 'sitemap':
       return '/sitemap';
+    case 'beta-rewards':
+      return BETA_REWARDS_PATH;
+    case 'beta-guide':
+      return BETA_TESTING_GUIDE_PATH;
     case 'home':
       return '/';
     default:
-      return `/${route}`;
+      return launchPageById(route).path;
   }
 }
 

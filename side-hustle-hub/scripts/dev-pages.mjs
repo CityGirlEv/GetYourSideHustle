@@ -21,6 +21,13 @@ import http from "node:http";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  applyD1HealthWatchEvent,
+  d1HealthWatchConfig,
+  shouldSkipHealthProbe,
+  wranglerExitAction,
+  wranglerRestartRequestAction,
+} from "./d1-health-watch.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const wrangler = path.resolve(
@@ -133,7 +140,9 @@ const children = [];
 let shuttingDown = false;
 let wranglerChild = null;
 let wranglerRestarting = false;
+let wranglerStartedAt = 0;
 let healthFailStreak = 0;
+let healthProbeInFlight = false;
 
 function killTree(pid) {
   if (!pid) return;
@@ -252,14 +261,17 @@ function startWrangler() {
     },
   );
   wranglerChild = proc;
+  wranglerStartedAt = Date.now();
   children.push(proc);
   proc.on("exit", (code, signal) => {
     const idx = children.indexOf(proc);
     if (idx >= 0) children.splice(idx, 1);
     if (wranglerChild === proc) wranglerChild = null;
-    if (shuttingDown) return;
-    const delay = wranglerRestarting ? 400 : 1200;
-    wranglerRestarting = false;
+    if (wranglerExitAction({ shuttingDown }) === "ignore") return;
+    const planned = wranglerRestarting;
+    wranglerRestarting = true;
+    healthProbeInFlight = false;
+    const delay = planned ? 400 : 1200;
     console.warn(
       `[wrangler] exited (${signal || code || 0}) — restarting Pages Functions in ${delay}ms`,
     );
@@ -267,56 +279,80 @@ function startWrangler() {
       if (shuttingDown) return;
       freePort(API_PORT, "Pages Functions");
       startWrangler();
+      wranglerRestarting = false;
     }, delay);
   });
   return proc;
 }
 
 function requestWranglerRestart(reason) {
-  if (shuttingDown || wranglerRestarting) return;
+  const action = wranglerRestartRequestAction({
+    shuttingDown,
+    restarting: wranglerRestarting,
+    hasChild: Boolean(wranglerChild?.pid),
+  });
+  if (action === "ignore") return;
   wranglerRestarting = true;
   healthFailStreak = 0;
+  healthProbeInFlight = false;
   console.warn(`[d1-watch] ${reason} — restarting Pages Functions on :${API_PORT}`);
-  if (wranglerChild?.pid) {
+  if (action === "kill-child") {
     killTree(wranglerChild.pid);
     return;
   }
-  wranglerRestarting = false;
   startWrangler();
+  wranglerRestarting = false;
 }
 
 function watchRemoteD1Health() {
-  const intervalMs = useRemoteD1 ? 10_000 : 15_000;
-  const reqTimeoutMs = useRemoteD1 ? 20_000 : 5_000;
+  const cfg = d1HealthWatchConfig(useRemoteD1);
   const timer = setInterval(() => {
-    if (shuttingDown || wranglerRestarting) return;
+    if (
+      shouldSkipHealthProbe({
+        shuttingDown,
+        restarting: wranglerRestarting,
+        probeInFlight: healthProbeInFlight,
+        startedAt: wranglerStartedAt,
+        graceMs: cfg.graceMs,
+      })
+    ) {
+      return;
+    }
+    healthProbeInFlight = true;
     const req = http.get(`http://127.0.0.1:${API_PORT}/api/health`, (res) => {
+      healthProbeInFlight = false;
       res.resume();
-      if (res.statusCode && res.statusCode < 500) {
-        healthFailStreak = 0;
-        return;
-      }
-      healthFailStreak += 1;
-      if (healthFailStreak >= 2) {
-        requestWranglerRestart(`health HTTP ${res.statusCode}`);
-      }
+      const event = res.statusCode && res.statusCode < 500 ? "ok" : "http_error";
+      const next = applyD1HealthWatchEvent(
+        { failStreak: healthFailStreak, shuttingDown, restarting: wranglerRestarting },
+        event,
+        cfg,
+      );
+      healthFailStreak = next.failStreak;
+      if (next.restart) requestWranglerRestart(`health HTTP ${res.statusCode}`);
     });
     req.on("error", () => {
-      if (shuttingDown || wranglerRestarting) return;
-      healthFailStreak += 1;
-      if (healthFailStreak >= 3) {
-        requestWranglerRestart("health unreachable");
-      }
+      healthProbeInFlight = false;
+      const next = applyD1HealthWatchEvent(
+        { failStreak: healthFailStreak, shuttingDown, restarting: wranglerRestarting },
+        "unreachable",
+        cfg,
+      );
+      healthFailStreak = next.failStreak;
+      if (next.restart) requestWranglerRestart("health unreachable");
     });
-    req.setTimeout(reqTimeoutMs, () => {
+    req.setTimeout(cfg.reqTimeoutMs, () => {
       req.destroy();
-      if (shuttingDown || wranglerRestarting) return;
-      healthFailStreak += 1;
-      if (healthFailStreak >= 2) {
-        requestWranglerRestart("health timeout");
-      }
+      healthProbeInFlight = false;
+      const next = applyD1HealthWatchEvent(
+        { failStreak: healthFailStreak, shuttingDown, restarting: wranglerRestarting },
+        "timeout",
+        cfg,
+      );
+      healthFailStreak = next.failStreak;
+      if (next.restart) requestWranglerRestart("health timeout");
     });
-  }, intervalMs);
+  }, cfg.intervalMs);
   timer.unref?.();
   console.log("✓ Watching /api/health — dead D1 proxy auto-restarts Pages Functions");
 }

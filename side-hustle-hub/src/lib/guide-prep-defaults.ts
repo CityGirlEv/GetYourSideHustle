@@ -58,6 +58,22 @@ import {
 } from "./kids-piggy-first-goal-guide";
 import { BABYSITTING_PRICING, BABYSITTING_SUPPLIES } from "./babysitting-guide";
 import { ERRAND_RUNNER_PRICING, ERRAND_RUNNER_SUPPLIES } from "./errand-runner-guide";
+import { NEIGHBORHOOD_HELPER_PRICING, NEIGHBORHOOD_HELPER_SUPPLIES } from "./neighborhood-helper-guide";
+import { AI_ASSETS_PRICING, AI_ASSETS_SUPPLIES } from "./ai-assets-guide";
+import { AIRBNB_COHOST_PRICING, AIRBNB_COHOST_SUPPLIES } from "./airbnb-cohost-guide";
+import { AMAZON_FBA_SELLER_PRICING, AMAZON_FBA_SELLER_SUPPLIES } from "./amazon-fba-seller-guide";
+import { VIRTUAL_CALL_ASSISTANT_PRICING, VIRTUAL_CALL_ASSISTANT_SUPPLIES } from "./virtual-call-assistant-guide";
+import { AI_SOCIAL_HELPER_PRICING, AI_SOCIAL_HELPER_SUPPLIES } from "./ai-social-helper-guide";
+import { BIRTHDAY_PARTY_HELPER_PRICING, BIRTHDAY_PARTY_HELPER_SUPPLIES } from "./birthday-party-helper-guide";
+import { CLOSET_ORGANIZER_PRICING, CLOSET_ORGANIZER_SUPPLIES } from "./closet-organizer-guide";
+import { LIEN_TAX_SALES_PRICING, LIEN_TAX_SALES_SUPPLIES } from "./lien-tax-sales-guide";
+import { JUNIOR_CONTENT_CREATE_PRICING, JUNIOR_CONTENT_CREATE_SUPPLIES } from "./junior-content-create-guide";
+import { KIDS_CRAFT_HUSTLE_PRICING, KIDS_CRAFT_HUSTLE_SUPPLIES } from "./kids-craft-hustle-guide";
+import { CREATE_GAMES_KIDS_PRICING, CREATE_GAMES_KIDS_SUPPLIES } from "./create-games-kids-guide";
+import { CREATE_GAMES_JUNIOR_PRICING, CREATE_GAMES_JUNIOR_SUPPLIES } from "./create-games-junior-guide";
+import { CUSTOM_BOOKMARK_CREATOR_PRICING, CUSTOM_BOOKMARK_CREATOR_SUPPLIES } from "./custom-bookmark-creator-guide";
+import { WEB_LEADS_PRICING, WEB_LEADS_SUPPLIES } from "./web-leads-guide";
+import { MAILBOX_CLEANING_PRICING, MAILBOX_CLEANING_SUPPLIES } from "./mailbox-cleaning-guide";
 import {
   FB_MARKETPLACE_HELPER_PRICING,
   FB_MARKETPLACE_HELPER_SUPPLIES,
@@ -75,6 +91,26 @@ import { RESUME_LINKEDIN_PRICING, RESUME_LINKEDIN_SUPPLIES } from "./resume-link
 import { SHORT_FORM_VIDEO_PRICING, SHORT_FORM_VIDEO_SUPPLIES } from "./short-form-video-editor-guide";
 import { GBP_HELPER_PRICING, GBP_HELPER_SUPPLIES } from "./google-business-profile-helper-guide";
 import { UGC_CREATOR_PRICING, UGC_CREATOR_SUPPLIES } from "./ugc-creator-guide";
+import {
+  DIGITAL_PHOTO_ORGANIZER_PRICING,
+  DIGITAL_PHOTO_ORGANIZER_SUPPLIES,
+} from "./digital-photo-organizer-guide";
+import {
+  DIGITAL_PRODUCT_FORMATTER_PRICING,
+  DIGITAL_PRODUCT_FORMATTER_SUPPLIES,
+} from "./digital-product-formatter-guide";
+import {
+  FLIPPING_PROPERTIES_PRICING,
+  FLIPPING_PROPERTIES_SUPPLIES,
+} from "./flipping-properties-guide";
+import {
+  GARAGE_SALE_HELPER_PRICING,
+  GARAGE_SALE_HELPER_SUPPLIES,
+} from "./garage-sale-helper-guide";
+import {
+  LOCAL_BUSINESS_AI_SETUP_PRICING,
+  LOCAL_BUSINESS_AI_SETUP_SUPPLIES,
+} from "./local-business-ai-setup-guide";
 import { VIRTUAL_ASSISTANT_PRICING, VIRTUAL_ASSISTANT_SUPPLIES } from "./virtual-assistant-guide";
 import { VIRTUAL_RECEPTIONIST_PRICING, VIRTUAL_RECEPTIONIST_SUPPLIES } from "./virtual-receptionist-guide";
 import { SOCIAL_INFLUENCER_PRICING, SOCIAL_INFLUENCER_SUPPLIES } from "./social-influencer-guide";
@@ -305,13 +341,13 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     starterKitTotal: ERRAND_RUNNER_SUPPLIES.starterKitTotal,
     items: ERRAND_RUNNER_SUPPLIES.items.map((item) => ({ ...item })),
   },
+  "neighborhood-helper": {
+    starterKitTotal: NEIGHBORHOOD_HELPER_SUPPLIES.starterKitTotal,
+    items: NEIGHBORHOOD_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
   "mailbox-cleaning": {
-    starterKitTotal: "About $8–20 for gloves and cleaner",
-    items: [
-      s("gloves", "Work gloves", "1 pair", "$5–12"),
-      s("wipe", "Outdoor-safe wipes or mild cleaner", "1", "$3–8"),
-      s("brush", "Small scrub brush", "1", "$3–6", undefined, true),
-    ],
+    starterKitTotal: MAILBOX_CLEANING_SUPPLIES.starterKitTotal,
+    items: MAILBOX_CLEANING_SUPPLIES.items.map((item) => ({ ...item })),
   },
   airbnb: {
     starterKitTotal: AIRBNB_HOSTING_SUPPLIES.starterKitTotal,
@@ -338,13 +374,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: ETSY_STORE_SUPPLIES.items.map((item) => ({ ...item })),
   },
   amazon: {
-    starterKitTotal: "About $25–80 for samples, labels, and photo props (inventory is separate)",
-    items: [
-      s("sample", "Product sample for photos / QC", "1–3", "$10–40"),
-      s("labels", "FNSKU / barcode label sheet", "1 pack", "$8–15"),
-      s("backdrop", "White photo backdrop", "1", "$8–20"),
-      s("tape", "Packing tape for prep", "1", "$3–7", undefined, true),
-    ],
+    starterKitTotal: AMAZON_FBA_SELLER_SUPPLIES.starterKitTotal,
+    items: AMAZON_FBA_SELLER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   dropshipping: {
     starterKitTotal: "About $10–40 for branding samples (no warehouse stock)",
@@ -422,23 +453,16 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: UGC_CREATOR_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "web-leads": {
-    starterKitTotal: "About $10–30 for pitch leave-behinds",
-    items: [
-      s("onepager", "Printed website audit one-pager", "1 set", "$5–15"),
-      s("cards", "Business cards", "1 pack", "$8–15"),
-    ],
+    starterKitTotal: WEB_LEADS_SUPPLIES.starterKitTotal,
+    items: WEB_LEADS_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "str-cohost": {
     starterKitTotal: STR_COHOST_SUPPLIES.starterKitTotal,
     items: STR_COHOST_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "airbnb-cohost": {
-    starterKitTotal: "About $20–50 for co-host turnover tote",
-    items: [
-      s("tote", "Turnover restock tote", "1", "$10–20"),
-      s("checklist", "Guest-ready checklist", "1", "$3–8"),
-      s("lockbox", "Spare lockbox batteries", "1 pack", "$5–12", undefined, true),
-    ],
+    starterKitTotal: AIRBNB_COHOST_SUPPLIES.starterKitTotal,
+    items: AIRBNB_COHOST_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "airbnb-turnover-checker": {
     starterKitTotal: AIRBNB_TURNOVER_CHECKER_SUPPLIES.starterKitTotal,
@@ -453,12 +477,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: PORCH_PACKAGE_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "closet-organizer": {
-    starterKitTotal: "About $15–40 for sorting supplies",
-    items: [
-      s("bags", "Donate / trash / keep bags", "1 pack", "$5–12"),
-      s("labels", "Closet labels or sticky notes", "1 pack", "$3–8"),
-      s("hangers", "Extra slim hangers", "1 pack", "$8–18", undefined, true),
-    ],
+    starterKitTotal: CLOSET_ORGANIZER_SUPPLIES.starterKitTotal,
+    items: CLOSET_ORGANIZER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "personal-shopper": {
     starterKitTotal: PERSONAL_SHOPPER_SUPPLIES.starterKitTotal,
@@ -469,12 +489,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: ESTATE_SALE_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "birthday-party-helper": {
-    starterKitTotal: "About $10–35 for party-assist extras",
-    items: [
-      s("games", "Backup party games / crafts", "1 kit", "$8–20"),
-      s("bags", "Trash bags", "1 box", "$4–8"),
-      s("tape", "Painter’s tape / balloon tape", "1", "$3–8", undefined, true),
-    ],
+    starterKitTotal: BIRTHDAY_PARTY_HELPER_SUPPLIES.starterKitTotal,
+    items: BIRTHDAY_PARTY_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "kids-party-game-host": {
     starterKitTotal: KIDS_PARTY_GAME_HOST_SUPPLIES.starterKitTotal,
@@ -485,12 +501,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: YOUTH_SPORTS_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "custom-bookmark-creator": {
-    starterKitTotal: "About $10–30 for first batch materials",
-    items: [
-      s("cardstock", "Cardstock / bookmark blanks", "1 pack", "$5–12"),
-      s("ribbon", "Ribbon or tassel cord", "1 pack", "$3–8"),
-      s("laminate", "Laminating sheets (optional)", "1 pack", "$6–15", undefined, true),
-    ],
+    starterKitTotal: CUSTOM_BOOKMARK_CREATOR_SUPPLIES.starterKitTotal,
+    items: CUSTOM_BOOKMARK_CREATOR_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "mothers-helper": {
     starterKitTotal: MOTHERS_HELPER_SUPPLIES.starterKitTotal,
@@ -529,74 +541,48 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: CLOSET_CLEANOUT_LISTING_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "create-games-kids": {
-    starterKitTotal: "About $5–20 for paper prototypes (parent helps)",
-    items: [
-      s("paper", "Paper + markers for game boards", "1 set", "$4–10"),
-      s("dice", "Dice / tokens", "1 set", "$3–8"),
-      s("sleeve", "Sheet protectors for boards", "1 pack", "$3–8", undefined, true),
-    ],
+    starterKitTotal: CREATE_GAMES_KIDS_SUPPLIES.starterKitTotal,
+    items: CREATE_GAMES_KIDS_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "create-games-junior": {
-    starterKitTotal: "About $5–25 for prototypes and playtest notes",
-    items: [
-      s("paper", "Prototype paper / cardstock", "1 pack", "$5–12"),
-      s("notebook", "Playtest notes notebook", "1", "$3–8"),
-      s("usb", "USB for build backup", "1", "$6–12", undefined, true),
-    ],
+    starterKitTotal: CREATE_GAMES_JUNIOR_SUPPLIES.starterKitTotal,
+    items: CREATE_GAMES_JUNIOR_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "kids-craft-hustle": {
-    starterKitTotal: "About $10–30 for first craft batch (parent helps)",
-    items: [
-      s("craft", "Craft materials for first batch", "1 kit", "$8–20"),
-      s("bags", "Sales bags / tags", "1 pack", "$3–8"),
-    ],
+    starterKitTotal: KIDS_CRAFT_HUSTLE_SUPPLIES.starterKitTotal,
+    items: KIDS_CRAFT_HUSTLE_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "flipping-properties": {
-    starterKitTotal: "About $15–40 for walkthrough documentation",
-    items: [
-      s("checklist", "Property walkthrough checklist", "1", "$3–8"),
-      s("tape", "Measuring tape", "1", "$8–15"),
-      s("flashlight", "Flashlight", "1", "$5–12"),
-      s("notebook", "Rehab estimate notepad", "1", "$3–8"),
-    ],
+    starterKitTotal: FLIPPING_PROPERTIES_SUPPLIES.starterKitTotal,
+    items: FLIPPING_PROPERTIES_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  "garage-sale-helper": {
+    starterKitTotal: GARAGE_SALE_HELPER_SUPPLIES.starterKitTotal,
+    items: GARAGE_SALE_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "foreclosure-properties": {
     starterKitTotal: FORECLOSURE_PROPERTIES_SUPPLIES.starterKitTotal,
     items: FORECLOSURE_PROPERTIES_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "lien-tax-sales": {
-    starterKitTotal: "About $10–25 for research binders",
-    items: [
-      s("binder", "Tax-sale research binder", "1", "$5–12"),
-      s("checklist", "Lien checklist printouts", "1 set", "$3–8"),
-      s("highlighter", "Highlighters", "1 pack", "$2–5"),
-    ],
+    starterKitTotal: LIEN_TAX_SALES_SUPPLIES.starterKitTotal,
+    items: LIEN_TAX_SALES_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "ai-agents": {
     starterKitTotal: AI_AGENTS_SUPPLIES.starterKitTotal,
     items: AI_AGENTS_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "ai-assets": {
-    starterKitTotal: "About $15–45 for brand proofs and delivery media",
-    items: [
-      s("prints", "Color print proofs of sample assets", "5–10", "$5–15"),
-      s("usb", "Client delivery USB / SD card", "1", "$8–20"),
-      s("mood", "Printed mood-board / brand sheet", "1", "$3–8"),
-      s("sleeve", "Protective sleeve for proofs", "1 pack", "$3–8", undefined, true),
-    ],
+    starterKitTotal: AI_ASSETS_SUPPLIES.starterKitTotal,
+    items: AI_ASSETS_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "ai-timing": {
     starterKitTotal: AI_TIMING_SUPPLIES.starterKitTotal,
     items: AI_TIMING_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "ai-social-helper": {
-    starterKitTotal: "About $10–30 for content calendars and caption proofs",
-    items: [
-      s("calendar", "Printed 30-day content calendar template", "1", "$3–8"),
-      s("captions", "Caption / hashtag cheat-sheet printouts", "1 set", "$3–8"),
-      s("folder", "Client brand voice folder", "1", "$2–5"),
-      s("usb", "Asset handoff USB (optional)", "1", "$8–15", undefined, true),
-    ],
+    starterKitTotal: AI_SOCIAL_HELPER_SUPPLIES.starterKitTotal,
+    items: AI_SOCIAL_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "ai-promo-video": {
     starterKitTotal: AI_PROMO_VIDEO_SUPPLIES.starterKitTotal,
@@ -611,22 +597,12 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: AI_PEERS_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "local-business-ai-setup": {
-    starterKitTotal: "About $10–35 for on-site setup leave-behinds",
-    items: [
-      s("checklist", "Printed AI setup checklist for the shop", "1 set", "$3–8"),
-      s("laminate", "Laminated how-to card for staff", "1–2", "$4–10"),
-      s("folder", "Login / SOP folder (owner keeps passwords)", "1", "$2–5"),
-      s("cable", "Spare USB-C / charging cable for demos", "1", "$8–15", undefined, true),
-    ],
+    starterKitTotal: LOCAL_BUSINESS_AI_SETUP_SUPPLIES.starterKitTotal,
+    items: LOCAL_BUSINESS_AI_SETUP_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "virtual-call-assistant": {
-    starterKitTotal: "About $5–25 for call scripts and intake sheets",
-    items: [
-      s("script", "Printed call scripts + objection sheet", "1 set", "$3–8"),
-      s("intake", "Client intake / FAQ forms", "1 pad", "$3–8"),
-      s("headset", "Headset (if not already owned)", "1", "$20–50", "Often already owned — Tools", true),
-      s("notebook", "Call log notebook", "1", "$3–8"),
-    ],
+    starterKitTotal: VIRTUAL_CALL_ASSISTANT_SUPPLIES.starterKitTotal,
+    items: VIRTUAL_CALL_ASSISTANT_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "online-research-assistant": {
     starterKitTotal: ONLINE_RESEARCH_ASSISTANT_SUPPLIES.starterKitTotal,
@@ -730,13 +706,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: TRANSCRIPTION_NOTES_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "digital-photo-organizer": {
-    starterKitTotal: "About $15–45 for photo archive handoff",
-    items: [
-      s("hdd", "External drive for client archive (optional)", "1", "$40–80", "Or use client’s drive", true),
-      s("usb", "USB stick for sample album", "1", "$8–15"),
-      s("labels", "Year / event album labels", "1 pack", "$4–10"),
-      s("sheet", "Printed naming convention sheet", "1", "$2–5"),
-    ],
+    starterKitTotal: DIGITAL_PHOTO_ORGANIZER_SUPPLIES.starterKitTotal,
+    items: DIGITAL_PHOTO_ORGANIZER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "local-content-photographer": {
     starterKitTotal: LOCAL_CONTENT_PHOTO_SUPPLIES.starterKitTotal,
@@ -755,13 +726,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: GROUP_SETUP_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "digital-product-formatter": {
-    starterKitTotal: "About $10–35 for format proofs (files live in Tools)",
-    items: [
-      s("proof", "Printed page proofs for layout check", "5–10 pages", "$3–10"),
-      s("swatch", "Color / font swatch print", "1", "$2–5"),
-      s("usb", "Formatted-file delivery USB", "1", "$8–15", undefined, true),
-      s("checklist", "Ebook / workbook format checklist", "1", "$2–5"),
-    ],
+    starterKitTotal: DIGITAL_PRODUCT_FORMATTER_SUPPLIES.starterKitTotal,
+    items: DIGITAL_PRODUCT_FORMATTER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "junior-savings-ceo": {
     starterKitTotal: JUNIOR_SAVINGS_CEO_SUPPLIES.starterKitTotal,
@@ -780,12 +746,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: JUNIOR_REINVEST_CEO_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "junior-content-create": {
-    starterKitTotal: "About $10–35 for parent-friendly content kit",
-    items: [
-      s("tripod", "Mini phone tripod", "1", "$12–25"),
-      s("backdrop", "Simple backdrop / poster board", "1", "$5–12"),
-      s("calendar", "Printed posting calendar (parent co-signs)", "1", "$2–5"),
-    ],
+    starterKitTotal: JUNIOR_CONTENT_CREATE_SUPPLIES.starterKitTotal,
+    items: JUNIOR_CONTENT_CREATE_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "kids-piggy-first-goal": {
     starterKitTotal: KIDS_PIGGY_FIRST_GOAL_SUPPLIES.starterKitTotal,
@@ -832,6 +794,10 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     ...ERRAND_RUNNER_PRICING,
     items: ERRAND_RUNNER_PRICING.items.map((item) => ({ ...item })),
   },
+  "neighborhood-helper": {
+    ...NEIGHBORHOOD_HELPER_PRICING,
+    items: NEIGHBORHOOD_HELPER_PRICING.items.map((item) => ({ ...item })),
+  },
   "virtual-assistant": {
     tabLabel: VIRTUAL_ASSISTANT_PRICING.tabLabel,
     raiseTip: VIRTUAL_ASSISTANT_PRICING.raiseTip,
@@ -873,12 +839,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: ETSY_STORE_PRICING.items.map((item) => ({ ...item })),
   },
   amazon: {
-    raiseTip: RAISE,
-    items: [
-      p("unit", "Unit retail (after fees/COGS)", "Aim 25–40% contribution margin"),
-      p("promo", "Launch coupon", "10–20% off first 2 weeks"),
-      p("bundle", "Multi-pack", "Higher AOV; watch FBA fees"),
-    ],
+    ...AMAZON_FBA_SELLER_PRICING,
+    items: AMAZON_FBA_SELLER_PRICING.items.map((item) => ({ ...item })),
   },
   dropshipping: {
     raiseTip: RAISE,
@@ -963,24 +925,16 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: SHORT_FORM_VIDEO_PRICING.items.map((item) => ({ ...item })),
   },
   "web-leads": {
-    raiseTip: RAISE,
-    items: [
-      p("audit", "Local site audit + pitch", "$50–150"),
-      p("site", "Simple brochure site", "$400–1,500"),
-      p("month", "Hosting / lead form care", "$25–75 / mo"),
-    ],
+    ...WEB_LEADS_PRICING,
+    items: WEB_LEADS_PRICING.items.map((item) => ({ ...item })),
   },
   "str-cohost": {
     ...STR_COHOST_PRICING,
     items: STR_COHOST_PRICING.items.map((item) => ({ ...item })),
   },
   "airbnb-cohost": {
-    raiseTip: RAISE,
-    items: [
-      p("pct", "Co-host share", "15–25% of booking"),
-      p("turn", "Turnover coordination", "$50–120"),
-      p("guest", "Guest messaging only", "$100–250 / mo"),
-    ],
+    ...AIRBNB_COHOST_PRICING,
+    items: AIRBNB_COHOST_PRICING.items.map((item) => ({ ...item })),
   },
   "airbnb-turnover-checker": {
     ...AIRBNB_TURNOVER_CHECKER_PRICING,
@@ -997,12 +951,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: PORCH_PACKAGE_PRICING.items.map((item) => ({ ...item })),
   },
   "closet-organizer": {
-    raiseTip: RAISE,
-    items: [
-      p("closet", "One closet session", "$60–120"),
-      p("hour", "Hourly organizing", "$25–45 / hr"),
-      p("room", "Full bedroom / closet system", "$150–350"),
-    ],
+    ...CLOSET_ORGANIZER_PRICING,
+    items: CLOSET_ORGANIZER_PRICING.items.map((item) => ({ ...item })),
   },
   "personal-shopper": {
     ...PERSONAL_SHOPPER_PRICING,
@@ -1013,12 +963,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: ESTATE_SALE_PRICING.items.map((item) => ({ ...item })),
   },
   "birthday-party-helper": {
-    raiseTip: RAISE,
-    items: [
-      p("party", "Party helper (2 hrs)", "$40–80"),
-      p("hour", "Extra hour", "+$15–25"),
-      p("setup", "Setup-only block", "$30–60"),
-    ],
+    ...BIRTHDAY_PARTY_HELPER_PRICING,
+    items: BIRTHDAY_PARTY_HELPER_PRICING.items.map((item) => ({ ...item })),
   },
   "kids-party-game-host": {
     ...KIDS_PARTY_GAME_HOST_PRICING,
@@ -1029,12 +975,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: YOUTH_SPORTS_HELPER_PRICING.items.map((item) => ({ ...item })),
   },
   "custom-bookmark-creator": {
-    raiseTip: RAISE,
-    items: [
-      p("one", "Single bookmark", "$3–6"),
-      p("set", "Set of 5", "$12–22"),
-      p("custom", "Name / quote custom", "+$1–3"),
-    ],
+    ...CUSTOM_BOOKMARK_CREATOR_PRICING,
+    items: CUSTOM_BOOKMARK_CREATOR_PRICING.items.map((item) => ({ ...item })),
   },
   "mothers-helper": {
     ...MOTHERS_HELPER_PRICING,
@@ -1069,72 +1011,48 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: CLOSET_CLEANOUT_LISTING_PRICING.items.map((item) => ({ ...item })),
   },
   "create-games-kids": {
-    raiseTip: "Parent-approved prices. Examples only.",
-    items: [
-      p("game", "Simple printable game", "$3–8"),
-      p("pack", "3-game pack", "$8–18"),
-      p("custom", "Custom theme", "+$2–5"),
-    ],
+    ...CREATE_GAMES_KIDS_PRICING,
+    items: CREATE_GAMES_KIDS_PRICING.items.map((item) => ({ ...item })),
   },
   "create-games-junior": {
-    raiseTip: RAISE,
-    items: [
-      p("proto", "Playable prototype fee", "$25–75"),
-      p("digital", "Browser mini-game commission", "$50–200"),
-      p("pack", "Asset + rules PDF", "$15–40"),
-    ],
+    ...CREATE_GAMES_JUNIOR_PRICING,
+    items: CREATE_GAMES_JUNIOR_PRICING.items.map((item) => ({ ...item })),
   },
   "kids-craft-hustle": {
-    raiseTip: "Parent-approved prices. Examples only.",
-    items: [
-      p("piece", "Craft piece", "$3–10"),
-      p("set", "Set of 3", "$8–20"),
-      p("custom", "Custom colors / name", "+$1–3"),
-    ],
+    ...KIDS_CRAFT_HUSTLE_PRICING,
+    items: KIDS_CRAFT_HUSTLE_PRICING.items.map((item) => ({ ...item })),
   },
   "flipping-properties": {
-    raiseTip: "Deal math first — walk away when numbers fail. Examples only — not income guarantees.",
-    items: [
-      p("fee", "Deal analysis fee (if offering)", "$100–300"),
-      p("partner", "Finders / assignment fee", "Market-dependent — contracts required"),
-      p("consult", "Walkthrough consult", "$75–200"),
-    ],
+    ...FLIPPING_PROPERTIES_PRICING,
+    items: FLIPPING_PROPERTIES_PRICING.items.map((item) => ({ ...item })),
+  },
+  "garage-sale-helper": {
+    ...GARAGE_SALE_HELPER_PRICING,
+    items: GARAGE_SALE_HELPER_PRICING.items.map((item) => ({ ...item })),
   },
   "foreclosure-properties": {
     ...FORECLOSURE_PROPERTIES_PRICING,
     items: FORECLOSURE_PROPERTIES_PRICING.items.map((item) => ({ ...item })),
   },
   "lien-tax-sales": {
-    raiseTip: RAISE,
-    items: [
-      p("research", "Parcel research memo", "$50–150"),
-      p("month", "Monthly sale calendar + notes", "$75–200 / mo"),
-      p("class", "Intro class seat", "$25–75"),
-    ],
+    ...LIEN_TAX_SALES_PRICING,
+    items: LIEN_TAX_SALES_PRICING.items.map((item) => ({ ...item })),
   },
   "ai-agents": {
     ...AI_AGENTS_PRICING,
     items: AI_AGENTS_PRICING.items.map((item) => ({ ...item })),
   },
   "ai-assets": {
-    raiseTip: RAISE,
-    items: [
-      p("pack", "Asset pack (10 graphics)", "$75–250"),
-      p("brand", "Brand kit + templates", "$150–500"),
-      p("rush", "Rush 48-hour", "+25%"),
-    ],
+    ...AI_ASSETS_PRICING,
+    items: AI_ASSETS_PRICING.items.map((item) => ({ ...item })),
   },
   "ai-timing": {
     ...AI_TIMING_PRICING,
     items: AI_TIMING_PRICING.items.map((item) => ({ ...item })),
   },
   "ai-social-helper": {
-    raiseTip: RAISE,
-    items: [
-      p("week", "Weekly AI draft pack (client approves)", "$75–200"),
-      p("month", "Monthly retainer", "$250–800"),
-      p("setup", "Voice + prompt library setup", "$100–250"),
-    ],
+    ...AI_SOCIAL_HELPER_PRICING,
+    items: AI_SOCIAL_HELPER_PRICING.items.map((item) => ({ ...item })),
   },
   "ai-promo-video": {
     ...AI_PROMO_VIDEO_PRICING,
@@ -1149,12 +1067,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: AI_PEERS_PRICING.items.map((item) => ({ ...item })),
   },
   "local-business-ai-setup": {
-    raiseTip: RAISE,
-    items: [
-      p("setup", "Local biz AI starter setup", "$200–600"),
-      p("train", "Owner training (1 hr)", "$75–150"),
-      p("month", "Light support retainer", "$75–200 / mo"),
-    ],
+    ...LOCAL_BUSINESS_AI_SETUP_PRICING,
+    items: LOCAL_BUSINESS_AI_SETUP_PRICING.items.map((item) => ({ ...item })),
   },
   "digital-organizer": {
     raiseTip: RAISE,
@@ -1175,12 +1089,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: GENEALOGY_PRICING.items.map((item) => ({ ...item })),
   },
   "digital-photo-organizer": {
-    raiseTip: RAISE,
-    items: [
-      p("gb", "Per 10GB organized", "$40–100"),
-      p("album", "Highlight album / slideshow prep", "$50–150"),
-      p("hour", "Hourly", "$25–45 / hr"),
-    ],
+    ...DIGITAL_PHOTO_ORGANIZER_PRICING,
+    items: DIGITAL_PHOTO_ORGANIZER_PRICING.items.map((item) => ({ ...item })),
   },
   "local-content-photographer": {
     ...LOCAL_CONTENT_PHOTO_PRICING,
@@ -1213,12 +1123,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: WEBSITE_TESTER_PRICING.items.map((item) => ({ ...item })),
   },
   "digital-product-formatter": {
-    raiseTip: RAISE,
-    items: [
-      p("ebook", "Ebook / PDF format polish", "$50–150"),
-      p("workbook", "Workbook / planner format", "$75–200"),
-      p("rush", "Rush turnaround", "+25–40%"),
-    ],
+    ...DIGITAL_PRODUCT_FORMATTER_PRICING,
+    items: DIGITAL_PRODUCT_FORMATTER_PRICING.items.map((item) => ({ ...item })),
   },
   "appointment-setter": {
     ...APPOINTMENT_SETTER_PRICING,
@@ -1335,20 +1241,12 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: ONLINE_RESEARCH_ASSISTANT_PRICING.items.map((item) => ({ ...item })),
   },
   "virtual-call-assistant": {
-    raiseTip: RAISE,
-    items: [
-      p("hour", "Call support hourly", "$20–35 / hr"),
-      p("month", "Part-time monthly", "$400–1,000 / mo"),
-      p("script", "Script + FAQ setup", "$50–150"),
-    ],
+    ...VIRTUAL_CALL_ASSISTANT_PRICING,
+    items: VIRTUAL_CALL_ASSISTANT_PRICING.items.map((item) => ({ ...item })),
   },
   "mailbox-cleaning": {
-    raiseTip: RAISE,
-    items: [
-      p("box", "Per mailbox clean", "$5–12"),
-      p("route", "Neighborhood route (10 boxes)", "$50–90"),
-      p("month", "Monthly standing route", "$20–40 / home"),
-    ],
+    ...MAILBOX_CLEANING_PRICING,
+    items: MAILBOX_CLEANING_PRICING.items.map((item) => ({ ...item })),
   },
   "junior-savings-ceo": {
     ...JUNIOR_SAVINGS_CEO_PRICING,
@@ -1383,11 +1281,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: JUNIOR_GAMES_AI_PRICING.items.map((item) => ({ ...item })),
   },
   "junior-content-create": {
-    raiseTip: RAISE,
-    items: [
-      p("post", "Content piece for a neighbor biz", "$10–30"),
-      p("pack", "3-post pack", "$25–60"),
-    ],
+    ...JUNIOR_CONTENT_CREATE_PRICING,
+    items: JUNIOR_CONTENT_CREATE_PRICING.items.map((item) => ({ ...item })),
   },
 };
 

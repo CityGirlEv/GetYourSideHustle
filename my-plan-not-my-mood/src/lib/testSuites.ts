@@ -115,6 +115,11 @@ export function isTestingSuiteNavSelected(
   return activeTab === 'testing' && filter.size === 1 && filter.has(suite);
 }
 
+/** Manual / Vitest / Playwright sit in a row under Testing, not beside Task List. */
+export function isTestingSuiteSubNavOpen(activeTab: string): boolean {
+  return activeTab === 'testing';
+}
+
 export function boardTabCountLabel(done: number, total: number): string {
   return `${done}/${total}`;
 }

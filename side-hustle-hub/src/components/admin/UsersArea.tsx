@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Users, Plus, Pencil, Check, X, ChevronDown, ScrollText, Trash2 } from "lucide-react";
+import { Users, Plus, Pencil, Check, X, ChevronDown, ScrollText, Trash2, Search } from "lucide-react";
 import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { PasswordField } from "../PasswordField";
 import {
@@ -28,6 +28,11 @@ import {
 import { gyshUserDeleteBlockReason } from "../../lib/gysh-user-delete";
 import { ApiError } from "../../lib/api";
 import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
+import { UsersCreditAdjust } from "./UsersCreditAdjust";
+import { UsersMembershipAdjust } from "./UsersMembershipAdjust";
+import { userMatchesAdminSearch, usersAreaSearchEmptyCopy } from "../../lib/users-area-search";
+import { foundingStarterSlotsRemaining, adminMembershipTierLabel } from "../../lib/admin-membership";
+import { heardAboutFromNotes } from "../../lib/heard-about";
 
 type UsersAreaTab = "users" | "audit";
 
@@ -377,6 +382,7 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<"all" | GyshRole>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | GyshUser["status"]>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [newRoles, setNewRoles] = useState<GyshRole[]>(["adult"]);
@@ -423,17 +429,15 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
   const filtered = users.filter((u) => {
     if (roleFilter !== "all" && !userHasRole(u, roleFilter)) return false;
     if (statusFilter !== "all" && u.status !== statusFilter) return false;
-    return true;
+    return userMatchesAdminSearch(u, searchQuery);
   });
 
   const auditFiltered = useMemo(() => {
-    const q = auditFilterEmail.trim().toLowerCase();
-    if (!q) return auditEvents;
-    return auditEvents.filter(
-      (e) =>
-        e.email.toLowerCase().includes(q) ||
-        e.action.toLowerCase().includes(q) ||
-        e.detail.toLowerCase().includes(q),
+    return auditEvents.filter((e) =>
+      userMatchesAdminSearch(
+        { email: e.email, notes: `${e.action} ${e.detail}` },
+        auditFilterEmail,
+      ),
     );
   }, [auditEvents, auditFilterEmail]);
 
@@ -446,6 +450,8 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
       {} as Record<GyshRole, number>,
     );
   }, [users]);
+
+  const foundingLeft = foundingStarterSlotsRemaining(users);
 
   const addUser = async () => {
     if (!name.trim() || !email.trim()) return;
@@ -652,6 +658,8 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
           appears on Testing Portal and Schedule test assignee lists. Failed and Conditionally Passed
           tests assign to Evelyn (Lead Developer).
           Passwords are never shown — only set or reset from Edit. Last signed-in time comes from the login audit trail.
+          Search by name or email (* and ? wildcards). View or change membership on each member
+          card (including first-5 complimentary Starter). Add or remove credits on each member card.
           Edit a member, then Delete to remove them. Confirm stays on that member’s card. Tina
           and Evelyn co-founder accounts stay protected.
         </p>
@@ -782,7 +790,7 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                 className="text-input"
                 value={auditFilterEmail}
                 onChange={(e) => setAuditFilterEmail(e.target.value)}
-                placeholder="Email, action, or detail…"
+                placeholder="Email, action, or detail — * and ? wildcards"
                 data-testid="users-audit-filter"
               />
             </div>
@@ -841,6 +849,22 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
         <>
           <div className="glass" style={{ padding: "18px", borderRadius: "14px", display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "end" }}>
+              <div className="form-group" style={{ margin: 0, flex: "1 1 220px" }}>
+                <label className="form-label" htmlFor="users-area-search">
+                  Search users
+                </label>
+                <div className="users-area-search">
+                  <Search size={16} aria-hidden />
+                  <input
+                    id="users-area-search"
+                    className="text-input"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Name or email — *evelyn* or *@cox.net"
+                    data-testid="users-area-search"
+                  />
+                </div>
+              </div>
               <div className="form-group" style={{ margin: 0, flex: "1 1 160px" }}>
                 <label className="form-label">Name</label>
                 <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" />
@@ -880,9 +904,11 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
             <WaitIndicator message="Loading users from database…" style={{ marginTop: 0 }} />
           ) : filtered.length === 0 ? (
             <p style={{ color: "var(--text-primary)" }}>
-              {roleFilter !== "all" || statusFilter !== "all"
-                ? "No users match the current filters. Choose All users (and All statuses) to see everyone."
-                : "No users yet."}
+              {usersAreaSearchEmptyCopy({
+                searchQuery,
+                roleFiltered: roleFilter !== "all",
+                statusFiltered: statusFilter !== "all",
+              })}
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -934,6 +960,18 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                               </span>
                             </div>
                             <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{u.email}</div>
+                            <div
+                              style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}
+                              data-testid={`users-membership-label-${u.id}`}
+                            >
+                              Membership: {adminMembershipTierLabel(u.membershipTier)}
+                            </div>
+                            <div
+                              style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}
+                              data-testid={`users-heard-about-${u.id}`}
+                            >
+                              Heard about us: {u.heardAbout || heardAboutFromNotes(u.notes) || "—"}
+                            </div>
                             <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}>{u.notes || "—"}</div>
                             {u.canLogin && (
                               <div style={{ fontSize: "0.9375rem", color: "var(--bronze)", marginTop: 4 }}>Portal login account</div>
@@ -987,6 +1025,30 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                             onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
                           />
                         </div>
+                        <UsersMembershipAdjust
+                          user={u}
+                          foundingSlotsRemaining={foundingLeft}
+                          onUpdated={(next, message) => {
+                            setUsers((list) =>
+                              list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
+                            );
+                            setSaveMsg(message);
+                            void reloadAudit();
+                          }}
+                        />
+                        <UsersCreditAdjust
+                          user={u}
+                          onBalanceChanged={(email, balance) => {
+                            const target = email.toLowerCase();
+                            setUsers((list) =>
+                              list.map((row) =>
+                                row.id === u.id || row.email.toLowerCase() === target
+                                  ? { ...row, creditBalance: balance }
+                                  : row,
+                              ),
+                            );
+                          }}
+                        />
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1016,6 +1078,15 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                               <option value="disabled">Disabled</option>
                             </select>
                           </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Membership</label>
+                            <input
+                              className="text-input"
+                              value={adminMembershipTierLabel(u.membershipTier)}
+                              readOnly
+                              aria-label="Current membership level"
+                            />
+                          </div>
                           <PasswordField
                             label="Password (login)"
                             value={draft.password}
@@ -1034,6 +1105,17 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                             onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
                           />
                         </div>
+                        <UsersMembershipAdjust
+                          user={u}
+                          foundingSlotsRemaining={foundingLeft}
+                          onUpdated={(next, message) => {
+                            setUsers((list) =>
+                              list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
+                            );
+                            setSaveMsg(message);
+                            void reloadAudit();
+                          }}
+                        />
                         <div className="form-group" style={{ margin: 0 }}>
                           <label className="form-label">Notes</label>
                           <textarea className="text-input" rows={2} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ resize: "vertical" }} />

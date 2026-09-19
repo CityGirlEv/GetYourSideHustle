@@ -7,7 +7,9 @@ import {
   normalizeQaTests,
   normalizeTasks,
   overlaySupersededSeedTasks,
+  overlayCatalogQaSchedule,
   mergeMissingSeedTasks,
+  mergeMissingSeedQaTests,
   pruneDuplicateTasks,
   type QaTestItem,
   type TaskItem,
@@ -162,14 +164,17 @@ export function hydrateWorkBoardFromRemote(
         : mergeMissingSeedTasks(progressed, INITIAL_TASKS, removedTaskIds),
     ),
   );
+  const progressedTests = mergeWorkItemsByProgress(remoteTests, localTestsKept, QA_STATUS_RANK, preferLocal);
+  const mergedTests = pruneInflatedQaTests(
+    overlayCatalogQaSchedule(
+      remoteIsEmpty
+        ? progressedTests
+        : mergeMissingSeedQaTests(progressedTests, allSeedQaTests(), removedTestIds),
+    ),
+  );
   return {
     tasks: rolloverLockedSprintItems(withoutRemoved(mergedTasks.tasks, removedTaskIds)),
-    tests: rolloverLockedSprintItems(
-      withoutRemoved(
-        pruneInflatedQaTests(mergeWorkItemsByProgress(remoteTests, localTestsKept, QA_STATUS_RANK, preferLocal)).tests,
-        removedTestIds,
-      ),
-    ),
+    tests: rolloverLockedSprintItems(withoutRemoved(mergedTests.tests, removedTestIds)),
   };
 }
 
@@ -192,9 +197,11 @@ export function mergeWorkBoardPayloads(
     ),
   );
   const mergedTests = pruneInflatedQaTests(
-    withoutRemoved(
-      [...incoming.tests, ...existing.tests.filter((test) => !incomingTestIds.has(test.id))],
-      removedTestIds,
+    overlayCatalogQaSchedule(
+      withoutRemoved(
+        [...incoming.tests, ...existing.tests.filter((test) => !incomingTestIds.has(test.id))],
+        removedTestIds,
+      ),
     ),
   );
   return {
@@ -218,7 +225,7 @@ export function parseWorkBoardStorePayload(value: unknown): WorkBoardStorePayloa
   const incomingRemovedTaskIds = uniqueIds(value.removedTaskIds);
   const incomingRemovedTestIds = uniqueIds(value.removedTestIds);
   // Trust the stored board. Re-seeding here resets titles/status back to the catalog.
-  const prunedTests = pruneInflatedQaTests(normalizeQaTests(testsRaw ?? []));
+  const prunedTests = pruneInflatedQaTests(overlayCatalogQaSchedule(normalizeQaTests(testsRaw ?? [])));
   const prunedTasks = pruneDuplicateTasks(overlaySupersededSeedTasks(normalizeTasks(tasksRaw ?? [])));
   const removedTaskIds = uniqueIds([
     ...(Array.isArray(value.removedTaskIds) ? value.removedTaskIds : []),
@@ -249,7 +256,7 @@ export function buildWorkBoardStorePayload(
   const removedTaskIds = uniqueIds(removed.taskIds);
   const removedTestIds = uniqueIds(removed.testIds);
   const prunedTasks = pruneDuplicateTasks(overlaySupersededSeedTasks(normalizeTasks(tasks)));
-  const prunedTests = pruneInflatedQaTests(normalizeQaTests(tests));
+  const prunedTests = pruneInflatedQaTests(overlayCatalogQaSchedule(normalizeQaTests(tests)));
   return {
     tasks: withoutRemoved(prunedTasks.tasks, removedTaskIds),
     tests: withoutRemoved(prunedTests.tests, removedTestIds),
@@ -278,6 +285,7 @@ export function taskRowFingerprint(task: TaskItem): string {
     task.attachments ?? [],
     Boolean(task.onAgenda),
     Boolean(task.rolledOver),
+    task.completedOn ?? '',
   ]);
 }
 
@@ -299,6 +307,7 @@ export function qaRowFingerprint(test: QaTestItem): string {
     test.attachments ?? [],
     test.suite ?? suiteForQaTest(test),
     Boolean(test.rolledOver),
+    test.completedOn ?? '',
   ]);
 }
 

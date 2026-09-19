@@ -82,7 +82,12 @@ import {
   applyLiveGuideLibraryCountsFromStates,
   patchLiveGuideLibraryCatalogState,
 } from "../lib/guide-library-live-counts";
-import { guideMatchesLibrarySearch, sideHustleLibraryPageTitle } from "../lib/guide-library-search";
+import {
+  guideMatchesLibrarySearch,
+  libraryGuideNotFoundCopy,
+  librarySidebarCountText,
+  sideHustleLibraryPageTitle,
+} from "../lib/guide-library-search";
 import { formatGuideNumber, guideNumberLabel, guideNumberParenthetical, orderedGuideIdsForNumbering } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
 import { MembershipLockBadge } from "./MembershipLockBadge";
@@ -829,6 +834,15 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     (activeGuideId && navGuides.some((g) => g.id === activeGuideId) && activeGuideId) ||
     (selectedHustleId && navGuides.some((g) => g.id === selectedHustleId) && selectedHustleId) ||
     firstNavId;
+  const librarySearchQuery = librarySearch.trim();
+  const noMatchingGuides = navGuides.length === 0;
+  const libraryNarrowed =
+    !guideNavFilterIsAll(ageFilters) ||
+    !guideNavFilterIsAll(membershipFilters) ||
+    !guideNavFilterIsAll(statusFilters) ||
+    !guideNavFilterIsAll(assigneeFilters) ||
+    Boolean(librarySearchQuery);
+  const notFoundCopy = libraryGuideNotFoundCopy(librarySearchQuery);
 
   const activeMinTier = effectiveGuideMinTier(
     effectiveGuideId,
@@ -1275,12 +1289,14 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
               {bulkError}
             </p>
           ) : null}
-          <p
-            className="launch-guide-detail__bulk-details-hint"
-            data-testid="launch-guide-bulk-details-hint"
-          >
-            See your Guide Details below.
-          </p>
+          {noMatchingGuides ? null : (
+            <p
+              className="launch-guide-detail__bulk-details-hint"
+              data-testid="launch-guide-bulk-details-hint"
+            >
+              See your Guide Details below.
+            </p>
+          )}
         </div>
       ) : null}
     </div>
@@ -1436,14 +1452,11 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           Select Guide
           <span className="launch-guide-detail__sidebar-count" data-testid="launch-guide-sidebar-count">
             {" "}
-            · {navGuides.length}
-            {!guideNavFilterIsAll(ageFilters) ||
-            !guideNavFilterIsAll(membershipFilters) ||
-            !guideNavFilterIsAll(statusFilters) ||
-            !guideNavFilterIsAll(assigneeFilters) ||
-            librarySearch.trim()
-              ? " matching"
-              : ""}
+            · {librarySidebarCountText({
+              count: navGuides.length,
+              narrowed: libraryNarrowed,
+              searchQuery: librarySearchQuery,
+            })}
           </span>
         </span>
         <div className="launch-guide-detail__search" data-testid="launch-guide-library-search">
@@ -1459,7 +1472,12 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           />
         </div>
         <div className="launch-guide-detail__sidebar-scroll" data-testid="launch-guide-sidebar-scroll">
-          {navGuides.map((g) => {
+          {noMatchingGuides ? (
+            <p className="launch-guide-detail__sidebar-empty" data-testid="launch-guide-sidebar-empty">
+              {notFoundCopy.title}
+            </p>
+          ) : (
+          navGuides.map((g) => {
             const gMin = libraryMinTierForGuideId(g.id, catalogStates);
             const gAccess = resolveGuideAccess({
               isMember: isLoggedIn,
@@ -1577,12 +1595,32 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       </nav>
 
       {/* Main Guide Content */}
-      {!unlocked ? (
+      {noMatchingGuides ? (
+        <div className="glass launch-guide-detail__main" data-testid="launch-guide-not-found">
+          <div className="launch-guide-detail__main-head">
+            <div className="launch-guide-detail__main-title-row">
+              <h2 className="launch-guide-detail__main-title">
+                <span
+                  className="launch-guide-detail__main-title-text"
+                  data-testid="launch-guide-not-found-title"
+                >
+                  {notFoundCopy.title}
+                </span>
+              </h2>
+              <p className="launch-guide-detail__main-lede" data-testid="launch-guide-not-found-lede">
+                {notFoundCopy.lede}
+              </p>
+            </div>
+          </div>
+          {guideFiltersBar}
+        </div>
+      ) : !unlocked ? (
         lockedMainPanel
       ) : (
       <div className="glass launch-guide-detail__main">

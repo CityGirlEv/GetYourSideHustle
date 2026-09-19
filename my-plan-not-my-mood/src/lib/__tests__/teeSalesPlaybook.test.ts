@@ -11,11 +11,13 @@ import {
   TEE_SALES_SHOP_URL,
   TEE_SALES_WEBSITE,
   TEE_LIFESTYLE_MOCKUP_PATH,
+  HOUSE_BRAND_KICKER,
   teeSalesLiveTalkTrack,
 } from '../teeSalesPlaybook';
 
 describe('teeSalesPlaybook', () => {
   it('sends every surface to Shop Gear on the brand site, not a second storefront URL', () => {
+    expect(HOUSE_BRAND_KICKER).toBe('A Non-Negotiable brand');
     expect(TEE_SALES_SHOP_URL).toBe('https://nonnegotiation.com/gear');
     expect(TEE_SALES_SHOP_SHORT).toBe('nonnegotiation.com/gear');
     expect(TEE_SALES_BIO_LINE).toMatch(/NonNegotiation/);

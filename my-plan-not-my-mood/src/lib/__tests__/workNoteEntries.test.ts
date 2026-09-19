@@ -5,6 +5,7 @@ import {
   deleteWorkNote,
   parseWorkNotes,
   updateWorkNote,
+  workNotesHaveText,
 } from '../workNoteEntries';
 
 describe('workNoteEntries', () => {
@@ -28,6 +29,13 @@ describe('workNoteEntries', () => {
     expect(entries[0].authorEmail).toBe('angela@example.com');
     expect(entries[0].createdAt).toMatch(/^\d{4}-/);
     expect(entries[0].text).toBe('Need Zelle receipt');
+  });
+
+  it('treats empty or missing notes as no text', () => {
+    expect(workNotesHaveText('')).toBe(false);
+    expect(workNotesHaveText(undefined)).toBe(false);
+    expect(workNotesHaveText('   ')).toBe(false);
+    expect(workNotesHaveText(addWorkNote('', angela, 'Vendor delay'))).toBe(true);
   });
 
   it('lets authors edit/delete own notes; Super Admin can edit all', () => {

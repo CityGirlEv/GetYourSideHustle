@@ -9,6 +9,7 @@ interface SendEmailInput {
   to: string | string[];
   subject: string;
   html: string;
+  replyTo?: string;
 }
 
 export async function sendViaResend(
@@ -34,6 +35,7 @@ export async function sendViaResend(
       to,
       subject: input.subject,
       html,
+      ...(input.replyTo ? { reply_to: input.replyTo } : {}),
     }),
   });
 

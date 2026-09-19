@@ -15,7 +15,7 @@ export { KICKOFF_DATE_ISO, KICKOFF_TIME_LABEL, KICKOFF_WHEN_LABEL } from './spri
 
 export const DEFAULT_KICKOFF_ATTENDEES: AgendaAttendee[] = [
   { id: 'att-angela', name: 'Angela Harris', email: 'Angela@AngelaHarris.com', role: 'Admin · Founder' },
-  { id: 'att-evelyn', name: 'Evelyn Harris (Muntie Ev)', email: 'nonnegotiation@gmail.com', role: 'Super Admin · Technical Partner' },
+  { id: 'att-evelyn', name: 'Evelyn Irving (Muntie Ev)', email: 'nonnegotiation@gmail.com', role: 'Super Admin · Technical Partner' },
 ];
 
 export const KICKOFF_SEED_TOPICS: AgendaItem[] = [

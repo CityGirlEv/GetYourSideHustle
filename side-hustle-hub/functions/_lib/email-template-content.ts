@@ -136,6 +136,13 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     sampleSubject: `${SITE_NAME} — you're upgraded to Pro!`,
   },
   {
+    slug: "membership_merch_ready",
+    name: "Membership merch · pick size",
+    description:
+      "Follow-up when complimentary GYSH T-shirt/hat shipping is ready — especially members upgraded without a size choice.",
+    sampleSubject: `${SITE_NAME} — pick your complimentary GYSH T-shirt or hat`,
+  },
+  {
     slug: "alacarte_purchased",
     name: "A la carte purchase",
     description: "Sent after a-la-carte checkout (Stripe, GYSH credits, or mixed).",
@@ -454,6 +461,20 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         ctaLabel: "See my plan & perks",
         ctaUrl: membershipDeepLink(),
         footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    case "membership_merch_ready":
+      return {
+        subject: `${SITE_NAME} — pick your complimentary GYSH T-shirt or hat`,
+        preheader: "Starter includes one GYSH T-shirt or hat — choose the item and T-shirt size so we can ship.",
+        eyebrow: "Membership · GYSH Gear",
+        headline: "{{name}}, your GYSH gear is included",
+        subhead: "Your {{tier}} plan comes with complimentary merch.",
+        bodyHtml: `<p style="margin:0 0 12px;">Paid GYSH memberships include complimentary gear — Starter gets one T-shirt or hat; Pro and Elite get two (mix and match).</p>
+        <p style="margin:0 0 12px;">If you were upgraded without choosing, we still need your pick (and a T-shirt size) before we can ship.</p>
+        <p style="margin:0 0 12px;">Sign in and tell us T-shirt or hat — plus unisex size if you want a T-shirt. We'll ship after the GYSH drop is packed.</p>`,
+        ctaLabel: "Choose my GYSH gear",
+        ctaUrl: `${SITE_URL}/my-dashboard#merch`,
+        footerNote: "Hats don't need a size. T-shirts are unisex XS–3XL.",
       };
     case "alacarte_purchased":
       return {

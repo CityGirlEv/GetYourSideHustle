@@ -3,11 +3,13 @@ import {
   BILLING_DASHBOARD_HREF,
   billingCategoryLabel,
   buildMemberAccessSummary,
+  effectiveMembershipTier,
   formatPurchaseAmount,
   formatPurchaseDescription,
   formatPurchasePaidAt,
   formatPurchasePaidOn,
   isBillingDashboardHash,
+  membershipTierFromPurchase,
   purchaseKindLabel,
   summarizeMemberBilling,
 } from "../member-purchases";
@@ -17,6 +19,7 @@ describe("member-purchases", () => {
     expect(BILLING_DASHBOARD_HREF).toBe("/my-dashboard#billing");
     expect(isBillingDashboardHash("#billing")).toBe(true);
     expect(isBillingDashboardHash("purchases")).toBe(true);
+    expect(isBillingDashboardHash("#merch")).toBe(true);
     expect(isBillingDashboardHash("#credits")).toBe(false);
   });
 
@@ -198,5 +201,73 @@ describe("member-purchases", () => {
       ],
     });
     expect(summary.membershipTier).toBe("pro");
+  });
+
+  it("reads Elite from a credit membership row even when the label is generic", () => {
+    expect(
+      membershipTierFromPurchase({
+        kind: "membership",
+        tier: "elite",
+        label: "Membership · adult · monthly",
+      }),
+    ).toBe("elite");
+  });
+
+  it("does not treat a generic Membership label as Starter", () => {
+    expect(
+      membershipTierFromPurchase({
+        kind: "membership",
+        tier: "",
+        label: "Membership · adult · monthly",
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps Elite when an older Starter Stripe invoice is still on the ledger", () => {
+    expect(
+      effectiveMembershipTier("elite", [
+        {
+          kind: "membership",
+          tier: "starter",
+          label: "Starter · adult · monthly",
+        },
+      ]),
+    ).toBe("elite");
+    expect(
+      buildMemberAccessSummary({
+        membershipTier: "starter",
+        audience: "adult",
+        purchases: [
+          {
+            id: "old",
+            sessionId: "cs_starter",
+            kind: "membership",
+            tier: "starter",
+            audience: "adult",
+            interval: "month",
+            label: "Starter · adult · monthly",
+            amountCents: 3900,
+            amountUsd: 39,
+            currency: "usd",
+            paidAt: "2026-09-06T12:00:00.000Z",
+            source: "stripe",
+          },
+          {
+            id: "cred",
+            sessionId: "cred-elite",
+            kind: "membership",
+            tier: "elite",
+            audience: "adult",
+            interval: "month",
+            label: "Elite · adult · monthly",
+            amountCents: 0,
+            amountUsd: 0,
+            currency: "usd",
+            paidAt: "2026-09-14T12:58:08.000Z",
+            source: "credits",
+          },
+        ],
+      }).membershipTier,
+    ).toBe("elite");
   });
 });

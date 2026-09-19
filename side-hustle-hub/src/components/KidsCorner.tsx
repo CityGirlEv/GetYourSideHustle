@@ -13,6 +13,7 @@ import {
   Sparkles,
   Star,
   Compass,
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
   Clock,
@@ -1048,10 +1049,23 @@ function KidsModeToggles({
 }) {
   return (
     <div className="kids-mode-toggles" data-testid="kids-mode-toggles">
-      <p className="kids-mode-pick-hint" data-testid="kids-mode-pick-hint">
-        Pick the tab below based on your age group
+      <p className="kids-mode-pick-hint" data-testid="kids-mode-pick-hint" id="kids-mode-pick-hint">
+        <span className="kids-mode-pick-hint__chip">
+          <Sparkles size={12} aria-hidden />
+          Start here
+        </span>
+        <span className="kids-mode-pick-hint__text">
+          Pick the tab below based on your age group
+        </span>
+        <span className="kids-mode-pick-hint__ages">Kids 4–12 · Teens 13–17</span>
+        <ArrowDown className="kids-mode-pick-hint__arrow" size={16} aria-hidden />
       </p>
-      <div className="kids-mode-bar" role="tablist" aria-label="Kids Corner age groups">
+      <div
+        className="kids-mode-bar"
+        role="tablist"
+        aria-label="Kids Corner age groups"
+        aria-describedby="kids-mode-pick-hint"
+      >
         <button
           type="button"
           role="tab"

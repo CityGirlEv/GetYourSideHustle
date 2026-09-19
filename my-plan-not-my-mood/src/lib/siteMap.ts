@@ -1,3 +1,5 @@
+import { moodWorkflowTreeNodes } from './moodWorkflow';
+
 export type SiteNodeStatus = 'live' | 'planned' | 'gated';
 export type SiteBranch = 'public' | 'tools' | 'admin' | 'email';
 
@@ -46,11 +48,12 @@ export const APP_SITE_TREE: SiteTreeNode = {
         { id: 'pay', label: 'Make Payment', path: '/pay', status: 'live', branch: 'public', weight: 3 },
         { id: 'join', label: 'Join / Memberships (Coming Soon)', path: '/join', status: 'gated', branch: 'public', weight: 3 },
         { id: 'memberships', label: 'Memberships (Coming Soon)', path: '/join', status: 'gated', branch: 'public', weight: 2 },
-        { id: 'privacy', label: 'Privacy Policy', path: '/privacy', status: 'live', branch: 'public', weight: 1 },
-        { id: 'terms', label: 'Terms of Use', path: '/terms', status: 'live', branch: 'public', weight: 1 },
+        { id: 'privacy', label: 'Privacy Policy', path: '/privacy-policy', status: 'live', branch: 'public', weight: 1 },
+        { id: 'terms', label: 'Terms of Use', path: '/terms-of-use', status: 'live', branch: 'public', weight: 1 },
         { id: 'contact', label: 'Contact', path: '/contact', status: 'live', branch: 'public', weight: 1 },
         { id: 'faq', label: 'FAQ', path: '/faq', status: 'live', branch: 'public', weight: 1 },
-        { id: 'list', label: 'Mailing List', path: '/list', status: 'live', branch: 'public', weight: 2 },
+        { id: 'beta-rewards', label: 'Beta Tester Rewards', path: '/beta-rewards', status: 'live', branch: 'public', weight: 2 },
+        { id: 'beta-guide', label: 'Beta Testing Guide', path: '/beta-guide', status: 'live', branch: 'public', weight: 2 },
       ],
     },
     {
@@ -61,6 +64,7 @@ export const APP_SITE_TREE: SiteTreeNode = {
       branch: 'tools',
       children: [
         { id: 'mood', label: "What's Your Mood?", path: '/#mood-tool', status: 'live', branch: 'tools', weight: 4 },
+        ...moodWorkflowTreeNodes(),
         { id: 'receipts', label: 'What Won Today? Receipts', path: '/#receipts', status: 'live', branch: 'tools', weight: 4 },
         { id: 'affirmations', label: 'Daily Affirmations', status: 'gated', branch: 'tools', weight: 3 },
         { id: 'challenge', label: '7-Day Reset Challenge', status: 'gated', branch: 'tools', weight: 3 },
@@ -77,6 +81,7 @@ export const APP_SITE_TREE: SiteTreeNode = {
       children: [
         { id: 'plan', label: 'Plan', path: '/admin/plan', status: 'gated', branch: 'admin', weight: 5 },
         { id: 'budget', label: 'Budget (Super Admin)', path: '/admin/budget', status: 'gated', branch: 'admin', weight: 4 },
+        { id: 'inventory-pricing', label: 'Inventory (Admin)', path: '/admin/inventory-pricing', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'testing', label: 'Testing', path: '/admin/testing', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'tasks', label: 'Tasks', path: '/admin/tasks', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'factory', label: 'Content Factory', path: '/admin/factory', status: 'gated', branch: 'admin', weight: 4 },
@@ -85,6 +90,8 @@ export const APP_SITE_TREE: SiteTreeNode = {
         { id: 'asset-library', label: 'Asset Library', path: '/admin/asset-library', status: 'gated', branch: 'admin', weight: 3 },
         { id: 'users', label: 'Users', path: '/admin/users', status: 'gated', branch: 'admin', weight: 3 },
         { id: 'emails', label: 'Emails', path: '/admin/emails', status: 'gated', branch: 'admin', weight: 3 },
+        { id: 'mailing-list', label: 'List (Admin)', path: '/admin/mailing-list', status: 'gated', branch: 'admin', weight: 3 },
+        { id: 'guides', label: 'Beta Guide (Admin)', path: '/admin/guides', status: 'gated', branch: 'admin', weight: 3 },
         { id: 'sitemap', label: 'Site Map', path: '/sitemap', status: 'live', branch: 'admin', weight: 1 },
       ],
     },

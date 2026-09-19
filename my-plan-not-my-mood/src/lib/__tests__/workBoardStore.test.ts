@@ -8,6 +8,7 @@ import {
   shouldApplyRemoteWorkBoardPull,
   WORKBOARD_API_PATH,
   WORKBOARD_AUTOSAVE_MS,
+  WORKBOARD_POLL_MS,
   WORKBOARD_SAVE_HINT,
   workBoardFingerprint,
   workBoardHasUnsavedChanges,
@@ -256,11 +257,11 @@ describe('workBoardStore', () => {
     );
     expect(hydrated.tasks.find((task) => task.id === 't-58')?.dueDate).toBe('2026-09-03');
     expect(hydrated.tasks.find((task) => task.id === 't-59')?.assignee).toBe('angela');
-    expect(hydrated.tasks.find((task) => task.id === 't-60')?.sprint).toBe('Sprint 1');
+    expect(hydrated.tasks.find((task) => task.id === 't-60')?.sprint).toBe('Sprint 2');
     expect(hydrated.tasks.find((task) => task.id === 't-61')?.title).toMatch(/My Plan, Not My Mood/i);
   });
 
-  it('rolls saved Sprint 0 tasks and tests onto Sprint 1 without changing assignee', () => {
+  it('rolls saved Sprint 0 and Sprint 1 tasks and tests onto Sprint 2 without changing assignee', () => {
     const parsed = parseWorkBoardStorePayload({
       tasks: [
         {
@@ -289,35 +290,56 @@ describe('workBoardStore', () => {
       ],
     });
     expect(parsed?.tasks.find((task) => task.id === 't-49')).toMatchObject({
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'evelyn',
       assignor: 'angela',
       status: 'in_progress',
       dueDate: '2026-09-03',
     });
     expect(parsed?.tests.find((test) => test.id === 'home-qa1')).toMatchObject({
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'unassigned',
       rolledOver: true,
     });
     expect(parsed?.tasks.find((task) => task.id === 't-49')?.rolledOver).toBe(true);
-    expect(parsed?.tasks.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 1/);
+    expect(parsed?.tasks.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 2/);
   });
 
-  it('keeps finished Sprint 0 work on Sprint 0 instead of rolling it forward', () => {
+  it('keeps finished closed-sprint work on its locked sprint instead of rolling it forward', () => {
     const parsed = parseWorkBoardStorePayload({
       tasks: [
         {
           id: 't-1',
           title: 'Confirm $10,000 budget paid across three phases',
-          sprint: 'Sprint 1',
+          sprint: 'Sprint 0',
           category: 'Infrastructure',
           priority: 'high',
           status: 'done',
           assignee: 'angela',
           assignor: 'evelyn',
+          completedOn: '2026-09-05',
+        },
+        {
+          id: 't-43',
+          title: 'Verify Initial Payment',
+          sprint: 'Sprint 0',
+          category: 'Infrastructure',
+          priority: 'high',
+          status: 'done',
+          assignee: 'angela',
+          assignor: 'evelyn',
+        },
+        {
+          id: 't-27',
+          title: 'Create Gear Selections page',
+          sprint: 'Sprint 1',
+          category: 'Apparel',
+          priority: 'high',
+          status: 'done',
+          assignee: 'evelyn',
+          assignor: 'angela',
           rolledOver: true,
-          notes: '[{"id":"n-rollover-sprint-1","author":"System","createdAt":"2026-09-11T00:00:00.000Z","updatedAt":"2026-09-11T00:00:00.000Z","text":"Rolled Over to Sprint 1"}]',
+          notes: '[{"id":"n-rollover-sprint-2","author":"System","createdAt":"2026-09-14T00:00:00.000Z","updatedAt":"2026-09-14T00:00:00.000Z","text":"Rolled Over to Sprint 2"}]',
         },
       ],
       tests: [
@@ -339,10 +361,23 @@ describe('workBoardStore', () => {
       assignee: 'angela',
       assignor: 'evelyn',
       rolledOver: false,
+      completedOn: '2026-09-05',
     });
-    expect(parsed?.tasks.find((task) => task.id === 't-1')?.notes).not.toMatch(/Rolled Over to Sprint 1/);
-    expect(parsed?.tests.find((test) => test.id === 'home-qa1')).toMatchObject({
+    expect(parsed?.tasks.find((task) => task.id === 't-43')).toMatchObject({
       sprint: 'Sprint 0',
+      status: 'done',
+      assignee: 'angela',
+      rolledOver: false,
+    });
+    expect(parsed?.tasks.find((task) => task.id === 't-27')).toMatchObject({
+      sprint: 'Sprint 1',
+      status: 'done',
+      assignee: 'evelyn',
+      rolledOver: false,
+    });
+    expect(parsed?.tasks.find((task) => task.id === 't-27')?.notes).not.toMatch(/Rolled Over to Sprint 2/);
+    expect(parsed?.tests.find((test) => test.id === 'home-qa1')).toMatchObject({
+      sprint: 'Sprint 1',
       status: 'passed',
       rolledOver: false,
     });
@@ -380,6 +415,56 @@ describe('workBoardStore', () => {
     expect(merged.removedTaskIds).toContain('t-48');
   });
 
+  it('keeps a deleted seed test gone across hydrate, parse, and save merge', () => {
+    const without = [
+      { id: 'qa1', title: 'Hero', desc: 'Click', sprint: 'Sprint 2' as const, category: 'Storefront QA' as const, priority: 'high' as const, status: 'untested' as const, assignee: 'angela' as const },
+    ];
+    const built = buildWorkBoardStorePayload(
+      [],
+      without,
+      'evelyn3@cox.net',
+      new Date('2026-09-03T08:00:00.000Z'),
+      { testIds: ['home-qa1'] },
+    );
+    expect(built.tests.some((test) => test.id === 'home-qa1')).toBe(false);
+    expect(built.removedTestIds).toContain('home-qa1');
+
+    const parsed = parseWorkBoardStorePayload({
+      tasks: [],
+      tests: without,
+      removedTestIds: ['home-qa1'],
+      updatedAt: built.updatedAt,
+      updatedBy: built.updatedBy,
+    });
+    expect(parsed?.tests.some((test) => test.id === 'home-qa1')).toBe(false);
+    expect(parsed?.removedTestIds).toContain('home-qa1');
+    expect(parsed?.tests).toHaveLength(1);
+
+    const emptySaved = parseWorkBoardStorePayload({
+      tasks: [{ id: 't-1', title: 'Keep', sprint: 'Sprint 2', category: 'Launch', priority: 'high', status: 'not_started', assignee: 'angela' }],
+      tests: [],
+      removedTestIds: ['home-qa1'],
+    });
+    expect(emptySaved?.tests).toEqual([]);
+
+    const remoteStillHasIt = {
+      tasks: [],
+      tests: [
+        ...without,
+        { id: 'home-qa1', title: 'Home / storefront', desc: 'Home loads', sprint: 'Sprint 2' as const, category: 'Storefront QA' as const, priority: 'high' as const, status: 'passed' as const, assignee: 'qa' as const },
+      ],
+      updatedAt: '2026-09-03T07:00:00.000Z',
+      updatedBy: 'angela@angelasharris.com',
+    };
+    const hydrated = hydrateWorkBoardFromRemote(remoteStillHasIt, [], without, { removedTestIds: ['home-qa1'] });
+    expect(hydrated.tests.some((test) => test.id === 'home-qa1')).toBe(false);
+
+    const merged = mergeWorkBoardPayloads(remoteStillHasIt, built);
+    expect(merged.tests.some((test) => test.id === 'home-qa1')).toBe(false);
+    expect(merged.removedTestIds).toContain('home-qa1');
+    expect(merged.tests.find((test) => test.id === 'qa1')?.title).toBe('Hero');
+  });
+
   it('does not apply a live pull while local edits are unsaved or a save is in flight', () => {
     expect(shouldApplyRemoteWorkBoardPull({ dirty: false, saving: false })).toBe(false);
     expect(shouldApplyRemoteWorkBoardPull({ dirty: true, saving: false })).toBe(false);
@@ -388,6 +473,7 @@ describe('workBoardStore', () => {
     expect(shouldApplyRemoteWorkBoardPull({ dirty: false, saving: false, hydrated: false })).toBe(true);
     expect(shouldApplyRemoteWorkBoardPull({ dirty: true, saving: true, hydrated: false })).toBe(true);
     expect(WORKBOARD_AUTOSAVE_MS).toBe(0);
+    expect(WORKBOARD_POLL_MS).toBe(0);
     expect(WORKBOARD_SAVE_HINT).toMatch(/Save All/i);
   });
 

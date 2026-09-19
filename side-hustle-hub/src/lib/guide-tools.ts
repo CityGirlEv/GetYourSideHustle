@@ -213,6 +213,46 @@ import {
   ugcCreatorToolsDisclaimer,
 } from "./ugc-creator-guide";
 import {
+  DIGITAL_PHOTO_ORGANIZER_EXTERNAL_LINKS,
+  DIGITAL_PHOTO_ORGANIZER_PREREQUISITE_EXTRAS,
+  DIGITAL_PHOTO_ORGANIZER_PRICING,
+  DIGITAL_PHOTO_ORGANIZER_SUPPLIES,
+  DIGITAL_PHOTO_ORGANIZER_TOOLS,
+  digitalPhotoOrganizerToolsDisclaimer,
+} from "./digital-photo-organizer-guide";
+import {
+  DIGITAL_PRODUCT_FORMATTER_EXTERNAL_LINKS,
+  DIGITAL_PRODUCT_FORMATTER_PREREQUISITE_EXTRAS,
+  DIGITAL_PRODUCT_FORMATTER_PRICING,
+  DIGITAL_PRODUCT_FORMATTER_SUPPLIES,
+  DIGITAL_PRODUCT_FORMATTER_TOOLS,
+  digitalProductFormatterToolsDisclaimer,
+} from "./digital-product-formatter-guide";
+import {
+  FLIPPING_PROPERTIES_EXTERNAL_LINKS,
+  FLIPPING_PROPERTIES_PREREQUISITE_EXTRAS,
+  FLIPPING_PROPERTIES_PRICING,
+  FLIPPING_PROPERTIES_SUPPLIES,
+  FLIPPING_PROPERTIES_TOOLS,
+  flippingPropertiesToolsDisclaimer,
+} from "./flipping-properties-guide";
+import {
+  GARAGE_SALE_HELPER_EXTERNAL_LINKS,
+  GARAGE_SALE_HELPER_PREREQUISITE_EXTRAS,
+  GARAGE_SALE_HELPER_PRICING,
+  GARAGE_SALE_HELPER_SUPPLIES,
+  GARAGE_SALE_HELPER_TOOLS,
+  garageSaleHelperToolsDisclaimer,
+} from "./garage-sale-helper-guide";
+import {
+  LOCAL_BUSINESS_AI_SETUP_EXTERNAL_LINKS,
+  LOCAL_BUSINESS_AI_SETUP_PREREQUISITE_EXTRAS,
+  LOCAL_BUSINESS_AI_SETUP_PRICING,
+  LOCAL_BUSINESS_AI_SETUP_SUPPLIES,
+  LOCAL_BUSINESS_AI_SETUP_TOOLS,
+  localBusinessAiSetupToolsDisclaimer,
+} from "./local-business-ai-setup-guide";
+import {
   VIRTUAL_ASSISTANT_EXTERNAL_LINKS,
   VIRTUAL_ASSISTANT_PREREQUISITE_EXTRAS,
   VIRTUAL_ASSISTANT_PRICING,
@@ -508,6 +548,134 @@ import {
   PLANT_WATERING_TOOLS,
   plantWateringToolsDisclaimer,
 } from "./plant-watering-guide";
+import {
+  NEIGHBORHOOD_HELPER_EXTERNAL_LINKS,
+  NEIGHBORHOOD_HELPER_PREREQUISITE_EXTRAS,
+  NEIGHBORHOOD_HELPER_PRICING,
+  NEIGHBORHOOD_HELPER_SUPPLIES,
+  NEIGHBORHOOD_HELPER_TOOLS,
+  neighborhoodHelperToolsDisclaimer,
+} from "./neighborhood-helper-guide";
+import {
+  AI_ASSETS_EXTERNAL_LINKS,
+  AI_ASSETS_PREREQUISITE_EXTRAS,
+  AI_ASSETS_PRICING,
+  AI_ASSETS_SUPPLIES,
+  AI_ASSETS_TOOLS,
+  aiAssetsToolsDisclaimer,
+} from "./ai-assets-guide";
+import {
+  AIRBNB_COHOST_EXTERNAL_LINKS,
+  AIRBNB_COHOST_PREREQUISITE_EXTRAS,
+  AIRBNB_COHOST_PRICING,
+  AIRBNB_COHOST_SUPPLIES,
+  AIRBNB_COHOST_TOOLS,
+  airbnbCohostToolsDisclaimer,
+} from "./airbnb-cohost-guide";
+import {
+  AMAZON_FBA_SELLER_EXTERNAL_LINKS,
+  AMAZON_FBA_SELLER_PREREQUISITE_EXTRAS,
+  AMAZON_FBA_SELLER_PRICING,
+  AMAZON_FBA_SELLER_SUPPLIES,
+  AMAZON_FBA_SELLER_TOOLS,
+  amazonFbaSellerToolsDisclaimer,
+} from "./amazon-fba-seller-guide";
+import {
+  VIRTUAL_CALL_ASSISTANT_EXTERNAL_LINKS,
+  VIRTUAL_CALL_ASSISTANT_PREREQUISITE_EXTRAS,
+  VIRTUAL_CALL_ASSISTANT_PRICING,
+  VIRTUAL_CALL_ASSISTANT_SUPPLIES,
+  VIRTUAL_CALL_ASSISTANT_TOOLS,
+  virtualCallAssistantToolsDisclaimer,
+} from "./virtual-call-assistant-guide";
+import {
+  AI_SOCIAL_HELPER_EXTERNAL_LINKS,
+  AI_SOCIAL_HELPER_PREREQUISITE_EXTRAS,
+  AI_SOCIAL_HELPER_PRICING,
+  AI_SOCIAL_HELPER_SUPPLIES,
+  AI_SOCIAL_HELPER_TOOLS,
+  aiSocialHelperToolsDisclaimer,
+} from "./ai-social-helper-guide";
+import {
+  BIRTHDAY_PARTY_HELPER_EXTERNAL_LINKS,
+  BIRTHDAY_PARTY_HELPER_PREREQUISITE_EXTRAS,
+  BIRTHDAY_PARTY_HELPER_PRICING,
+  BIRTHDAY_PARTY_HELPER_SUPPLIES,
+  BIRTHDAY_PARTY_HELPER_TOOLS,
+  birthdayPartyHelperToolsDisclaimer,
+} from "./birthday-party-helper-guide";
+import {
+  CLOSET_ORGANIZER_EXTERNAL_LINKS,
+  CLOSET_ORGANIZER_PREREQUISITE_EXTRAS,
+  CLOSET_ORGANIZER_PRICING,
+  CLOSET_ORGANIZER_SUPPLIES,
+  CLOSET_ORGANIZER_TOOLS,
+  closetOrganizerToolsDisclaimer,
+} from "./closet-organizer-guide";
+import {
+  LIEN_TAX_SALES_EXTERNAL_LINKS,
+  LIEN_TAX_SALES_PREREQUISITE_EXTRAS,
+  LIEN_TAX_SALES_PRICING,
+  LIEN_TAX_SALES_SUPPLIES,
+  LIEN_TAX_SALES_TOOLS,
+  lienTaxSalesToolsDisclaimer,
+} from "./lien-tax-sales-guide";
+import {
+  JUNIOR_CONTENT_CREATE_EXTERNAL_LINKS,
+  JUNIOR_CONTENT_CREATE_PREREQUISITE_EXTRAS,
+  JUNIOR_CONTENT_CREATE_PRICING,
+  JUNIOR_CONTENT_CREATE_SUPPLIES,
+  JUNIOR_CONTENT_CREATE_TOOLS,
+  juniorContentCreateToolsDisclaimer,
+} from "./junior-content-create-guide";
+import {
+  KIDS_CRAFT_HUSTLE_EXTERNAL_LINKS,
+  KIDS_CRAFT_HUSTLE_PREREQUISITE_EXTRAS,
+  KIDS_CRAFT_HUSTLE_PRICING,
+  KIDS_CRAFT_HUSTLE_SUPPLIES,
+  KIDS_CRAFT_HUSTLE_TOOLS,
+  kidsCraftHustleToolsDisclaimer,
+} from "./kids-craft-hustle-guide";
+import {
+  CREATE_GAMES_KIDS_EXTERNAL_LINKS,
+  CREATE_GAMES_KIDS_PREREQUISITE_EXTRAS,
+  CREATE_GAMES_KIDS_PRICING,
+  CREATE_GAMES_KIDS_SUPPLIES,
+  CREATE_GAMES_KIDS_TOOLS,
+  createGamesKidsToolsDisclaimer,
+} from "./create-games-kids-guide";
+import {
+  CREATE_GAMES_JUNIOR_EXTERNAL_LINKS,
+  CREATE_GAMES_JUNIOR_PREREQUISITE_EXTRAS,
+  CREATE_GAMES_JUNIOR_PRICING,
+  CREATE_GAMES_JUNIOR_SUPPLIES,
+  CREATE_GAMES_JUNIOR_TOOLS,
+  createGamesJuniorToolsDisclaimer,
+} from "./create-games-junior-guide";
+import {
+  CUSTOM_BOOKMARK_CREATOR_EXTERNAL_LINKS,
+  CUSTOM_BOOKMARK_CREATOR_PREREQUISITE_EXTRAS,
+  CUSTOM_BOOKMARK_CREATOR_PRICING,
+  CUSTOM_BOOKMARK_CREATOR_SUPPLIES,
+  CUSTOM_BOOKMARK_CREATOR_TOOLS,
+  customBookmarkCreatorToolsDisclaimer,
+} from "./custom-bookmark-creator-guide";
+import {
+  WEB_LEADS_EXTERNAL_LINKS,
+  WEB_LEADS_PREREQUISITE_EXTRAS,
+  WEB_LEADS_PRICING,
+  WEB_LEADS_SUPPLIES,
+  WEB_LEADS_TOOLS,
+  webLeadsToolsDisclaimer,
+} from "./web-leads-guide";
+import {
+  MAILBOX_CLEANING_EXTERNAL_LINKS,
+  MAILBOX_CLEANING_PREREQUISITE_EXTRAS,
+  MAILBOX_CLEANING_PRICING,
+  MAILBOX_CLEANING_SUPPLIES,
+  MAILBOX_CLEANING_TOOLS,
+  mailboxCleaningToolsDisclaimer,
+} from "./mailbox-cleaning-guide";
 import {
   YARD_HELP_EXTERNAL_LINKS,
   YARD_HELP_PREREQUISITE_EXTRAS,
@@ -1228,36 +1396,18 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     suggestedPricing: AIRBNB_HOSTING_PRICING,
   },
   "create-games-kids": {
-    prerequisites: [
-      P.parent("Parent creates every AI / Scratch / Antigravity account. Kid never shares real name, school, or address in chats."),
-      P.computer,
-      P.time("About 60–90 minutes for v1 on Scratch; longer if using Antigravity."),
-    ],
-    tools: t("chatgpt", "gemini", "scratch", "antigravity", "google_docs", "canva"),
-    steps: CREATE_GAMES_KIDS_STEPS,
-    externalLinks: [
-      { label: "ChatGPT", url: "https://chatgpt.com/" },
-      { label: "Google Gemini", url: "https://gemini.google.com/" },
-      { label: "Scratch", url: "https://scratch.mit.edu/", note: "Easiest kids path" },
-      { label: "Google Antigravity", url: "https://antigravity.google/" },
-      { label: "Antigravity download", url: "https://antigravity.google/download" },
-    ],
+    prerequisites: [ ...CREATE_GAMES_KIDS_PREREQUISITE_EXTRAS ],
+    tools: [...CREATE_GAMES_KIDS_TOOLS, ...t("phone_computer")],
+    externalLinks: CREATE_GAMES_KIDS_EXTERNAL_LINKS,
+    supplies: CREATE_GAMES_KIDS_SUPPLIES,
+    suggestedPricing: CREATE_GAMES_KIDS_PRICING,
   },
   "create-games-junior": {
-    prerequisites: [
-      P.parent("Guardian approves AI accounts and any itch.io publish."),
-      P.computer,
-      P.time("One focused afternoon for a one-level prototype."),
-    ],
-    tools: t("chatgpt", "gemini", "antigravity", "cursor", "canva", "google_docs", "itch"),
-    steps: CREATE_GAMES_JUNIOR_STEPS,
-    externalLinks: [
-      { label: "ChatGPT", url: "https://chatgpt.com/" },
-      { label: "Gemini", url: "https://gemini.google.com/" },
-      { label: "Antigravity", url: "https://antigravity.google/" },
-      { label: "Cursor", url: "https://cursor.com/" },
-      { label: "itch.io", url: "https://itch.io/" },
-    ],
+    prerequisites: [ ...CREATE_GAMES_JUNIOR_PREREQUISITE_EXTRAS ],
+    tools: [...CREATE_GAMES_JUNIOR_TOOLS, ...t("phone_computer")],
+    externalLinks: CREATE_GAMES_JUNIOR_EXTERNAL_LINKS,
+    supplies: CREATE_GAMES_JUNIOR_SUPPLIES,
+    suggestedPricing: CREATE_GAMES_JUNIOR_PRICING,
   },
   "kids-games-ai": {
     prerequisites: [ P.parent(), ...KIDS_GAMES_AI_PREREQUISITE_EXTRAS],
@@ -1345,6 +1495,86 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     supplies: PLANT_WATERING_SUPPLIES,
     suggestedPricing: PLANT_WATERING_PRICING,
   },
+  "neighborhood-helper": {
+    prerequisites: [
+      P.parent("Parent/guardian approval if under 18. Approve every customer, task, location, schedule, transportation plan, public post, payment method, and key/access arrangement."),
+      ...NEIGHBORHOOD_HELPER_PREREQUISITE_EXTRAS,
+    ],
+    tools: [...NEIGHBORHOOD_HELPER_TOOLS, ...t("phone_computer")],
+    externalLinks: NEIGHBORHOOD_HELPER_EXTERNAL_LINKS,
+    supplies: NEIGHBORHOOD_HELPER_SUPPLIES,
+    suggestedPricing: NEIGHBORHOOD_HELPER_PRICING,
+  },
+  "ai-assets": {
+    prerequisites: [ ...AI_ASSETS_PREREQUISITE_EXTRAS ],
+    tools: [...AI_ASSETS_TOOLS, ...t("phone_computer")],
+    externalLinks: AI_ASSETS_EXTERNAL_LINKS,
+    supplies: AI_ASSETS_SUPPLIES,
+    suggestedPricing: AI_ASSETS_PRICING,
+  },
+  "airbnb-cohost": {
+    prerequisites: [ ...AIRBNB_COHOST_PREREQUISITE_EXTRAS ],
+    tools: [...AIRBNB_COHOST_TOOLS, ...t("phone_computer")],
+    externalLinks: AIRBNB_COHOST_EXTERNAL_LINKS,
+    supplies: AIRBNB_COHOST_SUPPLIES,
+    suggestedPricing: AIRBNB_COHOST_PRICING,
+  },
+  "virtual-call-assistant": {
+    prerequisites: [ ...VIRTUAL_CALL_ASSISTANT_PREREQUISITE_EXTRAS ],
+    tools: [...VIRTUAL_CALL_ASSISTANT_TOOLS, ...t("phone_computer")],
+    externalLinks: VIRTUAL_CALL_ASSISTANT_EXTERNAL_LINKS,
+    supplies: VIRTUAL_CALL_ASSISTANT_SUPPLIES,
+    suggestedPricing: VIRTUAL_CALL_ASSISTANT_PRICING,
+  },
+  "birthday-party-helper": {
+    prerequisites: [ ...BIRTHDAY_PARTY_HELPER_PREREQUISITE_EXTRAS ],
+    tools: [...BIRTHDAY_PARTY_HELPER_TOOLS, ...t("phone_computer")],
+    externalLinks: BIRTHDAY_PARTY_HELPER_EXTERNAL_LINKS,
+    supplies: BIRTHDAY_PARTY_HELPER_SUPPLIES,
+    suggestedPricing: BIRTHDAY_PARTY_HELPER_PRICING,
+  },
+  "closet-organizer": {
+    prerequisites: [ ...CLOSET_ORGANIZER_PREREQUISITE_EXTRAS ],
+    tools: [...CLOSET_ORGANIZER_TOOLS, ...t("phone_computer")],
+    externalLinks: CLOSET_ORGANIZER_EXTERNAL_LINKS,
+    supplies: CLOSET_ORGANIZER_SUPPLIES,
+    suggestedPricing: CLOSET_ORGANIZER_PRICING,
+  },
+  "lien-tax-sales": {
+    prerequisites: [ ...LIEN_TAX_SALES_PREREQUISITE_EXTRAS ],
+    tools: [...LIEN_TAX_SALES_TOOLS, ...t("phone_computer")],
+    externalLinks: LIEN_TAX_SALES_EXTERNAL_LINKS,
+    supplies: LIEN_TAX_SALES_SUPPLIES,
+    suggestedPricing: LIEN_TAX_SALES_PRICING,
+  },
+  "junior-content-create": {
+    prerequisites: [ ...JUNIOR_CONTENT_CREATE_PREREQUISITE_EXTRAS ],
+    tools: [...JUNIOR_CONTENT_CREATE_TOOLS, ...t("phone_computer")],
+    externalLinks: JUNIOR_CONTENT_CREATE_EXTERNAL_LINKS,
+    supplies: JUNIOR_CONTENT_CREATE_SUPPLIES,
+    suggestedPricing: JUNIOR_CONTENT_CREATE_PRICING,
+  },
+  "kids-craft-hustle": {
+    prerequisites: [ ...KIDS_CRAFT_HUSTLE_PREREQUISITE_EXTRAS ],
+    tools: [...KIDS_CRAFT_HUSTLE_TOOLS, ...t("phone_computer")],
+    externalLinks: KIDS_CRAFT_HUSTLE_EXTERNAL_LINKS,
+    supplies: KIDS_CRAFT_HUSTLE_SUPPLIES,
+    suggestedPricing: KIDS_CRAFT_HUSTLE_PRICING,
+  },
+  "custom-bookmark-creator": {
+    prerequisites: [ ...CUSTOM_BOOKMARK_CREATOR_PREREQUISITE_EXTRAS ],
+    tools: [...CUSTOM_BOOKMARK_CREATOR_TOOLS, ...t("phone_computer")],
+    externalLinks: CUSTOM_BOOKMARK_CREATOR_EXTERNAL_LINKS,
+    supplies: CUSTOM_BOOKMARK_CREATOR_SUPPLIES,
+    suggestedPricing: CUSTOM_BOOKMARK_CREATOR_PRICING,
+  },
+  "mailbox-cleaning": {
+    prerequisites: [ ...MAILBOX_CLEANING_PREREQUISITE_EXTRAS ],
+    tools: [...MAILBOX_CLEANING_TOOLS, ...t("phone_computer")],
+    externalLinks: MAILBOX_CLEANING_EXTERNAL_LINKS,
+    supplies: MAILBOX_CLEANING_SUPPLIES,
+    suggestedPricing: MAILBOX_CLEANING_PRICING,
+  },
   "yard-help": {
     prerequisites: [
       P.parent("Guardian approves jobs, customers, travel, tools, and work conditions."),
@@ -1419,8 +1649,11 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     suggestedPricing: AFFILIATE_PRICING,
   },
   amazon: {
-    prerequisites: [ P.account("Startup capital", "FBA needs inventory budget — not a $0 start.")],
-    tools: t("google_docs", "canva"),
+    prerequisites: [ ...AMAZON_FBA_SELLER_PREREQUISITE_EXTRAS ],
+    tools: [...AMAZON_FBA_SELLER_TOOLS, ...t("phone_computer")],
+    externalLinks: AMAZON_FBA_SELLER_EXTERNAL_LINKS,
+    supplies: AMAZON_FBA_SELLER_SUPPLIES,
+    suggestedPricing: AMAZON_FBA_SELLER_PRICING,
   },
   social: {
     prerequisites: [
@@ -1433,12 +1666,11 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     suggestedPricing: SOCIAL_INFLUENCER_PRICING,
   },
   "web-leads": {
-    prerequisites: [ P.computer],
-    tools: t("chatgpt", "antigravity", "cloudflare_pages", "supabase", "resend", "canva", "google_docs"),
-  },
-  "ai-assets": {
-    prerequisites: [ P.computer, P.time("Pro membership required for this AI guide.")],
-    tools: t("chatgpt", "gemini", "canva", "midjourney", "antigravity"),
+    prerequisites: [ ...WEB_LEADS_PREREQUISITE_EXTRAS ],
+    tools: [...WEB_LEADS_TOOLS, ...t("phone_computer")],
+    externalLinks: WEB_LEADS_EXTERNAL_LINKS,
+    supplies: WEB_LEADS_SUPPLIES,
+    suggestedPricing: WEB_LEADS_PRICING,
   },
   "ai-agents": {
     prerequisites: [ ...AI_AGENTS_PREREQUISITE_EXTRAS],
@@ -1462,8 +1694,11 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     suggestedPricing: AI_PROMO_VIDEO_PRICING,
   },
   "ai-social-helper": {
-    prerequisites: [ P.computer],
-    tools: t("chatgpt", "gemini", "canva", "meta_business"),
+    prerequisites: [ ...AI_SOCIAL_HELPER_PREREQUISITE_EXTRAS ],
+    tools: [...AI_SOCIAL_HELPER_TOOLS, ...t("phone_computer")],
+    externalLinks: AI_SOCIAL_HELPER_EXTERNAL_LINKS,
+    supplies: AI_SOCIAL_HELPER_SUPPLIES,
+    suggestedPricing: AI_SOCIAL_HELPER_PRICING,
   },
   "ai-prompt-helper": {
     prerequisites: [ ...AI_PROMPT_HELPER_PREREQUISITE_EXTRAS],
@@ -1480,8 +1715,48 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     suggestedPricing: AI_PEERS_PRICING,
   },
   "local-business-ai-setup": {
-    prerequisites: [ P.computer],
-    tools: t("chatgpt", "gemini", "google_docs", "canva"),
+    prerequisites: [...LOCAL_BUSINESS_AI_SETUP_PREREQUISITE_EXTRAS],
+    tools: [...LOCAL_BUSINESS_AI_SETUP_TOOLS, ...t("phone_computer")],
+    externalLinks: LOCAL_BUSINESS_AI_SETUP_EXTERNAL_LINKS,
+    supplies: LOCAL_BUSINESS_AI_SETUP_SUPPLIES,
+    suggestedPricing: LOCAL_BUSINESS_AI_SETUP_PRICING,
+  },
+  "digital-photo-organizer": {
+    prerequisites: [
+      P.parent("Guardian approves every client device and account. An adult keeps credentials; never collect passwords by text or email."),
+      ...DIGITAL_PHOTO_ORGANIZER_PREREQUISITE_EXTRAS,
+    ],
+    tools: [...DIGITAL_PHOTO_ORGANIZER_TOOLS, ...t("phone_computer")],
+    externalLinks: DIGITAL_PHOTO_ORGANIZER_EXTERNAL_LINKS,
+    supplies: DIGITAL_PHOTO_ORGANIZER_SUPPLIES,
+    suggestedPricing: DIGITAL_PHOTO_ORGANIZER_PRICING,
+  },
+  "digital-product-formatter": {
+    prerequisites: [
+      P.parent("Guardian approves every client file set. Do not upload confidential drafts to AI tools without written approval."),
+      ...DIGITAL_PRODUCT_FORMATTER_PREREQUISITE_EXTRAS,
+    ],
+    tools: [...DIGITAL_PRODUCT_FORMATTER_TOOLS, ...t("phone_computer")],
+    externalLinks: DIGITAL_PRODUCT_FORMATTER_EXTERNAL_LINKS,
+    supplies: DIGITAL_PRODUCT_FORMATTER_SUPPLIES,
+    suggestedPricing: DIGITAL_PRODUCT_FORMATTER_PRICING,
+  },
+  "flipping-properties": {
+    prerequisites: [...FLIPPING_PROPERTIES_PREREQUISITE_EXTRAS],
+    tools: [...FLIPPING_PROPERTIES_TOOLS, ...t("phone_computer")],
+    externalLinks: FLIPPING_PROPERTIES_EXTERNAL_LINKS,
+    supplies: FLIPPING_PROPERTIES_SUPPLIES,
+    suggestedPricing: FLIPPING_PROPERTIES_PRICING,
+  },
+  "garage-sale-helper": {
+    prerequisites: [
+      P.parent("Parent/guardian approval if under 18. A responsible adult stays onsite for customer-facing work and controls cash."),
+      ...GARAGE_SALE_HELPER_PREREQUISITE_EXTRAS,
+    ],
+    tools: [...GARAGE_SALE_HELPER_TOOLS, ...t("phone_computer")],
+    externalLinks: GARAGE_SALE_HELPER_EXTERNAL_LINKS,
+    supplies: GARAGE_SALE_HELPER_SUPPLIES,
+    suggestedPricing: GARAGE_SALE_HELPER_PRICING,
   },
   "property-mgmt": {
     prerequisites: [ ...PROPERTY_MGMT_PREREQUISITE_EXTRAS],
@@ -2281,6 +2556,22 @@ export {
   aiTimingToolsDisclaimer,
   techHelperToolsDisclaimer,
   plantWateringToolsDisclaimer,
+  neighborhoodHelperToolsDisclaimer,
+  aiAssetsToolsDisclaimer,
+  airbnbCohostToolsDisclaimer,
+  amazonFbaSellerToolsDisclaimer,
+  virtualCallAssistantToolsDisclaimer,
+  aiSocialHelperToolsDisclaimer,
+  birthdayPartyHelperToolsDisclaimer,
+  closetOrganizerToolsDisclaimer,
+  lienTaxSalesToolsDisclaimer,
+  juniorContentCreateToolsDisclaimer,
+  kidsCraftHustleToolsDisclaimer,
+  createGamesKidsToolsDisclaimer,
+  createGamesJuniorToolsDisclaimer,
+  customBookmarkCreatorToolsDisclaimer,
+  webLeadsToolsDisclaimer,
+  mailboxCleaningToolsDisclaimer,
   yardHelpToolsDisclaimer,
   cleaningServiceToolsDisclaimer,
   homeworkOrganizerToolsDisclaimer,
@@ -2340,6 +2631,11 @@ export {
   shortFormVideoEditorToolsDisclaimer,
   googleBusinessProfileHelperToolsDisclaimer,
   ugcCreatorToolsDisclaimer,
+  digitalPhotoOrganizerToolsDisclaimer,
+  digitalProductFormatterToolsDisclaimer,
+  flippingPropertiesToolsDisclaimer,
+  garageSaleHelperToolsDisclaimer,
+  localBusinessAiSetupToolsDisclaimer,
   virtualAssistantToolsDisclaimer,
   virtualReceptionistToolsDisclaimer,
   socialInfluencerToolsDisclaimer,

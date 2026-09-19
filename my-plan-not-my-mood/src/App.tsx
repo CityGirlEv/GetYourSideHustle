@@ -16,6 +16,8 @@ import { JoinPage } from './components/JoinPage';
 import { MakePaymentPage } from './components/MakePaymentPage';
 import { SiteMapPage } from './components/SiteMapPage';
 import { LaunchPage } from './components/LaunchPage';
+import { BetaRewardsPage } from './components/BetaRewardsPage';
+import { BetaTestingGuidePage } from './components/BetaTestingGuidePage';
 import { WebsiteIntroSection } from './components/WebsiteIntroSection';
 import { SessionType } from './data/affirmations';
 import { AppUser, getCurrentUserSession, logoutUserAsync, canAccessAdminPortal, hasRole, hydrateAuthFromServer } from './lib/userAuth';
@@ -38,7 +40,8 @@ import {
 import { isLaunchStoreRoute, parseStoreRoute, routePath, StoreRoute } from './lib/storeRoutes';
 import { canSeeMemberships, hasMembershipAccess, markMembershipJoined, MembershipTier } from './lib/membership';
 import { parseGearKindFromPath, parseGearProductHandle } from './lib/heroCarouselProducts';
-import { shopifyGearSitePath } from './lib/shopifyStore';
+import { shopifyGearSitePath, type ShopifyPublicCollectionId } from './lib/shopifyStore';
+import { canManageGearHubThumbnails } from './lib/gearHubThumbnails';
 
 interface CartItem {
   productId: string;
@@ -81,8 +84,8 @@ export default function App() {
   const [storeRoute, setStoreRoute] = useState<StoreRoute>(() =>
     typeof window !== 'undefined' ? parseStoreRoute(window.location.pathname) : 'home'
   );
-  const [gearKind, setGearKind] = useState(() =>
-    typeof window !== 'undefined' ? parseGearKindFromPath(window.location.pathname) : 'tee'
+  const [gearKind, setGearKind] = useState<ShopifyPublicCollectionId>(() =>
+    typeof window !== 'undefined' ? parseGearKindFromPath(window.location.pathname) : 'all'
   );
   const [gearHandle, setGearHandle] = useState(() =>
     typeof window !== 'undefined' ? parseGearProductHandle(window.location.hash) : ''
@@ -388,6 +391,16 @@ export default function App() {
           />
         ) : isLaunchStoreRoute(storeRoute) ? (
           <LaunchPage pageId={storeRoute} />
+        ) : storeRoute === 'beta-rewards' ? (
+          <BetaRewardsPage
+            onApply={() => handleOpenUserAuth(false)}
+            onSeeGuide={() => navigateToStore('beta-guide')}
+          />
+        ) : storeRoute === 'beta-guide' ? (
+          <BetaTestingGuidePage
+            onApply={() => handleOpenUserAuth(false)}
+            onSeeRewards={() => navigateToStore('beta-rewards')}
+          />
         ) : storeRoute === 'pay' ? (
           <MakePaymentPage />
         ) : storeRoute === 'join' && canSeeMemberships(currentUser) ? (
@@ -401,8 +414,10 @@ export default function App() {
           <ShopGearPage
             kind={gearKind}
             productHandle={gearHandle}
-            onSelectKind={(nextKind) => navigateToPath(shopifyGearSitePath(nextKind))}
-            onOpenProduct={navigateToPath}
+            onSelectKind={(nextKind) =>
+              navigateToPath(nextKind === 'all' ? '/gear' : shopifyGearSitePath(nextKind))
+            }
+            canManageThumbnails={canManageGearHubThumbnails(currentUser)}
           />
         ) : storeRoute === 'planners' ? (
           <ProductGrid onAddToCart={handleAddToCart} pageVariant="planners" />
@@ -466,6 +481,16 @@ export default function App() {
           setIsBetaWelcomeOpen(false);
         }}
         onSignUpAsBetaTester={handleOpenBetaSignup}
+        onSeeRewards={() => {
+          sessionStorage.setItem('myplan_beta_welcome_dismissed', '1');
+          setIsBetaWelcomeOpen(false);
+          navigateToStore('beta-rewards');
+        }}
+        onSeeGuide={() => {
+          sessionStorage.setItem('myplan_beta_welcome_dismissed', '1');
+          setIsBetaWelcomeOpen(false);
+          navigateToStore('beta-guide');
+        }}
       />
 
       <UserAuthModal

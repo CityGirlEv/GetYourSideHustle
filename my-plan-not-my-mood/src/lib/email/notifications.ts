@@ -1,3 +1,13 @@
+import {
+  CONTACT_EMAIL_API_PATH,
+  CONTACT_INBOX_EMAIL,
+  CONTACT_TEMPLATE_ID,
+  CONTACT_TEMPLATE_NAME,
+  buildContactNoteHtml,
+  buildContactNoteSubject,
+  validateContactForm,
+  type ContactFormInput,
+} from '../contactForm';
 import type { AppUser } from '../userAuth';
 import { getEmailTemplate } from './templateStore';
 import { buildTemplateTestPayload, emailVarsForRecipient, renderManagedEmail } from './previewTemplate';
@@ -165,4 +175,52 @@ export async function sendUserApprovedEmail(user: Pick<AppUser, 'name' | 'email'
 
 export function shouldSendApprovalEmail(previousStatus: string | undefined, nextStatus: string | undefined): boolean {
   return previousStatus === 'pending' && nextStatus === 'active';
+}
+
+/** Pages asset server returns 405 when a Function is not deployed yet. */
+export function isMissingEmailRoute(status: number): boolean {
+  return status === 404 || status === 405;
+}
+
+export async function sendContactFormEmail(input: ContactFormInput): Promise<EmailApiResult> {
+  const parsed = validateContactForm(input);
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error };
+  }
+
+  try {
+    const response = await fetch(CONTACT_EMAIL_API_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parsed.values),
+    });
+    const data = (await response.json().catch(() => ({}))) as { error?: string; skipped?: boolean };
+
+    if (response.ok) {
+      return { ok: true };
+    }
+    if (response.status === 503) {
+      return { ok: false, skipped: true, error: data.error || 'Email service not configured' };
+    }
+    if (isMissingEmailRoute(response.status)) {
+      const fallback = await sendRenderedEmail({
+        to: CONTACT_INBOX_EMAIL,
+        subject: buildContactNoteSubject(parsed.values.subject),
+        html: buildContactNoteHtml(parsed.values),
+        templateId: CONTACT_TEMPLATE_ID,
+        templateName: CONTACT_TEMPLATE_NAME,
+      });
+      if (fallback.skipped) {
+        return {
+          ok: false,
+          skipped: true,
+          error: fallback.error || 'Could not send your note from this page.',
+        };
+      }
+      return fallback;
+    }
+    return { ok: false, error: data.error || `Email API failed (${response.status})` };
+  } catch {
+    return { ok: false, error: 'Could not send your note. Check your connection and try again.' };
+  }
 }

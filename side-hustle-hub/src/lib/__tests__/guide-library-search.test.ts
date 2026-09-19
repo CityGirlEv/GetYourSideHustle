@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   GUIDE_HUSTLE_LIBRARY_LISTING_TITLE,
+  GUIDE_NOT_FOUND_TITLE,
   guideMatchesLibrarySearch,
+  libraryGuideNotFoundCopy,
+  librarySidebarCountText,
   SIDE_HUSTLE_LIBRARY_ADMIN_TITLE,
   SIDE_HUSTLE_LIBRARY_TITLE,
   sideHustleLibraryPageTitle,
@@ -75,5 +78,29 @@ describe("wildcardPatternToRegExp", () => {
   it("escapes regex metacharacters", () => {
     expect(wildcardPatternToRegExp("a+b").test("a+b")).toBe(true);
     expect(wildcardPatternToRegExp("a+b").test("aab")).toBe(false);
+  });
+});
+
+describe("library empty-search copy", () => {
+  it("keeps 0 matching on the sidebar and names the miss on the guide label", () => {
+    expect(
+      librarySidebarCountText({ count: 0, narrowed: true, searchQuery: "zzz-no-guide" }),
+    ).toBe("0 matching — guide not found");
+    expect(libraryGuideNotFoundCopy("zzz-no-guide")).toEqual({
+      title: GUIDE_NOT_FOUND_TITLE,
+      lede: "No guide matches “zzz-no-guide”. Try a different name or number, * or ? wildcards, or clear search.",
+    });
+  });
+
+  it("does not say guide not found when the full library is showing", () => {
+    expect(librarySidebarCountText({ count: 117, narrowed: false })).toBe("117");
+    expect(librarySidebarCountText({ count: 12, narrowed: true })).toBe("12 matching");
+  });
+
+  it("uses a filter-empty title when the list is empty without a search query", () => {
+    expect(libraryGuideNotFoundCopy("").title).toBe("No guides match this filter");
+    expect(librarySidebarCountText({ count: 0, narrowed: true, searchQuery: "" })).toBe(
+      "0 matching",
+    );
   });
 });

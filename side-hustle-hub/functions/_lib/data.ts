@@ -57,6 +57,15 @@ import {
   parseBulkUserStatus,
   type GyshBulkRolesMode,
 } from "../../src/lib/gysh-user-bulk";
+import {
+  appendFoundingStarterStamp,
+  buildFoundingStarterStamp,
+  FOUNDING_STARTER_LIMIT,
+  foundingStarterGrantBlockReason,
+  nextFoundingStarterSlot,
+  parseAdminMembershipUpdate,
+  parseFoundingStarterSlot,
+} from "../../src/lib/admin-membership";
 import { ensureUsersStatusAllowsDeleted } from "./ensure-users-status-deleted";
 import { defaultsForNewTest } from "./new-test-defaults";
 import {
@@ -409,40 +418,62 @@ const LIST_USERS_NOT_DELETED = `LOWER(COALESCE(status, '')) != 'deleted'`;
 
 export async function listUsers(env: Env): Promise<Response> {
   await ensurePartnerAdmins(env);
+  const mapUsers = (
+    rows: Array<(DbUser | DbUserWithLogin) & { credit_balance?: number | null }>,
+    withCredits: boolean,
+  ) =>
+    (rows ?? [])
+      .filter((u) => !isGyshUserDeletedEmail(u.email))
+      .map((u) => {
+        const pub = publicUser(u);
+        if (!withCredits) return pub;
+        return {
+          ...pub,
+          creditBalance: Math.max(0, Number(u.credit_balance) || 0),
+        };
+      });
   try {
     const { results } = await env.DB.prepare(
-      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
-              membership_tier, audience,
+      `SELECT users.id, users.name, users.email, users.role, users.roles, users.status, users.joined_at,
+              users.notes, users.password_hash, users.password_salt, users.membership_tier, users.audience,
+              COALESCE(w.balance, 0) AS credit_balance,
               ${LAST_LOGIN_SUBQUERY}
        FROM users
+       LEFT JOIN member_credit_wallets w ON w.user_id = users.id
        WHERE ${LIST_USERS_NOT_DELETED}
-       ORDER BY joined_at DESC, name ASC`,
-    ).all<DbUserWithLogin>();
-    return json({
-      users: (results ?? []).filter((u) => !isGyshUserDeletedEmail(u.email)).map(publicUser),
-    });
+       ORDER BY users.joined_at DESC, users.name ASC`,
+    ).all<DbUserWithLogin & { credit_balance?: number | null }>();
+    return json({ users: mapUsers(results ?? [], true) });
   } catch {
     try {
       const { results } = await env.DB.prepare(
         `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
+                membership_tier, audience,
                 ${LAST_LOGIN_SUBQUERY}
          FROM users
          WHERE ${LIST_USERS_NOT_DELETED}
          ORDER BY joined_at DESC, name ASC`,
       ).all<DbUserWithLogin>();
-      return json({
-        users: (results ?? []).filter((u) => !isGyshUserDeletedEmail(u.email)).map(publicUser),
-      });
+      return json({ users: mapUsers(results ?? [], false) });
     } catch {
-      const { results } = await env.DB.prepare(
-        `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
-         FROM users
-         WHERE ${LIST_USERS_NOT_DELETED}
-         ORDER BY joined_at DESC, name ASC`,
-      ).all<DbUser>();
-      return json({
-        users: (results ?? []).filter((u) => !isGyshUserDeletedEmail(u.email)).map(publicUser),
-      });
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
+                  ${LAST_LOGIN_SUBQUERY}
+           FROM users
+           WHERE ${LIST_USERS_NOT_DELETED}
+           ORDER BY joined_at DESC, name ASC`,
+        ).all<DbUserWithLogin>();
+        return json({ users: mapUsers(results ?? [], false) });
+      } catch {
+        const { results } = await env.DB.prepare(
+          `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
+           FROM users
+           WHERE ${LIST_USERS_NOT_DELETED}
+           ORDER BY joined_at DESC, name ASC`,
+        ).all<DbUser>();
+        return json({ users: mapUsers(results ?? [], false) });
+      }
     }
   }
 }
@@ -906,6 +937,140 @@ export async function clearUserMembership(
         notes,
       },
     ),
+  });
+}
+
+async function listFoundingStarterNoteUsers(
+  db: Env["DB"],
+): Promise<Array<{ id: string; name: string; email: string; notes: string }>> {
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT id, name, email, notes FROM users
+         WHERE instr(UPPER(COALESCE(notes, '')), 'FOUNDING-STARTER') > 0
+           AND LOWER(COALESCE(status, '')) != 'deleted'`,
+      )
+      .all<{ id: string; name: string; email: string; notes: string }>();
+    return results ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function updateUserMembership(
+  env: Env,
+  request: Request,
+  id: string,
+  actor: DbUser,
+): Promise<Response> {
+  const targetId = String(id || "").trim();
+  if (!targetId) return error("User id is required.");
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const parsed = parseAdminMembershipUpdate(body);
+  if (!parsed.ok) return error(parsed.error);
+
+  const existing = await getUserById(env.DB, targetId);
+  if (!existing) return error("User not found.", 404);
+  if (isGyshUserDeletedStatus(existing.status) || isGyshUserDeletedEmail(existing.email)) {
+    return error("User is deleted.", 400);
+  }
+
+  const previousTier = String(existing.membership_tier || "free").toLowerCase();
+  const foundingUsers = await listFoundingStarterNoteUsers(env.DB);
+  const foundingBlocked = foundingStarterGrantBlockReason({
+    complimentary: parsed.complimentaryFoundingStarter,
+    membershipTier: parsed.membershipTier,
+    targetNotes: existing.notes,
+    existingUsers: foundingUsers,
+  });
+  if (foundingBlocked) return error(foundingBlocked, 400);
+
+  const now = new Date().toISOString();
+  let notes = String(existing.notes || "");
+  let foundingSlot: number | null = parseFoundingStarterSlot(existing.notes);
+  if (parsed.complimentaryFoundingStarter) {
+    const slot = nextFoundingStarterSlot(foundingUsers);
+    if (slot == null) return error("All 5 complimentary Starter slots are already used.", 400);
+    foundingSlot = slot;
+    const stamp = buildFoundingStarterStamp({
+      slot,
+      actorEmail: actor.email,
+      grantedOn: now.slice(0, 10),
+    });
+    notes = appendFoundingStarterStamp(notes, stamp);
+  } else if (previousTier !== parsed.membershipTier) {
+    const stamp = `Membership set to ${parsed.membershipTier} by ${actor.email} ${now} (was ${previousTier})`;
+    const prev = notes.trim();
+    notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+  }
+
+  try {
+    await env.DB.prepare(
+      `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
+    )
+      .bind(parsed.membershipTier, notes, now, targetId)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.toLowerCase().includes("no such column") && msg.toLowerCase().includes("membership")) {
+      return error("Membership columns are not available on this database yet.", 503);
+    }
+    throw e;
+  }
+
+  const detailParts = [
+    `${previousTier} → ${parsed.membershipTier}`,
+    `by ${actor.email}`,
+    parsed.complimentaryFoundingStarter && foundingSlot
+      ? `FOUNDING-STARTER ${foundingSlot}/5`
+      : "",
+    parsed.notify ? "notify" : "no email",
+  ].filter(Boolean);
+  await appendAudit(env.DB, "membership_admin_updated", existing.email, detailParts.join(" · "));
+
+  const updated = await getUserById(env.DB, targetId);
+  const nextUser = updated ?? {
+    ...existing,
+    membership_tier: parsed.membershipTier,
+    notes,
+  };
+
+  let emailSent = false;
+  if (parsed.notify && parsed.membershipTier !== "free") {
+    try {
+      const { sendMembershipSubscriptionEmails } = await import("./email");
+      emailSent = await sendMembershipSubscriptionEmails(env, {
+        user: {
+          id: nextUser.id,
+          email: nextUser.email,
+          name: nextUser.name,
+          audience: nextUser.audience,
+          membership_tier: parsed.membershipTier,
+        },
+        previousTier,
+        source: "admin",
+        amountLabel: parsed.complimentaryFoundingStarter
+          ? `Complimentary — first ${FOUNDING_STARTER_LIMIT} members (no charge)`
+          : "Admin plan update (no charge)",
+      });
+    } catch {
+      emailSent = false;
+    }
+  }
+
+  return json({
+    ok: true,
+    user: publicUser(nextUser),
+    emailSent,
+    foundingSlot,
+    previousTier,
   });
 }
 

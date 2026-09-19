@@ -27,7 +27,7 @@ export async function hashPassword(password: string, saltHex: string): Promise<s
   const bits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt: hexToBytes(saltHex),
+      salt: Uint8Array.from(hexToBytes(saltHex)),
       iterations: 100_000,
       hash: 'SHA-256',
     },

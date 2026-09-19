@@ -1,17 +1,25 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   ANGELA_PLAN_SIGNOFF_KEY,
+  PHASE_1_CONTRACT_APPROVE_LABEL,
+  PHASE_1_CONTRACT_SIGNED_LABEL,
   buildAngelaSignoffDocumentHtml,
   canSignAngelaPlan,
   clearAngelaPlanSignoff,
   formatSignoffLine,
   getAngelaPlanSignoff,
+  phase1ContractButtonLabel,
   signAngelaPlan,
 } from '../planSignoff';
 
 describe('planSignoff', () => {
   afterEach(() => {
     localStorage.removeItem(ANGELA_PLAN_SIGNOFF_KEY);
+  });
+
+  it('labels the Phase 1 contract button as unsigned until sign-off', () => {
+    expect(phase1ContractButtonLabel(false)).toBe(PHASE_1_CONTRACT_APPROVE_LABEL);
+    expect(phase1ContractButtonLabel(true)).toBe(PHASE_1_CONTRACT_SIGNED_LABEL);
   });
 
   it('rejects a blank signer and accepts Angela Harris', () => {

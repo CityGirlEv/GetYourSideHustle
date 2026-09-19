@@ -1,15 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { Search, X } from 'lucide-react';
-import { studioTabClass, studioTabMetaClass } from '../lib/assetLibrary';
+import { ChevronDown, Search, X } from 'lucide-react';
 import type { DueDateFilter, FilterChipCount, FilterSectionId } from '../lib/workBoard';
 import {
   applyFilterChipClick,
-  defaultFilterSectionTab,
+  defaultOpenFilterSections,
   FILTER_SECTION_LABELS,
   FILTER_SECTION_TONES,
   FILTER_TABS_HINT,
+  filterSectionSummary,
   isFilterShowingAll,
   selectAllFilterValues,
+  toggleFilterSection,
 } from '../lib/workBoard';
 
 interface FilterChipPanelProps<T extends string> {
@@ -46,7 +47,7 @@ function FilterChipPanel<T extends string>({
   };
 
   return (
-    <div className={`flex flex-wrap gap-1 p-1.5 rounded-b-xl border-2 border-t-0 border-[#1F1917] ${tone.panel}`} data-testid={testId}>
+    <div className={`flex flex-wrap gap-1.5 p-2 rounded-b-2xl border-2 border-t-0 border-[#1F1917] ${tone.panel}`} data-testid={testId}>
       {selected.size > 0 ? (
         <button
           type="button"
@@ -62,7 +63,7 @@ function FilterChipPanel<T extends string>({
         data-testid={testId ? `${testId}-all` : undefined}
         onClick={() => onChange(selectAllFilterValues(ordered))}
         title="Show every item in this list"
-        className={`inline-flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl border-2 text-left transition-all cursor-pointer min-w-[5.5rem] min-h-[44px] ${
+        className={`inline-flex flex-col items-start gap-0.5 px-3 py-2 rounded-full border-2 text-left transition-all cursor-pointer min-w-[5.5rem] min-h-[44px] ${
           isFilterShowingAll(selected, ordered)
             ? `${tone.selectedAll} shadow-sm`
             : 'border-black/10 bg-white/80 hover:border-black/25'
@@ -81,7 +82,7 @@ function FilterChipPanel<T extends string>({
             data-testid={testId ? `${testId}-${chip.id}` : undefined}
             onClick={(e) => handleChipClick(chip.id as T, e)}
             title={`${chip.label}: ${chip.done}/${chip.total} done · Click to multi-select`}
-            className={`inline-flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl border-2 text-left transition-all cursor-pointer min-w-[7rem] min-h-[44px] ${
+            className={`inline-flex flex-col items-start gap-0.5 px-3 py-2 rounded-full border-2 text-left transition-all cursor-pointer min-w-[7rem] min-h-[44px] ${
               active
                 ? `${tone.selected} shadow-sm`
                 : 'border-black/10 bg-white/80 hover:border-black/25'
@@ -172,7 +173,7 @@ export function WorkBoardFilterPanel<TStatus extends string>({
   totalCount,
   testIdPrefix = 'work-board',
 }: WorkBoardFilterPanelProps<TStatus>) {
-  const [activeTab, setActiveTab] = useState<FilterSectionId>(defaultFilterSectionTab);
+  const [openSections, setOpenSections] = useState(defaultOpenFilterSections);
   const hasFilters =
     sprintFilter.size > 0 ||
     statusFilter.size > 0 ||
@@ -192,20 +193,25 @@ export function WorkBoardFilterPanel<TStatus extends string>({
     onDueChange?.('all');
   };
 
-  const tabs: Array<{
+  const sections: Array<{
     id: FilterSectionId;
     selected: Set<string>;
     ordered: readonly string[];
     chips: FilterChipCount[];
+    onChange: (next: Set<string>) => void;
   }> = [
-    { id: 'assignee', selected: assigneeFilter as Set<string>, ordered: assigneeOrdered, chips: assigneeChips },
-    { id: 'sprint', selected: sprintFilter as Set<string>, ordered: sprintOrdered, chips: sprintChips },
-    { id: 'priority', selected: priorityFilter as Set<string>, ordered: priorityOrdered, chips: priorityChips },
-    { id: 'category', selected: categoryFilter as Set<string>, ordered: categoryOrdered, chips: categoryChips },
-    { id: 'status', selected: statusFilter as Set<string>, ordered: statusOrdered, chips: statusChips },
+    { id: 'sprint', selected: sprintFilter as Set<string>, ordered: sprintOrdered, chips: sprintChips, onChange: onSprintChange },
+    { id: 'assignee', selected: assigneeFilter as Set<string>, ordered: assigneeOrdered, chips: assigneeChips, onChange: onAssigneeChange },
+    {
+      id: 'status',
+      selected: statusFilter as Set<string>,
+      ordered: statusOrdered,
+      chips: statusChips,
+      onChange: (next) => onStatusChange(next as Set<TStatus>),
+    },
+    { id: 'category', selected: categoryFilter as Set<string>, ordered: categoryOrdered, chips: categoryChips, onChange: onCategoryChange },
+    { id: 'priority', selected: priorityFilter as Set<string>, ordered: priorityOrdered, chips: priorityChips, onChange: onPriorityChange },
   ];
-
-  const active = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]!;
 
   return (
     <div
@@ -253,67 +259,54 @@ export function WorkBoardFilterPanel<TStatus extends string>({
 
       <p className="text-[9px] font-mono text-[#3F3832]">{FILTER_TABS_HINT}</p>
 
-      <div>
-        <div
-          className="flex flex-wrap gap-0 border-b-2 border-[#E8DFD2]"
-          role="tablist"
-          aria-label="Work board filters"
-        >
-          {tabs.map((tab) => {
-            const selected = tab.id === activeTab;
-            return (
+      <div className="space-y-2" data-testid={`${testIdPrefix}-filter-sections`}>
+        {sections.map((section) => {
+          const open = openSections[section.id];
+          const tone = FILTER_SECTION_TONES[section.id];
+          const summary = filterSectionSummary(section.selected, section.ordered, section.chips);
+          return (
+            <div key={section.id} className="overflow-hidden">
               <button
-                key={tab.id}
                 type="button"
-                role="tab"
-                aria-selected={selected}
-                aria-controls={`${testIdPrefix}-filter-panel-${tab.id}`}
-                id={`${testIdPrefix}-filter-tab-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
-                className={studioTabClass(selected)}
-                data-testid={`${testIdPrefix}-${tab.id}-tab`}
+                aria-expanded={open}
+                aria-controls={`${testIdPrefix}-filter-panel-${section.id}`}
+                id={`${testIdPrefix}-filter-tab-${section.id}`}
+                onClick={() => setOpenSections((prev) => toggleFilterSection(prev, section.id))}
+                className={`w-full min-h-[44px] px-3 py-2 border-2 border-[#1F1917] inline-flex items-center justify-start gap-2 cursor-pointer ${tone.header} ${
+                  open ? 'rounded-t-2xl border-b-0' : 'rounded-2xl'
+                }`}
+                data-testid={`${testIdPrefix}-${section.id}-tab`}
               >
-                {FILTER_SECTION_LABELS[tab.id]}
-                <span className={studioTabMetaClass(selected)}>
-                  {filterTabCount(tab.selected, tab.ordered, tab.chips)}
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] font-black uppercase tracking-wider">
+                    {FILTER_SECTION_LABELS[section.id]}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                  <span className="text-[10px] font-mono font-bold truncate">{summary}</span>
+                  <span className="text-[10px] font-mono font-bold tabular-nums">
+                    {filterTabCount(section.selected, section.ordered, section.chips)}
+                  </span>
                 </span>
               </button>
-            );
-          })}
-        </div>
-        <div
-          role="tabpanel"
-          id={`${testIdPrefix}-filter-panel-${active.id}`}
-          aria-labelledby={`${testIdPrefix}-filter-tab-${active.id}`}
-        >
-          {active.id === 'status' ? (
-            <FilterChipPanel
-              sectionId="status"
-              chips={statusChips}
-              selected={statusFilter}
-              ordered={statusOrdered}
-              onChange={onStatusChange}
-              testId={`${testIdPrefix}-status`}
-            />
-          ) : (
-            <FilterChipPanel
-              sectionId={active.id}
-              chips={active.chips}
-              selected={active.selected}
-              ordered={active.ordered}
-              onChange={
-                active.id === 'assignee'
-                  ? onAssigneeChange
-                  : active.id === 'sprint'
-                    ? onSprintChange
-                    : active.id === 'priority'
-                      ? onPriorityChange
-                      : onCategoryChange
-              }
-              testId={`${testIdPrefix}-${active.id}`}
-            />
-          )}
-        </div>
+              {open ? (
+                <div
+                  id={`${testIdPrefix}-filter-panel-${section.id}`}
+                  role="region"
+                  aria-labelledby={`${testIdPrefix}-filter-tab-${section.id}`}
+                >
+                  <FilterChipPanel
+                    sectionId={section.id}
+                    chips={section.chips}
+                    selected={section.selected}
+                    ordered={section.ordered}
+                    onChange={section.onChange}
+                    testId={`${testIdPrefix}-${section.id}`}
+                  />
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

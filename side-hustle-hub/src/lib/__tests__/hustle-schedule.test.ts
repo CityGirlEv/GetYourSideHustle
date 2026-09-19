@@ -67,6 +67,14 @@ import {
   scheduleCollapsePreview,
   isScheduleSuiteDashboardHash,
 } from "../hustle-schedule";
+import { playbookStepsForSchedule } from "../schedule-guide-plan";
+
+/** Keep date/status tests on the 7-day weekly template. */
+function weeklyPlan(
+  input: Omit<Parameters<typeof createSchedulePlan>[0], "guideSteps">,
+) {
+  return createSchedulePlan({ ...input, guideSteps: [] });
+}
 
 describe("hustle schedule suite", () => {
   it("unlocks only for Pro and Elite (or admin)", () => {
@@ -157,7 +165,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("updating plan due date rebuilds week and keeps status", () => {
-    const plan = createSchedulePlan({
+    const plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -176,7 +184,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("updating start date shifts every block due date", () => {
-    const plan = createSchedulePlan({
+    const plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -200,7 +208,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("block due edits promote plan due to the latest day", () => {
-    const plan = createSchedulePlan({
+    const plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -250,16 +258,17 @@ describe("hustle schedule suite", () => {
       activeScheduleId: "self__airbnb",
       updatedAt: "2026-08-01T00:00:00.000Z",
     });
-    const mon = store.schedules[0]!.blocks.find((b) => b.id === "mon");
-    expect(mon?.status).toBe("done");
-    expect(mon?.done).toBe(true);
+    const gs1 = store.schedules[0]!.blocks.find((b) => b.id === "gs-1");
+    expect(gs1?.status).toBe("done");
+    expect(gs1?.done).toBe(true);
+    expect(gs1?.focus).toBe(playbookStepsForSchedule("airbnb")[0]?.title);
   });
 
   it("checkbox checked sets Done; unchecked sets Not Started", () => {
     expect(scheduleStatusFromCheckboxChecked(true)).toBe("done");
     expect(scheduleStatusFromCheckboxChecked(false)).toBe("not_started");
 
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -288,7 +297,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("sets statuses, toggles done, and colors progress from Done only", () => {
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -311,7 +320,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("stores notes on a plan tracker block", () => {
-    const plan = createSchedulePlan({
+    const plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -331,7 +340,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("labels Blueprint plan tasks complete and remaining from day blocks", () => {
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -366,7 +375,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("stores multiple schedules and migrates legacy single plan", () => {
-    const a = createSchedulePlan({
+    const a = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -375,7 +384,7 @@ describe("hustle schedule suite", () => {
       blueprintId: "bp",
       dueDate: "2026-08-23",
     });
-    const b = createSchedulePlan({
+    const b = weeklyPlan({
       ownerId: "c1",
       ownerLabel: "Kai",
       hustleId: "dog-walk",
@@ -401,7 +410,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("can Make new schedule for the same member + hustle without replacing the first", () => {
-    const first = createSchedulePlan({
+    const first = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -411,7 +420,7 @@ describe("hustle schedule suite", () => {
       dueDate: "2026-08-23",
       ref: new Date(2026, 7, 18),
     });
-    const second = createSchedulePlan({
+    const second = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -434,7 +443,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("collects overdue plan and incomplete blocks but skips Done", () => {
-    const plan = createSchedulePlan({
+    const plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -465,7 +474,7 @@ describe("hustle schedule suite", () => {
   it("requires hours > 0 on every day block before save", () => {
     expect(isScheduleBlockHoursValid(0)).toBe(false);
     expect(isScheduleBlockHoursValid(0.5)).toBe(true);
-    const plan = createSchedulePlan({
+    const plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -488,7 +497,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("filters saved schedules by family member or All", () => {
-    const a = createSchedulePlan({
+    const a = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -497,7 +506,7 @@ describe("hustle schedule suite", () => {
       blueprintId: "bp",
       dueDate: "2026-08-23",
     });
-    const b = createSchedulePlan({
+    const b = weeklyPlan({
       ownerId: "c1",
       ownerLabel: "Kai",
       hustleId: "dog-walk",
@@ -513,7 +522,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("opens a saved schedule without treating it as an unsaved edit", () => {
-    const a = createSchedulePlan({
+    const a = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -522,7 +531,7 @@ describe("hustle schedule suite", () => {
       blueprintId: "bp",
       dueDate: "2026-08-23",
     });
-    const b = createSchedulePlan({
+    const b = weeklyPlan({
       ownerId: "c1",
       ownerLabel: "Kai",
       hustleId: "dog-walk",
@@ -543,7 +552,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("clicking a family member shows their schedules without auto-opening someone else", () => {
-    const a = createSchedulePlan({
+    const a = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "airbnb",
@@ -552,7 +561,7 @@ describe("hustle schedule suite", () => {
       blueprintId: "bp",
       dueDate: "2026-08-23",
     });
-    const b = createSchedulePlan({
+    const b = weeklyPlan({
       ownerId: "c1",
       ownerLabel: "Kai",
       hustleId: "dog-walk",
@@ -585,7 +594,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("creates blueprint goals and migrates missing fields on normalize", () => {
-    const plan = createSchedulePlan({
+    const plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -625,7 +634,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("grades the week from % of day blocks complete", () => {
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -652,7 +661,7 @@ describe("hustle schedule suite", () => {
     expect(getWeekRoundup(graded).gradedAt).toBe("2026-08-21T12:00:00.000Z");
 
     const weak = gradeScheduleWeek(
-      createSchedulePlan({
+      weeklyPlan({
         ownerId: "self",
         ownerLabel: "Me",
         hustleId: "x",
@@ -685,7 +694,7 @@ describe("hustle schedule suite", () => {
     expect(gradeMarkFromScore(70)).toBe("C");
 
     const marksForDone = (doneCount: number) => {
-      let plan = createSchedulePlan({
+      let plan = weeklyPlan({
         ownerId: "self",
         ownerLabel: "Me",
         hustleId: "pod",
@@ -721,7 +730,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("lists validation errors when hours are missing", () => {
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -740,7 +749,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("treats estimate minutes as satisfying hours and can backfill", () => {
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -777,7 +786,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("updates Current Grade live as Plan tracker Done counts change", () => {
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -836,7 +845,7 @@ describe("hustle schedule suite", () => {
   });
 
   it("Grade me from tracker still grades into the week roundup", () => {
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",
@@ -887,7 +896,7 @@ describe("hustle schedule suite", () => {
     expect(removed.actionItems).toBe("");
     expect(roundupHasActionItems(removed)).toBe(false);
 
-    let plan = createSchedulePlan({
+    let plan = weeklyPlan({
       ownerId: "self",
       ownerLabel: "Me",
       hustleId: "pod",

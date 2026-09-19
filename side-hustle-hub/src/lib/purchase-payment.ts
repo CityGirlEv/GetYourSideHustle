@@ -1,6 +1,6 @@
 /** How a GYSH purchase was paid — used on admin/member receipts. */
 
-export type PurchasePaymentSource = "stripe" | "credits" | "mixed" | "profile";
+export type PurchasePaymentSource = "stripe" | "credits" | "mixed" | "profile" | "admin";
 
 function formatUsdFromCents(amountCents: number): string {
   const n = Math.max(0, Number(amountCents) || 0) / 100;
@@ -25,6 +25,7 @@ export function resolvePurchasePaymentSource(input: {
   const cash = Math.max(0, Math.floor(Number(input.amountCents) || 0));
   const raw = String(input.source || "").toLowerCase();
   if (raw === "profile") return "profile";
+  if (raw === "admin") return "admin";
   if (credits > 0 && cash > 0) return "mixed";
   if (raw === "credits" || (credits > 0 && cash === 0)) return "credits";
   if (raw === "mixed") return "mixed";
@@ -35,6 +36,7 @@ export function purchasePaymentMethodLabel(source: PurchasePaymentSource): strin
   if (source === "credits") return "GYSH credits (Stripe was not used)";
   if (source === "mixed") return "Mixed — Stripe Checkout + GYSH credits";
   if (source === "profile") return "Profile plan update (no card charge)";
+  if (source === "admin") return "Admin complimentary grant (no card charge)";
   return "Stripe Checkout";
 }
 
@@ -67,7 +69,10 @@ export function formatPurchasePaymentDetail(input: {
   const amountLabel = formatPurchasePaymentAmountLabel(input);
   const credits = Math.max(0, Math.floor(Number(input.creditsApplied) || 0));
   const cash = Math.max(0, Math.floor(Number(input.amountCents) || 0));
-  const cashLabel = source === "credits" || source === "profile" ? "$0" : formatUsdFromCents(cash);
+  const cashLabel =
+    source === "credits" || source === "profile" || source === "admin"
+      ? "$0"
+      : formatUsdFromCents(cash);
   const sessionId = String(input.sessionId || "").trim();
   const showStripeSession =
     (source === "stripe" || source === "mixed") &&

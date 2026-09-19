@@ -4,18 +4,71 @@
  * Plain data only (no imports from guide-tools) to avoid circular modules.
  */
 
+export const ETSY_CREATIVITY_POLICY_URL = "https://www.etsy.com/legal/creativity/";
+export const ETSY_MINORS_POLICY_URL = "https://www.etsy.com/legal/minors/";
+
 export const ETSY_STORE_REALITY_CHECK = {
-  title: "ETSY IS NOT A GENERAL RESALE MARKETPLACE",
+  title: "⚠️ IMPORTANT: Etsy Is a Creative Marketplace",
+  lead: "Etsy is not a general resale or dropshipping marketplace.",
+  intro:
+    "Before creating or purchasing inventory, make sure every product you plan to sell meets Etsy’s current Creativity Standards.",
+  sellHeading: "What Can You Sell on Etsy?",
+  categories: [
+    {
+      heading: "🛠️ MADE BY A SELLER",
+      body: "Physical products that you personally make, alter, assemble, or produce.",
+    },
+    {
+      heading: "DESIGNED BY A SELLER",
+      body: "Original seller designs offered as digital downloads or produced by a disclosed production partner. A seller-prompted AI creation may qualify, but Etsy requires AI use to be disclosed in the listing description. AI prompt bundles are not allowed under the current standards.",
+    },
+    {
+      heading: "HANDPICKED BY A SELLER",
+      body: "Qualifying vintage items at least 20 years old, items from nature, and qualifying curated collections under Etsy’s rules.",
+    },
+    {
+      heading: "SOURCED BY A SELLER",
+      body: "Qualifying craft supplies, party supplies, and buyer-personalized items that meet Etsy’s rules.",
+    },
+  ],
+  closing:
+    "Most dropshipping and mass-produced reselling are not allowed. Disclose production partners and use your own listing photos or video except where Etsy’s limited policy exceptions apply.",
+  creativityLabel: "Current Etsy Creativity Standards:",
+  creativityUrl: ETSY_CREATIVITY_POLICY_URL,
+  minorsHeading: "MINOR ACCOUNT RULE",
+  minorsBody:
+    "Etsy account owners must be at least 18. Ages 13–17 may use Etsy only through an account owned by a parent or legal guardian and under that adult’s direct supervision. Children under 13 may not use Etsy. The adult account owner is responsible for the account, finances, and activity.",
+  minorsLabel: "Current Etsy Minors Policy:",
+  minorsUrl: ETSY_MINORS_POLICY_URL,
   body: [
-    "Before building inventory, verify products qualify under Etsy’s CURRENT Creativity Standards and Seller Policy.",
+    "Etsy is not a general resale or dropshipping marketplace.",
     "",
-    "Do not assume any “curated” or wholesale product can be resold on Etsy. Depending on current rules, eligible products may include qualifying items made by the seller, designed by the seller, handpicked by the seller (including qualifying vintage/curated categories), or sourced by the seller in qualifying categories such as certain craft/party supplies.",
+    "Before creating or purchasing inventory, make sure every product you plan to sell meets Etsy’s current Creativity Standards.",
     "",
-    "If using a production partner, disclose it where Etsy requires it. Use accurate descriptions and required original/appropriate listing imagery. Do not copy other sellers’ photos, descriptions, trademarks, characters, logos, or copyrighted designs. Never guarantee sales or income.",
+    "What Can You Sell on Etsy?",
     "",
-    "The seller controls the Etsy account, payment account, bank information, and identity verification.",
+    "🛠️ MADE BY A SELLER",
+    "Physical products that you personally make, alter, assemble, or produce.",
     "",
-    "Tagline: Build the Shop. List the Products. Learn What Sells.",
+    "DESIGNED BY A SELLER",
+    "Original seller designs offered as digital downloads or produced by a disclosed production partner. A seller-prompted AI creation may qualify, but Etsy requires AI use to be disclosed in the listing description. AI prompt bundles are not allowed under the current standards.",
+    "",
+    "HANDPICKED BY A SELLER",
+    "Qualifying vintage items at least 20 years old, items from nature, and qualifying curated collections under Etsy’s rules.",
+    "",
+    "SOURCED BY A SELLER",
+    "Qualifying craft supplies, party supplies, and buyer-personalized items that meet Etsy’s rules.",
+    "",
+    "Most dropshipping and mass-produced reselling are not allowed. Disclose production partners and use your own listing photos or video except where Etsy’s limited policy exceptions apply.",
+    "",
+    "Current Etsy Creativity Standards:",
+    ETSY_CREATIVITY_POLICY_URL,
+    "",
+    "MINOR ACCOUNT RULE",
+    "Etsy account owners must be at least 18. Ages 13–17 may use Etsy only through an account owned by a parent or legal guardian and under that adult’s direct supervision. Children under 13 may not use Etsy. The adult account owner is responsible for the account, finances, and activity.",
+    "",
+    "Current Etsy Minors Policy:",
+    ETSY_MINORS_POLICY_URL,
   ].join("\n"),
 };
 
@@ -152,7 +205,8 @@ export const ETSY_STORE_EXTERNAL_LINKS: {
   { label: "Etsy Seller Handbook", url: "https://www.etsy.com/seller-handbook", note: "Current shop and listing guidance" },
   { label: "Check Current Etsy Seller Fees", url: "https://www.etsy.com/legal/fees", note: "Official current fee schedule — amounts change" },
   { label: "Etsy Seller Policy", url: "https://www.etsy.com/legal/sellers", note: "Current seller rules" },
-  { label: "Etsy Creativity Standards", url: "https://www.etsy.com/legal/policy/creativity-standards/239960351230", note: "What may be sold — verify before inventory" },
+  { label: "Etsy Creativity Standards", url: ETSY_CREATIVITY_POLICY_URL, note: "What may be sold — verify before inventory" },
+  { label: "Etsy Minors Policy", url: ETSY_MINORS_POLICY_URL, note: "18+ owner; 13–17 parent-owned and supervised" },
   { label: "Etsy Help Center", url: "https://help.etsy.com/", note: "Account, shipping, and listing help" },
   { label: "Canva", url: "https://www.canva.com/", note: "Simple listing graphics and pins" },
   { label: "Google Sheets", url: "https://sheets.google.com/", note: "Cost, listing, and profit tracker" },

@@ -3,6 +3,7 @@ import {
   attachLedgerRunningBalances,
   creditRatioLabel,
   creditsBalanceHeadline,
+  portalWelcomeCreditLabel,
   emptyMemberCreditsSummary,
   formatKidCreditBalance,
   formatCreditCount,
@@ -14,6 +15,7 @@ import {
   monthlyKidCreditAllowance,
   normalizeAudience,
   normalizeTierId,
+  higherMembershipTier,
   roundCreditAmount,
   spendableCreditBalance,
   summarizeMemberCredits,
@@ -33,6 +35,13 @@ describe("member-credits helpers", () => {
     expect(creditsBalanceHeadline(0)).toBe("Your credit balance is 0");
     expect(creditsBalanceHeadline(5)).toBe("Your credit balance is 5");
     expect(creditsBalanceHeadline(2.5)).toBe("Your credit balance is 2.5");
+  });
+
+  it("labels the welcome-card credit balance for every member", () => {
+    expect(portalWelcomeCreditLabel(0, true)).toBe("Loading credits…");
+    expect(portalWelcomeCreditLabel(null, false)).toBe("0 credits");
+    expect(portalWelcomeCreditLabel(1, false)).toBe("1 credit");
+    expect(portalWelcomeCreditLabel(40, false)).toBe("40 credits");
   });
 
   it("hides Not authenticated behind a zero-balance fallback", () => {
@@ -55,6 +64,13 @@ describe("member-credits helpers", () => {
     expect(isCreditsDashboardHash("#credits")).toBe(true);
     expect(isCreditsDashboardHash("credits")).toBe(true);
     expect(isCreditsDashboardHash("#billing")).toBe(false);
+  });
+
+  it("picks the highest membership when the Credits API lags an upgrade", () => {
+    expect(higherMembershipTier("starter", "elite")).toBe("elite");
+    expect(higherMembershipTier("elite", "starter")).toBe("elite");
+    expect(higherMembershipTier("free", "starter", "pro")).toBe("pro");
+    expect(higherMembershipTier(null, "starter")).toBe("starter");
   });
 
   it("keeps credits 1:1 with no adult conversion", () => {

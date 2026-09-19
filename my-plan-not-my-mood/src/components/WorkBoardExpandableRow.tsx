@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
-import { SAVE_ALL_LABEL, workBoardSaveButtonTone, workPriorityTextClass, type SprintCategory, type WorkPriority } from '../lib/workBoard';
+import { SAVE_ALL_LABEL, workBoardSaveButtonTone, workDueDateControlClass, workOverdueTextClass, type SprintCategory, type WorkPriority } from '../lib/workBoard';
 import { AreYouSureDialog } from './AreYouSureDialog';
 
 export function RolledOverStatusBadge({ testId }: { testId?: string }) {
@@ -16,6 +16,36 @@ export function RolledOverStatusBadge({ testId }: { testId?: string }) {
 
 export const workBoardHeaderBubbleClass =
   'text-[9px] font-mono font-bold leading-none px-1.5 py-0.5 min-h-[44px] rounded border cursor-pointer';
+
+export function WorkBoardHeaderDate({
+  value,
+  onChange,
+  overdue = false,
+  ariaLabel = 'Due date',
+  testId,
+}: {
+  value?: string;
+  onChange: (value: string) => void;
+  overdue?: boolean;
+  ariaLabel?: string;
+  testId?: string;
+}) {
+  return (
+    <input
+      type="date"
+      value={value ?? ''}
+      aria-label={ariaLabel}
+      data-testid={testId}
+      className={`${workBoardHeaderBubbleClass} w-[8.75rem] ${workDueDateControlClass(overdue)}`}
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onChange={(event) => {
+        event.stopPropagation();
+        onChange(event.target.value);
+      }}
+    />
+  );
+}
 
 export function WorkBoardHeaderSelect({
   value,
@@ -76,6 +106,7 @@ export function WorkBoardExpandableRow({
   className,
   status,
   priority,
+  overdue = false,
   saving,
   canSave = false,
   testId,
@@ -95,13 +126,14 @@ export function WorkBoardExpandableRow({
   className?: string;
   status?: string;
   priority?: WorkPriority | string;
+  overdue?: boolean;
   saving?: boolean;
   canSave?: boolean;
   sprint?: SprintCategory;
   testId?: string;
   codeTestId?: string;
 }) {
-  const titleClass = workPriorityTextClass(priority);
+  const titleClass = workOverdueTextClass(overdue);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (

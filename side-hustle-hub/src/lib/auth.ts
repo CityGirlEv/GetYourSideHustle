@@ -156,6 +156,9 @@ export async function registerFreeMember(input: {
   membershipTier?: "free" | "starter" | "pro" | "elite";
   /** Complimentary GYSH merch (hat / T-shirt) chosen at signup. */
   merchChoices?: Array<"tshirt" | "hat">;
+  merchTshirtSizes?: Array<string>;
+  /** How they heard about GYSH. */
+  heardAbout?: { sourceId: string; detail?: string };
   /** Applicant selected the Beta Tester role at signup. */
   applyBetaTester?: boolean;
   betaNda?: {
@@ -213,6 +216,8 @@ export async function registerFreeMember(input: {
         pendingBlueprint: input.pendingBlueprint,
         membershipTier: input.membershipTier ?? "free",
         merchChoices: input.merchChoices,
+        merchTshirtSizes: input.merchTshirtSizes,
+        heardAbout: input.heardAbout,
         applyBetaTester: input.applyBetaTester === true,
         betaNda: input.applyBetaTester === true ? input.betaNda : undefined,
       },
@@ -335,6 +340,7 @@ export async function updateMembershipPlan(input: {
   membershipTier: "free" | "starter" | "pro" | "elite";
   audience: "kids" | "junior" | "adult" | "senior";
   merchChoices?: Array<"tshirt" | "hat">;
+  merchTshirtSizes?: Array<string>;
   /** Admin-only: apply paid tier without Stripe / Kid Credit checkout. */
   adminSimulatePayment?: boolean;
 }): Promise<{ ok: boolean; user?: AuthUser; error?: string; message?: string }> {
@@ -347,6 +353,7 @@ export async function updateMembershipPlan(input: {
           membershipTier: input.membershipTier,
           audience: input.audience,
           merchChoices: input.merchChoices,
+          merchTshirtSizes: input.merchTshirtSizes,
           adminSimulatePayment: input.adminSimulatePayment === true,
         },
       },
@@ -355,6 +362,25 @@ export async function updateMembershipPlan(input: {
   } catch (e) {
     if (e instanceof ApiError) return { ok: false, error: e.message };
     return { ok: false, error: "Could not update membership plan." };
+  }
+}
+
+export async function saveMemberMerch(input: {
+  merchChoices: Array<"tshirt" | "hat">;
+  merchTshirtSizes?: Array<string>;
+}): Promise<{ ok: boolean; user?: AuthUser; error?: string; message?: string }> {
+  try {
+    const data = await api<{ ok: boolean; user: AuthUser; message?: string }>("auth/merch", {
+      method: "POST",
+      body: {
+        merchChoices: input.merchChoices,
+        merchTshirtSizes: input.merchTshirtSizes,
+      },
+    });
+    return { ok: true, user: data.user, message: data.message };
+  } catch (e) {
+    if (e instanceof ApiError) return { ok: false, error: e.message };
+    return { ok: false, error: "Could not save merch choice." };
   }
 }
 

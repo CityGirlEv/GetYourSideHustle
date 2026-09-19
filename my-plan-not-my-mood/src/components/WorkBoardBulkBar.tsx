@@ -10,6 +10,12 @@ export interface WorkBoardBulkField {
   onApply: (value: string) => void;
 }
 
+export interface WorkBoardBulkDateField {
+  id: string;
+  label: string;
+  onApply: (value: string) => void;
+}
+
 export function WorkBoardBulkBar({
   selectedCount,
   visibleCount,
@@ -17,6 +23,7 @@ export function WorkBoardBulkBar({
   onToggleSelectAllVisible,
   onClearSelection,
   fields,
+  dateFields = [],
   testId,
   onSave,
   saving = false,
@@ -28,6 +35,7 @@ export function WorkBoardBulkBar({
   onToggleSelectAllVisible: () => void;
   onClearSelection: () => void;
   fields: WorkBoardBulkField[];
+  dateFields?: WorkBoardBulkDateField[];
   testId: string;
   onSave?: () => void;
   saving?: boolean;
@@ -89,6 +97,37 @@ export function WorkBoardBulkBar({
               </option>
             ))}
           </select>
+        ))}
+        {dateFields.map((field) => (
+          <label
+            key={field.id}
+            className="inline-flex items-center gap-1.5 min-h-[44px] text-[10px] font-mono font-black uppercase text-[#1F1917]"
+          >
+            <span>{field.label}</span>
+            <input
+              type="date"
+              disabled={selectedCount === 0}
+              defaultValue=""
+              aria-label={`Bulk ${field.label}`}
+              data-testid={`${testId}-${field.id}`}
+              className="min-h-[44px] text-[10px] font-mono font-bold px-2 rounded-xl bg-white border-2 border-[#1F1917] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onChange={(event) => {
+                const value = event.target.value;
+                if (!value) return;
+                field.onApply(value);
+                event.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              disabled={selectedCount === 0}
+              data-testid={`${testId}-${field.id}-clear`}
+              className="min-h-[44px] px-2 rounded-xl border-2 border-[#1F1917] bg-white text-[10px] font-black uppercase cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => field.onApply('')}
+            >
+              Clear date
+            </button>
+          </label>
         ))}
         {onSave ? (
           <button

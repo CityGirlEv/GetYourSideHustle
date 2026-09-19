@@ -26,6 +26,17 @@ describe("handleAdminGrantInternalCredits", () => {
     });
     const res = await handleAdminGrantInternalCredits({} as Env, req, actor);
     expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: "Enter the parent account email." });
+    expect(await res.json()).toMatchObject({ error: "Enter the member account email." });
+  });
+
+  it("rejects an invalid add/remove action", async () => {
+    const req = new Request("http://localhost/api/admin/internal-credits", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "a@b.com", credits: 5, action: "gift" }),
+    });
+    const res = await handleAdminGrantInternalCredits({} as Env, req, actor);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "Choose add or remove." });
   });
 });

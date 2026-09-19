@@ -31,6 +31,11 @@ import { RESUME_LINKEDIN_DETAILED_STEPS } from "./resume-linkedin-helper-guide";
 import { SHORT_FORM_VIDEO_DETAILED_STEPS } from "./short-form-video-editor-guide";
 import { GBP_HELPER_DETAILED_STEPS } from "./google-business-profile-helper-guide";
 import { UGC_CREATOR_DETAILED_STEPS } from "./ugc-creator-guide";
+import { DIGITAL_PHOTO_ORGANIZER_DETAILED_STEPS } from "./digital-photo-organizer-guide";
+import { DIGITAL_PRODUCT_FORMATTER_DETAILED_STEPS } from "./digital-product-formatter-guide";
+import { FLIPPING_PROPERTIES_DETAILED_STEPS } from "./flipping-properties-guide";
+import { GARAGE_SALE_HELPER_DETAILED_STEPS } from "./garage-sale-helper-guide";
+import { LOCAL_BUSINESS_AI_SETUP_DETAILED_STEPS } from "./local-business-ai-setup-guide";
 import { VIRTUAL_ASSISTANT_DETAILED_STEPS } from "./virtual-assistant-guide";
 import { VIRTUAL_RECEPTIONIST_DETAILED_STEPS } from "./virtual-receptionist-guide";
 import { SOCIAL_INFLUENCER_DETAILED_STEPS } from "./social-influencer-guide";
@@ -88,6 +93,22 @@ import { TECH_HELPER_DETAILED_STEPS } from "./tech-helper-guide";
 import { YARD_HELP_DETAILED_STEPS } from "./yard-help-guide";
 import { CLEANING_SERVICE_DETAILED_STEPS } from "./cleaning-service-guide";
 import { PLANT_WATERING_DETAILED_STEPS } from "./plant-watering-guide";
+import { NEIGHBORHOOD_HELPER_DETAILED_STEPS } from "./neighborhood-helper-guide";
+import { AI_ASSETS_DETAILED_STEPS } from "./ai-assets-guide";
+import { AIRBNB_COHOST_DETAILED_STEPS } from "./airbnb-cohost-guide";
+import { AMAZON_FBA_SELLER_DETAILED_STEPS } from "./amazon-fba-seller-guide";
+import { VIRTUAL_CALL_ASSISTANT_DETAILED_STEPS } from "./virtual-call-assistant-guide";
+import { AI_SOCIAL_HELPER_DETAILED_STEPS } from "./ai-social-helper-guide";
+import { BIRTHDAY_PARTY_HELPER_DETAILED_STEPS } from "./birthday-party-helper-guide";
+import { CLOSET_ORGANIZER_DETAILED_STEPS } from "./closet-organizer-guide";
+import { LIEN_TAX_SALES_DETAILED_STEPS } from "./lien-tax-sales-guide";
+import { JUNIOR_CONTENT_CREATE_DETAILED_STEPS } from "./junior-content-create-guide";
+import { KIDS_CRAFT_HUSTLE_DETAILED_STEPS } from "./kids-craft-hustle-guide";
+import { CREATE_GAMES_KIDS_DETAILED_STEPS } from "./create-games-kids-guide";
+import { CREATE_GAMES_JUNIOR_DETAILED_STEPS } from "./create-games-junior-guide";
+import { CUSTOM_BOOKMARK_CREATOR_DETAILED_STEPS } from "./custom-bookmark-creator-guide";
+import { WEB_LEADS_DETAILED_STEPS } from "./web-leads-guide";
+import { MAILBOX_CLEANING_DETAILED_STEPS } from "./mailbox-cleaning-guide";
 import { HOMEWORK_ORGANIZER_DETAILED_STEPS } from "./homework-organizer-guide";
 import { GROUP_SETUP_HELPER_DETAILED_STEPS } from "./group-setup-helper-guide";
 import { HOUSE_SITTER_DETAILED_STEPS } from "./house-sitter-guide";
@@ -580,7 +601,10 @@ export const SKILL_LEARNING_GUIDE_IDS = [
 ] as const;
 
 /** Investment-acquisition guides — no client-marketing or first-sale playbook. */
-export const INVESTMENT_ACQUISITION_GUIDE_IDS = ["foreclosure-properties"] as const;
+export const INVESTMENT_ACQUISITION_GUIDE_IDS = [
+  "foreclosure-properties",
+  "flipping-properties",
+] as const;
 
 export function guideUsesInvestmentAcquisitionPlaybook(guideId: string): boolean {
   return (INVESTMENT_ACQUISITION_GUIDE_IDS as readonly string[]).includes(
@@ -978,6 +1002,11 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "short-form-video-editor": SHORT_FORM_VIDEO_DETAILED_STEPS.map((s) => ({ ...s })),
   "google-business-helper": GBP_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
   "ugc-creator": UGC_CREATOR_DETAILED_STEPS.map((s) => ({ ...s })),
+  "digital-photo-organizer": DIGITAL_PHOTO_ORGANIZER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "digital-product-formatter": DIGITAL_PRODUCT_FORMATTER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "flipping-properties": FLIPPING_PROPERTIES_DETAILED_STEPS.map((s) => ({ ...s })),
+  "garage-sale-helper": GARAGE_SALE_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "local-business-ai-setup": LOCAL_BUSINESS_AI_SETUP_DETAILED_STEPS.map((s) => ({ ...s })),
   "virtual-assistant": VIRTUAL_ASSISTANT_DETAILED_STEPS.map((s) => ({ ...s })),
   "virtual-receptionist": VIRTUAL_RECEPTIONIST_DETAILED_STEPS.map((s) => ({ ...s })),
   social: SOCIAL_INFLUENCER_DETAILED_STEPS.map((s) => ({ ...s })),
@@ -1028,6 +1057,22 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "yard-help": YARD_HELP_DETAILED_STEPS.map((s) => ({ ...s })),
   "cleaning-service": CLEANING_SERVICE_DETAILED_STEPS.map((s) => ({ ...s })),
   "plant-watering": PLANT_WATERING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "neighborhood-helper": NEIGHBORHOOD_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ai-assets": AI_ASSETS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "airbnb-cohost": AIRBNB_COHOST_DETAILED_STEPS.map((s) => ({ ...s })),
+  amazon: AMAZON_FBA_SELLER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "virtual-call-assistant": VIRTUAL_CALL_ASSISTANT_DETAILED_STEPS.map((s) => ({ ...s })),
+  "ai-social-helper": AI_SOCIAL_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "birthday-party-helper": BIRTHDAY_PARTY_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "closet-organizer": CLOSET_ORGANIZER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "lien-tax-sales": LIEN_TAX_SALES_DETAILED_STEPS.map((s) => ({ ...s })),
+  "junior-content-create": JUNIOR_CONTENT_CREATE_DETAILED_STEPS.map((s) => ({ ...s })),
+  "kids-craft-hustle": KIDS_CRAFT_HUSTLE_DETAILED_STEPS.map((s) => ({ ...s })),
+  "create-games-kids": CREATE_GAMES_KIDS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "create-games-junior": CREATE_GAMES_JUNIOR_DETAILED_STEPS.map((s) => ({ ...s })),
+  "custom-bookmark-creator": CUSTOM_BOOKMARK_CREATOR_DETAILED_STEPS.map((s) => ({ ...s })),
+  "web-leads": WEB_LEADS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "mailbox-cleaning": MAILBOX_CLEANING_DETAILED_STEPS.map((s) => ({ ...s })),
   "homework-organizer": HOMEWORK_ORGANIZER_DETAILED_STEPS.map((s) => ({ ...s })),
   "group-setup-helper": GROUP_SETUP_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
   "house-sitter": HOUSE_SITTER_DETAILED_STEPS.map((s) => ({ ...s })),
@@ -1038,222 +1083,4 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "start-book-club": START_BOOK_CLUB_DETAILED_STEPS.map((s) => ({ ...s })),
   "foreclosure-properties": FORECLOSURE_PROPERTIES_DETAILED_STEPS.map((s) => ({ ...s })),
   "kids-games-ai": KIDS_GAMES_AI_DETAILED_STEPS.map((s) => ({ ...s })),
-
-  "web-leads": [
-    {
-      title: "Pick a ZipCode + niche lane",
-      desc: "Choose 1–2 niches (dentists, HVAC, salons, contractors) within ~20 miles. Write a one-line sample offer. Save prospects in Google Sheets or Google Docs (Tools tab — sign in with Google, or use an account you already have).",
-    },
-    {
-      title: "Build a lead list from Maps",
-      desc: "Use Google Maps / Bing Places to find businesses with no site, a broken mobile layout, or a dated DIY page. Log name, phone, URL, and 3 pain notes. Do not pitch WordPress rebuilds — your stack is modern.",
-    },
-    {
-      title: "Run a 60-second audit",
-      desc: "Score speed, mobile, contact CTA, and booking path. Record a short Loom or PDF with 3 fixes + a package price ($150–$400 audit; $800–$3,500 build). ChatGPT (https://chatgpt.com/) can draft the audit shell — you fill the screenshots.",
-    },
-    {
-      title: "Outreach cadence",
-      desc: "Call, text, or drop by with the audit. Aim for ~20 touches/day. Sell the audit first; never start a full build without a signed deposit.",
-    },
-    {
-      title: "Build on Cloudflare + Supabase + Resend (kick off in Antigravity)",
-      desc: "Kick off the site in Google Antigravity (https://antigravity.google/download). Deploy on Cloudflare Pages (https://pages.cloudflare.com/). Use Supabase (https://supabase.com/) for forms/auth/data when needed, and Resend (https://resend.com/) for contact/transactional email. Deliver booking CTA, NAP consistency, and basic SEO. Never use WordPress.",
-    },
-    {
-      title: "Stack recurring revenue",
-      desc: "Offer monthly hosting + light edits on Cloudflare ($49–$149). Ask every client for 2 referrals and one Google review. Keep revision limits in writing.",
-    },
-  ],
-
-  "neighborhood-helper": [
-    {
-      title: "Publish a menu of micro-chores you’ll do",
-      desc: "List concrete tasks: carry groceries in, move trash bins, walk mail to door, quick porch sweep, feed cat once, water one planter. Avoid vague “anything you need.” Share the menu in a neighborhood group or flyer.",
-    },
-    {
-      title: "Set boundaries and adult supervision rules",
-      desc: "Kids: parent approves each home; no entering unless owner is present or key protocol signed by parent. Work daylight hours. Decline jobs involving chemicals, ladders, or strangers’ cars.",
-    },
-    {
-      title: "Book 30-minute blocks in Google Calendar",
-      desc: "Stack errands geographically: “Tuesday 4–5 pm Oak Street trio.” Text ETA 10 minutes before arrival. Bring your own gloves and hand sanitizer.",
-    },
-    {
-      title: "Confirm price before starting",
-      desc: "Examples: $10 grocery carry-in, $15 porch tidy, $20 multi-task bundle. Text confirmation: “OK to do X and Y for $20 today?” Never add tasks without approval.",
-    },
-    {
-      title: "Close each job with a quick photo receipt",
-      desc: "Photo of completed task (neat porch, bins returned). Text: “Done — thank you!” Note hours in a simple Sheet for taxes if you’re older and earning regularly.",
-    },
-    {
-      title: "Ask for standing weekly slots",
-      desc: "One neighbor may want bins every Thursday; another weekly mail grab. Standing gigs beat one-offs — offer $5/month discount for prepaid quarterly.",
-    },
-  ],
-
-  "garage-sale-helper": [
-    {
-      title: "Plan sort, price, and layout day before",
-      desc: "With the homeowner, group items: tools, clothes, toys, kitchen. Price with color dots ($1 yellow, $5 green) or masking tape tags. Lay tables by category facing the driveway for flow.",
-    },
-    {
-      title: "Make directional signs in Canva",
-      desc: "Canva (https://www.canva.com/) → “Yard sale sign” template → big arrows, date, start time, address last line small for privacy on highway signs. Print 3–4 copies; parent helps place legally.",
-    },
-    {
-      title: "Run the cash table and calculator",
-      desc: "Float $30 in small bills. Use phone calculator + notebook log: item, price, sold Y/N. Offer bundles: “Fill a bag for $10.”",
-    },
-    {
-      title: "Haggle politely with a minimum",
-      desc: "Owner sets floor prices on sticky notes inside (“lowest $8”). You can discount 10% after noon — not before 10 am. Donate leftovers only if owner pre-labels donation pickup.",
-    },
-    {
-      title: "Post live updates in local groups",
-      desc: "Facebook Marketplace or Nextdoor “Sale live until 2 pm — kids’ bikes left” with parent posting. No photos of house number — use cross streets.",
-    },
-    {
-      title: "Pay helper fee or commission",
-      desc: "Agree upfront: $50 flat for 4 hours or 10% of sales. Count cash with owner at end; Venmo your fee same day.",
-    },
-  ],
-
-  /* ── AI / paid guides ── */
-
-  "ai-social-helper": [
-    {
-      title: "Audit the client’s current social accounts",
-      desc: "Open their Instagram, Facebook Page, or TikTok (with login access or screen-share). Screenshot bio, last 9 posts, and link-in-bio. Note posting frequency and which posts got most saves/shares.",
-    },
-    {
-      title: "Draft a 2-week content calendar in Google Sheets",
-      desc: "Columns: date, platform, post type (carousel/Reel/story), topic, CTA. Use ChatGPT (https://chatgpt.com/) to brainstorm 10 post ideas from their menu/services — human-edit every caption for local voice.",
-    },
-    {
-      title: "Design templates in Canva Brand Kit",
-      desc: "Canva (https://www.canva.com/) → Brand → add their hex colors and logo. Build 3 reusable templates: promo, testimonial quote, behind-the-scenes. Export correct sizes: IG square 1080×1080, story 1080×1920.",
-    },
-    {
-      title: "Schedule posts in Meta Business Suite",
-      desc: "https://business.facebook.com/ → Content → schedule Facebook/Instagram posts from the calendar. Batch one week in a 60-minute block; leave story slots manual for daily authenticity.",
-    },
-    {
-      title: "Write on-brand captions with a CTA",
-      desc: "Prompt ChatGPT: “Rewrite this promo in 120 words, friendly, no hype, include address hours.” Always add one question to boost comments. Hashtags: 3 local + 3 niche max.",
-    },
-    {
-      title: "Report metrics weekly",
-      desc: "Screenshot Insights: reach, profile visits, top post. Google Docs (Tools tab — sign in with Google, or use an account you already have) one-pager for client every Friday. Suggest one experiment next week (Reel vs. static).",
-    },
-  ],
-
-  "ai-assets": [
-    {
-      title: "Define asset pack for one niche",
-      desc: "Pick a niche you know: local bakery social pack, Etsy digital planner, or KDP coloring pages. List 10 assets: 5 PNG stickers, 3 Instagram templates, 2 PDF inserts.",
-    },
-    {
-      title: "Generate concepts in ChatGPT + refine in Canva",
-      desc: "ChatGPT (https://chatgpt.com/): “List 10 clip-art prompts for a coffee shop, flat vector, no text.” Build in Canva (https://www.canva.com/) Magic Media or draw simple shapes — avoid trademark logos.",
-    },
-    {
-      title: "Export consistent sizes and naming",
-      desc: "Folder structure: /PNG-transparent, /Canva-templates, /PDF-print. Filenames: coffee-cup-01.png. Include a README.txt with commercial use terms you intend.",
-    },
-    {
-      title: "List on Etsy or Gumroad",
-      desc: "Parent/guardian for teen accounts. Etsy: https://www.etsy.com/sell upload mockups from Canva scene templates. Gumroad: https://gumroad.com/ for instant ZIP delivery.",
-    },
-    {
-      title: "Create listing SEO title and tags",
-      desc: "Title pattern: “Coffee Shop Social Media Template Pack | Canva | Small Business.” Tags from Etsy search suggest — no misleading “official Canva” claims.",
-    },
-    {
-      title: "Iterate from first 5 reviews",
-      desc: "Ask buyers one improvement; add bonus asset v1.1 free to past buyers via Etsy message — builds repeat purchases.",
-    },
-  ],
-
-  "local-business-ai-setup": [
-    {
-      title: "Discovery call: tools they already use",
-      desc: "List POS, email (prefer Resend — https://resend.com/), site host (Cloudflare Pages — https://pages.cloudflare.com/; kick off builds in Antigravity — https://antigravity.google/; Supabase — https://supabase.com/ for data/auth), and social accounts. Goal: one AI win in week one — not ten logins day one. Meet on Google Meet with screen-share. Do not recommend WordPress.",
-    },
-    {
-      title: "Create a shared AI policy doc",
-      desc: "Google Docs (Tools tab — sign in with Google, or use an account you already have): approved tools (ChatGPT Team, Gemini), banned uses (medical advice, auto refunds), human review rule. Owner signs digitally.",
-    },
-    {
-      title: "Set up ChatGPT Team or shared workspace",
-      desc: "Parent/business owner creates account at https://chatgpt.com/ — invite staff. Custom instructions: brand voice, hours, address, services list.",
-    },
-    {
-      title: "Build 5 everyday prompts as shortcuts",
-      desc: "Reply to Google review, weekly special caption, job posting, FAQ email, meeting summary. Save in Doc titled “Staff Prompt Cards.”",
-    },
-    {
-      title: "Connect Canva Brand Templates",
-      desc: "Canva (https://www.canva.com/) Pro if budget allows — brand colors, logo, social sizes. Train one employee to duplicate template → export.",
-    },
-    {
-      title: "30-day check-in and metrics",
-      desc: "Track hours saved on email/social. Adjust prompts that hallucinate prices — feed current menu PDF into chat each session.",
-    },
-  ],
-
-  "create-games-kids": [
-    {
-      title: "Parent opens ChatGPT or Gemini with the kid",
-      desc: "Parent account only at https://chatgpt.com/ or https://gemini.google.com/. Kid suggests hero, setting, and win condition — no real names or school in the chat.",
-    },
-    {
-      title: "Save GAME-IDEA in Google Docs (Tools tab)",
-      desc: "Parent copies chat answers: title, 3 levels easy→hard, lose condition. Paste into Google Docs (Tools tab — sign in with Google, or use an account you already have) and name the file GAME-IDEA.",
-    },
-    {
-      title: "Build in Scratch first",
-      desc: "New project at https://scratch.mit.edu/ — one sprite, one backdrop, broadcast messages for level changes. Follow Getting Started cards under Ideas.",
-    },
-    {
-      title: "Optional Antigravity path with GAME.md",
-      desc: "ChatGPT writes GAME.md spec for https://antigravity.google/ — parent runs agent, kid playtests. Download IDE from https://antigravity.google/download .",
-    },
-    {
-      title: "Playtest with 3 friends and fix one bug",
-      desc: "Note where players die too fast or get stuck. Change one variable (speed, timer) — not ten at once.",
-    },
-    {
-      title: "Share safely at school fair",
-      desc: "Demo on laptop offline if Wi‑Fi fails. No itch.io publish without parent — no photos of players in promo.",
-    },
-  ],
-
-  "create-games-junior": [
-    {
-      title: "Scope one-level game in ChatGPT",
-      desc: "Guardian-approved session at https://chatgpt.com/: “Interview me until we have a one-screen browser game design — title, controls, art style, 60-min build plan.” Save Q&A to Docs.",
-    },
-    {
-      title: "Generate GAME.md for Antigravity",
-      desc: "Prompt includes folder layout, HTML+JS single file, acceptance tests, no accounts/payments. Save as GAME.md in empty project folder.",
-    },
-    {
-      title: "Install Antigravity and build v1",
-      desc: "https://antigravity.google/download — open folder, attach GAME.md, instruct: “Implement v1 only; stop when tests pass.” Guardian reviews diffs.",
-    },
-    {
-      title: "Art pass in Canva or chat images",
-      desc: "Export PNG sprites from Canva (https://www.canva.com/) 64×64 or use simple shapes in code first — polish later.",
-    },
-    {
-      title: "Playtest, fix crash, optional itch.io demo",
-      desc: "Fix one blocking bug before share. Publish free demo at https://itch.io/ only with guardian approval — page has no personal contact info.",
-    },
-    {
-      title: "Write a short postmortem in Google Docs (Tools tab)",
-      desc: "Three bullets: what worked in Antigravity, what broke, next feature for v2. Share with your guardian or classmates as a portfolio piece — link the itch.io or GitHub demo, not your home address.",
-    },
-  ],
 };

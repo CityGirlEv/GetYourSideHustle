@@ -42,7 +42,7 @@ const VIEW_ALIASES: Partial<Record<AppRouteView, string[]>> = {
   guides: ["Side Hustle Guides", "Side Hustle Library", "Guides", "Guides library", "Free Guides"],
   checklist: ["Side Hustle Checklist", "Checklist"],
   community: ["Community", "GYSH Community"],
-  newsletter: ["Newsletter", "Weekly Newsletter", "GYSH Newsletter"],
+  newsletter: ["Newsletter", "Bi-Weekly Newsletter", "Weekly Newsletter", "GYSH Newsletter"],
   workshops: ["Workshops"],
   kids: ["Kids & Teens Corner", "Kids/Teens Corner", "Kids / Teens Corner", "Kids Corner", "Kids & Teens", "Kids/Juniors Corner"],
   seniors: ["Seniors Corner", "Seniors", "Senior Side Hustles"],

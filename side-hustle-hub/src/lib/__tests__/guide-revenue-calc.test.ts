@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { KIDS_GUIDES } from "../kids-guides";
+import { hustleById, SIDE_HUSTLES } from "../side-hustle-catalog";
 import {
   computeGuideCalc,
   guideCalcFieldDisplay,
@@ -132,5 +134,28 @@ describe("guide-revenue-calc", () => {
     expect(result.metrics?.enjoyAmount).toBe(24);
     expect(result.metrics?.growAmount).toBe(24);
     expect(result.metrics?.percentagesValid).toBe(true);
+  });
+
+  it("returns a finite marginPercent so #053–#056 cannot blank the Launch Guide", () => {
+    const ids = [
+      "kids-craft-hustle",
+      "create-games-kids",
+      "create-games-junior",
+      "custom-bookmark-creator",
+    ];
+    for (const id of ids) {
+      const profile = guideCalcProfileForId(id);
+      const result = computeGuideCalc(profile.mode, profile.defaults, profile.budget);
+      expect(Number.isFinite(result.marginPercent), id).toBe(true);
+    }
+  });
+
+  it("returns a finite marginPercent for every catalog and kids guide", () => {
+    const ids = [...new Set([...SIDE_HUSTLES.map((h) => h.id), ...KIDS_GUIDES.map((g) => g.id)])];
+    for (const id of ids) {
+      const profile = guideCalcProfileForId(id, hustleById(id)?.name || id);
+      const result = computeGuideCalc(profile.mode, profile.defaults, profile.budget);
+      expect(Number.isFinite(result.marginPercent), id).toBe(true);
+    }
   });
 });

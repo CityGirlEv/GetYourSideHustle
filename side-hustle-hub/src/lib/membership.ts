@@ -365,6 +365,28 @@ export function mergeMerchNote(
   return `${without}${without ? " · " : ""}${stamp}`.slice(0, 1900);
 }
 
+/** True when user notes already store a complimentary merch stamp. */
+export function notesHaveMerchChoice(notes: string | null | undefined): boolean {
+  return /(?:^| · )Merch:\s+/i.test(String(notes || ""));
+}
+
+/** Paid members who were upgraded (or signed up) without picking merch/size. */
+export function memberNeedsMerchChoice(
+  tierId: TierId | null | undefined,
+  notes: string | null | undefined,
+): boolean {
+  return isMembershipSubscriber(tierId) && !notesHaveMerchChoice(notes);
+}
+
+export function merchChoiceSummaryFromNotes(notes: string | null | undefined): string | null {
+  const match = String(notes || "").match(/(?:^| · )(Merch:\s*[^·]+)/i);
+  const text = match?.[1]?.trim();
+  return text || null;
+}
+
+/** Complimentary merch size/item picker on My Dashboard. */
+export const MERCH_CLAIM_HREF = "/my-dashboard#merch";
+
 export const ALL_AGES_GUIDES_FREE_PERK: TierMemberPerk = {
   title: "Free comes with Side Hustle Guides to choose from",
   detail:
@@ -374,7 +396,7 @@ export const ALL_AGES_GUIDES_FREE_PERK: TierMemberPerk = {
 export const ALL_AGES_GUIDES_STARTER_PERK: TierMemberPerk = {
   title: "Kids, Teens, Adults & Seniors Guides, ideas, etc.",
   detail:
-    "Unlock full member Kids, Teens, Adults & Seniors guides, ideas, and bookmarks — every age group, not just Adults.",
+    "Unlock full member Kids, Teens, Adults & Seniors guides and ideas — every age group, not just Adults.",
 };
 
 export const ALL_AGES_MATCH_WIZARDS_PERK: TierMemberPerk = {
@@ -420,6 +442,12 @@ export function dashboardNavTone(tier: string | null | undefined): TierId {
   const id = String(tier || "free").toLowerCase();
   if (id === "starter" || id === "pro" || id === "elite") return id;
   return "free";
+}
+
+/** Membership level shown inside the My Dashboard header bubble. */
+export function dashboardNavPlanLabel(tier: string | null | undefined): string {
+  const id = dashboardNavTone(tier);
+  return MEMBERSHIP_TIERS.find((t) => t.id === id)?.name ?? "Free";
 }
 
 /** Bi-Weekly Newsletter archive + inbox — Starter & Above (admins / QA / Dev bypass). */
@@ -1284,7 +1312,7 @@ export const MEMBERSHIP_COMPARE_ROWS: readonly MembershipCompareRow[] = [
   },
   {
     id: "newsletter",
-    label: "Weekly Newsletter archive",
+    label: "Bi-weekly newsletter archive",
     cells: { free: "—", starter: "Yes", pro: "Yes", elite: "Yes" },
   },
   {

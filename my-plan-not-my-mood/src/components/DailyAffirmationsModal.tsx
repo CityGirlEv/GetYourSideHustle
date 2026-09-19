@@ -20,6 +20,7 @@ import {
   SESSION_META,
   AFFIRMATION_CATEGORIES,
 } from '../data/affirmations';
+import { DailyAffirmationsExplainer, SessionExplainerCard } from './DailyAffirmationsExplainer';
 import {
   getSessionAffirmations,
   getCurrentSessionType,
@@ -225,6 +226,8 @@ export const DailyAffirmationsModal: React.FC<DailyAffirmationsModalProps> = ({
                 </p>
               </div>
 
+              <DailyAffirmationsExplainer />
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
                 {/* Morning Card */}
                 <div
@@ -253,10 +256,11 @@ export const DailyAffirmationsModal: React.FC<DailyAffirmationsModalProps> = ({
                       </p>
                     </div>
                     <p className="text-xs text-[#3F3832] leading-relaxed italic pt-1 border-t border-amber-200">
-                      "Start your day from who you are — not how you feel."
+                      "{SESSION_META.morning.supportingCopy}"
                     </p>
+                    <SessionExplainerCard type="morning" />
                   </div>
-                  <button className="mt-4 w-full py-2 bg-[#EA580C] group-hover:bg-[#C2410C] text-white text-xs font-black uppercase rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1">
+                  <button type="button" className="mt-4 w-full min-h-[44px] py-2 bg-[#EA580C] group-hover:bg-[#C2410C] text-white text-xs font-black uppercase rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1">
                     Begin Set <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -288,10 +292,11 @@ export const DailyAffirmationsModal: React.FC<DailyAffirmationsModalProps> = ({
                       </p>
                     </div>
                     <p className="text-xs text-[#3F3832] leading-relaxed italic pt-1 border-t border-orange-200">
-                      "Reset. Your mood doesn't get to rewrite your truth."
+                      "{SESSION_META.midday.supportingCopy}"
                     </p>
+                    <SessionExplainerCard type="midday" />
                   </div>
-                  <button className="mt-4 w-full py-2 bg-[#EA580C] group-hover:bg-[#C2410C] text-white text-xs font-black uppercase rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1">
+                  <button type="button" className="mt-4 w-full min-h-[44px] py-2 bg-[#EA580C] group-hover:bg-[#C2410C] text-white text-xs font-black uppercase rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1">
                     Begin Set <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -323,10 +328,11 @@ export const DailyAffirmationsModal: React.FC<DailyAffirmationsModalProps> = ({
                       </p>
                     </div>
                     <p className="text-xs text-[#3F3832] leading-relaxed italic pt-1 border-t border-indigo-200">
-                      "Release what happened today. Keep what helped you grow."
+                      "{SESSION_META.night.supportingCopy}"
                     </p>
+                    <SessionExplainerCard type="night" />
                   </div>
-                  <button className="mt-4 w-full py-2 bg-[#EA580C] group-hover:bg-[#4338CA] text-white text-xs font-black uppercase rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1">
+                  <button type="button" className="mt-4 w-full min-h-[44px] py-2 bg-[#EA580C] group-hover:bg-[#4338CA] text-white text-xs font-black uppercase rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1">
                     Begin Set <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -362,6 +368,9 @@ export const DailyAffirmationsModal: React.FC<DailyAffirmationsModalProps> = ({
                 </h2>
                 <p className="text-xs text-[#3F3832] font-mono uppercase tracking-widest">
                   {sessionMeta.supportingCopy}
+                </p>
+                <p className="text-sm text-[#3F3832] font-medium leading-relaxed max-w-md mx-auto pt-2" data-testid={`${selectedSessionType}-set-how-to-use`}>
+                  {sessionMeta.howToUse}
                 </p>
               </div>
 

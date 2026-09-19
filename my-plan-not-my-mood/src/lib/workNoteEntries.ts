@@ -124,6 +124,10 @@ export function serializeWorkNotes(entries: WorkNoteEntry[]): string {
   );
 }
 
+export function workNotesHaveText(raw?: string | null): boolean {
+  return parseWorkNotes(raw).some((entry) => entry.text.trim().length > 0);
+}
+
 export function createWorkNote(
   actor: WorkNoteActor,
   text: string,

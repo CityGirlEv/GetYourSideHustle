@@ -22,6 +22,40 @@ import {
   TEE_SALES_SHOP_URL,
   TEE_SALES_WEBSITE,
 } from './teeSalesPlaybook';
+import {
+  PHASE_1_WEBSITE_REVIEW_TASK_ID,
+  phase1WebsiteReviewPageHrefs,
+  phase1WebsiteReviewQaContent,
+  phase1WebsiteReviewTaskContent,
+  phase1WebsiteReviewTestIds,
+} from './phase1WebsiteReview';
+import {
+  SPRINT_2_WEBSITE_REVIEW_TASK_ID,
+  sprint2WebsiteReviewPageHrefs,
+  sprint2WebsiteReviewQaContent,
+  sprint2WebsiteReviewTaskContent,
+  sprint2WebsiteReviewTestIds,
+} from './sprint2WebsiteReview';
+import {
+  FORM_WALKTHROUGH_TASK_ID,
+  formWalkthroughPageHrefs,
+  formWalkthroughQaContent,
+  formWalkthroughTaskContent,
+  formWalkthroughTestIds,
+} from './formWalkthroughTests';
+import {
+  MOOD_WORKFLOW_TASK_ID,
+  moodWorkflowPageHrefs,
+  moodWorkflowQaContent,
+  moodWorkflowTaskContent,
+  moodWorkflowTestIds,
+} from './moodWorkflow';
+import {
+  journalMakeReviewPageHrefs,
+  journalMakeReviewQaContent,
+  journalMakeReviewTaskContent,
+  journalMakeReviewTaskToTestLinks,
+} from './journalMakeReview';
 
 export type WorkItemContentSeed = {
   description: string;
@@ -218,7 +252,13 @@ const WORK_ITEM_PAGE_HREFS: Record<string, string> = {
   'PW-PAY-001': '/pay',
   'PW-JOIN-001': '/join',
   'PW-SITEMAP-001': '/sitemap',
+  'PW-SITEMAP-002': '/sitemap',
   'PW-ADMIN-001': '/admin/testing',
+  ...phase1WebsiteReviewPageHrefs(),
+  ...sprint2WebsiteReviewPageHrefs(),
+  ...formWalkthroughPageHrefs(),
+  ...moodWorkflowPageHrefs(),
+  ...journalMakeReviewPageHrefs(),
 };
 
 function teeSalesVideosSeed(sprintLabel: string): WorkItemContentSeed {
@@ -697,7 +737,7 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     description: 'NonNegotiation.com is the house. MY PLAN, NOT MY MOOD is one brand under it. Home, Shop Gear, and every welcome post introduce the brand that way — not as if the whole site is only the brand.',
     steps: [
       'Keep the site as NonNegotiation — do not rename the domain',
-      'Home kicker: A NonNegotiation brand. Then MY PLAN, NOT MY MOOD',
+      'Home kicker: A Non-Negotiable brand. Then MY PLAN, NOT MY MOOD',
       'Welcome posts say: NonNegotiation is the house, this is one brand under it',
       'Tell TikTok, YouTube, Instagram, and Facebook the same line',
     ],
@@ -829,6 +869,11 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
   't-77': teeSalesVideosSeed('Sprint 2'),
   't-78': teeSalesVideosSeed('Sprint 3'),
   't-79': teeSalesVideosSeed('Sprint 4'),
+  [PHASE_1_WEBSITE_REVIEW_TASK_ID]: phase1WebsiteReviewTaskContent(),
+  [SPRINT_2_WEBSITE_REVIEW_TASK_ID]: sprint2WebsiteReviewTaskContent(),
+  [FORM_WALKTHROUGH_TASK_ID]: formWalkthroughTaskContent(),
+  [MOOD_WORKFLOW_TASK_ID]: moodWorkflowTaskContent(),
+  ...journalMakeReviewTaskContent(),
 };
 
 export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
@@ -1219,22 +1264,27 @@ export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
   },
   'analytics-qa1': {
     description:
-      'Angela has a gather task for Facebook, Instagram, TikTok, YouTube, and Personal each Monday, Wednesday, and Friday from Sprint 1 on. Each task lists the screens to capture.',
+      'Angela uploads the latest analytics for Facebook, Instagram, TikTok, YouTube, and Personal starting tomorrow, then every 3 days. Do not re-upload today’s already-captured screenshots. Each task lists the screens to capture.',
     steps: [
       { label: 'Open the first Facebook gather task', href: '/admin/factory' },
       'Confirm each platform task lists the screens to capture',
-      'Confirm screenshots upload on that day’s platform task',
+      'Confirm the latest screenshots upload on that day’s platform task — not today’s already-uploaded set',
     ],
   },
   'analytics-qa2': {
     description:
-      'Evelyn has an associated review task for each platform gather. Recommendations from that review guide the next create on that platform.',
+      'Evelyn has an associated review task due the day after each platform gather. Recommendations from that review guide the next create on that platform.',
     steps: [
       { label: 'Open the first Facebook review task', href: '/admin/factory' },
       'Confirm every listed screen was uploaded',
       'Confirm recommendations guide the next create on that platform',
     ],
   },
+  ...phase1WebsiteReviewQaContent(),
+  ...sprint2WebsiteReviewQaContent(),
+  ...formWalkthroughQaContent(),
+  ...moodWorkflowQaContent(),
+  ...journalMakeReviewQaContent(),
 };
 
 export function taskContentSeed(id: string): WorkItemContentSeed | undefined {
@@ -1281,6 +1331,11 @@ export const TASK_TO_TEST_LINKS: Record<string, string[]> = {
   't-80': ['website-qa1', 'about-qa1', 'contact-qa1', 'privacy-qa1', 'terms-qa1', 'faq-qa1'],
   't-81': ['list-qa1'],
   't-82': ['website-qa1', 'list-qa1'],
+  [PHASE_1_WEBSITE_REVIEW_TASK_ID]: phase1WebsiteReviewTestIds(),
+  [SPRINT_2_WEBSITE_REVIEW_TASK_ID]: sprint2WebsiteReviewTestIds(),
+  [FORM_WALKTHROUGH_TASK_ID]: formWalkthroughTestIds(),
+  [MOOD_WORKFLOW_TASK_ID]: moodWorkflowTestIds(),
+  ...journalMakeReviewTaskToTestLinks(),
 };
 
 export function linkedTestsForTask(taskId: string): string[] {

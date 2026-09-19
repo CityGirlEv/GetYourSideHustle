@@ -19,6 +19,7 @@ import {
   yearlySavingsUsd,
   type AudienceGroup,
   type MerchItemId,
+  type MerchTshirtSize,
   type TierId,
 } from "../lib/membership";
 import { saveJoinAudience } from "../lib/join-audience";
@@ -60,6 +61,7 @@ import {
 } from "../lib/admin-simulate-payment";
 import { myDashboardLocationTip } from "../lib/dashboard-nav-tip";
 import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
+import { HEARD_ABOUT_SOURCES, parseHeardAboutInput } from "../lib/heard-about";
 import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
 import {
   MembershipMerchChoice,
@@ -162,6 +164,8 @@ export function MembershipSignupPage({
   const [email, setEmail] = useState(() => String(loggedInEmail || "").trim());
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [heardAboutSource, setHeardAboutSource] = useState("");
+  const [heardAboutDetail, setHeardAboutDetail] = useState("");
   const [applyBetaTester, setApplyBetaTester] = useState(false);
   const [betaNda, setBetaNda] = useState<BetaNdaAcceptanceValue>({
     legalName: "",
@@ -183,6 +187,9 @@ export function MembershipSignupPage({
     if (saved && saved.length === count) return saved;
     return Array.from({ length: count }, () => "");
   });
+  const [tshirtSizes, setTshirtSizes] = useState<(MerchTshirtSize | "")[]>(() =>
+    Array.from({ length: merchItemCount(startingTier) }, () => ""),
+  );
 
   // Keep Plan / Audience in sync when opened from a membership bubble (Choose Starter, etc.).
   // After an upgrade, currentTier updates on the profile — follow that so the dropdown
@@ -214,10 +221,16 @@ export function MembershipSignupPage({
       while (next.length < includedMerchCount) next.push("");
       return next;
     });
+    setTshirtSizes((prev) => {
+      if (includedMerchCount <= 0) return [];
+      const next = prev.slice(0, includedMerchCount);
+      while (next.length < includedMerchCount) next.push("");
+      return next;
+    });
   }, [includedMerchCount]);
 
   const resolvedMerch = parseMerchChoices(merchChoices, includedMerchCount);
-  const merchError = merchChoicesError(tier.id, merchChoices);
+  const merchError = merchChoicesError(tier.id, merchChoices, tshirtSizes);
 
   useEffect(() => {
     if (resolvedMerch?.length) savePendingMerchChoices(resolvedMerch);
@@ -378,6 +391,7 @@ export function MembershipSignupPage({
       membershipTier: nextTier,
       audience,
       merchChoices: merch ?? undefined,
+      merchTshirtSizes: tshirtSizes,
       adminSimulatePayment: opts?.adminSimulatePayment === true,
     });
     if (!result.ok) {
@@ -393,7 +407,7 @@ export function MembershipSignupPage({
 
   const handleAdminSimulatePayment = async () => {
     if (!isAdmin || busy) return;
-    const merchErr = merchChoicesError(tier.id, merchChoices);
+    const merchErr = merchChoicesError(tier.id, merchChoices, tshirtSizes);
     if (merchErr) {
       setError(merchErr);
       return;
@@ -415,7 +429,7 @@ export function MembershipSignupPage({
     setTierId(nextTier);
     const nextCount = merchItemCount(nextTier);
     const nextMerch = parseMerchChoices(merchChoices, nextCount);
-    const nextMerchError = merchChoicesError(nextTier, merchChoices);
+    const nextMerchError = merchChoicesError(nextTier, merchChoices, tshirtSizes);
     if (nextMerchError) {
       setError(nextMerchError);
       return;
@@ -492,6 +506,14 @@ export function MembershipSignupPage({
       setError(merchError);
       return;
     }
+    const heardAbout = parseHeardAboutInput({
+      sourceId: heardAboutSource,
+      detail: heardAboutDetail,
+    });
+    if (!heardAbout.ok) {
+      setError(heardAbout.error);
+      return;
+    }
 
     setBusy(true);
     try {
@@ -504,6 +526,8 @@ export function MembershipSignupPage({
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         membershipTier: tier.id,
         merchChoices: resolvedMerch ?? undefined,
+        merchTshirtSizes: tshirtSizes,
+        heardAbout: { sourceId: heardAbout.sourceId, detail: heardAbout.detail },
         claimToken: wizard.claimToken,
         pendingBlueprint: wizard.pendingBlueprint,
         applyBetaTester,
@@ -580,6 +604,7 @@ export function MembershipSignupPage({
         interval: billingInterval,
         creditsToApply: isLoggedIn ? mixedQuote.creditsApplied : 0,
         merchChoices: resolvedMerch ?? undefined,
+        merchTshirtSizes: tshirtSizes,
       });
       if (session?.paid && !session.url) {
         setStripePaid(true);
@@ -704,7 +729,9 @@ export function MembershipSignupPage({
               <MembershipMerchChoice
                 tierId={tier.id}
                 choices={merchChoices}
+                tshirtSizes={tshirtSizes}
                 onChange={setMerchChoices}
+                onTshirtSizesChange={setTshirtSizes}
               />
 
               <label className="membership-signup-role-opt" htmlFor="membership-signup-beta">
@@ -796,6 +823,37 @@ export function MembershipSignupPage({
               data-testid="membership-signup-password-confirm"
             />
 
+            <label htmlFor="membership-signup-heard-about">How did you hear about us?</label>
+            <select
+              id="membership-signup-heard-about"
+              value={heardAboutSource}
+              onChange={(e) => setHeardAboutSource(e.target.value)}
+              required
+              data-testid="membership-signup-heard-about"
+            >
+              <option value="">Select one</option>
+              {HEARD_ABOUT_SOURCES.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.label}
+                </option>
+              ))}
+            </select>
+            {heardAboutSource === "other" ? (
+              <>
+                <label htmlFor="membership-signup-heard-about-detail">Please tell us more</label>
+                <input
+                  id="membership-signup-heard-about-detail"
+                  type="text"
+                  value={heardAboutDetail}
+                  onChange={(e) => setHeardAboutDetail(e.target.value)}
+                  maxLength={80}
+                  required
+                  placeholder="Podcast, neighbor, church…"
+                  data-testid="membership-signup-heard-about-detail"
+                />
+              </>
+            ) : null}
+
             {error && (
               <p className="membership-signup-error" role="alert">
                 {error}
@@ -886,7 +944,9 @@ export function MembershipSignupPage({
             <MembershipMerchChoice
               tierId={tier.id}
               choices={merchChoices}
+              tshirtSizes={tshirtSizes}
               onChange={setMerchChoices}
+              onTshirtSizesChange={setTshirtSizes}
             />
 
             <p className="membership-signup-plan-note">
@@ -950,7 +1010,9 @@ export function MembershipSignupPage({
             <MembershipMerchChoice
               tierId={tier.id}
               choices={merchChoices}
+              tshirtSizes={tshirtSizes}
               onChange={setMerchChoices}
+              onTshirtSizesChange={setTshirtSizes}
             />
 
             {yearly != null && (

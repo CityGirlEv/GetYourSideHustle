@@ -33,10 +33,10 @@ const HEADER_PAD_BOTTOM = 12;
 export const PDF_HEADER_BAND = HEADER_PAD_TOP + PDF_LOGO_H + HEADER_PAD_BOTTOM; // 74
 
 /**
- * Tall footer band — legal disclaimer + website/updated + page numbers.
+ * Tall footer band — copyright, legal disclaimer, website/updated, page numbers.
  * Keep page chrome off the printable edge.
  */
-export const PDF_FOOTER_BAND = 78;
+export const PDF_FOOTER_BAND = 102;
 export const PDF_FOOTER_BASELINE = PDF_PAGE_H - 14;
 /** Breathing room under the header separator before any body content. */
 export const PDF_CONTENT_TOP = PDF_HEADER_BAND + 28;
@@ -332,24 +332,32 @@ function drawFooterChrome(doc: jsPDF) {
   doc.line(PDF_MARGIN, PDF_PAGE_H - PDF_FOOTER_BAND, PDF_PAGE_W - PDF_MARGIN, PDF_PAGE_H - PDF_FOOTER_BAND);
 }
 
-/** Legal disclaimer block in the PDF footer (every printable page). */
+/** Copyright + legal disclaimer block in the PDF footer (every printable page). */
 export function drawPdfLegalDisclaimer(doc: jsPDF): void {
-  const [para1, para2] = legalDisclaimerPdfParagraphs();
-  const top = PDF_PAGE_H - PDF_FOOTER_BAND + 9;
+  const paras = legalDisclaimerPdfParagraphs();
+  const top = PDF_PAGE_H - PDF_FOOTER_BAND + 8;
   const maxW = PDF_CONTENT_W;
-  const lineH = 7.2;
+  const lineH = 7;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.2);
+  doc.setFontSize(6);
   doc.setTextColor(...PDF_BRAND_COLORS.muted);
   let y = top;
-  for (const para of [para1, para2]) {
+  for (let p = 0; p < paras.length; p++) {
+    const para = paras[p]!;
+    if (p === 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.1);
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6);
+    }
     const lines = doc.splitTextToSize(para, maxW) as string[];
     for (const line of lines) {
-      if (y > PDF_FOOTER_BASELINE - 10) break;
+      if (y > PDF_FOOTER_BASELINE - 12) break;
       doc.text(line, PDF_MARGIN, y);
       y += lineH;
     }
-    y += 2;
+    y += 1.8;
   }
 }
 
@@ -540,6 +548,7 @@ export function applyPdfPageBranding(
     if (showDraft) drawPdfDraftWatermark(doc);
     drawPdfBrandedHeader(doc, label, logoDataUrl);
     drawFooterChrome(doc);
+    drawPdfLegalDisclaimer(doc);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);

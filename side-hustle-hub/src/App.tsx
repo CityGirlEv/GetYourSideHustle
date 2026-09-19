@@ -21,7 +21,6 @@ import {
   Star,
   Heart,
   Home,
-  LayoutDashboard,
   Minus,
   Plus,
   ArrowRight,
@@ -33,6 +32,7 @@ import {
 } from "lucide-react";
 import { FacebookIcon } from "./components/FacebookIcon";
 import { HeaderReferralBadge } from "./components/HeaderReferralBadge";
+import { HeaderDashboardBadge } from "./components/HeaderDashboardBadge";
 import { BusyOverlay, WaitLabel } from "./components/WaitFeedback";
 import { HustleCard } from "./components/HustleCard";
 import { type MarketingGuideId } from "./lib/marketing-guides";
@@ -105,7 +105,6 @@ import { SiteFooter } from "./components/SiteFooter";
 import { showGuidesUpdatingScreen, showHomeGuidesLibraryTag } from "./lib/guides-online";
 import type { FooterNavView } from "./components/SiteFooter";
 import type { AudienceGroup, TierId } from "./lib/membership";
-import { dashboardNavTone } from "./lib/membership";
 import { myDashboardLocationTip } from "./lib/dashboard-nav-tip";
 import { COMMUNITY_NAV_CHILDREN, isCommunityNavView } from "./lib/primary-nav";
 import {
@@ -865,7 +864,7 @@ function App() {
             "Create a free account or compare Free through Elite plans.",
             "Kids and Teens can join age-group teams for member guides.",
             "Paid plans unlock consulting time and deeper launch support.",
-            "Log in anytime to track progress and bookmarks.",
+            "Log in anytime to open My Dashboard — Blueprint, credits, and family tools.",
           ],
         };
       case "community":
@@ -880,9 +879,9 @@ function App() {
         };
       case "newsletter":
         return {
-          title: "How the GYSH Weekly Newsletter works",
+          title: "How the GYSH Bi-Weekly Newsletter works",
           steps: [
-            "Starter or higher members get a Friday dual-audience issue — kids glow + adult hustle tip.",
+            "Starter or higher members get two issues a month — kids glow + adult hustle tip.",
             "Read the archive on this page; the same issue lands in your inbox.",
             "Content Factory drafts appear here after they are marked Published.",
             "Free accounts can browse titles, then upgrade to unlock the full issue.",
@@ -1538,7 +1537,7 @@ function App() {
         return "Side Hustle Library";
       case "checklist": return "GYSH Side Hustle Guide";
       case "community": return "GYSH Blog";
-      case "newsletter": return "GYSH Weekly Newsletter";
+      case "newsletter": return "GYSH Bi-Weekly Newsletter";
       case "workshops": return "GYSH Workshops & Speakers";
       case "shop": return "GYSH Shop";
       case "kids": return "GYSH Kids & Teens Corner";
@@ -1566,7 +1565,7 @@ function App() {
 
   const getHeaderDesc = () => {
     if (viewRequiresMemberLogin(activeView) && !effectivePortalLogin) {
-      return "Sign in to save bookmarks, unlock badges, and track launch milestones.";
+      return "Sign in to open My Dashboard — Blueprint, credits, and launch tools.";
     }
     switch (activeView) {
       case "dashboard": return SITE_PURPOSE;
@@ -1591,11 +1590,11 @@ function App() {
       case "beta_credits": return "How Beta Testers earn and spend Kid Credits for testing.";
       case "beta_points": return "Live points board for Beta Testers — passes, re-tests, and totals.";
       case "join": return "Create an account, explore teams, and compare Free through Elite plans.";
-      case "login": return "Sign in to save bookmarks, unlock badges, and track launch milestones.";
+      case "login": return "Sign in to open My Dashboard — Blueprint, credits, and launch tools.";
       case "user_portal":
         return isYouthDashboardUser(authUser)
           ? "Your Blueprint, credits, and shortcuts into Kids & Teens Corner."
-          : "Check guide progress, badges, and launch milestones.";
+          : "Your Blueprint, Schedule Suite, credits, family, and billing.";
       case "admin": return "Manage content calendars, growth guides, and monetization models.";
       default: return "";
     }
@@ -2446,19 +2445,11 @@ function App() {
                   {effectivePortalLogin ? (
                     <>
                       <HeaderReferralBadge />
-                      <button
-                        type="button"
-                        className={`header-title-dashboard-badge header-title-dashboard-badge--compact nav-dashboard-btn${
-                          activeView === "user_portal" ? " is-active" : ""
-                        }`}
-                        data-tier={dashboardNavTone(authUser?.membershipTier)}
+                      <HeaderDashboardBadge
+                        membershipTier={authUser?.membershipTier}
+                        isActive={activeView === "user_portal"}
                         onClick={() => goTo("user_portal")}
-                        data-testid="page-focus-dashboard"
-                        aria-current={activeView === "user_portal" ? "page" : undefined}
-                      >
-                        <LayoutDashboard size={14} aria-hidden />
-                        <span>My Dashboard</span>
-                      </button>
+                      />
                     </>
                   ) : null}
                 </div>
@@ -2547,16 +2538,10 @@ function App() {
                   {effectivePortalLogin ? (
                     <span className="header-title-badges">
                       <HeaderReferralBadge />
-                      <button
-                        type="button"
-                        className="header-title-dashboard-badge header-title-dashboard-badge--compact nav-dashboard-btn"
-                        data-tier={dashboardNavTone(authUser?.membershipTier)}
+                      <HeaderDashboardBadge
+                        membershipTier={authUser?.membershipTier}
                         onClick={() => goTo("user_portal")}
-                        data-testid="page-focus-dashboard"
-                      >
-                        <LayoutDashboard size={14} aria-hidden />
-                        <span>My Dashboard</span>
-                      </button>
+                      />
                     </span>
                   ) : null}
                 </div>
@@ -2995,7 +2980,7 @@ function App() {
                 </h2>
                 <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>
                   {loginMode === "login"
-                    ? "Sign in to unlock bookmarks, calendars, and admin tools."
+                    ? "Sign in to open My Dashboard, calendars, and member tools."
                     : loginMode === "set-password"
                       ? "Enter and confirm your new password for this GYSH account."
                       : "Enter the email on your GYSH account. We’ll send you a reset link."}
@@ -3299,12 +3284,12 @@ function App() {
 
         {activeView === "membership_signup" && (
           <MembershipSignupPage
-            key={`signup-${joinAudience ?? "adult"}-${signupTier}-${signupResumeCheckout ? "resume" : "new"}-${isLoggedIn ? "in" : "out"}`}
+            key={`signup-${joinAudience ?? "adult"}-${signupTier}-${signupResumeCheckout ? "resume" : "new"}-${effectivePortalLogin ? "in" : "out"}`}
             initialAudience={joinAudience ?? readSavedJoinAudience("adult")}
             initialTier={signupTier}
             resumeCheckout={signupResumeCheckout}
             loggedInEmail={authUser?.email ?? null}
-            isLoggedIn={isLoggedIn && Boolean(authUser)}
+            isLoggedIn={effectivePortalLogin && Boolean(authUser)}
             isAdmin={canUseAdminPortal && !previewingAsMember}
             currentTier={
               authUser?.membershipTier === "starter" ||
@@ -3417,6 +3402,7 @@ function App() {
             <UserPortal
               memberName={authUser?.name}
               membershipTier={authUser?.membershipTier}
+              memberNotes={authUser?.notes}
               isAdmin={userHasAdminRole(authUser)}
               initialPortalTab={portalInitialTab ?? undefined}
               focusScheduleId={focusScheduleId}
@@ -3431,6 +3417,9 @@ function App() {
               onOpenJoin={() => openJoin("adult", { scrollToPlans: true })}
               onMembershipChanged={(tier: string) => {
                 setAuthUser((prev) => (prev ? { ...prev, membershipTier: tier } : prev));
+              }}
+              onMerchSaved={(user) => {
+                setAuthUser((prev) => (prev ? { ...prev, notes: user.notes } : prev));
               }}
               onAccountDeactivated={() => {
                 handleLogout();

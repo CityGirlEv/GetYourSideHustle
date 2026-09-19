@@ -927,7 +927,7 @@ export function SeniorSideHustles({
                 )}
                 <p>
                   A lightweight team join for senior-focused updates, workshops, and guides.
-                  A full GYSH account unlocks bookmarks and launch guides sitewide.
+                  A full GYSH account unlocks launch guides sitewide.
                 </p>
               </div>
               <ul className="seniors-join-perks">

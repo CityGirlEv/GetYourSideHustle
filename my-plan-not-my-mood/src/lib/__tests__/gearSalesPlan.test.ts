@@ -6,6 +6,9 @@ import {
   MEMBERSHIPS_COMING_SOON_NOTE,
   PHASE_1_PAID_TO_DATE,
   PHASE_PAYMENT_SCHEDULE,
+  MARKETING_VIDEOS_COMP_NAME,
+  MARKETING_VIDEOS_COUNT,
+  MARKETING_VIDEOS_DELIVERABLE,
   TEE_SALES_VIDEOS_DELIVERABLE,
   TEE_SALES_VIDEOS_PER_SPRINT,
   complimentaryRetailTotal,
@@ -15,6 +18,7 @@ import {
   paymentScheduleRemaining,
   paymentScheduleTotal,
   phase1LineItemTotal,
+  upgradeDeliverableLabel,
 } from '../gearSalesPlan';
 
 describe('gearSalesPlan', () => {
@@ -53,10 +57,15 @@ describe('gearSalesPlan', () => {
     expect(GEAR_SALES_LINE_ITEMS_SEED.find((item) => item.id === 'roi-phase2')?.summary).toMatch(/6\.2K/);
   });
 
-  it('lists complimentary logo, mockups, and hosting at $0 charged with retail if sold', () => {
+  it('lists complimentary logo, mockups, hosting, and 4 marketing videos at $0 charged with retail if sold', () => {
     expect(COMPLIMENTARY_WORK.every((item) => item.chargedAmount === 0)).toBe(true);
-    expect(complimentaryRetailTotal()).toBe(3_750);
+    expect(complimentaryRetailTotal()).toBe(5_250);
     expect(COMPLIMENTARY_WORK.find((item) => item.id === 'comp-logo')?.retailAmount).toBe(1_200);
+    expect(COMPLIMENTARY_WORK.find((item) => item.id === 'comp-videos')).toMatchObject({
+      name: MARKETING_VIDEOS_COMP_NAME,
+      retailAmount: 1_500,
+      chargedAmount: 0,
+    });
     expect(formatUsdAmount(1200)).toBe('$1,200');
     expect(phase1LineItemTotal()).toBe(10_000);
   });
@@ -67,5 +76,17 @@ describe('gearSalesPlan', () => {
     const sprints = GEAR_SALES_LINE_ITEMS_SEED.filter((item) => item.phase === 'phase1_build' && item.id.startsWith('sprint'));
     expect(sprints).toHaveLength(5);
     expect(sprints.every((item) => item.deliverables?.includes(TEE_SALES_VIDEOS_DELIVERABLE))).toBe(true);
+  });
+
+  it('puts 4 complimentary marketing videos on Angela’s Phase 1', () => {
+    expect(MARKETING_VIDEOS_COUNT).toBe(4);
+    expect(MARKETING_VIDEOS_DELIVERABLE).toMatch(/4 marketing videos/);
+    expect(MARKETING_VIDEOS_DELIVERABLE).toMatch(/complimentary at no charge/);
+    expect(GEAR_SALES_LINE_ITEMS_SEED.find((item) => item.id === 'sprint0')?.deliverables).toContain(
+      MARKETING_VIDEOS_DELIVERABLE,
+    );
+    expect(
+      upgradeDeliverableLabel('3 professional videos — Evelyn delivered 4 at no charge'),
+    ).toBe(MARKETING_VIDEOS_DELIVERABLE);
   });
 });

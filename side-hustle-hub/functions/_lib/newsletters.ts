@@ -46,7 +46,7 @@ export async function listMemberNewsletters(env: Env, user: DbUser): Promise<Res
 
   return json({
     access: open ? "open" : "locked",
-    cadence: "weekly",
+    cadence: "biweekly",
     issues,
   });
 }

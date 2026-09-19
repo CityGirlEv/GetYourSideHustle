@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckSquare } from 'lucide-react';
 import { getAppVersionLabel, getAppVersionStamp } from '../lib/appVersion';
 import { StoreRoute } from '../lib/storeRoutes';
-import { websiteLaunchPageIds, launchPageById } from '../lib/launchPages';
+import { FOOTER_COMMON_LINK_IDS, launchPageById } from '../lib/launchPages';
 import { GEAR_SHOP_LABEL } from '../lib/gearSelections';
 import { HOUSE_FOOTER_LINE } from '../lib/teeSalesPlaybook';
 import { ComingSoonBadge } from './ComingSoonBadge';
@@ -48,22 +48,42 @@ export const Footer: React.FC<FooterProps> = ({
             </h4>
             <ul className="space-y-2 font-medium">
               <li>
-                <button onClick={() => onNavigate('gear')} className="hover:text-earth-terracotta cursor-pointer">
+                <button
+                  type="button"
+                  data-testid="footer-gear"
+                  onClick={() => onNavigate('gear')}
+                  className="hover:text-earth-terracotta cursor-pointer"
+                >
                   {GEAR_SHOP_LABEL}
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('planners')} className="hover:text-earth-terracotta cursor-pointer">
+                <button
+                  type="button"
+                  data-testid="footer-planners"
+                  onClick={() => onNavigate('planners')}
+                  className="hover:text-earth-terracotta cursor-pointer"
+                >
                   Planners & Desk Pads
                 </button>
               </li>
               <li>
-                <button onClick={() => onScrollToSection('products')} className="hover:text-earth-terracotta cursor-pointer">
+                <button
+                  type="button"
+                  data-testid="footer-collections"
+                  onClick={() => onNavigate('gear')}
+                  className="hover:text-earth-terracotta cursor-pointer"
+                >
                   All Collections
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('sitemap')} className="hover:text-earth-terracotta cursor-pointer min-h-[44px]">
+                <button
+                  type="button"
+                  data-testid="footer-sitemap"
+                  onClick={() => onNavigate('sitemap')}
+                  className="hover:text-earth-terracotta cursor-pointer min-h-[44px]"
+                >
                   Site Map
                 </button>
               </li>
@@ -72,10 +92,10 @@ export const Footer: React.FC<FooterProps> = ({
 
           <div>
             <h4 className="font-mono text-xs font-bold text-earth-espresso uppercase tracking-wider mb-3">
-              Website
+              Common Links
             </h4>
             <ul className="space-y-2 font-medium">
-              {websiteLaunchPageIds().map((id) => (
+              {FOOTER_COMMON_LINK_IDS.map((id) => (
                 <li key={id}>
                   <button
                     type="button"
@@ -83,20 +103,10 @@ export const Footer: React.FC<FooterProps> = ({
                     className="hover:text-earth-terracotta cursor-pointer min-h-[44px]"
                     data-testid={`footer-${id}`}
                   >
-                    {launchPageById(id).title}
+                    {launchPageById(id).navLabel ?? launchPageById(id).title}
                   </button>
                 </li>
               ))}
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('list')}
-                  className="hover:text-earth-terracotta cursor-pointer min-h-[44px] text-earth-terracotta font-bold"
-                  data-testid="footer-list"
-                >
-                  Mailing List
-                </button>
-              </li>
             </ul>
           </div>
 
@@ -106,8 +116,33 @@ export const Footer: React.FC<FooterProps> = ({
             </h4>
             <ul className="space-y-2 font-medium">
               <li>
-                <button onClick={() => onNavigate('pay')} className="hover:text-earth-terracotta cursor-pointer text-earth-terracotta font-bold min-h-[44px]">
+                <button
+                  type="button"
+                  data-testid="footer-pay"
+                  onClick={() => onNavigate('pay')}
+                  className="hover:text-earth-terracotta cursor-pointer text-earth-terracotta font-bold min-h-[44px]"
+                >
                   Make Payment
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('beta-rewards')}
+                  className="hover:text-earth-terracotta cursor-pointer min-h-[44px]"
+                  data-testid="footer-beta-rewards"
+                >
+                  Beta Tester Rewards
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('beta-guide')}
+                  className="hover:text-earth-terracotta cursor-pointer min-h-[44px]"
+                  data-testid="footer-beta-guide"
+                >
+                  Beta Testing Guide
                 </button>
               </li>
               {showMemberships && (
@@ -119,17 +154,29 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               )}
               <li>
-                <button onClick={() => onScrollToSection('mood-tool')} className="hover:text-earth-terracotta cursor-pointer">
+                <button
+                  type="button"
+                  data-testid="footer-mood"
+                  onClick={() => onScrollToSection('mood-tool')}
+                  className="hover:text-earth-terracotta cursor-pointer"
+                >
                   Is Your Mood Your Plan? Tool
                 </button>
               </li>
               <li>
-                <button onClick={() => onScrollToSection('receipts')} className="hover:text-earth-terracotta cursor-pointer">
+                <button
+                  type="button"
+                  data-testid="footer-receipts"
+                  onClick={() => onScrollToSection('receipts')}
+                  className="hover:text-earth-terracotta cursor-pointer"
+                >
                   "What Won Today?" Receipt Builder
                 </button>
               </li>
               <li>
                 <button
+                  type="button"
+                  data-testid="footer-challenge"
                   onClick={hasMembershipAccess ? onOpenChallenge : onOpenJoin}
                   className="hover:text-earth-terracotta cursor-pointer text-earth-terracotta font-bold"
                 >
@@ -154,6 +201,23 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
           </div>
         </div>
+
+        <nav
+          aria-label="Common links"
+          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pb-5"
+          data-testid="footer-common-links"
+        >
+          {FOOTER_COMMON_LINK_IDS.map((id) => (
+            <button
+              key={`bar-${id}`}
+              type="button"
+              onClick={() => onNavigate(id)}
+              className="min-h-[44px] text-[11px] font-black uppercase tracking-wider text-earth-espresso hover:text-earth-terracotta cursor-pointer"
+            >
+              {launchPageById(id).navLabel ?? launchPageById(id).title}
+            </button>
+          ))}
+        </nav>
 
         {/* Powered by Munties AI Agents Pill Badge & Confidentiality Note */}
         <div className="flex flex-col items-center justify-center pt-2 pb-4 space-y-3">

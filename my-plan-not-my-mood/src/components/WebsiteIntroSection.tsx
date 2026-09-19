@@ -1,7 +1,7 @@
 import React from 'react';
 import { Globe } from 'lucide-react';
 import type { StoreRoute } from '../lib/storeRoutes';
-import { websiteLaunchPageIds, launchPageById } from '../lib/launchPages';
+import { HOME_WEBSITE_LINK_IDS, launchPageById } from '../lib/launchPages';
 import { MailingListSignup } from './MailingListSignup';
 
 interface WebsiteIntroSectionProps {
@@ -23,7 +23,7 @@ export const WebsiteIntroSection: React.FC<WebsiteIntroSectionProps> = ({ onNavi
           Sign up for the mailing list below — that is not a membership.
         </p>
         <div className="flex flex-wrap gap-2">
-          {websiteLaunchPageIds().map((id) => {
+          {HOME_WEBSITE_LINK_IDS.map((id) => {
             const page = launchPageById(id);
             return (
               <button
@@ -32,17 +32,10 @@ export const WebsiteIntroSection: React.FC<WebsiteIntroSectionProps> = ({ onNavi
                 onClick={() => onNavigate(id)}
                 className="min-h-[44px] px-4 rounded-xl border-2 border-[#1F1917] bg-[#FAF8F5] text-xs font-black uppercase tracking-wider hover:bg-[#FFEDD5] cursor-pointer"
               >
-                {page.title}
+                {page.navLabel ?? page.title}
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => onNavigate('list')}
-            className="min-h-[44px] px-4 rounded-xl bg-[#C2410C] text-white text-xs font-black uppercase tracking-wider hover:bg-[#9A3412] cursor-pointer"
-          >
-            Mailing list
-          </button>
         </div>
       </div>
       <MailingListSignup />

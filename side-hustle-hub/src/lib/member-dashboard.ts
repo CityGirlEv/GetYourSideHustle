@@ -1,3 +1,16 @@
+/** Wired My Dashboard tabs only — no placeholder gamification tabs. */
+export const DASHBOARD_PORTAL_TAB_IDS = [
+  "blueprint",
+  "schedule",
+  "family",
+  "credits",
+  "referral",
+  "purchases",
+  "earn",
+] as const;
+
+export type DashboardPortalTabId = (typeof DASHBOARD_PORTAL_TAB_IDS)[number];
+
 /** My Dashboard landing (Blueprint tab is the default). */
 export const DASHBOARD_HREF = "/my-dashboard";
 

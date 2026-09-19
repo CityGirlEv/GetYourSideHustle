@@ -37,7 +37,10 @@ import {
   formatMerchChoiceNote,
   merchChoicesError,
   merchItemCount,
+  memberNeedsMerchChoice,
+  merchChoiceSummaryFromNotes,
   mergeMerchNote,
+  notesHaveMerchChoice,
   parseMerchChoices,
 } from "../membership";
 
@@ -54,14 +57,14 @@ describe("membership catalog", () => {
     expect(isMembershipSubscriber("starter")).toBe(true);
   });
 
-  it("unlocks the weekly newsletter at Starter", () => {
+  it("unlocks the bi-weekly newsletter at Starter", () => {
     expect(canAccessNewsletter("free")).toBe(false);
     expect(canAccessNewsletter("starter")).toBe(true);
     expect(canAccessNewsletter("pro")).toBe(true);
     expect(canAccessNewsletter("elite")).toBe(true);
     expect(canAccessNewsletter("free", { isAdmin: true })).toBe(true);
     for (const audience of ["adult", "kids", "junior", "senior"] as const) {
-      expect(MEMBER_PERKS_BY_TIER.starter[audience].some((p) => /weekly newsletter/i.test(p.title))).toBe(
+      expect(MEMBER_PERKS_BY_TIER.starter[audience].some((p) => /bi-weekly newsletter/i.test(p.title))).toBe(
         true,
       );
     }
@@ -296,6 +299,7 @@ describe("membership catalog", () => {
         .toLowerCase();
       expect(starterBlob).toMatch(/kids, teens, adults & seniors guides, ideas/);
       expect(starterBlob).toMatch(/kids, teens, adults & seniors side hustle match wizards/);
+      expect(starterBlob).not.toMatch(/bookmarks/);
       expect(starterBlob).not.toMatch(/free for every age/);
 
       const numbered = numberedTierPerks("starter", audience);
@@ -384,7 +388,16 @@ describe("membership catalog", () => {
     expect(merchChoicesError("starter", ["tshirt"], [""])).toMatch(/size/i);
     expect(merchChoicesError("starter", ["tshirt"], ["M"])).toBeNull();
     expect(formatMerchChoiceNote(["tshirt", "hat"])).toBe("Merch: 1× T-shirt + 1× hat");
+    expect(formatMerchChoiceNote(["tshirt"], ["M"])).toBe("Merch: 1× T-shirt (M)");
     expect(mergeMerchNote("Free GYSH member", ["hat"])).toMatch(/Merch: 1× hat/);
+    expect(notesHaveMerchChoice("FOUNDING-STARTER 2/5")).toBe(false);
+    expect(notesHaveMerchChoice("FOUNDING-STARTER 2/5 · Merch: 1× T-shirt (L)")).toBe(true);
+    expect(memberNeedsMerchChoice("starter", "FOUNDING-STARTER 2/5")).toBe(true);
+    expect(memberNeedsMerchChoice("starter", "Merch: 1× hat")).toBe(false);
+    expect(memberNeedsMerchChoice("free", "")).toBe(false);
+    expect(merchChoiceSummaryFromNotes("Adult · Merch: 1× T-shirt (M) · other")).toBe(
+      "Merch: 1× T-shirt (M)",
+    );
     for (const audience of ["adult", "kids", "junior", "senior"] as const) {
       expect(MEMBER_PERKS_BY_TIER.starter[audience].some((p) => /t-shirt or hat/i.test(p.title))).toBe(
         true,

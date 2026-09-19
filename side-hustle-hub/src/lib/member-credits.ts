@@ -63,10 +63,23 @@ export type MemberCreditsSummary = {
 
 const TIER_IDS = new Set<string>(["free", "starter", "pro", "elite"]);
 const AUDIENCES = new Set<string>(["kids", "junior", "adult", "senior"]);
+const TIER_RANK: Record<TierId, number> = { free: 0, starter: 1, pro: 2, elite: 3 };
 
 export function normalizeTierId(raw: string | null | undefined): TierId {
   const t = String(raw || "free").toLowerCase();
   return (TIER_IDS.has(t) ? t : "free") as TierId;
+}
+
+/** Highest paid plan among account / session / purchase sources. */
+export function higherMembershipTier(
+  ...rawTiers: Array<string | null | undefined>
+): TierId {
+  let best: TierId = "free";
+  for (const raw of rawTiers) {
+    const t = normalizeTierId(raw);
+    if (TIER_RANK[t] > TIER_RANK[best]) best = t;
+  }
+  return best;
 }
 
 export function normalizeAudience(raw: string | null | undefined): AudienceGroup {
@@ -117,6 +130,15 @@ export function isCreditsDashboardHash(hash: string): boolean {
 export function formatKidCreditBalance(balance: number): string {
   const n = Math.max(0, roundCreditAmount(Number.isFinite(balance) ? balance : 0));
   return `${formatCreditNumber(n)} credit${n === 1 ? "" : "s"}`;
+}
+
+/** Welcome-card copy for every member — loading, then the live wallet total. */
+export function portalWelcomeCreditLabel(
+  balance: number | null | undefined,
+  loading: boolean,
+): string {
+  if (loading) return "Loading credits…";
+  return formatKidCreditBalance(balance ?? 0);
 }
 
 /** Friendly Credits tab headline — always includes a number, including 0. */
@@ -292,14 +314,17 @@ export type InternalCreditsGrantResult = {
   email: string;
   name: string;
   granted: number;
+  removed: number;
+  action: "add" | "remove";
   balance: number;
   reason: string;
 };
 
-/** Admin only — credits page grant onto a parent/family account. */
+/** Admin only — add or remove credits on any member wallet. */
 export async function grantInternalCredits(input: {
   email: string;
   credits: number;
+  action?: "add" | "remove";
 }): Promise<InternalCreditsGrantResult> {
   return api<InternalCreditsGrantResult>("admin/internal-credits", {
     method: "POST",

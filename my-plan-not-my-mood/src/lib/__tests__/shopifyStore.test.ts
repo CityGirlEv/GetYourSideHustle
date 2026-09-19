@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
+  SHOPIFY_ALL_GEAR_COLLECTION_HANDLE,
   SHOPIFY_GEAR_API_PATH,
   SHOPIFY_HAT_COLLECTION_HANDLE,
   SHOPIFY_HOODIE_COLLECTION_HANDLE,
   SHOPIFY_HATS_CTA_LABEL,
   SHOPIFY_HOODIES_CTA_LABEL,
+  SHOPIFY_PUBLIC_COLLECTIONS,
   SHOPIFY_STORE_ORIGIN,
   SHOPIFY_TEE_COLLECTION_HANDLE,
   SHOPIFY_TEES_API_PATH,
@@ -15,6 +17,7 @@ import {
   parseShopifyCollectionProducts,
   parseShopifyGearSections,
   firstPublishableShopifyImage,
+  shopifyAllGearPageUrl,
   shopifyCatalogProducts,
   shopifyCollectionProductsUrl,
   shopifyCollectionUrl,
@@ -22,6 +25,9 @@ import {
   shopifyHoodiePageUrl,
   shopifyGearSitePath,
   shopifyProductUrl,
+  GEAR_HUB_JOURNAL_PLACEHOLDERS,
+  shopifyPublicCollectionUrl,
+  shopifyPublicHubCollections,
   shopifyTeePageUrl,
 } from '../shopifyStore';
 
@@ -40,19 +46,31 @@ function productJson(title: string, handle: string, price: string) {
 }
 
 describe('shopifyStore', () => {
-  it('builds Snatch Vault tee, hoodie, and hat collection URLs', () => {
+  it('builds Snatch Vault tee, hoodie, hat, and all-gear collection URLs', () => {
     expect(SHOPIFY_STORE_ORIGIN).toBe('https://snatchvault.com');
-    expect(SHOPIFY_TEE_COLLECTION_HANDLE).toBe('all-tees');
+    expect(SHOPIFY_ALL_GEAR_COLLECTION_HANDLE).toBe('my-plan-gear');
+    expect(SHOPIFY_TEE_COLLECTION_HANDLE).toBe('non-negotiables-letter-tees');
     expect(SHOPIFY_HOODIE_COLLECTION_HANDLE).toBe('my-plan-hoodie-collection');
     expect(SHOPIFY_HAT_COLLECTION_HANDLE).toBe('my-plan-sports-hat');
-    expect(shopifyTeePageUrl()).toBe('https://snatchvault.com/collections/all-tees');
+    expect(shopifyAllGearPageUrl()).toBe('https://snatchvault.com/collections/my-plan-gear');
+    expect(shopifyTeePageUrl()).toBe('https://snatchvault.com/collections/non-negotiables-letter-tees');
     expect(shopifyHoodiePageUrl()).toBe('https://snatchvault.com/collections/my-plan-hoodie-collection');
     expect(shopifyHatPageUrl()).toBe('https://snatchvault.com/collections/my-plan-sports-hat');
-    expect(shopifyCollectionUrl('all-tees')).toBe('https://snatchvault.com/collections/all-tees');
+    expect(shopifyPublicCollectionUrl('all')).toBe('https://snatchvault.com/collections/my-plan-gear');
+    expect(shopifyPublicCollectionUrl('tee')).toBe(
+      'https://snatchvault.com/collections/non-negotiables-letter-tees',
+    );
+    expect(SHOPIFY_PUBLIC_COLLECTIONS.map((row) => row.id)).toEqual(['all', 'hoodie', 'hat', 'tee']);
+    expect(shopifyPublicHubCollections().map((row) => row.id)).toEqual(['all', 'tee', 'hoodie', 'hat']);
+    expect(GEAR_HUB_JOURNAL_PLACEHOLDERS.map((row) => row.id)).toEqual(['90day', 'deskpad']);
+    expect(GEAR_HUB_JOURNAL_PLACEHOLDERS.every((row) => row.cta === 'Coming soon')).toBe(true);
+    expect(GEAR_HUB_JOURNAL_PLACEHOLDERS[0]?.heading).toBe('90-Day Journal');
+    expect(GEAR_HUB_JOURNAL_PLACEHOLDERS[1]?.heading).toBe('Daily Desk Pad');
+    expect(shopifyCollectionUrl('my-plan-gear')).toBe('https://snatchvault.com/collections/my-plan-gear');
     expect(shopifyProductUrl('unisex-softstyle-logo-tee')).toBe(
       'https://snatchvault.com/products/unisex-softstyle-logo-tee',
     );
-    expect(shopifyCollectionProductsUrl()).toContain('/collections/all-tees/products.json');
+    expect(shopifyCollectionProductsUrl()).toContain('/collections/non-negotiables-letter-tees/products.json');
     expect(SHOPIFY_GEAR_API_PATH).toBe('/api/shopify/gear');
     expect(SHOPIFY_TEES_API_PATH).toBe('/api/shopify/tees');
     expect(SHOPIFY_TEES_CTA_LABEL).toBe('Shop tees');
@@ -200,7 +218,7 @@ describe('shopifyStore', () => {
 
     const tees = await fetchShopifyTeeProducts();
     expect(tees.ok).toBe(true);
-    expect(tees.pageUrl).toBe('https://snatchvault.com/collections/all-tees');
+    expect(tees.pageUrl).toBe('https://snatchvault.com/collections/non-negotiables-letter-tees');
     expect(tees.products[0]?.handle).toBe('unisex-tie-dye-pink-tee');
   });
 

@@ -12,12 +12,14 @@ export type AdminStudioTab =
   | 'memberships'
   | 'certificates'
   | 'emails'
+  | 'mailing-list'
   | 'factory'
   | 'calendar'
   | 'growth'
   | 'budget'
   | 'pay'
   | 'previous-budget'
+  | 'inventory-pricing'
   | 'sitemap'
   | 'guides'
   | 'gear-selections'
@@ -53,6 +55,7 @@ export const ADMIN_STUDIO_TABS: AdminStudioTabDef[] = [
   { id: 'memberships', label: 'Memberships', description: 'Join tiers and access — Coming Soon', comingSoon: true },
   { id: 'certificates', label: 'Certificates', description: 'Beta and completion awards' },
   { id: 'emails', label: 'Emails', description: 'Templates, send settings, and test mail' },
+  { id: 'mailing-list', label: 'List', description: 'Mailing list sign-up' },
   { id: 'factory', label: 'Content Factory', description: 'Phase 1 posts, Gear, Logo Concepts, and calendar' },
   { id: 'calendar', label: 'Posting Schedule', description: 'One document: date, platform, time, and what to post' },
   { id: 'gear-selections', label: 'Gear', description: 'Style cards that already include hat, hoodie, and tee' },
@@ -62,8 +65,9 @@ export const ADMIN_STUDIO_TABS: AdminStudioTabDef[] = [
   { id: 'budget', label: 'Financials', description: 'Interactive budget and PDF downloads' },
   { id: 'pay', label: 'Pay', description: 'Make a phase payment' },
   { id: 'previous-budget', label: 'Previous Budget', description: 'Archived budget with pre-payment discount schedule' },
+  { id: 'inventory-pricing', label: 'Inventory', description: 'Tee, hoodie, and hat prices, costs, and profit split' },
   { id: 'sitemap', label: 'Site Map', description: 'Site map and tree map' },
-  { id: 'guides', label: 'User Guides', description: 'How we run this studio' },
+  { id: 'guides', label: 'Beta Guide', description: 'Beta testing guide Angela and Evelyn can edit' },
 ];
 
 export const ADMIN_STUDIO_GROUPS: AdminStudioGroup[] = [
@@ -75,7 +79,7 @@ export const ADMIN_STUDIO_GROUPS: AdminStudioGroup[] = [
   {
     id: 'people',
     label: 'People & Access',
-    tabs: ['users', 'memberships', 'certificates', 'emails'],
+    tabs: ['users', 'memberships', 'certificates', 'emails', 'mailing-list'],
   },
   {
     id: 'content',
@@ -92,7 +96,7 @@ export const ADMIN_STUDIO_GROUPS: AdminStudioGroup[] = [
 /** Top-level Hub chips rendered last — Financials stays after the group tabs. */
 export const ADMIN_STUDIO_PINNED_TABS: AdminStudioTab[] = ['budget'];
 
-export type FinancialsSubTabId = 'budget' | 'previous-budget' | 'pay';
+export type FinancialsSubTabId = 'budget' | 'inventory-pricing' | 'previous-budget' | 'pay';
 
 export interface FinancialsSubTab {
   id: FinancialsSubTabId;
@@ -103,6 +107,7 @@ export interface FinancialsSubTab {
 export function financialsSubTabs(previousCapturedAt?: string): FinancialsSubTab[] {
   return [
     { id: 'budget', label: 'Budget' },
+    { id: 'inventory-pricing', label: 'Inventory' },
     { id: 'previous-budget', label: previousBudgetTabLabel(previousCapturedAt) },
     { id: 'pay', label: 'Pay' },
   ];
@@ -157,7 +162,7 @@ export function canOpenStudioTab(
     permissions.canManageContentFactory !== undefined
       ? Boolean(permissions.canManageContentFactory)
       : Boolean(permissions.hasAdminRole || permissions.isSuperAdmin);
-  if (id === 'budget' || id === 'pay' || id === 'previous-budget') {
+  if (id === 'budget' || id === 'pay' || id === 'previous-budget' || id === 'inventory-pricing') {
     return Boolean(permissions.canViewBudget ?? (permissions.hasAdminRole || permissions.isSuperAdmin));
   }
   if (id === 'agenda') return Boolean(permissions.canViewAgenda ?? (permissions.hasAdminRole || permissions.isSuperAdmin));
@@ -166,7 +171,7 @@ export function canOpenStudioTab(
   if (id === 'testing') return Boolean(permissions.canViewTesting);
   if (id === 'users') return Boolean(permissions.canManageUsers);
   if (id === 'memberships') return Boolean(permissions.hasAdminRole || permissions.isSuperAdmin);
-  if (id === 'emails') return Boolean(permissions.canManageEmailTemplates);
+  if (id === 'emails' || id === 'mailing-list') return Boolean(permissions.canManageEmailTemplates);
   if (id === 'factory' || id === 'calendar' || id === 'gear-selections' || id === 'asset-library' || id === 'logo-concepts') return factory;
   return staff;
 }
@@ -251,7 +256,7 @@ export type StudioTopSelection =
 
 /** Exactly one Admin Studio top chip is selected — never Financials and a group together. */
 export function isFinancialsTab(tab: string): boolean {
-  return tab === 'budget' || tab === 'pay' || tab === 'previous-budget';
+  return tab === 'budget' || tab === 'pay' || tab === 'previous-budget' || tab === 'inventory-pricing';
 }
 
 export function studioTopSelection(

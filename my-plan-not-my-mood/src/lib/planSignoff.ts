@@ -1,9 +1,16 @@
 export const ANGELA_PLAN_SIGNOFF_KEY = 'myplan_angela_plan_signoff';
+export const PHASE_1_CONTRACT_APPROVE_LABEL = 'Approve Phase 1 Contract';
+export const PHASE_1_CONTRACT_SIGNED_LABEL = 'Phase 1 Contract Signed';
+export const PHASE_1_CONTRACT_BUTTON_TEST_ID = 'phase1-contract-approve';
 
 export interface AngelaPlanSignoff {
   signerName: string;
   signedAt: string;
   planKind: 'angela';
+}
+
+export function phase1ContractButtonLabel(signed: boolean): string {
+  return signed ? PHASE_1_CONTRACT_SIGNED_LABEL : PHASE_1_CONTRACT_APPROVE_LABEL;
 }
 
 export function canSignAngelaPlan(signerName: string): { ok: true } | { ok: false; reason: string } {

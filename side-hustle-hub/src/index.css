@@ -3926,11 +3926,13 @@ html.gysh-mobile-menu-open body {
   opacity: 0.75;
 }
 
-.launch-guide-detail__sidebar-count {
+.launch-guide-detail__sidebar-empty {
+  margin: 10px 8px 0;
+  padding: 10px 8px;
+  font-size: 0.88rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  opacity: 0.75;
+  color: var(--text-primary);
+  line-height: 1.35;
 }
 
 .launch-guide-detail__filters--status .launch-guide-detail__filter-row {
@@ -4149,6 +4151,24 @@ html.gysh-mobile-menu-open body {
 
 .header-title-dashboard-badge svg {
   flex-shrink: 0;
+}
+
+.header-title-dashboard-badge__plan {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 0.72em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.header-title-dashboard-badge[data-tier="free"] .header-title-dashboard-badge__plan {
+  background: rgba(58, 42, 28, 0.14);
 }
 
 .header-title-referral-badge {
@@ -9142,6 +9162,22 @@ button.checklist-checkbox:hover {
   color: #4a3f34;
 }
 
+.gysh-section-panel__reality-check p + p {
+  margin-top: 8px;
+}
+
+.gysh-section-panel__reality-check-subhead {
+  font-weight: 800;
+  color: #3a2a1c;
+}
+
+.gysh-section-panel__reality-check a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
 .gysh-section-panel__intro {
   margin: 0 0 12px;
   display: flex;
@@ -13163,14 +13199,65 @@ button.checklist-checkbox:hover {
   min-width: 0;
 }
 
-.kids-mode-pick-hint {
+.kids-mode-pick-hint,
+.kids-page-header p.kids-mode-pick-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
   margin: 0;
-  max-width: 22rem;
+  width: 100%;
+  max-width: none;
+  padding: 10px 14px 8px;
   text-align: right;
-  font-size: 0.92rem;
-  font-weight: 650;
-  line-height: 1.35;
-  color: var(--text-secondary, #5c4033);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--charcoal);
+  background: linear-gradient(165deg, #fff8ec 0%, #f7e4c4 100%);
+  border: 2px solid color-mix(in srgb, var(--crimson) 42%, var(--gold));
+  border-radius: 14px;
+  box-shadow: 0 4px 14px -6px rgba(155, 47, 40, 0.38);
+  box-sizing: border-box;
+}
+
+.kids-mode-pick-hint__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 999px;
+  background: rgba(155, 47, 40, 0.1);
+  border: 1px solid rgba(155, 47, 40, 0.28);
+  color: var(--crimson);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.kids-mode-pick-hint__text {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--charcoal);
+  line-height: 1.3;
+}
+
+.kids-mode-pick-hint__ages {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--crimson);
+  letter-spacing: 0.01em;
+}
+
+.kids-mode-pick-hint__arrow {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--crimson);
+  animation: wizard-start-here-bounce 1.25s ease-in-out infinite;
 }
 
 .kids-page-header--with-modes .kids-mode-toggles {
@@ -13183,8 +13270,10 @@ button.checklist-checkbox:hover {
     width: 100%;
   }
 
-  .kids-mode-pick-hint {
-    text-align: left;
+  .kids-mode-pick-hint,
+  .kids-page-header p.kids-mode-pick-hint {
+    align-items: center;
+    text-align: center;
     max-width: none;
   }
 }
@@ -13648,9 +13737,11 @@ button.checklist-checkbox:hover {
   width: 100%;
 }
 
-.kids-wizard-mode-row .kids-mode-pick-hint {
+.kids-wizard-mode-row .kids-mode-pick-hint,
+.kids-wizard-mode-row .kids-page-header p.kids-mode-pick-hint {
+  align-items: center;
   text-align: center;
-  max-width: none;
+  max-width: min(28rem, 100%);
 }
 
 .kids-wizard-mode-row .kids-mode-bar {
@@ -22728,13 +22819,12 @@ button.launch-checklist-item {
 }
 
 .user-portal {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  display: flex;
+  flex-direction: column;
   gap: 32px;
 }
 
-.user-portal-main,
-.user-portal-side {
+.user-portal-main {
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -22771,9 +22861,49 @@ button.launch-checklist-item {
 
 .user-portal-welcome-row {
   display: grid;
-  grid-template-columns: 1.2fr 0.9fr;
+  grid-template-columns: minmax(0, 1.2fr) minmax(12rem, 0.7fr);
   gap: 18px;
   align-items: start;
+}
+
+.user-portal-welcome-credits {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(155, 47, 40, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 243, 237, 0.9));
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.user-portal-welcome-credits:hover,
+.user-portal-welcome-credits:focus-visible {
+  border-color: rgba(155, 47, 40, 0.45);
+  outline: none;
+}
+
+.user-portal-welcome-credits-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--charcoal);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.user-portal-welcome-credits strong {
+  font-size: 1.45rem;
+  line-height: 1.15;
+  color: var(--crimson);
+}
+
+.kid-dashboard .user-portal-welcome-row {
+  grid-template-columns: minmax(0, 1.1fr) minmax(11rem, 0.65fr) minmax(11rem, 0.7fr);
 }
 
 .user-portal-welcome p,
@@ -25195,29 +25325,6 @@ details[open] > summary .collapse-show-hide::before {
   font-weight: 600;
 }
 
-.user-portal-goal-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.user-portal-progress {
-  margin-top: 18px;
-}
-
-.user-portal-progress-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.95rem;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.user-portal-progress-labels span:last-child {
-  font-weight: 700;
-  color: var(--crimson);
-}
-
 .user-portal-progress-track {
   width: 100%;
   height: 8px;
@@ -25230,87 +25337,6 @@ details[open] > summary .collapse-show-hide::before {
   height: 100%;
   background: var(--crimson);
   border-radius: 9999px;
-}
-
-.user-portal-progress-fill.is-pink {
-  background: var(--grad-pink);
-}
-
-.user-portal-bookmarks {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.user-portal-bookmark-card {
-  padding: 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background: rgba(0, 0, 0, 0.01);
-}
-
-.user-portal-bookmark-card h4 {
-  font-size: 0.95rem;
-  color: var(--text-primary);
-  margin: 8px 0 6px;
-}
-
-.user-portal-bookmark-card p {
-  font-size: 0.9375rem;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.user-portal-badges {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.user-portal-badge {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  opacity: 0.45;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-}
-
-.user-portal-badge.is-unlocked {
-  opacity: 1;
-  background: rgba(124, 58, 237, 0.02);
-  border-color: rgba(124, 58, 237, 0.1);
-}
-
-.user-portal-badge-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.user-portal-badge.is-unlocked .user-portal-badge-icon {
-  background: var(--grad-amber);
-  box-shadow: 0 4px 10px var(--accent-amber-glow);
-}
-
-.user-portal-badge h4 {
-  font-size: 0.9375rem;
-  color: var(--text-primary);
-  font-weight: 600;
-  margin: 0 0 2px;
-}
-
-.user-portal-badge p {
-  font-size: 0.9375rem;
-  color: var(--text-primary);
-  line-height: 1.3;
-  margin: 0;
 }
 
 .user-portal-credits-label {
@@ -25418,6 +25444,137 @@ details[open] > summary .collapse-show-hide::before {
   font-weight: 700;
 }
 
+.users-area-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(92, 64, 51, 0.28);
+  background: #fff;
+}
+
+.users-area-search .text-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  min-height: 42px;
+  padding-left: 0;
+  box-shadow: none;
+}
+
+.users-credit-adjust {
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(155, 47, 40, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.users-credit-adjust-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: var(--charcoal);
+}
+
+.users-credit-adjust-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.users-credit-adjust-row input[type="number"] {
+  width: 6.5rem;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(92, 64, 51, 0.28);
+  background: #fff;
+  font-weight: 600;
+}
+
+.users-credit-adjust-error {
+  margin: 8px 0 0;
+  color: var(--crimson);
+  font-size: 0.9rem;
+}
+
+.users-credit-adjust-ok {
+  margin: 8px 0 0;
+  color: #2f5d3a;
+  font-weight: 700;
+}
+
+.users-membership-adjust .select-input {
+  min-height: 44px;
+  min-width: 8.5rem;
+}
+
+.users-membership-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--charcoal);
+  font-weight: 600;
+}
+
+.users-membership-check input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.users-membership-founding-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(215, 198, 151, 0.55);
+  border: 1px solid var(--bronze);
+  color: var(--charcoal);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.founding-starter-tracker__slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.founding-starter-tracker__slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed rgba(92, 64, 51, 0.28);
+  background: #fff;
+  min-height: 72px;
+}
+
+.founding-starter-tracker__slot.is-filled {
+  border-style: solid;
+  border-color: rgba(74, 107, 82, 0.45);
+  background: rgba(74, 107, 82, 0.08);
+}
+
+.founding-starter-tracker__open {
+  color: var(--bronze);
+  font-weight: 600;
+}
+
 .user-portal-welcome-links {
   margin: 10px 0 0;
   display: flex;
@@ -25468,6 +25625,40 @@ details[open] > summary .collapse-show-hide::before {
   border-radius: 12px;
   border: 1px solid rgba(92, 64, 51, 0.14);
   background: rgba(255, 255, 255, 0.58);
+}
+
+.user-portal-merch-claim {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 2px solid color-mix(in srgb, var(--crimson) 32%, var(--gold));
+  background: linear-gradient(165deg, #fff8ec 0%, #f7e4c4 100%);
+}
+
+.user-portal-merch-claim h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.user-portal-merch-claim p {
+  margin: 0 0 10px;
+}
+
+.user-portal-merch-claim__needed {
+  font-weight: 750;
+  color: var(--crimson);
+}
+
+.user-portal-merch-claim__ok {
+  color: var(--accent-emerald-ink, #3a4f24);
+  font-weight: 700;
+}
+
+.user-portal-merch-claim__error {
+  color: var(--crimson);
+  font-weight: 700;
 }
 
 .user-portal-credits-enrolled-plan {
@@ -25851,8 +26042,8 @@ details[open] > summary .collapse-show-hide::before {
   }
 
   .user-portal-welcome-row,
-  .user-portal-credits-balance-row,
-  .user-portal-bookmarks {
+  .kid-dashboard .user-portal-welcome-row,
+  .user-portal-credits-balance-row {
     grid-template-columns: 1fr;
   }
 

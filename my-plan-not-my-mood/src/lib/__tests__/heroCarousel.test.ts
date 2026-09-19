@@ -3,6 +3,11 @@ import {
   ANGELA_HERO_PHOTOS,
   HERO_CAROUSEL_INTERVAL_MS,
   HERO_CAROUSEL_OBJECT_FIT,
+  HERO_CAROUSEL_ASPECT_CLASS,
+  HERO_CAROUSEL_ASPECT_HEIGHT,
+  HERO_CAROUSEL_ASPECT_WIDTH,
+  HERO_CAROUSEL_COMPACT_HEIGHT_REM,
+  HERO_CAROUSEL_COMPACT_WIDTH_REM,
   HERO_CAROUSEL_SEED_FILES,
   HERO_CAROUSEL_SOURCE_FOLDER,
   addHeroCarouselSlides,
@@ -28,6 +33,11 @@ import {
 describe('heroCarousel', () => {
   it('fills the frame, rotates every 5 seconds, and reads the WebsiteSS folder', () => {
     expect(HERO_CAROUSEL_OBJECT_FIT).toBe('cover');
+    expect(HERO_CAROUSEL_ASPECT_WIDTH).toBe(3);
+    expect(HERO_CAROUSEL_ASPECT_HEIGHT).toBe(4);
+    expect(HERO_CAROUSEL_ASPECT_CLASS).toBe('aspect-[3/4]');
+    expect(HERO_CAROUSEL_COMPACT_WIDTH_REM).toBe(18);
+    expect(HERO_CAROUSEL_COMPACT_HEIGHT_REM).toBe(24);
     expect(HERO_CAROUSEL_INTERVAL_MS).toBe(5000);
     expect(HERO_CAROUSEL_SOURCE_FOLDER).toMatch(/WebsiteSS$/);
     expect(HERO_CAROUSEL_SEED_FILES.length).toBeGreaterThan(3);
@@ -36,6 +46,9 @@ describe('heroCarousel', () => {
     expect(heroCarouselObjectFitFor('angela-white-tee.jpg')).toBe('cover');
     expect(heroCarouselObjectPositionFor('angela-white-hoodie-hat.jpg')).toBe('center 18%');
     expect(heroCarouselObjectPositionFor('angela-red-hoodie.jpg')).toBe('center 14%');
+    expect(heroCarouselObjectPositionFor('angela-white-tee.jpg', true)).toBe('center 10%');
+    expect(heroCarouselObjectPositionFor('angela-white-hoodie-hat.jpg', true)).toBe('center 8%');
+    expect(heroCarouselObjectPositionFor('look.png', true)).toBe('center top');
     expect(seedHeroCarouselSlides()).toHaveLength(HERO_CAROUSEL_SEED_FILES.length);
     expect(isHeroCarouselImageName('shot.PNG')).toBe(true);
     expect(isHeroCarouselImageName('notes.pdf')).toBe(false);

@@ -1056,10 +1056,12 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     suite: "manual",
     steps: [
       "Admin → Users Area",
+      "Use Search users with a name, email, or * / ? wildcard (example: *evelyn* or *@cox.net)",
+      "Open a member card and use Add credits (and Remove if needed) on that user",
       "Filter by Kid, Teens, Adult, Admin, QA",
       "Change a demo user status",
     ],
-    expected: "Filters work; status changes save",
+    expected: "Search and role filters narrow the list; Add credits updates that member’s wallet; status changes save",
     path: "admin",
   },
   {

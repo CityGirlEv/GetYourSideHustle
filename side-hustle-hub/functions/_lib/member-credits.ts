@@ -1,9 +1,10 @@
 /**
  * Member Kid Credit wallet + ledger (D1).
  */
-import { appendAudit, error, getUserByEmail, json, type DbUser, type Env } from "./auth";
+import { appendAudit, error, getUserByEmail, getUserById, json, type DbUser, type Env } from "./auth";
 import {
-  INTERNAL_CREDITS_REASON,
+  internalCreditDelta,
+  internalCreditReason,
   parseInternalCreditGrant,
 } from "../../src/lib/internal-credits";
 import {
@@ -231,7 +232,8 @@ export async function grantMembershipPlanCredits(
 
 export async function getMemberCredits(env: Env, user: DbUser): Promise<Response> {
   try {
-    const synced = await syncMemberEntitlementsFromPurchases(env, user);
+    const fresh = (await getUserById(env.DB, user.id)) ?? user;
+    const synced = await syncMemberEntitlementsFromPurchases(env, fresh);
     const wallet = await reconcileWalletToLedger(env, user.id);
     const { results } = await env.DB.prepare(
       `SELECT id, delta, reason, balance_after, created_at
@@ -487,8 +489,9 @@ export async function syncMemberEntitlementsFromPurchases(
   planCreditsGranted: number;
 }> {
   const email = String(user.email || "").trim().toLowerCase();
-  let membershipTier = String(user.membership_tier || "free").toLowerCase();
-  let audience = String(user.audience || "adult").toLowerCase();
+  const fresh = (await getUserById(env.DB, user.id)) ?? user;
+  let membershipTier = String(fresh.membership_tier || "free").toLowerCase();
+  let audience = String(fresh.audience || "adult").toLowerCase();
   let packCreditsGranted = 0;
   let planCreditsGranted = 0;
 
@@ -503,7 +506,12 @@ export async function syncMemberEntitlementsFromPurchases(
     }
     const rows = await listGyshPaymentsForAudit(env, { email, userId: user.id, limit: 100 });
     const { effectiveMembershipTier } = await import("../../src/lib/member-purchases");
-    const paidTier = effectiveMembershipTier(membershipTier, rows);
+    const { higherMembershipTier } = await import("../../src/lib/member-credits");
+    // Always re-read the account row above so a stale session cannot write Starter over Elite.
+    const paidTier = higherMembershipTier(
+      membershipTier,
+      effectiveMembershipTier(membershipTier, rows),
+    );
     if (paidTier !== "free" && paidTier !== membershipTier) {
       const now = new Date().toISOString();
       const paidAudience = rows
@@ -651,6 +659,24 @@ export async function handleSpendCredits(
     } catch {
       /* email optional */
     }
+    try {
+      const { upsertGyshPayment } = await import("./stripe-payments");
+      await upsertGyshPayment(env, {
+        sessionId: `cred-membership-${user.id}-${Date.now()}`,
+        email: user.email,
+        userId: user.id,
+        kind: "membership",
+        tier: parsed.request.tier,
+        audience: parsed.request.audience,
+        interval: "month",
+        amountCents: 0,
+        paidAt: now,
+        source: "credits",
+        memberName: user.name,
+      });
+    } catch {
+      /* ledger optional */
+    }
   } else {
     const lines =
       parsed.request.kind === "alacarte"
@@ -694,7 +720,7 @@ export async function handleSpendCredits(
   });
 }
 
-/** Admin-only: add credits to a parent/family wallet. Ledger line is Internal Credits Added. */
+/** Admin-only: add or remove credits on any member wallet. */
 export async function handleAdminGrantInternalCredits(
   env: Env,
   request: Request,
@@ -712,24 +738,24 @@ export async function handleAdminGrantInternalCredits(
   const target = await getUserByEmail(env.DB, parsed.email);
   if (!target) return error("No GYSH account found for that email.", 404);
 
+  const delta = internalCreditDelta(parsed.credits, parsed.action);
+  const reason = internalCreditReason(parsed.action);
   let result: { balance: number };
   try {
-    result = await applyMemberCreditDelta(
-      env,
-      target.id,
-      parsed.credits,
-      INTERNAL_CREDITS_REASON,
-    );
+    result = await applyMemberCreditDelta(env, target.id, delta, reason);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Could not add credits.";
+    const msg = e instanceof Error ? e.message : "Could not update credits.";
+    if (/insufficient/i.test(msg)) {
+      return error("Not enough credits on that account to remove that amount.", 400);
+    }
     return error(msg, 500);
   }
   try {
     await appendAudit(
       env.DB,
-      "credits_granted",
+      parsed.action === "remove" ? "credits_removed" : "credits_granted",
       target.email,
-      `${INTERNAL_CREDITS_REASON} · ${parsed.credits} by ${actor.email}`,
+      `${reason} · ${parsed.credits} by ${actor.email}`,
     );
   } catch {
     /* audit optional */
@@ -738,8 +764,10 @@ export async function handleAdminGrantInternalCredits(
     ok: true,
     email: target.email,
     name: target.name,
-    granted: parsed.credits,
+    granted: parsed.action === "add" ? parsed.credits : 0,
+    removed: parsed.action === "remove" ? parsed.credits : 0,
+    action: parsed.action,
     balance: result.balance,
-    reason: INTERNAL_CREDITS_REASON,
+    reason,
   });
 }

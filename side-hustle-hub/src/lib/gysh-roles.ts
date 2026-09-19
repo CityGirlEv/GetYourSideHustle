@@ -478,6 +478,10 @@ export type GyshUser = {
   membershipTier?: string;
   /** Audience lane: kids | junior | adult | senior */
   audience?: string;
+  /** How they said they found GYSH at signup. */
+  heardAbout?: string | null;
+  /** Spendable credit wallet on this membership account. */
+  creditBalance?: number;
   /** ISO timestamp of last successful login (`login_ok`), if known. */
   lastLoginAt?: string | null;
 };
@@ -531,4 +535,45 @@ export async function clearUserMembership(id: string): Promise<GyshUser> {
     method: "DELETE",
   });
   return data.user;
+}
+
+/** Admin: set a member's plan from Users Area / Memberships. Optionally notify and count a first-5 Starter grant. */
+export async function updateUserMembership(
+  id: string,
+  body: {
+    membershipTier: string;
+    notify?: boolean;
+    complimentaryFoundingStarter?: boolean;
+  },
+): Promise<{ user: GyshUser; emailSent: boolean; foundingSlot: number | null }> {
+  const userId = String(id || "").trim();
+  if (!userId) throw new Error("User id is required.");
+  const data = await api<{
+    user: GyshUser;
+    emailSent?: boolean;
+    foundingSlot?: number | null;
+  }>(`users/${encodeURIComponent(userId)}/membership`, {
+    method: "PUT",
+    body,
+  });
+  return {
+    user: data.user,
+    emailSent: data.emailSent === true,
+    foundingSlot: data.foundingSlot ?? null,
+  };
+}
+
+export async function sendMerchClaimEmail(
+  userId: string,
+): Promise<{ emailSent: boolean; message: string }> {
+  const id = String(userId || "").trim();
+  if (!id) throw new Error("User id is required.");
+  const data = await api<{ emailSent?: boolean; message?: string }>("email/merch-claim", {
+    method: "POST",
+    body: { userId: id },
+  });
+  return {
+    emailSent: data.emailSent === true,
+    message: data.message || (data.emailSent ? "Merch size request emailed." : "Email was not sent."),
+  };
 }

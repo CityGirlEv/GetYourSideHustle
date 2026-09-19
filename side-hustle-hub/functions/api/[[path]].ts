@@ -17,9 +17,11 @@ import {
   requireSession,
   type Env,
 } from "../_lib/auth";
+import { handleSaveMemberMerch, handleSendMerchClaimEmail } from "../_lib/member-merch";
 import {
   deleteUser,
   clearUserMembership,
+  updateUserMembership,
   handleContact,
   health,
   listAudit,
@@ -264,6 +266,9 @@ export async function onRequest(context: {
     if (route === "auth/membership-plan" && method === "POST") {
       return withCors(request, await handleUpdateMembershipPlan(env, request, user));
     }
+    if (route === "auth/merch" && method === "POST") {
+      return withCors(request, await handleSaveMemberMerch(env, request, user));
+    }
     if (parts[0] === "member-progress" && parts[1] && method === "GET") {
       return withCors(request, await getMemberProgress(env, user, parts[1]));
     }
@@ -439,6 +444,9 @@ export async function onRequest(context: {
     if (route === "users" && (method === "POST" || method === "PUT")) {
       return withCors(request, await upsertUser(env, request, user));
     }
+    if (parts[0] === "users" && parts[1] && parts[2] === "membership" && method === "PUT") {
+      return withCors(request, await updateUserMembership(env, request, parts[1], user));
+    }
     if (parts[0] === "users" && parts[1] && parts[2] === "membership" && method === "DELETE") {
       return withCors(request, await clearUserMembership(env, parts[1], user));
     }
@@ -542,6 +550,9 @@ export async function onRequest(context: {
     }
     if (route === "email/test-send" && method === "POST") {
       return withCors(request, await sendTestEmail(env, request, user));
+    }
+    if (route === "email/merch-claim" && method === "POST") {
+      return withCors(request, await handleSendMerchClaimEmail(env, request, user));
     }
     if (route === "email/digest/preview" && method === "GET") {
       return withCors(request, await handleAdminPreviewDigest(env, request, user));

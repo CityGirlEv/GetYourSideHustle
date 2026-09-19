@@ -20,6 +20,8 @@ export const SOFT_LAUNCH_FACTORY_SPRINTS = Array.from(
   { length: SOFT_LAUNCH_FACTORY_MAX_SPRINT - SOFT_LAUNCH_FACTORY_MIN_SPRINT + 1 },
   (_, i) => i + SOFT_LAUNCH_FACTORY_MIN_SPRINT,
 );
+/** Button / batch label for seeding the full marketing calendar. */
+export const SOFT_LAUNCH_SEED_ALL_RANGE = `S${SOFT_LAUNCH_FACTORY_MIN_SPRINT}–S${SOFT_LAUNCH_FACTORY_MAX_SPRINT}`;
 
 /**
  * Default Sprint filter for Content Factory — live sprint only,

@@ -7,6 +7,7 @@ import {
   isHumanQaAssignee,
   isInflatedQaId,
   isTestingSuiteNavSelected,
+  isTestingSuiteSubNavOpen,
   matchesSuiteFilter,
   pruneInflatedQaTests,
   suiteForQaTest,
@@ -80,6 +81,9 @@ describe('testSuites', () => {
     expect(isTestingSuiteNavSelected('tasks', 'manual', manual)).toBe(false);
     expect(isTestingSuiteNavSelected('testing', 'vitest', new Set(['vitest']))).toBe(true);
     expect(isTestingSuiteNavSelected('testing', 'playwright', new Set(['playwright']))).toBe(true);
+    expect(isTestingSuiteSubNavOpen('testing')).toBe(true);
+    expect(isTestingSuiteSubNavOpen('tasks')).toBe(false);
+    expect(isTestingSuiteSubNavOpen('plan')).toBe(false);
     expect(boardTabCountLabel(0, 9)).toBe('0/9');
     expect(boardTabCountLabel(3, 44)).toBe('3/44');
   });

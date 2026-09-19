@@ -14,6 +14,7 @@ import {
   History,
   Images,
   ListChecks,
+  Package,
   Mail,
   Map,
   Megaphone,
@@ -43,6 +44,7 @@ import {
   SUITE_LABELS,
   boardTabCountLabel,
   isTestingSuiteNavSelected,
+  isTestingSuiteSubNavOpen,
   type TestSuite,
 } from '../lib/testSuites';
 import { ComingSoonBadge } from './ComingSoonBadge';
@@ -59,6 +61,7 @@ const TAB_ICONS: Record<AdminStudioTab, React.ReactNode> = {
   memberships: <BadgeCheck className="w-4 h-4 shrink-0" />,
   certificates: <Award className="w-4 h-4 shrink-0" />,
   emails: <Mail className="w-4 h-4 shrink-0" />,
+  'mailing-list': <Mail className="w-4 h-4 shrink-0" />,
   factory: <Sparkles className="w-4 h-4 shrink-0" />,
   calendar: <CalendarDays className="w-4 h-4 shrink-0" />,
   'asset-library': <Images className="w-4 h-4 shrink-0" />,
@@ -67,6 +70,7 @@ const TAB_ICONS: Record<AdminStudioTab, React.ReactNode> = {
   budget: <DollarSign className="w-4 h-4 shrink-0" />,
   pay: <Banknote className="w-4 h-4 shrink-0" />,
   'previous-budget': <History className="w-4 h-4 shrink-0" />,
+  'inventory-pricing': <Package className="w-4 h-4 shrink-0" />,
   sitemap: <Map className="w-4 h-4 shrink-0" />,
   guides: <BookOpen className="w-4 h-4 shrink-0" />,
 };
@@ -188,59 +192,66 @@ export const AdminStudioNav: React.FC<AdminStudioNavProps> = ({
             const def = studioTabDef(id);
             const active = activeTab === id;
             return (
-              <React.Fragment key={id}>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => onSelect(id)}
-                  data-testid={`studio-tab-${id}`}
-                  className={brandTabClass(active)}
-                >
-                  {TAB_ICONS[id]}
-                  {def?.label}
-                  {id === 'tasks' && taskBoardCount ? (
-                    <span className="font-mono tabular-nums">{boardTabCountLabel(taskBoardCount.done, taskBoardCount.total)}</span>
-                  ) : null}
-                  {id === 'testing' && testBoardCount ? (
-                    <span className="font-mono tabular-nums">{boardTabCountLabel(testBoardCount.done, testBoardCount.total)}</span>
-                  ) : null}
-                  {def?.comingSoon ? <ComingSoonBadge /> : null}
-                </button>
-                {id === 'testing' && onSelectTestingSuite
-                  ? TEST_SUITES.map((suite) => {
-                      const chip = testingSuiteCounts?.find((item) => item.id === suite);
-                      const selected = isTestingSuiteNavSelected(
-                        activeTab,
-                        suite,
-                        testingSuiteFilter ?? new Set(),
-                      );
-                      return (
-                        <button
-                          key={suite}
-                          type="button"
-                          role="tab"
-                          aria-selected={selected}
-                          onClick={() => {
-                            onSelect('testing');
-                            onSelectTestingSuite(suite);
-                          }}
-                          data-testid={`studio-tab-testing-${suite}`}
-                          className={brandTabClass(selected)}
-                        >
-                          {SUITE_LABELS[suite]}
-                          {chip ? (
-                            <span className="font-mono tabular-nums">{boardTabCountLabel(chip.done, chip.total)}</span>
-                          ) : null}
-                        </button>
-                      );
-                    })
-                  : null}
-              </React.Fragment>
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onSelect(id)}
+                data-testid={`studio-tab-${id}`}
+                className={brandTabClass(active)}
+              >
+                {TAB_ICONS[id]}
+                {def?.label}
+                {id === 'tasks' && taskBoardCount ? (
+                  <span className="font-mono tabular-nums">{boardTabCountLabel(taskBoardCount.done, taskBoardCount.total)}</span>
+                ) : null}
+                {id === 'testing' && testBoardCount ? (
+                  <span className="font-mono tabular-nums">{boardTabCountLabel(testBoardCount.done, testBoardCount.total)}</span>
+                ) : null}
+                {def?.comingSoon ? <ComingSoonBadge /> : null}
+              </button>
             );
           })}
         </div>
       )}
+      {isTestingSuiteSubNavOpen(activeTab) && onSelectTestingSuite ? (
+        <div
+          id="studio-subtabs-testing-suites"
+          role="tablist"
+          aria-label="Testing suites"
+          data-testid="studio-group-items-testing-suites"
+          className={BRAND_TAB_SUB_ROW_CLASS}
+        >
+          {TEST_SUITES.map((suite) => {
+            const chip = testingSuiteCounts?.find((item) => item.id === suite);
+            const selected = isTestingSuiteNavSelected(
+              activeTab,
+              suite,
+              testingSuiteFilter ?? new Set(),
+            );
+            return (
+              <button
+                key={suite}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => {
+                  onSelect('testing');
+                  onSelectTestingSuite(suite);
+                }}
+                data-testid={`studio-tab-testing-${suite}`}
+                className={brandTabClass(selected)}
+              >
+                {SUITE_LABELS[suite]}
+                {chip ? (
+                  <span className="font-mono tabular-nums">{boardTabCountLabel(chip.done, chip.total)}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       {financialsOpen && !openGroup && (
         <div
           id="studio-subtabs-financials"

@@ -29,6 +29,10 @@ import {
   DROPSHIPPING_REALITY_CHECK,
 } from "../lib/dropshipping-guide";
 import {
+  ETSY_STORE_NOTES_WORKSHEET,
+  ETSY_STORE_REALITY_CHECK,
+} from "../lib/etsy-store-guide";
+import {
   FB_MARKETPLACE_HELPER_NOTES_WORKSHEET,
   FB_MARKETPLACE_HELPER_REALITY_CHECK,
 } from "../lib/fb-marketplace-helper-guide";
@@ -92,6 +96,90 @@ import {
   UGC_CREATOR_NOTES_WORKSHEET,
   UGC_CREATOR_REALITY_CHECK,
 } from "../lib/ugc-creator-guide";
+import {
+  DIGITAL_PHOTO_ORGANIZER_NOTES_WORKSHEET,
+  DIGITAL_PHOTO_ORGANIZER_REALITY_CHECK,
+} from "../lib/digital-photo-organizer-guide";
+import {
+  DIGITAL_PRODUCT_FORMATTER_NOTES_WORKSHEET,
+  DIGITAL_PRODUCT_FORMATTER_REALITY_CHECK,
+} from "../lib/digital-product-formatter-guide";
+import {
+  FLIPPING_PROPERTIES_NOTES_WORKSHEET,
+  FLIPPING_PROPERTIES_REALITY_CHECK,
+} from "../lib/flipping-properties-guide";
+import {
+  GARAGE_SALE_HELPER_NOTES_WORKSHEET,
+  GARAGE_SALE_HELPER_REALITY_CHECK,
+} from "../lib/garage-sale-helper-guide";
+import {
+  LOCAL_BUSINESS_AI_SETUP_NOTES_WORKSHEET,
+  LOCAL_BUSINESS_AI_SETUP_REALITY_CHECK,
+} from "../lib/local-business-ai-setup-guide";
+import {
+  NEIGHBORHOOD_HELPER_NOTES_WORKSHEET,
+  NEIGHBORHOOD_HELPER_REALITY_CHECK,
+} from "../lib/neighborhood-helper-guide";
+import {
+  AI_ASSETS_NOTES_WORKSHEET,
+  AI_ASSETS_REALITY_CHECK,
+} from "../lib/ai-assets-guide";
+import {
+  AIRBNB_COHOST_NOTES_WORKSHEET,
+  AIRBNB_COHOST_REALITY_CHECK,
+} from "../lib/airbnb-cohost-guide";
+import {
+  AMAZON_FBA_SELLER_NOTES_WORKSHEET,
+  AMAZON_FBA_SELLER_REALITY_CHECK,
+} from "../lib/amazon-fba-seller-guide";
+import {
+  VIRTUAL_CALL_ASSISTANT_NOTES_WORKSHEET,
+  VIRTUAL_CALL_ASSISTANT_REALITY_CHECK,
+} from "../lib/virtual-call-assistant-guide";
+import {
+  AI_SOCIAL_HELPER_NOTES_WORKSHEET,
+  AI_SOCIAL_HELPER_REALITY_CHECK,
+} from "../lib/ai-social-helper-guide";
+import {
+  BIRTHDAY_PARTY_HELPER_NOTES_WORKSHEET,
+  BIRTHDAY_PARTY_HELPER_REALITY_CHECK,
+} from "../lib/birthday-party-helper-guide";
+import {
+  CLOSET_ORGANIZER_NOTES_WORKSHEET,
+  CLOSET_ORGANIZER_REALITY_CHECK,
+} from "../lib/closet-organizer-guide";
+import {
+  LIEN_TAX_SALES_NOTES_WORKSHEET,
+  LIEN_TAX_SALES_REALITY_CHECK,
+} from "../lib/lien-tax-sales-guide";
+import {
+  JUNIOR_CONTENT_CREATE_NOTES_WORKSHEET,
+  JUNIOR_CONTENT_CREATE_REALITY_CHECK,
+} from "../lib/junior-content-create-guide";
+import {
+  KIDS_CRAFT_HUSTLE_NOTES_WORKSHEET,
+  KIDS_CRAFT_HUSTLE_REALITY_CHECK,
+} from "../lib/kids-craft-hustle-guide";
+import {
+  CREATE_GAMES_KIDS_NOTES_WORKSHEET,
+  CREATE_GAMES_KIDS_REALITY_CHECK,
+} from "../lib/create-games-kids-guide";
+import {
+  CREATE_GAMES_JUNIOR_NOTES_WORKSHEET,
+  CREATE_GAMES_JUNIOR_REALITY_CHECK,
+} from "../lib/create-games-junior-guide";
+import {
+  CUSTOM_BOOKMARK_CREATOR_NOTES_WORKSHEET,
+  CUSTOM_BOOKMARK_CREATOR_REALITY_CHECK,
+} from "../lib/custom-bookmark-creator-guide";
+import {
+  WEB_LEADS_NOTES_WORKSHEET,
+  WEB_LEADS_REALITY_CHECK,
+} from "../lib/web-leads-guide";
+import {
+  MAILBOX_CLEANING_NOTES_WORKSHEET,
+  MAILBOX_CLEANING_REALITY_CHECK,
+} from "../lib/mailbox-cleaning-guide";
 import {
   VIRTUAL_ASSISTANT_NOTES_WORKSHEET,
   VIRTUAL_ASSISTANT_REALITY_CHECK,
@@ -205,6 +293,14 @@ import {
   VACATION_PLANT_REALITY_CHECK,
 } from "../lib/vacation-plant-helper-guide";
 import {
+  PLANT_WATERING_NOTES_WORKSHEET,
+  PLANT_WATERING_REALITY_CHECK,
+} from "../lib/plant-watering-guide";
+import {
+  CRAFTS_NOTES_WORKSHEET,
+  CRAFTS_REALITY_CHECK,
+} from "../lib/crafts-guide";
+import {
   KIDS_PIGGY_FIRST_GOAL_NOTES_WORKSHEET,
   KIDS_PIGGY_FIRST_GOAL_REALITY_CHECK,
 } from "../lib/kids-piggy-first-goal-guide";
@@ -226,6 +322,7 @@ import {
   giftWrappingToolsDisclaimer,
   affiliateToolsDisclaimer,
   dropshippingToolsDisclaimer,
+  etsyStoreToolsDisclaimer,
   fbMarketplaceHelperToolsDisclaimer,
   porchPackageHelperToolsDisclaimer,
   bookPublishingKidsToolsDisclaimer,
@@ -242,6 +339,27 @@ import {
   shortFormVideoEditorToolsDisclaimer,
   googleBusinessProfileHelperToolsDisclaimer,
   ugcCreatorToolsDisclaimer,
+  digitalPhotoOrganizerToolsDisclaimer,
+  digitalProductFormatterToolsDisclaimer,
+  flippingPropertiesToolsDisclaimer,
+  garageSaleHelperToolsDisclaimer,
+  localBusinessAiSetupToolsDisclaimer,
+  neighborhoodHelperToolsDisclaimer,
+  aiAssetsToolsDisclaimer,
+  airbnbCohostToolsDisclaimer,
+  amazonFbaSellerToolsDisclaimer,
+  virtualCallAssistantToolsDisclaimer,
+  aiSocialHelperToolsDisclaimer,
+  birthdayPartyHelperToolsDisclaimer,
+  closetOrganizerToolsDisclaimer,
+  lienTaxSalesToolsDisclaimer,
+  juniorContentCreateToolsDisclaimer,
+  kidsCraftHustleToolsDisclaimer,
+  createGamesKidsToolsDisclaimer,
+  createGamesJuniorToolsDisclaimer,
+  customBookmarkCreatorToolsDisclaimer,
+  webLeadsToolsDisclaimer,
+  mailboxCleaningToolsDisclaimer,
   virtualAssistantToolsDisclaimer,
   virtualReceptionistToolsDisclaimer,
   socialInfluencerToolsDisclaimer,
@@ -258,6 +376,8 @@ import {
   aiPromoVideoToolsDisclaimer,
   aiTimingToolsDisclaimer,
   techHelperToolsDisclaimer,
+  plantWateringToolsDisclaimer,
+  craftsToolsDisclaimer,
   yardHelpToolsDisclaimer,
   homeworkOrganizerToolsDisclaimer,
   groupSetupHelperToolsDisclaimer,
@@ -632,6 +752,13 @@ const COMPLETED_GUIDE_NOTES: Record<
     testId: "vacation-plant-worksheet",
     toolsDisclaimer: vacationPlantToolsDisclaimer,
   },
+  "plant-watering": {
+    reality: PLANT_WATERING_REALITY_CHECK,
+    worksheet: PLANT_WATERING_NOTES_WORKSHEET,
+    summary: "My Plant Watering Service Plan",
+    testId: "plant-watering-worksheet",
+    toolsDisclaimer: plantWateringToolsDisclaimer,
+  },
   "porch-package-helper": {
     reality: PORCH_PACKAGE_REALITY_CHECK,
     worksheet: PORCH_PACKAGE_NOTES_WORKSHEET,
@@ -737,6 +864,160 @@ const COMPLETED_GUIDE_NOTES: Record<
     testId: "ugc-creator-worksheet",
     toolsDisclaimer: ugcCreatorToolsDisclaimer,
   },
+  "digital-photo-organizer": {
+    reality: DIGITAL_PHOTO_ORGANIZER_REALITY_CHECK,
+    worksheet: DIGITAL_PHOTO_ORGANIZER_NOTES_WORKSHEET,
+    summary: "My Digital Photo Organizer Plan",
+    testId: "digital-photo-organizer-worksheet",
+    toolsDisclaimer: digitalPhotoOrganizerToolsDisclaimer,
+  },
+  "digital-product-formatter": {
+    reality: DIGITAL_PRODUCT_FORMATTER_REALITY_CHECK,
+    worksheet: DIGITAL_PRODUCT_FORMATTER_NOTES_WORKSHEET,
+    summary: "My Digital Product Formatter Plan",
+    testId: "digital-product-formatter-worksheet",
+    toolsDisclaimer: digitalProductFormatterToolsDisclaimer,
+  },
+  "flipping-properties": {
+    reality: FLIPPING_PROPERTIES_REALITY_CHECK,
+    worksheet: FLIPPING_PROPERTIES_NOTES_WORKSHEET,
+    summary: "My Flipping Properties Plan",
+    testId: "flipping-properties-worksheet",
+    toolsDisclaimer: flippingPropertiesToolsDisclaimer,
+  },
+  "garage-sale-helper": {
+    reality: GARAGE_SALE_HELPER_REALITY_CHECK,
+    worksheet: GARAGE_SALE_HELPER_NOTES_WORKSHEET,
+    summary: "My Garage Sale Helper Plan",
+    testId: "garage-sale-helper-worksheet",
+    toolsDisclaimer: garageSaleHelperToolsDisclaimer,
+  },
+  "local-business-ai-setup": {
+    reality: LOCAL_BUSINESS_AI_SETUP_REALITY_CHECK,
+    worksheet: LOCAL_BUSINESS_AI_SETUP_NOTES_WORKSHEET,
+    summary: "My Local Business AI Setup Plan",
+    testId: "local-business-ai-setup-worksheet",
+    toolsDisclaimer: localBusinessAiSetupToolsDisclaimer,
+  },
+  "neighborhood-helper": {
+    reality: NEIGHBORHOOD_HELPER_REALITY_CHECK,
+    worksheet: NEIGHBORHOOD_HELPER_NOTES_WORKSHEET,
+    summary: "My Neighborhood Helper Plan",
+    testId: "neighborhood-helper-worksheet",
+    toolsDisclaimer: neighborhoodHelperToolsDisclaimer,
+  },
+  "ai-assets": {
+    reality: AI_ASSETS_REALITY_CHECK,
+    worksheet: AI_ASSETS_NOTES_WORKSHEET,
+    summary: "My AI Asset Studio Plan",
+    testId: "ai-assets-worksheet",
+    toolsDisclaimer: aiAssetsToolsDisclaimer,
+  },
+  "airbnb-cohost": {
+    reality: AIRBNB_COHOST_REALITY_CHECK,
+    worksheet: AIRBNB_COHOST_NOTES_WORKSHEET,
+    summary: "My Airbnb Co-Host Plan",
+    testId: "airbnb-cohost-worksheet",
+    toolsDisclaimer: airbnbCohostToolsDisclaimer,
+  },
+  amazon: {
+    reality: AMAZON_FBA_SELLER_REALITY_CHECK,
+    worksheet: AMAZON_FBA_SELLER_NOTES_WORKSHEET,
+    summary: "My Amazon FBA Seller Plan",
+    testId: "amazon-worksheet",
+    toolsDisclaimer: amazonFbaSellerToolsDisclaimer,
+  },
+  "virtual-call-assistant": {
+    reality: VIRTUAL_CALL_ASSISTANT_REALITY_CHECK,
+    worksheet: VIRTUAL_CALL_ASSISTANT_NOTES_WORKSHEET,
+    summary: "My Virtual Call Assistant Plan",
+    testId: "virtual-call-assistant-worksheet",
+    toolsDisclaimer: virtualCallAssistantToolsDisclaimer,
+  },
+  "ai-social-helper": {
+    reality: AI_SOCIAL_HELPER_REALITY_CHECK,
+    worksheet: AI_SOCIAL_HELPER_NOTES_WORKSHEET,
+    summary: "My AI Social Media Helper Plan",
+    testId: "ai-social-helper-worksheet",
+    toolsDisclaimer: aiSocialHelperToolsDisclaimer,
+  },
+  "birthday-party-helper": {
+    reality: BIRTHDAY_PARTY_HELPER_REALITY_CHECK,
+    worksheet: BIRTHDAY_PARTY_HELPER_NOTES_WORKSHEET,
+    summary: "My Birthday Party Helper Plan",
+    testId: "birthday-party-helper-worksheet",
+    toolsDisclaimer: birthdayPartyHelperToolsDisclaimer,
+  },
+  "closet-organizer": {
+    reality: CLOSET_ORGANIZER_REALITY_CHECK,
+    worksheet: CLOSET_ORGANIZER_NOTES_WORKSHEET,
+    summary: "My Closet Organizer Plan",
+    testId: "closet-organizer-worksheet",
+    toolsDisclaimer: closetOrganizerToolsDisclaimer,
+  },
+  "lien-tax-sales": {
+    reality: LIEN_TAX_SALES_REALITY_CHECK,
+    worksheet: LIEN_TAX_SALES_NOTES_WORKSHEET,
+    summary: "My Court Lien & Tax Sale Plan",
+    testId: "lien-tax-sales-worksheet",
+    toolsDisclaimer: lienTaxSalesToolsDisclaimer,
+  },
+  "junior-content-create": {
+    reality: JUNIOR_CONTENT_CREATE_REALITY_CHECK,
+    worksheet: JUNIOR_CONTENT_CREATE_NOTES_WORKSHEET,
+    summary: "My Content Creation Plan",
+    testId: "junior-content-create-worksheet",
+    toolsDisclaimer: juniorContentCreateToolsDisclaimer,
+  },
+  "kids-craft-hustle": {
+    reality: KIDS_CRAFT_HUSTLE_REALITY_CHECK,
+    worksheet: KIDS_CRAFT_HUSTLE_NOTES_WORKSHEET,
+    summary: "My Craft Hustle Plan",
+    testId: "kids-craft-hustle-worksheet",
+    toolsDisclaimer: kidsCraftHustleToolsDisclaimer,
+  },
+  crafts: {
+    reality: CRAFTS_REALITY_CHECK,
+    worksheet: CRAFTS_NOTES_WORKSHEET,
+    summary: "My Handmade Craft Plan",
+    testId: "crafts-worksheet",
+    toolsDisclaimer: craftsToolsDisclaimer,
+  },
+  "create-games-kids": {
+    reality: CREATE_GAMES_KIDS_REALITY_CHECK,
+    worksheet: CREATE_GAMES_KIDS_NOTES_WORKSHEET,
+    summary: "My Kids Game Plan",
+    testId: "create-games-kids-worksheet",
+    toolsDisclaimer: createGamesKidsToolsDisclaimer,
+  },
+  "create-games-junior": {
+    reality: CREATE_GAMES_JUNIOR_REALITY_CHECK,
+    worksheet: CREATE_GAMES_JUNIOR_NOTES_WORKSHEET,
+    summary: "My Teen Game Plan",
+    testId: "create-games-junior-worksheet",
+    toolsDisclaimer: createGamesJuniorToolsDisclaimer,
+  },
+  "custom-bookmark-creator": {
+    reality: CUSTOM_BOOKMARK_CREATOR_REALITY_CHECK,
+    worksheet: CUSTOM_BOOKMARK_CREATOR_NOTES_WORKSHEET,
+    summary: "My Custom Bookmark Plan",
+    testId: "custom-bookmark-creator-worksheet",
+    toolsDisclaimer: customBookmarkCreatorToolsDisclaimer,
+  },
+  "web-leads": {
+    reality: WEB_LEADS_REALITY_CHECK,
+    worksheet: WEB_LEADS_NOTES_WORKSHEET,
+    summary: "My Local Website Lead Finder Plan",
+    testId: "web-leads-worksheet",
+    toolsDisclaimer: webLeadsToolsDisclaimer,
+  },
+  "mailbox-cleaning": {
+    reality: MAILBOX_CLEANING_REALITY_CHECK,
+    worksheet: MAILBOX_CLEANING_NOTES_WORKSHEET,
+    summary: "My Mailbox Cleaning Plan",
+    testId: "mailbox-cleaning-worksheet",
+    toolsDisclaimer: mailboxCleaningToolsDisclaimer,
+  },
   "virtual-assistant": {
     reality: VIRTUAL_ASSISTANT_REALITY_CHECK,
     worksheet: VIRTUAL_ASSISTANT_NOTES_WORKSHEET,
@@ -771,6 +1052,13 @@ const COMPLETED_GUIDE_NOTES: Record<
     summary: "My Online Community Moderator Plan",
     testId: "online-community-moderator-worksheet",
     toolsDisclaimer: onlineCommunityModeratorToolsDisclaimer,
+  },
+  "etsy-store": {
+    reality: ETSY_STORE_REALITY_CHECK,
+    worksheet: ETSY_STORE_NOTES_WORKSHEET,
+    summary: "My Etsy Shop Plan",
+    testId: "etsy-store-worksheet",
+    toolsDisclaimer: etsyStoreToolsDisclaimer,
   },
 };
 
@@ -1351,6 +1639,46 @@ export function GuidePrepSections({
             {PET_SITTING_REALITY_CHECK.title}
           </strong>
           <p style={{ whiteSpace: "pre-line" }}>{PET_SITTING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "etsy-store" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {ETSY_STORE_REALITY_CHECK.title}
+          </strong>
+          <p>
+            <strong>{ETSY_STORE_REALITY_CHECK.lead}</strong>
+          </p>
+          <p>{ETSY_STORE_REALITY_CHECK.intro}</p>
+          <p className="gysh-section-panel__reality-check-subhead">{ETSY_STORE_REALITY_CHECK.sellHeading}</p>
+          {ETSY_STORE_REALITY_CHECK.categories.map((category) => (
+            <p key={category.heading}>
+              <strong>{category.heading}</strong>
+              <br />
+              {category.body}
+            </p>
+          ))}
+          <p>{ETSY_STORE_REALITY_CHECK.closing}</p>
+          <p>
+            {ETSY_STORE_REALITY_CHECK.creativityLabel}{" "}
+            <a
+              href={ETSY_STORE_REALITY_CHECK.creativityUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {ETSY_STORE_REALITY_CHECK.creativityUrl}
+            </a>
+          </p>
+          <p className="gysh-section-panel__reality-check-subhead">{ETSY_STORE_REALITY_CHECK.minorsHeading}</p>
+          <p>{ETSY_STORE_REALITY_CHECK.minorsBody}</p>
+          <p>
+            {ETSY_STORE_REALITY_CHECK.minorsLabel}{" "}
+            <a href={ETSY_STORE_REALITY_CHECK.minorsUrl} target="_blank" rel="noreferrer">
+              {ETSY_STORE_REALITY_CHECK.minorsUrl}
+            </a>
+          </p>
         </aside>
       ) : completedNotes ? (
         <aside

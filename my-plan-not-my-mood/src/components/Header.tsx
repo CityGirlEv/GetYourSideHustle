@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Award, BadgeCheck, BookOpen, CalendarDays, CheckCircle2, Clock, FileText, Flame, FlaskConical, History, Images, ListChecks, Lock, LogIn, LogOut, Mail, Map, Megaphone, Menu, ShieldCheck, Shirt, ShoppingBag, Sparkles, Stamp, User, UserPlus, Users, X } from 'lucide-react';
+import { Award, BadgeCheck, BookOpen, CalendarDays, CheckCircle2, Clock, FileText, Flame, FlaskConical, History, Images, ListChecks, Lock, LogIn, LogOut, Mail, Map, Megaphone, Menu, Package, ShieldCheck, Shirt, ShoppingBag, Sparkles, Stamp, User, UserPlus, Users, X } from 'lucide-react';
 import { AppUser, canAccessAdminPortal, getRolePermissions, getRoleLabel } from '../lib/userAuth';
-import { StoreRoute } from '../lib/storeRoutes';
+import { HEADER_TRAILING_LINKS, StoreRoute } from '../lib/storeRoutes';
 import type { AdminPortalTab } from '../lib/adminPortalTabs';
 import { headerAdminNavGroups } from '../lib/planPage';
 import type { HeaderAdminNavId } from '../lib/planPage';
@@ -10,7 +10,8 @@ import { canSeeMemberships } from '../lib/membership';
 import { ComingSoonBadge } from './ComingSoonBadge';
 import { HeaderQuoteBar } from './HeaderQuoteBar';
 import { HEADER_BRAND_SLOT_CLASS, HEADER_MOBILE_MENU_CLASS, HEADER_MOBILE_OVERLAY_CLASS, HEADER_STICKY_CLASS, MOBILE_NAV_SECTION_LABELS } from '../lib/headerClearance';
-import { GEAR_SHOP_LABEL } from '../lib/gearSelections';
+import { GEAR_PAGE_LABEL, GEAR_SHOP_LABEL } from '../lib/gearSelections';
+import { HOUSE_BRAND_KICKER } from '../lib/teeSalesPlaybook';
 
 const HEADER_ADMIN_ICONS: Record<HeaderAdminNavId, React.ReactNode> = {
   plan: <FileText className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
@@ -24,6 +25,7 @@ const HEADER_ADMIN_ICONS: Record<HeaderAdminNavId, React.ReactNode> = {
   memberships: <BadgeCheck className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   certificates: <Award className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   emails: <Mail className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
+  'mailing-list': <Mail className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   factory: <Sparkles className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   calendar: <CalendarDays className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   'asset-library': <Images className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
@@ -32,6 +34,7 @@ const HEADER_ADMIN_ICONS: Record<HeaderAdminNavId, React.ReactNode> = {
   budget: <Sparkles className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   pay: <Sparkles className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   'previous-budget': <History className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
+  'inventory-pricing': <Package className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   sitemap: <Map className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
   guides: <BookOpen className="w-3.5 h-3.5 text-[#C2410C] shrink-0" />,
 };
@@ -235,7 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
               MY PLAN, <span className="text-[#C2410C] italic font-black">NOT MY MOOD</span>
             </span>
             <span className="text-[8px] sm:text-[10px] lg:text-xs font-mono uppercase tracking-widest text-[#3F3832] font-extrabold">
-              A NonNegotiation brand
+              {HOUSE_BRAND_KICKER}
             </span>
           </div>
           <div className="md:hidden col-start-3 row-start-1 w-[5.75rem] shrink-0" aria-hidden="true" />
@@ -245,6 +248,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex flex-nowrap items-center justify-end gap-1.5">
               <button
                 type="button"
+                data-testid="header-nav-home"
                 onClick={() => {
                   setActiveSection('hero');
                   onNavigate('home');
@@ -258,29 +262,64 @@ export const Header: React.FC<HeaderProps> = ({
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 Home
               </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('about')}
-                className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-xs font-bold ${
-                  storeRoute === 'about'
-                    ? 'bg-[#C2410C] text-white shadow-sm font-black'
-                    : 'hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#E5DFD3]'
-                }`}
-              >
-                About
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('list')}
-                className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-xs font-bold ${
-                  storeRoute === 'list'
-                    ? 'bg-[#C2410C] text-white shadow-sm font-black'
-                    : 'hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#E5DFD3]'
-                }`}
-              >
-                <Mail className="w-3.5 h-3.5 shrink-0" />
-                List
-              </button>
+
+              <div className="relative shrink-0" ref={shopMenuRef}>
+                <button
+                  type="button"
+                  data-testid="header-shop-menu"
+                  onClick={() => setIsShopMenuOpen((prev) => !prev)}
+                  className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-xs font-bold ${
+                    storeRoute === 'gear' || storeRoute === 'planners' || activeSection === 'products'
+                      ? 'bg-[#C2410C] text-white shadow-sm font-black'
+                      : 'hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#E5DFD3]'
+                  }`}
+                  aria-expanded={isShopMenuOpen}
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                  Shop
+                  <span className="text-[9px] opacity-80">▼</span>
+                </button>
+                {isShopMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1.5 w-56 bg-white border-2 border-[#1F1917] rounded-xl shadow-2xl p-1.5 z-[10000] animate-fadeIn text-[#1F1917]">
+                    <button
+                      type="button"
+                      data-testid="header-shop-menu-gear"
+                      onClick={() => handleShopNav('gear')}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[#FFEDD5] text-xs font-black uppercase cursor-pointer ${
+                        storeRoute === 'gear' ? 'bg-[#FFEDD5] text-[#C2410C]' : ''
+                      }`}
+                    >
+                      {GEAR_PAGE_LABEL}
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="header-shop-planners"
+                      onClick={() => handleShopNav('planners')}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[#FFEDD5] text-xs font-black uppercase cursor-pointer ${
+                        storeRoute === 'planners' ? 'bg-[#FFEDD5] text-[#C2410C]' : ''
+                      }`}
+                    >
+                      Planners
+                    </button>
+                    <div className="border-t border-[#E5DFD3] mt-1 pt-1 space-y-0.5">
+                      <div className="px-2.5 py-0.5 text-[8px] font-mono font-black text-[#3F3832] uppercase tracking-wider">
+                        Coming Soon
+                      </div>
+                      {['Workshops', 'Bundles', 'Gift Cards'].map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          disabled
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold uppercase text-[#3F3832] opacity-50 cursor-not-allowed"
+                          title="Coming soon"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {showMemberships && (
               <button
@@ -298,6 +337,22 @@ export const Header: React.FC<HeaderProps> = ({
                 <ComingSoonBadge className="bg-white/90" />
               </button>
               )}
+
+              {HEADER_TRAILING_LINKS.map((link) => (
+                <button
+                  key={link.route}
+                  type="button"
+                  data-testid={`header-nav-${link.route}`}
+                  onClick={() => onNavigate(link.route)}
+                  className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-xs font-bold ${
+                    storeRoute === link.route
+                      ? 'bg-[#C2410C] text-white shadow-sm font-black'
+                      : 'hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#E5DFD3]'
+                  }`}
+                >
+                  {link.label}
+                </button>
+              ))}
 
               <div className="relative group shrink-0" ref={adminMenuRef}>
                 <button
@@ -430,6 +485,7 @@ export const Header: React.FC<HeaderProps> = ({
             {onOpenAffirmations && (
               <button
                 type="button"
+                data-testid="header-nav-affirmations"
                 onClick={onOpenAffirmations}
                 className="px-2.5 py-0.5 rounded-xl bg-gradient-to-r from-amber-100 via-orange-100 to-amber-100 border border-[#C2410C] text-[#C2410C] hover:bg-[#C2410C] hover:text-white font-black text-xs transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm shrink-0 whitespace-nowrap"
                 title={hasMembershipAccess ? 'Open Daily Affirmations (20-30s Reset)' : 'Join to unlock Affirmations'}
@@ -442,6 +498,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               type="button"
+              data-testid="header-nav-challenge"
               onClick={onOpenChallenge}
               className="px-2.5 py-0.5 rounded-xl bg-[#FFEDD5] border border-[#C2410C] text-[#C2410C] hover:bg-[#C2410C] hover:text-white font-black text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap inline-flex items-center gap-1"
               title={hasMembershipAccess ? 'Start the 7-Day Challenge' : 'Join to unlock the 7-Day Challenge'}
@@ -452,6 +509,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               type="button"
+              data-testid="header-nav-mood"
               onClick={() => handleNavClick('mood-tool')}
               className={`py-0.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap border-b-2 ${
                 activeSection === 'mood-tool'
@@ -464,6 +522,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               type="button"
+              data-testid="header-nav-receipts"
               onClick={() => handleNavClick('receipts')}
               className={`py-0.5 transition-colors cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap border-b-2 ${
                 activeSection === 'receipts'
@@ -487,60 +546,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {GEAR_SHOP_LABEL}
             </button>
-
-            <div className="relative shrink-0" ref={shopMenuRef}>
-              <button
-                type="button"
-                onClick={() => setIsShopMenuOpen((prev) => !prev)}
-                className={`py-0.5 px-2 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap border-b-2 font-black ${
-                  storeRoute === 'gear' || storeRoute === 'planners' || activeSection === 'products'
-                    ? 'border-[#C2410C] text-[#C2410C]'
-                    : 'border-transparent text-[#1F1917] hover:text-[#C2410C]'
-                }`}
-                aria-expanded={isShopMenuOpen}
-              >
-                Shop
-                <span className="text-[9px] text-[#C2410C]">▼</span>
-              </button>
-              {isShopMenuOpen && (
-                <div className="absolute top-full right-0 mt-1.5 w-56 bg-white border-2 border-[#1F1917] rounded-xl shadow-2xl p-1.5 z-[10000] animate-fadeIn text-[#1F1917]">
-                  <button
-                    type="button"
-                    onClick={() => handleShopNav('gear')}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[#FFEDD5] text-xs font-black uppercase cursor-pointer ${
-                      storeRoute === 'gear' ? 'bg-[#FFEDD5] text-[#C2410C]' : ''
-                    }`}
-                  >
-                    {GEAR_SHOP_LABEL}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleShopNav('planners')}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[#FFEDD5] text-xs font-black uppercase cursor-pointer ${
-                      storeRoute === 'planners' ? 'bg-[#FFEDD5] text-[#C2410C]' : ''
-                    }`}
-                  >
-                    Planners
-                  </button>
-                  <div className="border-t border-[#E5DFD3] mt-1 pt-1 space-y-0.5">
-                    <div className="px-2.5 py-0.5 text-[8px] font-mono font-black text-[#3F3832] uppercase tracking-wider">
-                      Coming Soon
-                    </div>
-                    {['Workshops', 'Bundles', 'Gift Cards'].map((label) => (
-                      <button
-                        key={label}
-                        type="button"
-                        disabled
-                        className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold uppercase text-[#3F3832] opacity-50 cursor-not-allowed"
-                        title="Coming soon"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
             </nav>
           </div>
         </div>
@@ -579,23 +584,15 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  closeMobileMenu();
-                  onNavigate('about');
-                }}
-                className="min-h-[44px] px-3 py-2.5 rounded-2xl bg-[#FAF8F5] border-2 border-[#1F1917] text-xs font-black uppercase cursor-pointer flex items-center justify-center"
+                data-testid="header-mobile-shop-menu"
+                onClick={() => handleMobileShopNav('gear')}
+                className={`min-h-[44px] px-3 py-2.5 rounded-2xl text-xs font-black uppercase cursor-pointer flex items-center justify-center gap-1.5 ${
+                  storeRoute === 'gear' || storeRoute === 'planners'
+                    ? 'bg-[#C2410C] text-white'
+                    : 'bg-[#FAF8F5] border-2 border-[#1F1917]'
+                }`}
               >
-                About
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  closeMobileMenu();
-                  onNavigate('list');
-                }}
-                className="min-h-[44px] px-3 py-2.5 rounded-2xl bg-[#FAF8F5] border-2 border-[#1F1917] text-xs font-black uppercase cursor-pointer flex items-center justify-center gap-1.5 col-span-2"
-              >
-                <Mail className="w-4 h-4" /> Mailing List
+                <ShoppingBag className="w-4 h-4" /> Shop
               </button>
               {showMemberships && (
               <button
@@ -610,6 +607,24 @@ export const Header: React.FC<HeaderProps> = ({
                 <ComingSoonBadge className="bg-white/90" />
               </button>
               )}
+              {HEADER_TRAILING_LINKS.map((link) => (
+                <button
+                  key={link.route}
+                  type="button"
+                  data-testid={`header-mobile-nav-${link.route}`}
+                  onClick={() => {
+                    closeMobileMenu();
+                    onNavigate(link.route);
+                  }}
+                  className={`min-h-[44px] px-3 py-2.5 rounded-2xl text-xs font-black uppercase cursor-pointer flex items-center justify-center ${
+                    storeRoute === link.route
+                      ? 'bg-[#C2410C] text-white'
+                      : 'bg-[#FAF8F5] border-2 border-[#1F1917]'
+                  }`}
+                >
+                  {link.label}
+                </button>
+              ))}
             </div>
 
             <section className="rounded-2xl border-2 border-[#1F1917] bg-white p-3 space-y-2">
@@ -623,7 +638,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="min-h-[44px] px-3 py-2.5 rounded-xl bg-[#FAF8F5] border-2 border-[#1F1917] text-xs font-black uppercase cursor-pointer"
                   data-testid="header-mobile-shop-gear"
                 >
-                  {GEAR_SHOP_LABEL}
+                  {GEAR_PAGE_LABEL}
                 </button>
                 <button
                   type="button"

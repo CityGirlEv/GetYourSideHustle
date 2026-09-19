@@ -1,6 +1,11 @@
 export const ACCESSORY_PAGE_LABEL = 'Accessories';
 export const ACCESSORY_PHASE2_LABEL = 'Phase 2';
 export const ACCESSORY_BRAND_NAME = 'My Plan, Not My Mood';
+export const PLANNER_CART_COMING_SOON = true;
+
+export function plannerAddToCartIsEnabled(): boolean {
+  return !PLANNER_CART_COMING_SOON;
+}
 
 export const ACCESSORY_PHASE2_ITEMS = [
   {

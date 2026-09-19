@@ -29,6 +29,27 @@ import { computeResumeLinkedInHelperProfit } from "./resume-linkedin-helper-guid
 import { computeShortFormVideoEditorProfit } from "./short-form-video-editor-guide";
 import { computeGoogleBusinessProfileHelperProfit } from "./google-business-profile-helper-guide";
 import { computeUgcCreatorProfit } from "./ugc-creator-guide";
+import { computeDigitalPhotoOrganizerProfit } from "./digital-photo-organizer-guide";
+import { computeDigitalProductFormatterProfit } from "./digital-product-formatter-guide";
+import { computeFlippingPropertiesProfit } from "./flipping-properties-guide";
+import { computeGarageSaleHelperProfit } from "./garage-sale-helper-guide";
+import { computeLocalBusinessAiSetupProfit } from "./local-business-ai-setup-guide";
+import { computeNeighborhoodHelperProfit } from "./neighborhood-helper-guide";
+import { computeAiAssetsProfit } from "./ai-assets-guide";
+import { computeAirbnbCohostProfit } from "./airbnb-cohost-guide";
+import { computeAmazonFbaSellerProfit } from "./amazon-fba-seller-guide";
+import { computeVirtualCallAssistantProfit } from "./virtual-call-assistant-guide";
+import { computeAiSocialHelperProfit } from "./ai-social-helper-guide";
+import { computeBirthdayPartyHelperProfit } from "./birthday-party-helper-guide";
+import { computeClosetOrganizerProfit } from "./closet-organizer-guide";
+import { computeLienTaxSaleDealProfit } from "./lien-tax-sales-guide";
+import { computeJuniorContentCreateProfit } from "./junior-content-create-guide";
+import { computeKidsCraftHustleProfit } from "./kids-craft-hustle-guide";
+import { computeCreateGamesKidsProfit } from "./create-games-kids-guide";
+import { computeCreateGamesJuniorProfit } from "./create-games-junior-guide";
+import { computeCustomBookmarkCreatorProfit } from "./custom-bookmark-creator-guide";
+import { computeWebLeadsProfit } from "./web-leads-guide";
+import { computeMailboxCleaningProfit } from "./mailbox-cleaning-guide";
 import { computeVirtualAssistantProfit } from "./virtual-assistant-guide";
 import { computeVirtualReceptionistProfit } from "./virtual-receptionist-guide";
 import { computeSocialInfluencerProfit } from "./social-influencer-guide";
@@ -132,11 +153,10 @@ const SOCIAL_BUDGET: GuideCalcBudgetLine[] = [
 ];
 
 /** Guide IDs that use lodging (STR) math. */
-const LODGING_IDS = new Set(["airbnb-cohost"]);
+const LODGING_IDS = new Set<string>([]);
 
 /** Guide IDs that use product / ecom math. */
 const PRODUCT_IDS = new Set([
-  "amazon",
   "digital-products",
   "book-publishing",
 ]);
@@ -1373,6 +1393,604 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
         filmingHours: 0,
         editingHours: 0,
         revisionsDeliveryAdminHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "neighborhood-helper") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Weekly one-time jobs × average price × 4.33 = monthly one-time revenue. Add recurring, add-on/rush, and tips. Subtract supplies, travel, fees, ads, insurance/licensing, and other. Profit ÷ task + travel/admin hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $10 – $40 / job is examples only, not a guarantee. Sell a specific task, not “anything you need.” Revenue is not profit.",
+      defaults: {
+        nhJobsPerWeek: 0,
+        nhAvgPricePerJob: 0,
+        nhRecurringMonthly: 0,
+        nhAddOnRush: 0,
+        nhTipsOther: 0,
+        nhSupplies: 0,
+        nhTravel: 0,
+        nhPaymentFees: 0,
+        nhAdvertising: 0,
+        nhInsuranceLicensing: 0,
+        nhOtherExpenses: 0,
+        nhTaskHours: 0,
+        nhTravelAdminHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "ai-assets") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Starter packs × average fee + campaign kit + retainer + add-on + other = collected revenue. Subtract AI/design subscriptions, licensed inputs, storage, contractors, fees, and other. Profit ÷ hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $500 - $5,000/mo is examples only, not a guarantee. Do not promise automatic copyright. Revenue is not profit.",
+      defaults: {
+        aaStarterPacks: 0,
+        aaAvgStarterFee: 0,
+        aaCampaignKitRevenue: 0,
+        aaRetainerRevenue: 0,
+        aaAddOnRevenue: 0,
+        aaOtherRevenue: 0,
+        aaAiDesignSubscriptions: 0,
+        aaLicensedInputs: 0,
+        aaStorageHardware: 0,
+        aaContractorsReview: 0,
+        aaPaymentFeesRefunds: 0,
+        aaInsuranceOther: 0,
+        aaBriefResearchHours: 0,
+        aaGenerationConceptHours: 0,
+        aaHumanEditExportHours: 0,
+        aaRevisionAdminMarketingHours: 0,
+        aaFinalAssetsDelivered: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "airbnb-cohost") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Defined booking revenue × co-host % + retainer + setup/add-on + other = collected revenue. Subtract travel, software, unreimbursed supplies, contractors, insurance, and fees. Profit ÷ hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed % of booking revenue is examples only, not a guarantee. A co-host agreement is required. Revenue is not profit.",
+      defaults: {
+        acDefinedBookingRevenue: 0,
+        acCoHostPercent: 0,
+        acFixedRetainer: 0,
+        acSetupAddOnRevenue: 0,
+        acOtherRevenue: 0,
+        acTravelMileage: 0,
+        acPhoneSoftware: 0,
+        acSuppliesNotReimbursed: 0,
+        acContractorsBackup: 0,
+        acInsuranceProfessional: 0,
+        acPaymentFeesOther: 0,
+        acGuestCommHours: 0,
+        acTurnoverVendorHours: 0,
+        acOwnerReportAdminHours: 0,
+        acEmergencyAfterHours: 0,
+        acReservationsSupported: 0,
+        acTurnoversCompleted: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "amazon") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Units × selling price − refunds + credits = net sales collected. Subtract landed COGS, Amazon fees, ads/promos, and overhead. Profit after every fee and return is the number that matters.",
+      disclaimerExtra:
+        "Displayed $1,000 - $50,000/mo is gross-sales examples only, not profit and not a guarantee. Amazon approval does not replace compliance.",
+      defaults: {
+        amzUnitsSold: 0,
+        amzAvgSellingPrice: 0,
+        amzRefunds: 0,
+        amzOtherCredits: 0,
+        amzLandedCostPerUnit: 0,
+        amzReferralFees: 0,
+        amzFbaFulfillmentFees: 0,
+        amzStoragePlacementOther: 0,
+        amzAdvertising: 0,
+        amzCouponsPromotions: 0,
+        amzOtherVariableCosts: 0,
+        amzSellingPlanSoftware: 0,
+        amzTestingCompliance: 0,
+        amzInsuranceProfessional: 0,
+        amzPhotographyDesign: 0,
+        amzOtherOverhead: 0,
+        amzUnitsOnHand: 0,
+        amzLeadTimeDays: 0,
+        amzAvgUnitsSoldPerDay: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "virtual-call-assistant") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Hourly + retainer + setup/pilot + overage + other = collected revenue. Subtract VoIP/CRM, equipment, operator payroll, insurance, fees, and other. Owner profit ÷ owner hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $20 – $40 / hour or retainer is examples only, not a guarantee. Revenue is not profit.",
+      defaults: {
+        vcaHourlyRevenue: 0,
+        vcaRetainerRevenue: 0,
+        vcaSetupPilotRevenue: 0,
+        vcaOverageAddOnRevenue: 0,
+        vcaOtherRevenue: 0,
+        vcaVoipCrmSoftware: 0,
+        vcaEquipmentInternetBackup: 0,
+        vcaOperatorPayrollContractors: 0,
+        vcaInsuranceLegalCompliance: 0,
+        vcaPaymentFeesMarketing: 0,
+        vcaOtherExpenses: 0,
+        vcaReservedCoverageHours: 0,
+        vcaSetupTrainingReportingHours: 0,
+        vcaOwnerAdminMarketingHours: 0,
+        vcaOperatorHoursPaid: 0,
+        vcaCallsAnswered: 0,
+        vcaAvgHandleAfterCallMinutes: 0,
+        vcaPeakConcurrentCalls: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "ai-social-helper") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Caption packs × average fee + calendar/caption + monthly package + add-on + other = collected revenue. Subtract AI/design tools, licensed media, equipment, fees, contractors, and other.",
+      disclaimerExtra:
+        "Displayed $15 – $50 / project is examples only, not a guarantee. AI creates drafts; the client owns the final message. Revenue is not profit.",
+      defaults: {
+        ashCaptionPacks: 0,
+        ashAvgPackFee: 0,
+        ashCalendarCaptionRevenue: 0,
+        ashMonthlyPackageRevenue: 0,
+        ashAddOnRevenue: 0,
+        ashOtherRevenue: 0,
+        ashAiDesignTools: 0,
+        ashLicensedMedia: 0,
+        ashEquipmentInternet: 0,
+        ashPaymentFees: 0,
+        ashContractors: 0,
+        ashOtherExpenses: 0,
+        ashBriefResearchHours: 0,
+        ashDraftEditHours: 0,
+        ashApprovalRevisionHours: 0,
+        ashMarketingAdminHours: 0,
+        ashApprovedPosts: 0,
+        ashDraftsSubmitted: 0,
+        ashPostsRequiringRevision: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "birthday-party-helper") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Short jobs × price + full parties × price + add-ons + tips = monthly revenue. Subtract supplies, travel, fees, ads, insurance, and other. Profit ÷ hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $10 – $40 / job is examples only, not a guarantee. Party help is not automatic childcare. Revenue is not profit.",
+      defaults: {
+        bphShortJobs: 0,
+        bphAvgShortPrice: 0,
+        bphFullParties: 0,
+        bphAvgFullPartyPrice: 0,
+        bphAddOnRevenue: 0,
+        bphTipsOther: 0,
+        bphSupplies: 0,
+        bphTravelParking: 0,
+        bphPaymentFees: 0,
+        bphAdvertising: 0,
+        bphInsuranceLicensing: 0,
+        bphOtherExpenses: 0,
+        bphEventHours: 0,
+        bphPrepShoppingHours: 0,
+        bphTravelAdminHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "closet-organizer") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Short sessions × price + projects × price + add-ons + tips = monthly revenue. Subtract labels/bags, travel, donation/disposal, fees, ads, insurance, and other.",
+      disclaimerExtra:
+        "Displayed $10 – $40 / job is examples only, not a guarantee. The client decides what leaves. Revenue is not profit.",
+      defaults: {
+        coShortSessions: 0,
+        coAvgShortPrice: 0,
+        coStandardProjects: 0,
+        coAvgProjectPrice: 0,
+        coAddOnRevenue: 0,
+        coTipsOther: 0,
+        coLabelsBagsSupplies: 0,
+        coTravelParking: 0,
+        coDonationDisposal: 0,
+        coPaymentFees: 0,
+        coAdvertising: 0,
+        coInsuranceLicensing: 0,
+        coOtherExpenses: 0,
+        coOrganizingHours: 0,
+        coShoppingDropOffHours: 0,
+        coTravelAdminHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "lien-tax-sales") {
+    return {
+      mode: "service",
+      title: `${name} — Deal Calculator`,
+      blurb:
+        "Winning bid + buyer premium + title/legal + surviving taxes/liens + repairs + insurance/utilities + financing/holding + selling/closing + other = cash invested. Actual proceeds − cash invested = deal profit.",
+      disclaimerExtra:
+        "Deal-dependent examples only, not a guarantee. This is education, not legal, tax, title, or investment advice. The best bid may be no bid.",
+      defaults: {
+        ltsWinningBid: 0,
+        ltsBuyerPremium: 0,
+        ltsTitleLegalNotice: 0,
+        ltsSurvivingTaxesLiens: 0,
+        ltsRepairsEnvironmental: 0,
+        ltsInsuranceSecurityUtilities: 0,
+        ltsFinancingHolding: 0,
+        ltsSellingClosing: 0,
+        ltsOtherCosts: 0,
+        ltsActualProceeds: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "junior-content-create") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Single pieces × price + 3-post packs × price + other approved revenue = monthly revenue. Subtract design apps, props/printing, fees, and other. Profit ÷ hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $10 – $30 / piece and $25 – $60 / pack are examples only. Parent/guardian manages safety, accounts, and money.",
+      defaults: {
+        singlePiecesPerMonth: 0,
+        avgPricePerSinglePiece: 0,
+        threePostPacksPerMonth: 0,
+        avgPricePerPack: 0,
+        otherApprovedCreativeRevenue: 0,
+        designAppCosts: 0,
+        propsPrinting: 0,
+        paymentFees: 0,
+        otherBusinessExpenses: 0,
+        totalHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "kids-craft-hustle") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Items sold × price + sets × price + other = revenue. Subtract materials, packaging, fees, event table, shipping, refunds, kindness extras, and other.",
+      disclaimerExtra:
+        "Parent/guardian runs the business side. Kindness extras are a cost, not a sale. Examples only — not a guarantee.",
+      defaults: {
+        itemsSold: 0,
+        avgPricePerItem: 0,
+        setsSold: 0,
+        avgPricePerSet: 0,
+        otherRevenue: 0,
+        materials: 0,
+        packaging: 0,
+        platformPaymentFees: 0,
+        eventTableFees: 0,
+        shipping: 0,
+        refundsReplacements: 0,
+        kindnessExtrasGiving: 0,
+        otherExpenses: 0,
+        itemsMade: 0,
+        itemsUnsoldDamaged: 0,
+        totalUnitsSoldOverride: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "create-games-kids") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Fair play cards × price + parent-approved tips + custom family games × price = revenue. Subtract printing/event fees, supplies, tool/asset costs, and other.",
+      disclaimerExtra:
+        "School fair / family tips · or just for fun. Parent nearby. Examples only — not a guarantee.",
+      defaults: {
+        fairPlayCardsSold: 0,
+        pricePerPlayCard: 0,
+        parentApprovedFamilyTips: 0,
+        customFamilyGames: 0,
+        avgPricePerCustomGame: 0,
+        printingEventFees: 0,
+        supplies: 0,
+        toolAssetCosts: 0,
+        otherExpenses: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "create-games-junior") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Paid downloads/tips × average amount + commissions × price = gross revenue. Subtract platform share, payment fees, refunds, tool/asset costs, and other.",
+      disclaimerExtra:
+        "Tips · school credit · itch.io / commissions ($0 – $200+) are examples only. Guardian approval before publishing.",
+      defaults: {
+        paidDownloadsTips: 0,
+        avgGrossAmount: 0,
+        commissionProjects: 0,
+        avgCommissionPrice: 0,
+        platformRevenueShareFees: 0,
+        paymentProcessingFees: 0,
+        refundsChargebacks: 0,
+        toolAssetCosts: 0,
+        otherBusinessExpenses: 0,
+        totalHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "custom-bookmark-creator") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Singles × price + sets × price + projects × price + other = revenue. Subtract cardstock, ink, laminate, ribbon, packaging, fees, event fees, shipping, refunds, and other.",
+      disclaimerExtra:
+        "Displayed $15 – $50 / project is examples only, not a guarantee. Custom does not mean copy anything. Revenue is not profit.",
+      defaults: {
+        cbcSinglesSold: 0,
+        cbcAvgSinglePrice: 0,
+        cbcSetsSold: 0,
+        cbcAvgSetPrice: 0,
+        cbcProjects: 0,
+        cbcAvgProjectPrice: 0,
+        cbcOtherRevenue: 0,
+        cbcCardstockBlanks: 0,
+        cbcInkArtSupplies: 0,
+        cbcLaminate: 0,
+        cbcRibbonTassels: 0,
+        cbcPackaging: 0,
+        cbcPlatformPaymentFees: 0,
+        cbcEventFees: 0,
+        cbcShipping: 0,
+        cbcRefundsReplacements: 0,
+        cbcOtherExpenses: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "web-leads") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Audits × price + builds × price + retainer = monthly gross. Subtract software/hosting, contractors, fees, outreach/travel, and other.",
+      disclaimerExtra:
+        "Displayed $800 - $6,000/mo is examples only, not a guarantee. A lead list is not permission to spam. Do not use WordPress for this guide’s approved build path.",
+      defaults: {
+        wlAuditsPerMonth: 0,
+        wlAvgAuditPrice: 0,
+        wlBuildsPerMonth: 0,
+        wlAvgBuildPrice: 0,
+        wlRetainerRevenue: 0,
+        wlSoftwareHosting: 0,
+        wlContractorCosts: 0,
+        wlPaymentFeesRefunds: 0,
+        wlOutreachTravel: 0,
+        wlOtherExpenses: 0,
+        wlTotalHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "mailbox-cleaning") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Jobs/week × price × 4.33 + route jobs × price + recurring touch-ups + tips = monthly revenue. Subtract supplies, gear, travel, fees, ads, insurance, and other.",
+      disclaimerExtra:
+        "Displayed $10 – $40 / job is examples only, not a guarantee. Clean the exterior; do not handle the mail. Revenue is not profit.",
+      defaults: {
+        mcJobsPerWeek: 0,
+        mcAvgIndividualPrice: 0,
+        mcRouteJobsPerMonth: 0,
+        mcAvgRoutePrice: 0,
+        mcRecurringTouchUpRevenue: 0,
+        mcTipsOtherRevenue: 0,
+        mcCleaningSupplies: 0,
+        mcProtectiveGear: 0,
+        mcTravel: 0,
+        mcPaymentFees: 0,
+        mcAdvertising: 0,
+        mcInsuranceLicensing: 0,
+        mcOtherExpenses: 0,
+        mcCleaningHours: 0,
+        mcTravelAdminHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "digital-photo-organizer") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Small-project revenue + larger-project revenue + maintenance + add-ons = total monthly revenue. Subtract storage, software, cables, fees, ads, travel, and other. Profit ÷ inventory/transfer + sorting/review + delivery/admin hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $15 – $50 / project is examples only, not a guarantee. Never delete the only copy. Revenue is not profit.",
+      defaults: {
+        dpoSmallProjects: 0,
+        dpoAvgSmallPrice: 0,
+        dpoLargeProjects: 0,
+        dpoAvgLargePrice: 0,
+        dpoMaintenanceRevenue: 0,
+        dpoAddOnRevenue: 0,
+        dpoStorageDrives: 0,
+        dpoSoftware: 0,
+        dpoCablesAdapters: 0,
+        dpoPaymentFees: 0,
+        dpoAdvertising: 0,
+        dpoTravel: 0,
+        dpoOtherExpenses: 0,
+        dpoInventoryTransferHours: 0,
+        dpoSortingReviewHours: 0,
+        dpoDeliveryAdminHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "digital-product-formatter") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Small-project revenue + large-project revenue + add-on/rush + other = total monthly revenue. Subtract software, fonts/stock, cloud, fees, ads, contractor help, and other. Profit ÷ production + revision + admin/marketing hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $15 – $50 / project is examples only, not a guarantee. Formatting is not unlimited writing or redesign. Revenue is not profit.",
+      defaults: {
+        dpfSmallProjects: 0,
+        dpfAvgSmallPrice: 0,
+        dpfLargeProjects: 0,
+        dpfAvgLargePrice: 0,
+        dpfAddOnRushRevenue: 0,
+        dpfOtherRevenue: 0,
+        dpfSoftware: 0,
+        dpfFontsStock: 0,
+        dpfCloudStorage: 0,
+        dpfPaymentFees: 0,
+        dpfAdvertising: 0,
+        dpfContractorHelp: 0,
+        dpfOtherExpenses: 0,
+        dpfProductionHours: 0,
+        dpfRevisionHours: 0,
+        dpfAdminMarketingHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "garage-sale-helper") {
+    return {
+      mode: "service",
+      title: `${name} — Monthly Profit Calculator`,
+      blurb:
+        "Short-job revenue + sale-package revenue + commission + add-ons = total monthly revenue. Subtract signs/printing, tags/bags, travel, payment fees, unrecovered permit/ad costs, and other. Profit ÷ sorting/pricing + setup/sale/cleanup + travel/admin hours = effective profit per hour.",
+      disclaimerExtra:
+        "Displayed $10 – $40 / job is examples only, not a guarantee. The owner controls goods, prices, and money. Revenue is not profit.",
+      defaults: {
+        gshShortJobs: 0,
+        gshAvgShortPrice: 0,
+        gshSalePackages: 0,
+        gshAvgPackagePrice: 0,
+        gshCommissionRevenue: 0,
+        gshAddOnRevenue: 0,
+        gshSignsPrinting: 0,
+        gshTagsBagsSupplies: 0,
+        gshTravel: 0,
+        gshPaymentFees: 0,
+        gshUnrecoveredPermitAds: 0,
+        gshOtherExpenses: 0,
+        gshSortingPricingHours: 0,
+        gshSetupSaleCleanupHours: 0,
+        gshTravelAdminHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "local-business-ai-setup") {
+    return {
+      mode: "service",
+      title: `${name} — Local Business AI Setup Profit Calculator`,
+      blurb:
+        "Mini-project revenue + setup revenue + training revenue + support revenue = monthly revenue. Subtract AI/software, printing/travel, payment fees, and other. Do not count owner-paid software reimbursement as service revenue.",
+      disclaimerExtra:
+        "Displayed $15 – $50 / project is a mini-project example only, not a guarantee. The owner reviews every draft. Revenue is not profit.",
+      defaults: {
+        lbaiMiniProjects: 0,
+        lbaiAvgMiniPrice: 0,
+        lbaiFullSetups: 0,
+        lbaiAvgSetupPrice: 0,
+        lbaiTrainingHours: 0,
+        lbaiTrainingRate: 0,
+        lbaiMonthlySupportRevenue: 0,
+        lbaiAiSoftwareCosts: 0,
+        lbaiPrintingTravel: 0,
+        lbaiPaymentFees: 0,
+        lbaiOtherExpenses: 0,
+        lbaiTotalHours: 0,
+      },
+      budget: [],
+    };
+  }
+
+  if (id === "flipping-properties") {
+    return {
+      mode: "service",
+      title: `${name} — Property Flip Profit Calculator`,
+      blurb:
+        "Gross sale/assignment revenue minus purchase price and every listed project cost = estimated pre-tax profit. Profit margin on sale = profit ÷ gross sale. Return on cash invested uses actual cash invested. Average profit per project month divides profit by total project months.",
+      disclaimerExtra:
+        "Deal-dependent examples only — not forecasts or guarantees. This is not legal, tax, construction, brokerage, lending, or investment advice. One foundation problem, delayed permit, extra month of interest, buyer concession, or tax bill can reduce or eliminate profit.",
+      defaults: {
+        flipGrossSalePrice: 0,
+        flipPurchasePrice: 0,
+        flipPurchaseClosing: 0,
+        flipFinancingCosts: 0,
+        flipInspectionTitleLegalDesign: 0,
+        flipPermits: 0,
+        flipLaborMaterials: 0,
+        flipUtilitiesInsuranceTaxesHoaSecurity: 0,
+        flipContingencyUsed: 0,
+        flipSellingCommissionsConcessionsClosing: 0,
+        flipOtherCosts: 0,
+        flipCashInvested: 0,
+        flipProjectMonths: 0,
       },
       budget: [],
     };
@@ -4346,6 +4964,676 @@ export function computeGuideCalc(
       marginPercent: calc.profitMarginPercent,
       notes,
       metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "nhJobsPerWeek")) {
+    const calc = computeNeighborhoodHelperProfit({
+      nhJobsPerWeek: inputs.nhJobsPerWeek || 0,
+      nhAvgPricePerJob: inputs.nhAvgPricePerJob || 0,
+      nhRecurringMonthly: inputs.nhRecurringMonthly || 0,
+      nhAddOnRush: inputs.nhAddOnRush || 0,
+      nhTipsOther: inputs.nhTipsOther || 0,
+      nhSupplies: inputs.nhSupplies || 0,
+      nhTravel: inputs.nhTravel || 0,
+      nhPaymentFees: inputs.nhPaymentFees || 0,
+      nhAdvertising: inputs.nhAdvertising || 0,
+      nhInsuranceLicensing: inputs.nhInsuranceLicensing || 0,
+      nhOtherExpenses: inputs.nhOtherExpenses || 0,
+      nhTaskHours: inputs.nhTaskHours || 0,
+      nhTravelAdminHours: inputs.nhTravelAdminHours || 0,
+    });
+    if (calc.grossServiceRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push(
+        `Weekly one-time revenue $${calc.weeklyOneTimeRevenue.toFixed(2)} · monthly one-time $${calc.monthlyOneTimeRevenue.toFixed(2)}.`,
+      );
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Sell a specific task, not “anything you need.” Revenue is not profit.");
+    }
+    return {
+      revenue: calc.grossServiceRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "aaStarterPacks")) {
+    const calc = computeAiAssetsProfit({
+      aaStarterPacks: inputs.aaStarterPacks || 0,
+      aaAvgStarterFee: inputs.aaAvgStarterFee || 0,
+      aaCampaignKitRevenue: inputs.aaCampaignKitRevenue || 0,
+      aaRetainerRevenue: inputs.aaRetainerRevenue || 0,
+      aaAddOnRevenue: inputs.aaAddOnRevenue || 0,
+      aaOtherRevenue: inputs.aaOtherRevenue || 0,
+      aaAiDesignSubscriptions: inputs.aaAiDesignSubscriptions || 0,
+      aaLicensedInputs: inputs.aaLicensedInputs || 0,
+      aaStorageHardware: inputs.aaStorageHardware || 0,
+      aaContractorsReview: inputs.aaContractorsReview || 0,
+      aaPaymentFeesRefunds: inputs.aaPaymentFeesRefunds || 0,
+      aaInsuranceOther: inputs.aaInsuranceOther || 0,
+      aaBriefResearchHours: inputs.aaBriefResearchHours || 0,
+      aaGenerationConceptHours: inputs.aaGenerationConceptHours || 0,
+      aaHumanEditExportHours: inputs.aaHumanEditExportHours || 0,
+      aaRevisionAdminMarketingHours: inputs.aaRevisionAdminMarketingHours || 0,
+      aaFinalAssetsDelivered: inputs.aaFinalAssetsDelivered || 0,
+    });
+    if (calc.totalCollectedRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push(`Starter-pack revenue $${calc.starterPackRevenue.toFixed(2)}.`);
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Do not promise automatic copyright. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalCollectedRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "acDefinedBookingRevenue")) {
+    const calc = computeAirbnbCohostProfit({
+      acDefinedBookingRevenue: inputs.acDefinedBookingRevenue || 0,
+      acCoHostPercent: inputs.acCoHostPercent || 0,
+      acFixedRetainer: inputs.acFixedRetainer || 0,
+      acSetupAddOnRevenue: inputs.acSetupAddOnRevenue || 0,
+      acOtherRevenue: inputs.acOtherRevenue || 0,
+      acTravelMileage: inputs.acTravelMileage || 0,
+      acPhoneSoftware: inputs.acPhoneSoftware || 0,
+      acSuppliesNotReimbursed: inputs.acSuppliesNotReimbursed || 0,
+      acContractorsBackup: inputs.acContractorsBackup || 0,
+      acInsuranceProfessional: inputs.acInsuranceProfessional || 0,
+      acPaymentFeesOther: inputs.acPaymentFeesOther || 0,
+      acGuestCommHours: inputs.acGuestCommHours || 0,
+      acTurnoverVendorHours: inputs.acTurnoverVendorHours || 0,
+      acOwnerReportAdminHours: inputs.acOwnerReportAdminHours || 0,
+      acEmergencyAfterHours: inputs.acEmergencyAfterHours || 0,
+      acReservationsSupported: inputs.acReservationsSupported || 0,
+      acTurnoversCompleted: inputs.acTurnoversCompleted || 0,
+    });
+    if (calc.totalCollectedRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push(`Percentage fee $${calc.percentageFee.toFixed(2)}.`);
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. A co-host agreement is required. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalCollectedRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "amzUnitsSold")) {
+    const calc = computeAmazonFbaSellerProfit({
+      amzUnitsSold: inputs.amzUnitsSold || 0,
+      amzAvgSellingPrice: inputs.amzAvgSellingPrice || 0,
+      amzRefunds: inputs.amzRefunds || 0,
+      amzOtherCredits: inputs.amzOtherCredits || 0,
+      amzLandedCostPerUnit: inputs.amzLandedCostPerUnit || 0,
+      amzReferralFees: inputs.amzReferralFees || 0,
+      amzFbaFulfillmentFees: inputs.amzFbaFulfillmentFees || 0,
+      amzStoragePlacementOther: inputs.amzStoragePlacementOther || 0,
+      amzAdvertising: inputs.amzAdvertising || 0,
+      amzCouponsPromotions: inputs.amzCouponsPromotions || 0,
+      amzOtherVariableCosts: inputs.amzOtherVariableCosts || 0,
+      amzSellingPlanSoftware: inputs.amzSellingPlanSoftware || 0,
+      amzTestingCompliance: inputs.amzTestingCompliance || 0,
+      amzInsuranceProfessional: inputs.amzInsuranceProfessional || 0,
+      amzPhotographyDesign: inputs.amzPhotographyDesign || 0,
+      amzOtherOverhead: inputs.amzOtherOverhead || 0,
+      amzUnitsOnHand: inputs.amzUnitsOnHand || 0,
+      amzLeadTimeDays: inputs.amzLeadTimeDays || 0,
+      amzAvgUnitsSoldPerDay: inputs.amzAvgUnitsSoldPerDay || 0,
+    });
+    if (calc.netSalesCollected > 0 || calc.totalExpenses > 0) {
+      notes.push(`Gross sales $${calc.grossProductSales.toFixed(2)} · net sales $${calc.netSalesCollected.toFixed(2)}.`);
+      notes.push("Examples only. Gross sales are not profit. Verify current Amazon fees.");
+    }
+    return {
+      revenue: calc.netSalesCollected,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.netMarginPercent,
+      notes,
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "vcaHourlyRevenue")) {
+    const calc = computeVirtualCallAssistantProfit({
+      vcaHourlyRevenue: inputs.vcaHourlyRevenue || 0,
+      vcaRetainerRevenue: inputs.vcaRetainerRevenue || 0,
+      vcaSetupPilotRevenue: inputs.vcaSetupPilotRevenue || 0,
+      vcaOverageAddOnRevenue: inputs.vcaOverageAddOnRevenue || 0,
+      vcaOtherRevenue: inputs.vcaOtherRevenue || 0,
+      vcaVoipCrmSoftware: inputs.vcaVoipCrmSoftware || 0,
+      vcaEquipmentInternetBackup: inputs.vcaEquipmentInternetBackup || 0,
+      vcaOperatorPayrollContractors: inputs.vcaOperatorPayrollContractors || 0,
+      vcaInsuranceLegalCompliance: inputs.vcaInsuranceLegalCompliance || 0,
+      vcaPaymentFeesMarketing: inputs.vcaPaymentFeesMarketing || 0,
+      vcaOtherExpenses: inputs.vcaOtherExpenses || 0,
+      vcaReservedCoverageHours: inputs.vcaReservedCoverageHours || 0,
+      vcaSetupTrainingReportingHours: inputs.vcaSetupTrainingReportingHours || 0,
+      vcaOwnerAdminMarketingHours: inputs.vcaOwnerAdminMarketingHours || 0,
+      vcaOperatorHoursPaid: inputs.vcaOperatorHoursPaid || 0,
+      vcaCallsAnswered: inputs.vcaCallsAnswered || 0,
+      vcaAvgHandleAfterCallMinutes: inputs.vcaAvgHandleAfterCallMinutes || 0,
+      vcaPeakConcurrentCalls: inputs.vcaPeakConcurrentCalls || 0,
+    });
+    if (calc.totalCollectedRevenue > 0 || calc.totalExpenses > 0) {
+      if (calc.ownerProfitPerHour != null) notes.push(`Owner profit/hour ≈ $${calc.ownerProfitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalCollectedRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.ownerProfitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "ashCaptionPacks")) {
+    const calc = computeAiSocialHelperProfit({
+      ashCaptionPacks: inputs.ashCaptionPacks || 0,
+      ashAvgPackFee: inputs.ashAvgPackFee || 0,
+      ashCalendarCaptionRevenue: inputs.ashCalendarCaptionRevenue || 0,
+      ashMonthlyPackageRevenue: inputs.ashMonthlyPackageRevenue || 0,
+      ashAddOnRevenue: inputs.ashAddOnRevenue || 0,
+      ashOtherRevenue: inputs.ashOtherRevenue || 0,
+      ashAiDesignTools: inputs.ashAiDesignTools || 0,
+      ashLicensedMedia: inputs.ashLicensedMedia || 0,
+      ashEquipmentInternet: inputs.ashEquipmentInternet || 0,
+      ashPaymentFees: inputs.ashPaymentFees || 0,
+      ashContractors: inputs.ashContractors || 0,
+      ashOtherExpenses: inputs.ashOtherExpenses || 0,
+      ashBriefResearchHours: inputs.ashBriefResearchHours || 0,
+      ashDraftEditHours: inputs.ashDraftEditHours || 0,
+      ashApprovalRevisionHours: inputs.ashApprovalRevisionHours || 0,
+      ashMarketingAdminHours: inputs.ashMarketingAdminHours || 0,
+      ashApprovedPosts: inputs.ashApprovedPosts || 0,
+      ashDraftsSubmitted: inputs.ashDraftsSubmitted || 0,
+      ashPostsRequiringRevision: inputs.ashPostsRequiringRevision || 0,
+    });
+    if (calc.totalCollectedRevenue > 0 || calc.totalExpenses > 0) {
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. AI creates drafts; the client owns the final message. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalCollectedRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "bphShortJobs")) {
+    const calc = computeBirthdayPartyHelperProfit({
+      bphShortJobs: inputs.bphShortJobs || 0,
+      bphAvgShortPrice: inputs.bphAvgShortPrice || 0,
+      bphFullParties: inputs.bphFullParties || 0,
+      bphAvgFullPartyPrice: inputs.bphAvgFullPartyPrice || 0,
+      bphAddOnRevenue: inputs.bphAddOnRevenue || 0,
+      bphTipsOther: inputs.bphTipsOther || 0,
+      bphSupplies: inputs.bphSupplies || 0,
+      bphTravelParking: inputs.bphTravelParking || 0,
+      bphPaymentFees: inputs.bphPaymentFees || 0,
+      bphAdvertising: inputs.bphAdvertising || 0,
+      bphInsuranceLicensing: inputs.bphInsuranceLicensing || 0,
+      bphOtherExpenses: inputs.bphOtherExpenses || 0,
+      bphEventHours: inputs.bphEventHours || 0,
+      bphPrepShoppingHours: inputs.bphPrepShoppingHours || 0,
+      bphTravelAdminHours: inputs.bphTravelAdminHours || 0,
+    });
+    if (calc.totalMonthlyRevenue > 0 || calc.totalExpenses > 0) {
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Party help is not automatic childcare. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalMonthlyRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "coShortSessions")) {
+    const calc = computeClosetOrganizerProfit({
+      coShortSessions: inputs.coShortSessions || 0,
+      coAvgShortPrice: inputs.coAvgShortPrice || 0,
+      coStandardProjects: inputs.coStandardProjects || 0,
+      coAvgProjectPrice: inputs.coAvgProjectPrice || 0,
+      coAddOnRevenue: inputs.coAddOnRevenue || 0,
+      coTipsOther: inputs.coTipsOther || 0,
+      coLabelsBagsSupplies: inputs.coLabelsBagsSupplies || 0,
+      coTravelParking: inputs.coTravelParking || 0,
+      coDonationDisposal: inputs.coDonationDisposal || 0,
+      coPaymentFees: inputs.coPaymentFees || 0,
+      coAdvertising: inputs.coAdvertising || 0,
+      coInsuranceLicensing: inputs.coInsuranceLicensing || 0,
+      coOtherExpenses: inputs.coOtherExpenses || 0,
+      coOrganizingHours: inputs.coOrganizingHours || 0,
+      coShoppingDropOffHours: inputs.coShoppingDropOffHours || 0,
+      coTravelAdminHours: inputs.coTravelAdminHours || 0,
+    });
+    if (calc.totalMonthlyRevenue > 0 || calc.totalExpenses > 0) {
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. The client decides what leaves. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalMonthlyRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "ltsWinningBid")) {
+    const calc = computeLienTaxSaleDealProfit({
+      ltsWinningBid: inputs.ltsWinningBid || 0,
+      ltsBuyerPremium: inputs.ltsBuyerPremium || 0,
+      ltsTitleLegalNotice: inputs.ltsTitleLegalNotice || 0,
+      ltsSurvivingTaxesLiens: inputs.ltsSurvivingTaxesLiens || 0,
+      ltsRepairsEnvironmental: inputs.ltsRepairsEnvironmental || 0,
+      ltsInsuranceSecurityUtilities: inputs.ltsInsuranceSecurityUtilities || 0,
+      ltsFinancingHolding: inputs.ltsFinancingHolding || 0,
+      ltsSellingClosing: inputs.ltsSellingClosing || 0,
+      ltsOtherCosts: inputs.ltsOtherCosts || 0,
+      ltsActualProceeds: inputs.ltsActualProceeds || 0,
+    });
+    if (calc.totalCashInvested > 0 || (inputs.ltsActualProceeds || 0) > 0) {
+      notes.push(`Cash invested $${calc.totalCashInvested.toFixed(2)}.`);
+      notes.push("Examples only. Education, not legal, tax, title, or investment advice. The best bid may be no bid.");
+    }
+    return {
+      revenue: inputs.ltsActualProceeds || 0,
+      expenses: calc.totalCashInvested,
+      net: calc.estimatedDealProfit,
+      marginPercent: calc.returnOnCashPercent,
+      notes,
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "threePostPacksPerMonth")) {
+    const calc = computeJuniorContentCreateProfit({
+      singlePiecesPerMonth: inputs.singlePiecesPerMonth || 0,
+      avgPricePerSinglePiece: inputs.avgPricePerSinglePiece || 0,
+      threePostPacksPerMonth: inputs.threePostPacksPerMonth || 0,
+      avgPricePerPack: inputs.avgPricePerPack || 0,
+      otherApprovedCreativeRevenue: inputs.otherApprovedCreativeRevenue || 0,
+      designAppCosts: inputs.designAppCosts || 0,
+      propsPrinting: inputs.propsPrinting || 0,
+      paymentFees: inputs.paymentFees || 0,
+      otherBusinessExpenses: inputs.otherBusinessExpenses || 0,
+      totalHours: inputs.totalHours || 0,
+    });
+    if (calc.monthlyRevenue > 0 || calc.monthlyExpenses > 0) {
+      if (calc.effectiveProfitPerHour != null) notes.push(`Profit/hour ≈ $${calc.effectiveProfitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Parent/guardian manages safety, accounts, and money.");
+    }
+    return {
+      revenue: calc.monthlyRevenue,
+      expenses: calc.monthlyExpenses,
+      net: calc.estimatedMonthlyProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.effectiveProfitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "kindnessExtrasGiving")) {
+    const calc = computeKidsCraftHustleProfit({
+      itemsSold: inputs.itemsSold || 0,
+      avgPricePerItem: inputs.avgPricePerItem || 0,
+      setsSold: inputs.setsSold || 0,
+      avgPricePerSet: inputs.avgPricePerSet || 0,
+      otherRevenue: inputs.otherRevenue || 0,
+      materials: inputs.materials || 0,
+      packaging: inputs.packaging || 0,
+      platformPaymentFees: inputs.platformPaymentFees || 0,
+      eventTableFees: inputs.eventTableFees || 0,
+      shipping: inputs.shipping || 0,
+      refundsReplacements: inputs.refundsReplacements || 0,
+      kindnessExtrasGiving: inputs.kindnessExtrasGiving || 0,
+      otherExpenses: inputs.otherExpenses || 0,
+      itemsMade: inputs.itemsMade || 0,
+      itemsUnsoldDamaged: inputs.itemsUnsoldDamaged || 0,
+      totalUnitsSoldOverride: inputs.totalUnitsSoldOverride || 0,
+    });
+    if (calc.totalRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push("Examples only. Parent/guardian runs the business side. Kindness extras are a cost, not a sale.");
+    }
+    return {
+      revenue: calc.totalRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.totalRevenue > 0 ? (calc.estimatedProfit / calc.totalRevenue) * 100 : 0,
+      notes,
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "fairPlayCardsSold")) {
+    const calc = computeCreateGamesKidsProfit({
+      fairPlayCardsSold: inputs.fairPlayCardsSold || 0,
+      pricePerPlayCard: inputs.pricePerPlayCard || 0,
+      parentApprovedFamilyTips: inputs.parentApprovedFamilyTips || 0,
+      customFamilyGames: inputs.customFamilyGames || 0,
+      avgPricePerCustomGame: inputs.avgPricePerCustomGame || 0,
+      printingEventFees: inputs.printingEventFees || 0,
+      supplies: inputs.supplies || 0,
+      toolAssetCosts: inputs.toolAssetCosts || 0,
+      otherExpenses: inputs.otherExpenses || 0,
+    });
+    if (calc.totalRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push("Examples only. Parent nearby. School fair / family tips · or just for fun.");
+    }
+    return {
+      revenue: calc.totalRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.totalRevenue > 0 ? (calc.estimatedProfit / calc.totalRevenue) * 100 : 0,
+      notes,
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "paidDownloadsTips")) {
+    const calc = computeCreateGamesJuniorProfit({
+      paidDownloadsTips: inputs.paidDownloadsTips || 0,
+      avgGrossAmount: inputs.avgGrossAmount || 0,
+      commissionProjects: inputs.commissionProjects || 0,
+      avgCommissionPrice: inputs.avgCommissionPrice || 0,
+      platformRevenueShareFees: inputs.platformRevenueShareFees || 0,
+      paymentProcessingFees: inputs.paymentProcessingFees || 0,
+      refundsChargebacks: inputs.refundsChargebacks || 0,
+      toolAssetCosts: inputs.toolAssetCosts || 0,
+      otherBusinessExpenses: inputs.otherBusinessExpenses || 0,
+      totalHours: inputs.totalHours || 0,
+    });
+    if (calc.totalGrossRevenue > 0 || calc.totalExpenses > 0) {
+      if (calc.effectiveProfitPerHour != null) notes.push(`Profit/hour ≈ $${calc.effectiveProfitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Guardian approval before publishing.");
+    }
+    return {
+      revenue: calc.totalGrossRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent:
+        calc.totalGrossRevenue > 0 ? (calc.estimatedProfit / calc.totalGrossRevenue) * 100 : 0,
+      notes,
+      metrics: { netPerHour: calc.effectiveProfitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "cbcSinglesSold")) {
+    const calc = computeCustomBookmarkCreatorProfit({
+      cbcSinglesSold: inputs.cbcSinglesSold || 0,
+      cbcAvgSinglePrice: inputs.cbcAvgSinglePrice || 0,
+      cbcSetsSold: inputs.cbcSetsSold || 0,
+      cbcAvgSetPrice: inputs.cbcAvgSetPrice || 0,
+      cbcProjects: inputs.cbcProjects || 0,
+      cbcAvgProjectPrice: inputs.cbcAvgProjectPrice || 0,
+      cbcOtherRevenue: inputs.cbcOtherRevenue || 0,
+      cbcCardstockBlanks: inputs.cbcCardstockBlanks || 0,
+      cbcInkArtSupplies: inputs.cbcInkArtSupplies || 0,
+      cbcLaminate: inputs.cbcLaminate || 0,
+      cbcRibbonTassels: inputs.cbcRibbonTassels || 0,
+      cbcPackaging: inputs.cbcPackaging || 0,
+      cbcPlatformPaymentFees: inputs.cbcPlatformPaymentFees || 0,
+      cbcEventFees: inputs.cbcEventFees || 0,
+      cbcShipping: inputs.cbcShipping || 0,
+      cbcRefundsReplacements: inputs.cbcRefundsReplacements || 0,
+      cbcOtherExpenses: inputs.cbcOtherExpenses || 0,
+    });
+    if (calc.totalRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push("Examples only. Custom does not mean copy anything. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "wlAuditsPerMonth")) {
+    const calc = computeWebLeadsProfit({
+      wlAuditsPerMonth: inputs.wlAuditsPerMonth || 0,
+      wlAvgAuditPrice: inputs.wlAvgAuditPrice || 0,
+      wlBuildsPerMonth: inputs.wlBuildsPerMonth || 0,
+      wlAvgBuildPrice: inputs.wlAvgBuildPrice || 0,
+      wlRetainerRevenue: inputs.wlRetainerRevenue || 0,
+      wlSoftwareHosting: inputs.wlSoftwareHosting || 0,
+      wlContractorCosts: inputs.wlContractorCosts || 0,
+      wlPaymentFeesRefunds: inputs.wlPaymentFeesRefunds || 0,
+      wlOutreachTravel: inputs.wlOutreachTravel || 0,
+      wlOtherExpenses: inputs.wlOtherExpenses || 0,
+      wlTotalHours: inputs.wlTotalHours || 0,
+    });
+    if (calc.monthlyGrossRevenue > 0 || calc.monthlyExpenses > 0) {
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. A lead list is not permission to spam. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.monthlyGrossRevenue,
+      expenses: calc.monthlyExpenses,
+      net: calc.estimatedMonthlyProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "mcJobsPerWeek")) {
+    const calc = computeMailboxCleaningProfit({
+      mcJobsPerWeek: inputs.mcJobsPerWeek || 0,
+      mcAvgIndividualPrice: inputs.mcAvgIndividualPrice || 0,
+      mcRouteJobsPerMonth: inputs.mcRouteJobsPerMonth || 0,
+      mcAvgRoutePrice: inputs.mcAvgRoutePrice || 0,
+      mcRecurringTouchUpRevenue: inputs.mcRecurringTouchUpRevenue || 0,
+      mcTipsOtherRevenue: inputs.mcTipsOtherRevenue || 0,
+      mcCleaningSupplies: inputs.mcCleaningSupplies || 0,
+      mcProtectiveGear: inputs.mcProtectiveGear || 0,
+      mcTravel: inputs.mcTravel || 0,
+      mcPaymentFees: inputs.mcPaymentFees || 0,
+      mcAdvertising: inputs.mcAdvertising || 0,
+      mcInsuranceLicensing: inputs.mcInsuranceLicensing || 0,
+      mcOtherExpenses: inputs.mcOtherExpenses || 0,
+      mcCleaningHours: inputs.mcCleaningHours || 0,
+      mcTravelAdminHours: inputs.mcTravelAdminHours || 0,
+    });
+    if (calc.totalMonthlyRevenue > 0 || calc.totalExpenses > 0) {
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Clean the exterior; do not handle the mail. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.totalMonthlyRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "dpoSmallProjects")) {
+    const calc = computeDigitalPhotoOrganizerProfit({
+      dpoSmallProjects: inputs.dpoSmallProjects || 0,
+      dpoAvgSmallPrice: inputs.dpoAvgSmallPrice || 0,
+      dpoLargeProjects: inputs.dpoLargeProjects || 0,
+      dpoAvgLargePrice: inputs.dpoAvgLargePrice || 0,
+      dpoMaintenanceRevenue: inputs.dpoMaintenanceRevenue || 0,
+      dpoAddOnRevenue: inputs.dpoAddOnRevenue || 0,
+      dpoStorageDrives: inputs.dpoStorageDrives || 0,
+      dpoSoftware: inputs.dpoSoftware || 0,
+      dpoCablesAdapters: inputs.dpoCablesAdapters || 0,
+      dpoPaymentFees: inputs.dpoPaymentFees || 0,
+      dpoAdvertising: inputs.dpoAdvertising || 0,
+      dpoTravel: inputs.dpoTravel || 0,
+      dpoOtherExpenses: inputs.dpoOtherExpenses || 0,
+      dpoInventoryTransferHours: inputs.dpoInventoryTransferHours || 0,
+      dpoSortingReviewHours: inputs.dpoSortingReviewHours || 0,
+      dpoDeliveryAdminHours: inputs.dpoDeliveryAdminHours || 0,
+    });
+    if (calc.grossServiceRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push(`Small-project revenue $${calc.smallRevenue.toFixed(2)} · larger-project revenue $${calc.largerRevenue.toFixed(2)}.`);
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Never delete the only copy. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.grossServiceRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "dpfSmallProjects")) {
+    const calc = computeDigitalProductFormatterProfit({
+      dpfSmallProjects: inputs.dpfSmallProjects || 0,
+      dpfAvgSmallPrice: inputs.dpfAvgSmallPrice || 0,
+      dpfLargeProjects: inputs.dpfLargeProjects || 0,
+      dpfAvgLargePrice: inputs.dpfAvgLargePrice || 0,
+      dpfAddOnRushRevenue: inputs.dpfAddOnRushRevenue || 0,
+      dpfOtherRevenue: inputs.dpfOtherRevenue || 0,
+      dpfSoftware: inputs.dpfSoftware || 0,
+      dpfFontsStock: inputs.dpfFontsStock || 0,
+      dpfCloudStorage: inputs.dpfCloudStorage || 0,
+      dpfPaymentFees: inputs.dpfPaymentFees || 0,
+      dpfAdvertising: inputs.dpfAdvertising || 0,
+      dpfContractorHelp: inputs.dpfContractorHelp || 0,
+      dpfOtherExpenses: inputs.dpfOtherExpenses || 0,
+      dpfProductionHours: inputs.dpfProductionHours || 0,
+      dpfRevisionHours: inputs.dpfRevisionHours || 0,
+      dpfAdminMarketingHours: inputs.dpfAdminMarketingHours || 0,
+    });
+    if (calc.grossServiceRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push(`Small-project revenue $${calc.smallRevenue.toFixed(2)} · large-project revenue $${calc.largeRevenue.toFixed(2)}.`);
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Formatting is not unlimited writing or redesign. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.grossServiceRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "gshShortJobs")) {
+    const calc = computeGarageSaleHelperProfit({
+      gshShortJobs: inputs.gshShortJobs || 0,
+      gshAvgShortPrice: inputs.gshAvgShortPrice || 0,
+      gshSalePackages: inputs.gshSalePackages || 0,
+      gshAvgPackagePrice: inputs.gshAvgPackagePrice || 0,
+      gshCommissionRevenue: inputs.gshCommissionRevenue || 0,
+      gshAddOnRevenue: inputs.gshAddOnRevenue || 0,
+      gshSignsPrinting: inputs.gshSignsPrinting || 0,
+      gshTagsBagsSupplies: inputs.gshTagsBagsSupplies || 0,
+      gshTravel: inputs.gshTravel || 0,
+      gshPaymentFees: inputs.gshPaymentFees || 0,
+      gshUnrecoveredPermitAds: inputs.gshUnrecoveredPermitAds || 0,
+      gshOtherExpenses: inputs.gshOtherExpenses || 0,
+      gshSortingPricingHours: inputs.gshSortingPricingHours || 0,
+      gshSetupSaleCleanupHours: inputs.gshSetupSaleCleanupHours || 0,
+      gshTravelAdminHours: inputs.gshTravelAdminHours || 0,
+    });
+    if (calc.grossServiceRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push(`Short-job revenue $${calc.shortRevenue.toFixed(2)} · package revenue $${calc.packageRevenue.toFixed(2)}.`);
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. The owner controls goods, prices, and money. Revenue is not profit.");
+    }
+    return {
+      revenue: calc.grossServiceRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "lbaiMiniProjects")) {
+    const calc = computeLocalBusinessAiSetupProfit({
+      lbaiMiniProjects: inputs.lbaiMiniProjects || 0,
+      lbaiAvgMiniPrice: inputs.lbaiAvgMiniPrice || 0,
+      lbaiFullSetups: inputs.lbaiFullSetups || 0,
+      lbaiAvgSetupPrice: inputs.lbaiAvgSetupPrice || 0,
+      lbaiTrainingHours: inputs.lbaiTrainingHours || 0,
+      lbaiTrainingRate: inputs.lbaiTrainingRate || 0,
+      lbaiMonthlySupportRevenue: inputs.lbaiMonthlySupportRevenue || 0,
+      lbaiAiSoftwareCosts: inputs.lbaiAiSoftwareCosts || 0,
+      lbaiPrintingTravel: inputs.lbaiPrintingTravel || 0,
+      lbaiPaymentFees: inputs.lbaiPaymentFees || 0,
+      lbaiOtherExpenses: inputs.lbaiOtherExpenses || 0,
+      lbaiTotalHours: inputs.lbaiTotalHours || 0,
+    });
+    if (calc.grossServiceRevenue > 0 || calc.totalExpenses > 0) {
+      notes.push(`Mini-project revenue $${calc.miniRevenue.toFixed(2)} · setup revenue $${calc.setupRevenue.toFixed(2)}.`);
+      if (calc.profitPerHour != null) notes.push(`Profit/hour ≈ $${calc.profitPerHour.toFixed(2)}`);
+      notes.push("Examples only. Do not count owner-paid software reimbursement as service revenue.");
+    }
+    return {
+      revenue: calc.grossServiceRevenue,
+      expenses: calc.totalExpenses,
+      net: calc.estimatedProfit,
+      marginPercent: calc.profitMarginPercent,
+      notes,
+      metrics: { netPerHour: calc.profitPerHour ?? undefined },
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputs, "flipGrossSalePrice")) {
+    const calc = computeFlippingPropertiesProfit({
+      flipGrossSalePrice: inputs.flipGrossSalePrice || 0,
+      flipPurchasePrice: inputs.flipPurchasePrice || 0,
+      flipPurchaseClosing: inputs.flipPurchaseClosing || 0,
+      flipFinancingCosts: inputs.flipFinancingCosts || 0,
+      flipInspectionTitleLegalDesign: inputs.flipInspectionTitleLegalDesign || 0,
+      flipPermits: inputs.flipPermits || 0,
+      flipLaborMaterials: inputs.flipLaborMaterials || 0,
+      flipUtilitiesInsuranceTaxesHoaSecurity: inputs.flipUtilitiesInsuranceTaxesHoaSecurity || 0,
+      flipContingencyUsed: inputs.flipContingencyUsed || 0,
+      flipSellingCommissionsConcessionsClosing: inputs.flipSellingCommissionsConcessionsClosing || 0,
+      flipOtherCosts: inputs.flipOtherCosts || 0,
+      flipCashInvested: inputs.flipCashInvested || 0,
+      flipProjectMonths: inputs.flipProjectMonths || 0,
+    });
+    if (calc.totalProjectCost > 0 || (inputs.flipGrossSalePrice || 0) > 0) {
+      notes.push(`Total project cost $${calc.totalProjectCost.toFixed(2)} · estimated pre-tax profit $${calc.estimatedPretaxProfit.toFixed(2)}.`);
+      if (calc.profitMarginOnSale != null) notes.push(`Profit margin on sale ${calc.profitMarginOnSale.toFixed(1)}%.`);
+      if (calc.returnOnCashInvested != null) notes.push(`Return on cash invested ${calc.returnOnCashInvested.toFixed(1)}%.`);
+      if (calc.averageProfitPerProjectMonth != null) {
+        notes.push(`Average profit per project month $${calc.averageProfitPerProjectMonth.toFixed(2)}.`);
+      }
+      notes.push("Examples only — not forecasts. This is not investment advice.");
+    }
+    return {
+      revenue: inputs.flipGrossSalePrice || 0,
+      expenses: calc.totalProjectCost,
+      net: calc.estimatedPretaxProfit,
+      marginPercent: calc.profitMarginOnSale ?? 0,
+      notes,
+      metrics: {
+        netPerHour: calc.averageProfitPerProjectMonth ?? undefined,
+      },
     };
   }
 

@@ -31,8 +31,9 @@ describe("hustle schedule weekly plan export", () => {
     hustleLabel: "Airbnb Hosting",
     ageGroup: "adult",
     blueprintId: "bp",
-    dueDate: "2026-08-23",
-  });
+      dueDate: "2026-08-23",
+      guideSteps: [],
+    });
 
   beforeEach(() => {
     vi.mocked(openPdfInBrowser).mockClear();
@@ -75,6 +76,7 @@ describe("hustle schedule P&L export", () => {
       ageGroup: "adult",
       blueprintId: "bp",
       dueDate: "2026-08-23",
+      guideSteps: [],
     });
     plan = patchPlanPnL(
       plan,
@@ -120,6 +122,7 @@ describe("hustle schedule P&L export", () => {
       ageGroup: "adult",
       blueprintId: "bp",
       dueDate: "2026-08-23",
+      guideSteps: [],
     });
     await downloadProfitAndLossPdf(plan);
     expect(applyPdfPageBranding).toHaveBeenCalledWith(

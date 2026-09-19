@@ -98,6 +98,12 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     description: "Notice when a member upgrades to a higher paid plan.",
   },
   {
+    slug: "membership_merch_ready",
+    name: "Membership merch · pick size",
+    description:
+      "Follow-up when complimentary GYSH T-shirt/hat shipping is ready — especially members upgraded without a size choice.",
+  },
+  {
     slug: "alacarte_purchased",
     name: "A la carte purchase",
     description: "Confirmation after a-la-carte checkout (Stripe, GYSH credits, or mixed).",

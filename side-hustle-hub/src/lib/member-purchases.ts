@@ -24,7 +24,7 @@ export const BILLING_DASHBOARD_HREF = "/my-dashboard#billing";
 
 export function isBillingDashboardHash(hash: string): boolean {
   const h = String(hash || "").replace(/^#/, "").toLowerCase();
-  return h === "billing" || h === "purchases";
+  return h === "billing" || h === "purchases" || h === "merch" || h === "gear";
 }
 
 export type MemberPurchase = {

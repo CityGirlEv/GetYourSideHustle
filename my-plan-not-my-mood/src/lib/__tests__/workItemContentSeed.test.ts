@@ -12,6 +12,12 @@ describe('task ↔ test cross-links and seeded descriptions', () => {
     expect(linkedTestsForTask('t-83')).toEqual(['analytics-qa1']);
     expect(linkedTestsForTask('t-84')).toEqual(['analytics-qa2']);
     expect(linkedTasksForTest('analytics-qa1')).toContain('t-83');
+    expect(linkedTestsForTask('t-203').length).toBeGreaterThanOrEqual(10);
+    expect(linkedTestsForTask('t-203')[0]).toBe('p1web-home');
+    expect(linkedTestsForTask('t-204').length).toBeGreaterThanOrEqual(15);
+    expect(linkedTestsForTask('t-204')[0]).toBe('s2web-home');
+    expect(linkedTasksForTest('p1web-clicks')).toContain('t-203');
+    expect(linkedTasksForTest('s2web-header-links')).toContain('t-204');
     expect(taskContentSeed('t-83')?.description).toMatch(/Facebook/i);
     expect(taskContentSeed('t-83')?.steps.some((step) => /Capture: Reach/.test(typeof step === 'string' ? step : step.label))).toBe(true);
   });
@@ -86,5 +92,10 @@ describe('task ↔ test cross-links and seeded descriptions', () => {
     for (const test of tests) {
       expect(test.steps?.[0]?.href, `${test.id} first step`).toBeTruthy();
     }
+    const about = tests.find((test) => test.id === 's2web-about');
+    expect(about?.steps?.[0]?.href).toBe('/about');
+    expect(about?.steps?.[0]?.label).toMatch(/^Open /);
+    const headerLinks = tests.find((test) => test.id === 's2web-header-links');
+    expect(headerLinks?.steps?.[0]?.href).toBe('/');
   });
 });

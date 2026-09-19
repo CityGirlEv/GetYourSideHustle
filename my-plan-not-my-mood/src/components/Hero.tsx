@@ -5,6 +5,7 @@ import { HeroCarousel } from './HeroCarousel';
 import { GEAR_SHOP_LABEL } from '../lib/gearSelections';
 import { MoodShakePanel } from './MoodShakePanel';
 import { HOUSE_BRAND_KICKER } from '../lib/teeSalesPlaybook';
+import { MoodWorkflowMap } from './MoodWorkflowMap';
 
 interface HeroProps {
   onScrollToSection: (id: string) => void;
@@ -78,12 +79,14 @@ export const Hero: React.FC<HeroProps> = ({
                   <h3 className="text-sm font-black text-[#1F1917] uppercase">Select Your Current Mood</h3>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 flex-1">
+                <div id="mood-hero-bubbles" className="grid grid-cols-1 gap-2 flex-1" data-testid="mood-hero-bubbles">
                   {MOOD_OPTIONS.map((moodOption) => {
                     const isSelected = selectedMood?.id === moodOption.id;
                     return (
                       <button
                         key={`side-bubble-${moodOption.id}`}
+                        type="button"
+                        data-testid={`mood-hero-bubble-${moodOption.id}`}
                         onClick={() => {
                           setSelectedMood(moodOption);
                           document.getElementById('mood-tool')?.scrollIntoView({ behavior: 'smooth' });
@@ -128,12 +131,17 @@ export const Hero: React.FC<HeroProps> = ({
             Select how you feel. Get tips to shake it — not a shirt.
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
+          <MoodWorkflowMap variant="compact" />
+
+          <div id="mood-area-buttons" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5" data-testid="mood-area-buttons">
             {MOOD_OPTIONS.map((mood) => {
               const isSelected = selectedMood?.id === mood.id;
               return (
                 <button
                   key={mood.id}
+                  type="button"
+                  id={`mood-area-${mood.id}`}
+                  data-testid={`mood-area-button-${mood.id}`}
                   onClick={() => setSelectedMood(mood)}
                   className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 min-h-[44px] ${
                     isSelected

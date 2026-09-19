@@ -6,7 +6,7 @@ import {
   membershipEmailKind,
 } from "../email";
 import { formatPurchasePaymentDetail } from "../../../src/lib/purchase-payment";
-import { adminFormNotifyCtaUrl, SITE_URL } from "../email-brand";
+import { adminFormNotifyCtaUrl, perkBulletsHtml, SITE_URL } from "../email-brand";
 import { defaultContentForSlug, renderContent } from "../email-template-content";
 
 describe("membership subscription emails", () => {
@@ -23,6 +23,14 @@ describe("membership subscription emails", () => {
     expect(defersMembershipEmailUntilStripe("free", "adult")).toBe(false);
   });
 
+  it("lists a bi-weekly newsletter (2× per month) on Starter welcome perks", () => {
+    for (const audience of ["adult", "kids", "junior", "senior"] as const) {
+      const html = perkBulletsHtml("starter", audience);
+      expect(html).toMatch(/Bi-weekly newsletter \(2× per month\)/);
+      expect(html).not.toMatch(/>Weekly Newsletter</);
+    }
+  });
+
   it("has editable defaults for subscribe and upgrade templates", () => {
     const sub = defaultContentForSlug("membership_subscribed");
     const up = defaultContentForSlug("membership_upgraded");
@@ -30,6 +38,14 @@ describe("membership subscription emails", () => {
     expect(up?.subject).toMatch(/upgraded/i);
     expect(sub?.bodyHtml).toContain("{{perksHtml}}");
     expect(up?.subhead).toContain("{{previousTier}}");
+  });
+
+  it("asks complimentary members to pick T-shirt or hat and size", () => {
+    const merch = defaultContentForSlug("membership_merch_ready");
+    expect(merch?.subject).toMatch(/T-shirt or hat/i);
+    expect(merch?.bodyHtml).toMatch(/upgraded without choosing/i);
+    expect(merch?.ctaUrl).toMatch(/my-dashboard#merch/);
+    expect(merch?.ctaLabel).toMatch(/Choose my GYSH gear/i);
   });
 
   it("admin form notify CTA opens Users Area, not mailto", () => {

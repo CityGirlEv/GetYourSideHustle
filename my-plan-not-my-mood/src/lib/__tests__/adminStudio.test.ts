@@ -43,6 +43,7 @@ describe('adminStudio', () => {
     expect(studioTabDef('calendar')?.label).toBe('Posting Schedule');
     expect(studioTabDef('gear-selections')?.label).toBe('Gear');
     expect(studioTabDef('testing')?.label).toBe('Testing');
+    expect(studioTabDef('guides')?.label).toBe('Beta Guide');
     expect(studioTabDef('emails')?.label).toBe('Emails');
     const content = ADMIN_STUDIO_GROUPS.find((group) => group.id === 'content');
     expect(
@@ -64,8 +65,12 @@ describe('adminStudio', () => {
     expect(canOpenStudioTab('logo-concepts', admin)).toBe(true);
     expect(canOpenStudioTab('factory', { isAdmin: true, hasAdminRole: false })).toBe(false);
     expect(canOpenStudioTab('budget', admin)).toBe(true);
+    expect(canOpenStudioTab('inventory-pricing', admin)).toBe(true);
+    expect(canOpenStudioTab('inventory-pricing', { isAdmin: true, hasAdminRole: false })).toBe(false);
     expect(canOpenStudioTab('budget', { isAdmin: true, hasAdminRole: false })).toBe(false);
     expect(canOpenStudioTab('budget', { ...admin, canViewBudget: true, isSuperAdmin: true })).toBe(true);
+    expect(canOpenStudioTab('mailing-list', { ...admin, canManageEmailTemplates: true })).toBe(true);
+    expect(canOpenStudioTab('mailing-list', { isAdmin: true, hasAdminRole: false })).toBe(false);
   });
 
   it('hides Memberships from QA/Dev and only shows them to Admin and Super Admin', () => {
@@ -78,7 +83,7 @@ describe('adminStudio', () => {
   it('puts Financials last and opens Budget + Pay after Financials is selected', () => {
     expect(ADMIN_STUDIO_PINNED_TABS).toEqual(['budget']);
     expect(ADMIN_STUDIO_GROUPS.map((group) => group.id).at(-1)).not.toBe('budget');
-    expect(financialsSubTabs().map((tab) => tab.id)).toEqual(['budget', 'previous-budget', 'pay']);
+    expect(financialsSubTabs().map((tab) => tab.id)).toEqual(['budget', 'inventory-pricing', 'previous-budget', 'pay']);
     expect(financialsSubTabs().find((tab) => tab.id === 'pay')?.label).toBe('Pay');
     expect(financialsSubTabs('2026-08-15T18:30:00.000Z').find((tab) => tab.id === 'previous-budget')?.label).toMatch(
       /Previous Budget · /,
@@ -91,6 +96,7 @@ describe('adminStudio', () => {
   it('selects only one Admin Studio top chip at a time', () => {
     expect(studioTopSelection('budget', 'delivery')).toEqual({ kind: 'group', id: 'delivery' });
     expect(studioTopSelection('pay', undefined)).toEqual({ kind: 'pinned', id: 'budget' });
+    expect(studioTopSelection('inventory-pricing', undefined)).toEqual({ kind: 'pinned', id: 'budget' });
     expect(studioTopSelection('previous-budget', undefined)).toEqual({ kind: 'pinned', id: 'budget' });
     expect(studioTopSelection('plan', undefined)).toEqual({ kind: 'group', id: 'delivery' });
     expect(studioTopSelection('plan', 'people')).toEqual({ kind: 'group', id: 'people' });

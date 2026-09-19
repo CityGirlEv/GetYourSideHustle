@@ -1,3 +1,4 @@
+import { AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE } from './membership';
 import { GEAR_SALES_SPLIT_NOTE } from './gearSalesSplit';
 
 export const INCLUDED_WEBSITE_PAGE_LIMIT = 8;
@@ -17,7 +18,7 @@ export const ADDITIONAL_PAGES_ADDON_NOTE =
 export const ADDITIONAL_EMAIL_TEMPLATES_ADDON_NOTE =
   `${ORDER_EMAIL_FROM_NOTE} From the SnatchVault home page, open ${ORDER_STORE_MENU}, then ${ORDER_STORE_SUBMENUS.join(', ')}. ${GEAR_SALES_SPLIT_NOTE}`;
 export const MEMBERSHIPS_SCOPE_NOTE =
-  'Join / Memberships is on the site as Coming Soon. Member configuration is Phase 2.';
+  `Join / Memberships is on the site as Coming Soon. Member configuration is Phase 2. ${AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE}`;
 
 export interface ScopeListItem {
   id: string;

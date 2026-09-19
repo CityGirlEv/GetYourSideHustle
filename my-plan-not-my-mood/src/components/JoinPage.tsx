@@ -10,7 +10,7 @@ import {
   Calendar,
   Mic,
 } from 'lucide-react';
-import { MEMBERSHIP_TIERS, MembershipTier } from '../lib/membership';
+import { MEMBERSHIP_TIERS, MembershipTier, AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE } from '../lib/membership';
 import { HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
 import { Logo } from './Logo';
 
@@ -54,6 +54,12 @@ export const JoinPage: React.FC<JoinPageProps> = ({
               <p className="text-sm sm:text-base text-[#C2410C] font-medium max-w-2xl leading-relaxed">
                 Phase 1 is the gear launch. Member accounts, tiers, and access are not configured yet.
                 Shop shirts now — memberships open in Phase 2.
+              </p>
+              <p
+                className="text-sm sm:text-base text-[#9A3412] font-medium max-w-2xl leading-relaxed"
+                data-testid="affirmations-scope-note"
+              >
+                {AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE}
               </p>
             </div>
           </div>
@@ -176,9 +182,12 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           ))}
         </div>
 
-        <p className="text-center text-[10px] font-mono text-[#3F3832] uppercase tracking-wider mt-8 max-w-3xl mx-auto">
-          Paid tiers are preliminary placeholders — checkout and scheduling will connect in a future sprint.
-          Joining free unlocks Affirmations & the 7-Day Challenge immediately after sign-up.
+        <p
+          className="text-center text-[10px] font-mono text-[#3F3832] uppercase tracking-wider mt-8 max-w-3xl mx-auto"
+          data-testid="affirmations-scope-note-footer"
+        >
+          Paid tiers are preliminary placeholders — checkout and scheduling wait for Phase 2.
+          {AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE}
         </p>
       </section>
     </div>

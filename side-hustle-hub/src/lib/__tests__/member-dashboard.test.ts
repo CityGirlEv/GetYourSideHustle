@@ -3,11 +3,26 @@ import {
   BLUEPRINT_DASHBOARD_HREF,
   CREDIT_PAID_DASHBOARD_LINKS,
   DASHBOARD_HREF,
+  DASHBOARD_PORTAL_TAB_IDS,
   creditPaidThankYouCopy,
   isBlueprintDashboardHash,
 } from "../member-dashboard";
 
 describe("member-dashboard helpers", () => {
+  it("lists only wired dashboard tabs", () => {
+    expect([...DASHBOARD_PORTAL_TAB_IDS]).toEqual([
+      "blueprint",
+      "schedule",
+      "family",
+      "credits",
+      "referral",
+      "purchases",
+      "earn",
+    ]);
+    expect(DASHBOARD_PORTAL_TAB_IDS).not.toContain("milestones");
+    expect(DASHBOARD_PORTAL_TAB_IDS).not.toContain("bookmarks");
+  });
+
   it("points Dashboard and Blueprints at My Dashboard hashes", () => {
     expect(DASHBOARD_HREF).toBe("/my-dashboard");
     expect(BLUEPRINT_DASHBOARD_HREF).toBe("/my-dashboard#blueprint");

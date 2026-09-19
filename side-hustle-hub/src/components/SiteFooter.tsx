@@ -1,6 +1,6 @@
 import { UserPlus } from "lucide-react";
 import { SITE_NAME, ROOT_DOMAIN, ADMIN_EMAIL, FACEBOOK_URL, SITE_PURPOSE } from "../lib/site-config";
-import { LEGAL_DISCLAIMER_BODY, LEGAL_DISCLAIMER_HEADLINE, LEGAL_DISCLAIMER_LIABILITY } from "../lib/legal-disclaimer";
+import { LEGAL_DISCLAIMER_BODY, LEGAL_DISCLAIMER_HEADLINE, LEGAL_DISCLAIMER_LIABILITY, legalCopyrightNotice } from "../lib/legal-disclaimer";
 import gyshLogo from "../assets/gysh-logo-rocket.png";
 import { FacebookIcon } from "./FacebookIcon";
 
@@ -145,7 +145,7 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
 
       <div className="site-footer-meta">
         <span>
-          © {year} {SITE_NAME}. All rights reserved.
+          {legalCopyrightNotice(year)}
         </span>
         <span className="site-footer-dot" aria-hidden>
           ·

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseStoreRoute, routePath } from '../storeRoutes';
+import { HEADER_PRIMARY_NAV_ORDER, HEADER_PUBLIC_LINKS, HEADER_TRAILING_LINKS, parseStoreRoute, routePath } from '../storeRoutes';
 
 describe('storeRoutes', () => {
   it('parses gear, planners, join, pay, sitemap, and home routes', () => {
@@ -12,9 +12,15 @@ describe('storeRoutes', () => {
     expect(parseStoreRoute('/about')).toBe('about');
     expect(parseStoreRoute('/contact')).toBe('contact');
     expect(parseStoreRoute('/privacy')).toBe('privacy');
+    expect(parseStoreRoute('/privacy-policy')).toBe('privacy');
     expect(parseStoreRoute('/terms')).toBe('terms');
+    expect(parseStoreRoute('/terms-of-use')).toBe('terms');
     expect(parseStoreRoute('/faq')).toBe('faq');
     expect(parseStoreRoute('/list')).toBe('list');
+    expect(parseStoreRoute('/beta-rewards')).toBe('beta-rewards');
+    expect(parseStoreRoute('/beta-tester-rewards')).toBe('beta-rewards');
+    expect(parseStoreRoute('/beta-guide')).toBe('beta-guide');
+    expect(parseStoreRoute('/beta-testing-guide')).toBe('beta-guide');
     expect(parseStoreRoute('/admin/pricing')).toBe('home');
   });
 
@@ -25,7 +31,19 @@ describe('storeRoutes', () => {
     expect(routePath('pay')).toBe('/pay');
     expect(routePath('sitemap')).toBe('/sitemap');
     expect(routePath('about')).toBe('/about');
+    expect(routePath('privacy')).toBe('/privacy-policy');
+    expect(routePath('terms')).toBe('/terms-of-use');
     expect(routePath('list')).toBe('/list');
+    expect(routePath('beta-rewards')).toBe('/beta-rewards');
+    expect(routePath('beta-guide')).toBe('/beta-guide');
     expect(routePath('home')).toBe('/');
+    expect(routePath('faq')).toBe('/faq');
+    expect(routePath('contact')).toBe('/contact');
+  });
+
+  it('puts Shop after Home, then Join, About, FAQ, and Contact', () => {
+    expect(HEADER_PRIMARY_NAV_ORDER).toEqual(['home', 'shop', 'join', 'about', 'faq', 'contact']);
+    expect(HEADER_PUBLIC_LINKS.map((link) => link.route)).toEqual(['about', 'faq', 'contact']);
+    expect(HEADER_TRAILING_LINKS.map((link) => link.route)).toEqual(['about', 'faq', 'contact']);
   });
 });

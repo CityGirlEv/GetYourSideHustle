@@ -7,13 +7,20 @@ import {
   applyQaInlinePatch,
   applyTaskInlinePatch,
   applyTaskInlinePatchToList,
+  applyTaskBlockedWithNote,
+  applyTasksBlockedWithNote,
+  taskNeedsBlockedNote,
+  BLOCKED_NOTE_REQUIRED_MESSAGE,
   normalizeAssignor,
   workAssigneeFromActor,
   ASSIGNOR_OPTIONS,
   ASSIGNEE_LABELS,
   normalizeTasks,
+  normalizeQaTests,
   currentSprintLabel,
   defaultWorkBoardFilters,
+  defaultTaskBoardFilters,
+  defaultTestingPortalFilters,
   filterTasks,
   matchesDueDateFilter,
   setSingleFilterValue,
@@ -32,11 +39,16 @@ import {
   QA_STATUS_TONES,
   taskStatusRowClass,
   workPriorityTextClass,
+  workDueDateTextClass,
+  workOverdueTextClass,
+  workDueDateControlClass,
   qaStatusRowClass,
   taskStatusLegend,
   qaStatusLegend,
   defaultFilterSectionTab,
   defaultOpenFilterSections,
+  defaultMoreFiltersOpen,
+  COLLAPSED_FILTER_SECTION_IDS,
   defaultOpenSprintSections,
   FILTER_SECTION_IDS,
   FILTER_SECTION_LABELS,
@@ -45,6 +57,7 @@ import {
   mergeMissingSeedTasks,
   mergeMissingSeedQaTests,
   overlaySupersededSeedTasks,
+  overlayCatalogQaSchedule,
   formatTaskCode,
   formatQaCode,
   nextTaskId,
@@ -59,11 +72,14 @@ import {
   taskIsDone,
   sprintTextClass,
   toggleFilterSection,
+  filterSectionSummary,
   resetQaTestsToNotStarted,
   resetTasksToNotStarted,
   setManySelected,
   shouldResetWorkBoardStatuses,
   sprintSectionStats,
+  countRolledOverItems,
+  formatRolledOverCount,
   toggleSelectedId,
   allIdsSelected,
   applyFilterChipClick,
@@ -80,6 +96,11 @@ import {
   SAVE_ALL_LABEL,
   type SprintCategory,
 } from '../workBoard';
+import { phase1WebsiteReviewTestCount } from '../phase1WebsiteReview';
+import { sprint2WebsiteReviewTestCount } from '../sprint2WebsiteReview';
+import { formWalkthroughTestCount } from '../formWalkthroughTests';
+import { moodWorkflowTestCount } from '../moodWorkflow';
+import { journalMakeReviewTestIds } from '../journalMakeReview';
 
 describe('workBoard seed merge', () => {
   it('seeds every task and existing QA test as not started', () => {
@@ -106,7 +127,7 @@ describe('workBoard seed merge', () => {
     const createPage = INITIAL_TASKS.find((t) => t.id === 't-27');
     expect(createPage?.title).toMatch(/Gear Selections/i);
     expect(createPage?.assignee).toBe('evelyn');
-    expect(createPage?.sprint).toBe('Sprint 1');
+    expect(createPage?.sprint).toBe('Sprint 2');
     expect(createPage?.category).toBe('Apparel');
     expect(INITIAL_QA_TESTS.some((t) => t.id === 'gear-sel-qa1')).toBe(true);
     expect(INITIAL_QA_TESTS.some((t) => t.id === 'sprint-roi-qa1')).toBe(true);
@@ -129,6 +150,13 @@ describe('workBoard seed merge', () => {
     expect(INITIAL_TASKS.find((t) => t.id === 't-48')?.title).toMatch(/blank brand/);
     expect(INITIAL_QA_TESTS.find((t) => t.id === 'shop-gear-page-qa1')?.assignee).toBe('evelyn');
     expect(INITIAL_QA_TESTS.find((t) => t.id === 'shop-gear-page-qa2')?.assignee).toBe('angela');
+    expect(INITIAL_TASKS.find((t) => t.id === 't-203')?.assignee).toBe('angela');
+    expect(INITIAL_TASKS.find((t) => t.id === 't-203')?.title).toMatch(/Phase 1 Website Review \(\d+ tests\)/);
+    expect(INITIAL_TASKS.find((t) => t.id === 't-204')?.assignee).toBe('angela');
+    expect(INITIAL_TASKS.find((t) => t.id === 't-204')?.title).toMatch(/Sprint 2 Website Review \(\d+ tests\)/);
+    expect(INITIAL_TASKS.find((t) => t.id === 't-204')?.sprint).toBe('Sprint 3');
+    expect(INITIAL_QA_TESTS.filter((t) => t.id.startsWith('p1web-')).every((t) => t.assignee === 'angela')).toBe(true);
+    expect(INITIAL_QA_TESTS.filter((t) => t.id.startsWith('s2web-')).every((t) => t.assignee === 'angela' && t.sprint === 'Sprint 3')).toBe(true);
     expect(INITIAL_QA_TESTS.some((t) => t.id === 'gear-brand-qa1')).toBe(true);
     const merged = mergeMissingSeedQaTests(INITIAL_QA_TESTS.filter((t) => t.id !== 'gear-sel-qa1' && t.id !== 'sprint-roi-qa1' && t.id !== 'logo-qa1' && t.id !== 'pay-qa1' && t.id !== 'shop-gear-page-qa1' && t.id !== 'gear-brand-qa1'));
     expect(merged.some((t) => t.id === 'gear-sel-qa1')).toBe(true);
@@ -142,9 +170,10 @@ describe('workBoard seed merge', () => {
     const pay = INITIAL_TASKS.find((t) => t.id === 't-43');
     expect(pay?.title).toMatch(/Make Payment/i);
     expect(pay?.assignee).toBe('angela');
-    expect(pay?.sprint).toBe('Sprint 1');
+    expect(pay?.sprint).toBe('Sprint 2');
     expect(pay?.priority).toBe('high');
-    expect(INITIAL_QA_TESTS.find((t) => t.id === 'pay-qa1')?.desc).toMatch(/Zelle/);
+    const payQa = INITIAL_QA_TESTS.find((t) => t.id === 'pay-qa1');
+    expect(payQa?.description ?? payQa?.desc).toMatch(/Zelle/);
     expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => t.id !== 't-43')).some((t) => t.id === 't-43')).toBe(true);
   });
 
@@ -152,7 +181,7 @@ describe('workBoard seed merge', () => {
     const resend = INITIAL_TASKS.find((t) => t.id === 't-49');
     expect(resend?.title).toMatch(/Resend/i);
     expect(resend?.assignee).toBe('evelyn');
-    expect(resend?.sprint).toBe('Sprint 1');
+    expect(resend?.sprint).toBe('Sprint 2');
     expect(resend?.priority).toBe('high');
     expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => t.id !== 't-49')).some((t) => t.id === 't-49')).toBe(true);
   });
@@ -163,19 +192,19 @@ describe('workBoard seed merge', () => {
     const instagram = INITIAL_TASKS.find((t) => t.id === 't-57');
     expect(tiktok).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation TikTok page',
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'angela',
       category: 'Content',
       status: 'not_started',
     });
     expect(youtube).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation YouTube channel',
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'angela',
     });
     expect(instagram).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation Instagram page',
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'angela',
     });
     const without = INITIAL_TASKS.filter((t) => t.id !== 't-55' && t.id !== 't-56' && t.id !== 't-57');
@@ -192,25 +221,25 @@ describe('workBoard seed merge', () => {
     const brandDecision = INITIAL_TASKS.find((t) => t.id === 't-61');
     expect(tiktokAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation TikTok page',
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(youtubeAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation YouTube channel',
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(instagramAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation Instagram page',
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(brandDecision).toMatchObject({
       title: 'Keep NonNegotiation as the house — introduce MY PLAN, NOT MY MOOD as a brand under it',
-      sprint: 'Sprint 1',
+      sprint: 'Sprint 2',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
@@ -244,7 +273,7 @@ describe('workBoard seed merge', () => {
     expect(INITIAL_TASKS.find((t) => t.id === 't-74')?.dueDate).toBe('2026-09-04');
     const videoIds = ['t-75', 't-76', 't-77', 't-78', 't-79'] as const;
     const videoTitles = ['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
-    const videoSprints = ['Sprint 1', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
+    const videoSprints = ['Sprint 2', 'Sprint 2', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
     videoIds.forEach((id, index) => {
       expect(INITIAL_TASKS.find((t) => t.id === id)).toMatchObject({
         title: `Create 3 T-shirt sales videos for ${videoTitles[index]}`,
@@ -255,22 +284,26 @@ describe('workBoard seed merge', () => {
     });
     const analytics = INITIAL_TASKS.filter((task) => String(task.groupId ?? '').startsWith('analytics-'));
     expect(analytics).toHaveLength(120);
-    expect(analytics.every((task) => task.sprint !== 'Sprint 0')).toBe(true);
-    expect(INITIAL_TASKS.every((task) => task.sprint !== 'Sprint 0')).toBe(true);
-    expect(INITIAL_QA_TESTS.every((test) => test.sprint !== 'Sprint 0')).toBe(true);
-    expect(allSeedQaTests().every((test) => test.sprint !== 'Sprint 0')).toBe(true);
+    expect(analytics.every((task) => task.sprint !== 'Sprint 0' && task.sprint !== 'Sprint 1')).toBe(true);
+    expect(INITIAL_TASKS.every((task) => task.sprint !== 'Sprint 0' && task.sprint !== 'Sprint 1')).toBe(true);
+    expect(INITIAL_QA_TESTS.every((test) => test.sprint !== 'Sprint 0' && test.sprint !== 'Sprint 1')).toBe(true);
+    expect(allSeedQaTests().every((test) => test.sprint !== 'Sprint 0' && test.sprint !== 'Sprint 1')).toBe(true);
     expect(INITIAL_TASKS.find((task) => task.id === 't-49')).toMatchObject({
       rolledOver: true,
       assignee: 'evelyn',
     });
-    expect(INITIAL_TASKS.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 1/);
+    expect(INITIAL_TASKS.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 2/);
     expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.rolledOver).toBe(true);
-    expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.desc).toMatch(/Rolled Over to Sprint 1/);
+    expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.desc).toMatch(/Rolled Over to Sprint 2/);
     expect(analytics.filter((task) => task.assignee === 'angela')).toHaveLength(60);
     expect(analytics.filter((task) => task.assignee === 'evelyn')).toHaveLength(60);
     expect(INITIAL_TASKS.find((t) => t.id === 't-83')?.title).toMatch(/Gather Facebook analytics/i);
     expect(INITIAL_TASKS.find((t) => t.id === 't-84')?.title).toMatch(/Review Facebook analytics/i);
     expect(INITIAL_TASKS.find((t) => t.id === 't-83')?.groupId).toBe('analytics-2026-09-07-facebook');
+    expect(INITIAL_TASKS.find((t) => t.id === 't-83')?.dueDate).toBe('2026-09-18');
+    expect(INITIAL_TASKS.find((t) => t.id === 't-84')?.dueDate).toBe('2026-09-19');
+    expect(analytics.filter((task) => task.assignee === 'angela').every((task) => (task.dueDate ?? '') >= '2026-09-18')).toBe(true);
+    expect(analytics.filter((task) => task.assignee === 'evelyn').every((task) => (task.dueDate ?? '') >= '2026-09-19')).toBe(true);
     expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => t.id !== 't-83')).some((t) => t.id === 't-83')).toBe(true);
     expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => !videoIds.includes(t.id as (typeof videoIds)[number]))).some((t) => t.id === 't-75')).toBe(
       true,
@@ -317,6 +350,13 @@ describe('workBoard seed merge', () => {
     expect(mergeMissingSeedTasks(without).some((t) => t.id === 't-48')).toBe(true);
   });
 
+  it('does not resurrect a seed test that was deleted, and empty saved lists stay empty', () => {
+    const without = INITIAL_QA_TESTS.filter((t) => t.id !== 'home-qa1');
+    expect(mergeMissingSeedQaTests(without, INITIAL_QA_TESTS, ['home-qa1']).some((t) => t.id === 'home-qa1')).toBe(false);
+    expect(mergeMissingSeedQaTests(without).some((t) => t.id === 'home-qa1')).toBe(true);
+    expect(normalizeQaTests([])).toEqual([]);
+  });
+
   it('rewrites the superseded Phase 1 ROI task title when it is still not started', () => {
     const saved = INITIAL_TASKS.map((t) =>
       t.id === 't-24'
@@ -330,6 +370,46 @@ describe('workBoard seed merge', () => {
       saved.map((t) => (t.id === 't-24' ? { ...t, status: 'in_progress' as const } : t)),
     );
     expect(started.find((t) => t.id === 't-24')?.title).toBe('Build ROI per phase after shirt costs are known');
+  });
+
+  it('overlays analytics and new-review due dates onto saved incomplete rows', () => {
+    const staleAnalytics = overlaySupersededSeedTasks([
+      {
+        ...INITIAL_TASKS.find((task) => task.id === 't-83')!,
+        dueDate: '2026-09-07',
+        sprint: 'Sprint 1',
+        title: 'Upload site analytics — Mon Sep 7 (Sprint 1)',
+      },
+      {
+        ...INITIAL_TASKS.find((task) => task.id === 't-84')!,
+        dueDate: '2026-09-07',
+        sprint: 'Sprint 1',
+      },
+      {
+        ...INITIAL_TASKS.find((task) => task.id === 't-203')!,
+        dueDate: '2026-09-20',
+        sprint: 'Sprint 2',
+      },
+    ]);
+    expect(staleAnalytics.find((task) => task.id === 't-83')).toMatchObject({
+      dueDate: '2026-09-18',
+      sprint: 'Sprint 2',
+    });
+    expect(staleAnalytics.find((task) => task.id === 't-84')?.dueDate).toBe('2026-09-19');
+    expect(staleAnalytics.find((task) => task.id === 't-203')).toMatchObject({
+      dueDate: '2026-09-27',
+      sprint: 'Sprint 3',
+    });
+    const doneKept = overlaySupersededSeedTasks([
+      { ...INITIAL_TASKS.find((task) => task.id === 't-83')!, status: 'done', dueDate: '2026-09-17' },
+    ]);
+    expect(doneKept[0]?.dueDate).toBe('2026-09-17');
+
+    const staleTest = overlayCatalogQaSchedule([
+      { ...INITIAL_QA_TESTS.find((test) => test.id === 'p1web-home')!, dueDate: '2026-09-19', sprint: 'Sprint 2' },
+    ]);
+    expect(staleTest[0]?.sprint).toBe('Sprint 3');
+    expect(staleTest[0]?.dueDate).toBe('2026-09-21');
   });
 
   it('applies every inline task parameter and rejects invalid values', () => {
@@ -360,17 +440,100 @@ describe('workBoard seed merge', () => {
     expect(applyTaskInlinePatch(task, { title: 'Draft title' }).title).toBe('Draft title');
     expect(applyTaskInlinePatch(task, { sprint: 'Sprint 99' as SprintCategory }).sprint).toBe(task.sprint);
     expect(applyTaskInlinePatch(task, { sprint: 'Sprint 0' }).sprint).toBe(task.sprint);
+    expect(applyTaskInlinePatch(task, { sprint: 'Sprint 1' }).sprint).toBe(task.sprint);
     expect(applyQaInlinePatch(INITIAL_QA_TESTS[0], { sprint: 'Sprint 0' }).sprint).toBe(INITIAL_QA_TESTS[0].sprint);
+    expect(applyQaInlinePatch(INITIAL_QA_TESTS[0], { sprint: 'Sprint 1' }).sprint).toBe(INITIAL_QA_TESTS[0].sprint);
     const finishedCarryover = applyTaskInlinePatch(INITIAL_TASKS.find((row) => row.id === 't-1')!, { status: 'done' });
     expect(finishedCarryover).toMatchObject({
       id: 't-1',
-      sprint: 'Sprint 0',
+      status: 'done',
+      completedOn: workBoardTodayIso(),
+    });
+    if (workBoardTodayIso() <= '2026-09-14') {
+      expect(finishedCarryover).toMatchObject({ sprint: 'Sprint 1', rolledOver: false });
+      expect(finishedCarryover.notes).not.toMatch(/Rolled Over to Sprint 2/);
+    } else {
+      expect(finishedCarryover.sprint).toBe('Sprint 2');
+    }
+    const lateSprint1Mark = applyTaskInlinePatch(
+      { ...INITIAL_TASKS.find((row) => row.id === 't-1')!, completedOn: '2026-09-14' },
+      { status: 'done' },
+    );
+    expect(lateSprint1Mark).toMatchObject({
+      id: 't-1',
+      sprint: 'Sprint 1',
       status: 'done',
       rolledOver: false,
+      completedOn: '2026-09-14',
     });
-    expect(finishedCarryover.notes).not.toMatch(/Rolled Over to Sprint 1/);
+    expect(applyTaskInlinePatch(finishedCarryover, { status: 'not_started' }).completedOn).toBeUndefined();
+    const finishedBeforeClose = normalizeTasks([
+      {
+        id: 't-900',
+        title: 'Finished during Sprint 1',
+        status: 'done',
+        sprint: 'Sprint 2',
+        completedOn: '2026-09-12',
+        category: 'Launch',
+        priority: 'high',
+        assignee: 'angela',
+      },
+    ])[0];
+    expect(finishedBeforeClose).toMatchObject({
+      sprint: 'Sprint 1',
+      status: 'done',
+      rolledOver: false,
+      completedOn: '2026-09-12',
+    });
+    const passedBeforeClose = applyQaInlinePatch(
+      { ...INITIAL_QA_TESTS[0], sprint: 'Sprint 2', rolledOver: false, completedOn: '2026-09-10' },
+      { status: 'passed' },
+    );
+    expect(passedBeforeClose).toMatchObject({
+      sprint: 'Sprint 1',
+      status: 'passed',
+      rolledOver: false,
+      completedOn: '2026-09-10',
+    });
     const list = applyTaskInlinePatchToList([task], task.id, { status: 'in_progress' });
     expect(list[0].status).toBe('in_progress');
+  });
+
+  it('requires a note when a task is set to Blocked', () => {
+    const task = INITIAL_TASKS[0];
+    const actor = { name: 'Evelyn Irving', email: 'evelyn@example.com' };
+    expect(taskNeedsBlockedNote('not_started', 'blocked')).toBe(true);
+    expect(taskNeedsBlockedNote('blocked', 'blocked')).toBe(false);
+    expect(taskNeedsBlockedNote('blocked', 'in_progress')).toBe(false);
+    expect(applyTaskInlinePatch(task, { status: 'blocked' }).status).toBe(task.status);
+    expect(applyTaskBlockedWithNote(task, '   ', actor)).toEqual({
+      ok: false,
+      error: BLOCKED_NOTE_REQUIRED_MESSAGE,
+    });
+    const blocked = applyTaskBlockedWithNote(task, 'Waiting on Zelle confirmation', actor);
+    expect(blocked.ok).toBe(true);
+    if (blocked.ok) {
+      expect(blocked.task.status).toBe('blocked');
+      expect(blocked.task.notes).toMatch(/Waiting on Zelle confirmation/);
+    }
+    const already = applyTaskBlockedWithNote(
+      { ...task, status: 'blocked', notes: '[{"id":"n-1","author":"Evelyn","createdAt":"2026-09-17T00:00:00.000Z","updatedAt":"2026-09-17T00:00:00.000Z","text":"Already blocked"}]' },
+      'Another note',
+      actor,
+    );
+    expect(already.ok).toBe(true);
+    if (already.ok) {
+      expect(already.task.notes).toContain('Already blocked');
+      expect(already.task.notes).not.toContain('Another note');
+    }
+    expect(applyTasksBlockedWithNote(INITIAL_TASKS, ['t-1', 't-2'], '', actor).ok).toBe(false);
+    const bulk = applyTasksBlockedWithNote(INITIAL_TASKS, ['t-1', 't-2'], 'Vendor delay', actor);
+    expect(bulk.ok).toBe(true);
+    if (bulk.ok) {
+      expect(bulk.tasks.find((row) => row.id === 't-1')?.status).toBe('blocked');
+      expect(bulk.tasks.find((row) => row.id === 't-2')?.status).toBe('blocked');
+      expect(bulk.tasks.find((row) => row.id === 't-3')?.status).not.toBe('blocked');
+    }
   });
 
   it('lets filter dropdowns multi-select and treat All as every value', () => {
@@ -401,6 +564,14 @@ describe('workBoard seed merge', () => {
     expect(bulkTasks.find((t) => t.id === 't-3')?.priority).toBe('high');
     const bulkTests = applyBulkQaPatch(INITIAL_QA_TESTS, [INITIAL_QA_TESTS[0].id], { status: 'blocked' });
     expect(bulkTests[0].status).toBe('blocked');
+    const dueIds = [INITIAL_QA_TESTS[0].id, INITIAL_QA_TESTS[1].id];
+    const dueBulk = applyBulkQaPatch(INITIAL_QA_TESTS, dueIds, { dueDate: '2026-09-18' });
+    expect(dueBulk.find((test) => test.id === dueIds[0])?.dueDate).toBe('2026-09-18');
+    expect(dueBulk.find((test) => test.id === dueIds[1])?.dueDate).toBe('2026-09-18');
+    expect(applyBulkQaPatch(dueBulk, dueIds, { dueDate: '' }).find((test) => test.id === dueIds[0])?.dueDate).toBe('');
+    const taskDue = applyBulkTaskPatch(INITIAL_TASKS, ['t-1', 't-2'], { dueDate: '2026-09-19' });
+    expect(taskDue.find((task) => task.id === 't-1')?.dueDate).toBe('2026-09-19');
+    expect(taskDue.find((task) => task.id === 't-2')?.dueDate).toBe('2026-09-19');
     expect(applyQaInlinePatch(INITIAL_QA_TESTS[0], { title: 'Renamed QA' }).title).toBe('Renamed QA');
     const qaPatched = applyQaInlinePatch(INITIAL_QA_TESTS[0], {
       assignor: 'angela',
@@ -420,7 +591,12 @@ describe('workBoard seed merge', () => {
     expect(stats).toHaveLength(5);
     expect(stats[0].sprint).toBe('Sprint 0');
     expect(stats[0].total).toBe(0);
-    expect(stats.find((row) => row.sprint === 'Sprint 1')?.total).toBeGreaterThan(0);
+    expect(stats.find((row) => row.sprint === 'Sprint 1')?.total).toBe(0);
+    expect(stats.find((row) => row.sprint === 'Sprint 2')?.total).toBeGreaterThan(0);
+    expect(stats.find((row) => row.sprint === 'Sprint 2')?.rolledOver).toBe(countRolledOverItems(INITIAL_TASKS.filter((task) => task.sprint === 'Sprint 2')));
+    expect(countRolledOverItems(INITIAL_TASKS)).toBeGreaterThan(0);
+    expect(countRolledOverItems(INITIAL_QA_TESTS)).toBeGreaterThan(0);
+    expect(formatRolledOverCount(countRolledOverItems(INITIAL_TASKS))).toMatch(/rolled over/);
   });
 
   it('defaults every sprint section open on the task and test boards', () => {
@@ -428,8 +604,9 @@ describe('workBoard seed merge', () => {
     expect(current).toBe('Sprint 0');
     const open = defaultOpenSprintSections(current);
     expect(open['Sprint 0']).toBe(false);
-    expect(SPRINT_OPTIONS.filter((sprint) => sprint !== 'Sprint 0').every((sprint) => open[sprint])).toBe(true);
-    expect(toggleSprintSection(open, 'Sprint 1')['Sprint 1']).toBe(false);
+    expect(open['Sprint 1']).toBe(false);
+    expect(SPRINT_OPTIONS.filter((sprint) => sprint !== 'Sprint 0' && sprint !== 'Sprint 1').every((sprint) => open[sprint])).toBe(true);
+    expect(toggleSprintSection(open, 'Sprint 2')['Sprint 2']).toBe(false);
   });
 
   it('grays save until a task or test card is dirty, then enables that card and Save All', () => {
@@ -461,6 +638,39 @@ describe('workBoard seed merge', () => {
     expect(taskFilters.status.size).toBe(0);
     expect(testFilters.assignee.size).toBe(0);
     expect(taskFilters.due).toBe('all');
+  });
+
+  it('defaults Testing Portal filters to the current sprint and signed-in person', () => {
+    const now = new Date('2026-09-14T12:00:00');
+    const filters = defaultTestingPortalFilters({ email: 'evelyn3@cox.net', name: 'Evelyn Irving' }, now);
+    expect([...filters.sprint]).toEqual([currentSprintLabel(now)]);
+    expect([...filters.assignee]).toEqual(['evelyn']);
+    expect(filters.status.size).toBe(0);
+    expect(filters.priority.size).toBe(0);
+    expect(filters.category.size).toBe(0);
+    expect(filters.due).toBe('all');
+    const qaOnly = defaultTestingPortalFilters({ email: 'qa@example.com', name: 'QA Tester' }, now);
+    expect([...qaOnly.sprint]).toEqual([currentSprintLabel(now)]);
+    expect(qaOnly.assignee.size).toBe(0);
+  });
+
+  it('defaults the Task List to the current sprint, signed-in name, and All statuses', () => {
+    const now = new Date('2026-09-17T12:00:00');
+    const evelyn = defaultTaskBoardFilters({ email: 'evelyn3@cox.net', name: 'Evelyn Irving' }, now);
+    expect([...evelyn.sprint]).toEqual([currentSprintLabel(now)]);
+    expect([...evelyn.assignee]).toEqual(['evelyn']);
+    expect(evelyn.status.size).toBe(0);
+    expect(evelyn.priority.size).toBe(0);
+    expect(evelyn.category.size).toBe(0);
+    expect(evelyn.due).toBe('all');
+    const angela = defaultTaskBoardFilters({ email: 'angela@angelasharris.com', name: 'Angela' }, now);
+    expect([...angela.sprint]).toEqual([currentSprintLabel(now)]);
+    expect([...angela.assignee]).toEqual(['angela']);
+    expect(angela.status.size).toBe(0);
+    const unknown = defaultTaskBoardFilters({ email: 'guest@example.com', name: 'Guest' }, now);
+    expect([...unknown.sprint]).toEqual([currentSprintLabel(now)]);
+    expect(unknown.assignee.size).toBe(0);
+    expect(unknown.status.size).toBe(0);
   });
 
   it('sorts and filters list columns including due date', () => {
@@ -562,6 +772,16 @@ describe('workBoard seed merge', () => {
     expect(workPriorityTextClass('high')).toBe('text-[#DC2626]');
     expect(workPriorityTextClass('medium')).toBe('text-[#1F1917]');
     expect(workPriorityTextClass('low')).toBe('text-[#1F1917]');
+    expect(workDueDateTextClass('2026-09-16', { today: '2026-09-17' })).toBe('text-[#DC2626]');
+    expect(workDueDateTextClass('2026-09-17', { today: '2026-09-17' })).toBe('text-[#1F1917]');
+    expect(workDueDateTextClass('2026-09-21', { today: '2026-09-17' })).toBe('text-[#1F1917]');
+    expect(workDueDateTextClass('2026-09-16', { today: '2026-09-17', done: true })).toBe('text-[#1F1917]');
+    expect(workDueDateTextClass(undefined, { today: '2026-09-17' })).toBe('text-[#1F1917]');
+    expect(workOverdueTextClass(true)).toBe('text-[#DC2626]');
+    expect(workOverdueTextClass(false)).toBe('text-[#1F1917]');
+    expect(workDueDateControlClass(true)).toContain('text-[#DC2626]');
+    expect(workDueDateControlClass(false)).toContain('text-[#1F1917]');
+    expect(workDueDateControlClass(false)).not.toContain('text-[#DC2626]');
     expect(qaStatusRowClass('passed')).toContain('#B8D4C4');
     expect(qaStatusRowClass('in_progress')).toContain('#F6E56A');
     expect(qaStatusRowClass('failed')).toContain('#E4B8A4');
@@ -572,24 +792,38 @@ describe('workBoard seed merge', () => {
     expect(QA_STATUS_TONES.failed).not.toBe(QA_STATUS_TONES.passed);
   });
 
-  it('opens Assignee first and switches the other filters as tabs', () => {
-    expect(FILTER_SECTION_IDS).toEqual(['assignee', 'sprint', 'priority', 'category', 'status']);
+  it('opens Sprint and Assignee filter sections and toggles them independently', () => {
+    expect(FILTER_SECTION_IDS).toEqual(['sprint', 'assignee', 'status', 'category', 'priority']);
     expect(defaultFilterSectionTab()).toBe('assignee');
     expect(FILTER_SECTION_LABELS.assignee).toBe('Assignee');
     expect(isFilterSectionTab('assignee')).toBe(true);
     expect(isFilterSectionTab('notes')).toBe(false);
     const open = defaultOpenFilterSections();
     expect(open.assignee).toBe(true);
-    expect(open.sprint).toBe(false);
+    expect(open.sprint).toBe(true);
     expect(open.priority).toBe(false);
     expect(open.category).toBe(false);
     expect(open.status).toBe(false);
+    expect(defaultMoreFiltersOpen()).toBe(false);
+    expect(COLLAPSED_FILTER_SECTION_IDS).toEqual(['status', 'category', 'priority']);
     const sprint = selectFilterSection('sprint');
     expect(sprint.sprint).toBe(true);
     expect(sprint.assignee).toBe(false);
-    expect(toggleFilterSection(open, 'priority').priority).toBe(true);
-    expect(toggleFilterSection(open, 'priority').assignee).toBe(false);
-    expect(toggleFilterSection(open, 'assignee').assignee).toBe(true);
+    const openedPriority = toggleFilterSection(open, 'priority');
+    expect(openedPriority.priority).toBe(true);
+    expect(openedPriority.assignee).toBe(true);
+    expect(openedPriority.sprint).toBe(true);
+    expect(toggleFilterSection(open, 'assignee').assignee).toBe(false);
+    expect(toggleFilterSection(open, 'assignee').sprint).toBe(true);
+    expect(filterSectionSummary(new Set(), ['angela', 'evelyn'], [{ id: 'angela', label: 'Angela', done: 0, total: 1 }])).toBe(
+      'All',
+    );
+    expect(
+      filterSectionSummary(new Set(['evelyn']), ['angela', 'evelyn'], [
+        { id: 'angela', label: 'Angela', done: 0, total: 1 },
+        { id: 'evelyn', label: 'Evelyn', done: 1, total: 2 },
+      ]),
+    ).toBe('Evelyn');
   });
 
   it('formats stable task and QA numbers', () => {
@@ -667,12 +901,19 @@ describe('workBoard seed merge', () => {
     expect(chips.find((chip) => chip.id === 'qa')).toBeUndefined();
     expect(chips.find((chip) => chip.id === 'unassigned')?.label).toBe('Unknown');
     expect(chips.find((chip) => chip.id === 'vitest')).toMatchObject({ label: 'Vitest', total: 9 });
-    expect(chips.find((chip) => chip.id === 'playwright')).toMatchObject({ label: 'Playwright', total: 6 });
-    expect(chips.find((chip) => chip.id === 'angela')?.total).toBe(4);
+    expect(chips.find((chip) => chip.id === 'playwright')).toMatchObject({ label: 'Playwright', total: 7 });
+    expect(chips.find((chip) => chip.id === 'angela')?.total).toBe(
+      4 +
+        phase1WebsiteReviewTestCount() +
+        sprint2WebsiteReviewTestCount() +
+        formWalkthroughTestCount() +
+        moodWorkflowTestCount() +
+        journalMakeReviewTestIds().length,
+    );
     expect(chips.find((chip) => chip.id === 'evelyn')?.total).toBe(4);
     const taskChips = buildAssigneeChipCounts(INITIAL_TASKS, taskIsDone);
-    expect(taskChips.find((chip) => chip.id === 'angela')?.total).toBe(101);
-    expect(taskChips.find((chip) => chip.id === 'evelyn')?.total).toBe(82);
+    expect(taskChips.find((chip) => chip.id === 'angela')?.total).toBe(107);
+    expect(taskChips.find((chip) => chip.id === 'evelyn')?.total).toBe(84);
     expect(taskChips.find((chip) => chip.id === 'qa')?.total).toBe(1);
     expect(taskChips.find((chip) => chip.id === 'vitest')).toMatchObject({ label: 'Vitest', total: 0 });
     expect(taskChips.find((chip) => chip.id === 'playwright')).toMatchObject({ label: 'Playwright', total: 0 });
@@ -702,7 +943,7 @@ describe('workBoard seed merge', () => {
       },
     ]);
     expect(task.assignor).toBe('system');
-    expect(task.sprint).toBe('Sprint 1');
+    expect(task.sprint).toBe('Sprint 2');
     expect(task.assignee).toBe('angela');
     const reassigned = applyTaskInlinePatch(task, { assignee: 'evelyn' }, 'angela');
     expect(reassigned.assignee).toBe('evelyn');

@@ -41,7 +41,7 @@ describe("membership access gatekeeping", () => {
     expect(tierHasFeature("elite", "member_guides")).toBe(true);
   });
 
-  it("gates the weekly newsletter behind Starter & Above (admins bypass)", () => {
+  it("gates the bi-weekly newsletter behind Starter & Above (admins bypass)", () => {
     expect(tierHasFeature("free", "newsletter")).toBe(false);
     expect(tierHasFeature("starter", "newsletter")).toBe(true);
     expect(tierHasFeature("pro", "newsletter")).toBe(true);

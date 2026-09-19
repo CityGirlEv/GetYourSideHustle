@@ -1559,6 +1559,433 @@ export function GuideRevenueCalculator({ guideId, guideName }: GuideRevenueCalcu
               <FieldNumber label="Editing" value={inputs.editingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("editingHours", v)} />
               <FieldNumber label="Revisions / delivery / admin" value={inputs.revisionsDeliveryAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("revisionsDeliveryAdminHours", v)} />
             </>
+          ) : profile.mode === "service" && guideId === "neighborhood-helper" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Jobs / week" value={inputs.nhJobsPerWeek ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhJobsPerWeek", v)} />
+              <FieldNumber label="Average price / job ($)" value={inputs.nhAvgPricePerJob ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhAvgPricePerJob", v)} />
+              <FieldNumber label="Recurring monthly revenue ($)" value={inputs.nhRecurringMonthly ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhRecurringMonthly", v)} />
+              <FieldNumber label="Monthly add-on / rush revenue ($)" value={inputs.nhAddOnRush ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhAddOnRush", v)} />
+              <FieldNumber label="Tips / other revenue ($)" value={inputs.nhTipsOther ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhTipsOther", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Supplies ($)" value={inputs.nhSupplies ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhSupplies", v)} />
+              <FieldNumber label="Travel ($)" value={inputs.nhTravel ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhTravel", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.nhPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhPaymentFees", v)} />
+              <FieldNumber label="Advertising ($)" value={inputs.nhAdvertising ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhAdvertising", v)} />
+              <FieldNumber label="Insurance / licensing if applicable ($)" value={inputs.nhInsuranceLicensing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhInsuranceLicensing", v)} />
+              <FieldNumber label="Other ($)" value={inputs.nhOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Task hours" value={inputs.nhTaskHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhTaskHours", v)} />
+              <FieldNumber label="Travel / admin hours" value={inputs.nhTravelAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("nhTravelAdminHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "ai-assets" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Starter packs / month" value={inputs.aaStarterPacks ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaStarterPacks", v)} />
+              <FieldNumber label="Average starter pack fee ($)" value={inputs.aaAvgStarterFee ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaAvgStarterFee", v)} />
+              <FieldNumber label="Campaign kit revenue ($)" value={inputs.aaCampaignKitRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaCampaignKitRevenue", v)} />
+              <FieldNumber label="Retainer revenue ($)" value={inputs.aaRetainerRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaRetainerRevenue", v)} />
+              <FieldNumber label="Add-on revenue ($)" value={inputs.aaAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaAddOnRevenue", v)} />
+              <FieldNumber label="Other revenue ($)" value={inputs.aaOtherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaOtherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="AI / design subscriptions ($)" value={inputs.aaAiDesignSubscriptions ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaAiDesignSubscriptions", v)} />
+              <FieldNumber label="Licensed inputs ($)" value={inputs.aaLicensedInputs ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaLicensedInputs", v)} />
+              <FieldNumber label="Storage / hardware ($)" value={inputs.aaStorageHardware ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaStorageHardware", v)} />
+              <FieldNumber label="Contractors / review ($)" value={inputs.aaContractorsReview ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaContractorsReview", v)} />
+              <FieldNumber label="Payment fees / refunds ($)" value={inputs.aaPaymentFeesRefunds ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaPaymentFeesRefunds", v)} />
+              <FieldNumber label="Insurance / other ($)" value={inputs.aaInsuranceOther ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaInsuranceOther", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Brief / research" value={inputs.aaBriefResearchHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaBriefResearchHours", v)} />
+              <FieldNumber label="Generation / concept" value={inputs.aaGenerationConceptHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaGenerationConceptHours", v)} />
+              <FieldNumber label="Human-edit / export" value={inputs.aaHumanEditExportHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaHumanEditExportHours", v)} />
+              <FieldNumber label="Revision / admin / marketing" value={inputs.aaRevisionAdminMarketingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaRevisionAdminMarketingHours", v)} />
+              <FieldNumber label="Final assets delivered" value={inputs.aaFinalAssetsDelivered ?? 0} resetKey={fieldKey} onChange={(v) => setInput("aaFinalAssetsDelivered", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "airbnb-cohost" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Defined booking revenue ($)" value={inputs.acDefinedBookingRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acDefinedBookingRevenue", v)} />
+              <FieldNumber label="Co-host percent (%)" value={inputs.acCoHostPercent ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acCoHostPercent", v)} />
+              <FieldNumber label="Fixed retainer ($)" value={inputs.acFixedRetainer ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acFixedRetainer", v)} />
+              <FieldNumber label="Setup / add-on revenue ($)" value={inputs.acSetupAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acSetupAddOnRevenue", v)} />
+              <FieldNumber label="Other revenue ($)" value={inputs.acOtherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acOtherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Travel / mileage ($)" value={inputs.acTravelMileage ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acTravelMileage", v)} />
+              <FieldNumber label="Phone / software ($)" value={inputs.acPhoneSoftware ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acPhoneSoftware", v)} />
+              <FieldNumber label="Supplies not reimbursed ($)" value={inputs.acSuppliesNotReimbursed ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acSuppliesNotReimbursed", v)} />
+              <FieldNumber label="Contractors / backup ($)" value={inputs.acContractorsBackup ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acContractorsBackup", v)} />
+              <FieldNumber label="Insurance / professional ($)" value={inputs.acInsuranceProfessional ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acInsuranceProfessional", v)} />
+              <FieldNumber label="Payment fees / other ($)" value={inputs.acPaymentFeesOther ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acPaymentFeesOther", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Guest communication" value={inputs.acGuestCommHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acGuestCommHours", v)} />
+              <FieldNumber label="Turnover / vendor" value={inputs.acTurnoverVendorHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acTurnoverVendorHours", v)} />
+              <FieldNumber label="Owner report / admin" value={inputs.acOwnerReportAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acOwnerReportAdminHours", v)} />
+              <FieldNumber label="Emergency / after-hours" value={inputs.acEmergencyAfterHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acEmergencyAfterHours", v)} />
+              <FieldNumber label="Reservations supported" value={inputs.acReservationsSupported ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acReservationsSupported", v)} />
+              <FieldNumber label="Turnovers completed" value={inputs.acTurnoversCompleted ?? 0} resetKey={fieldKey} onChange={(v) => setInput("acTurnoversCompleted", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "amazon" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly sales</p>
+              <FieldNumber label="Units sold" value={inputs.amzUnitsSold ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzUnitsSold", v)} />
+              <FieldNumber label="Average selling price ($)" value={inputs.amzAvgSellingPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzAvgSellingPrice", v)} />
+              <FieldNumber label="Refunds ($)" value={inputs.amzRefunds ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzRefunds", v)} />
+              <FieldNumber label="Other credits ($)" value={inputs.amzOtherCredits ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzOtherCredits", v)} />
+              <p className="guide-revenue-calc__section-label">Costs and fees</p>
+              <FieldNumber label="Landed cost / unit ($)" value={inputs.amzLandedCostPerUnit ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzLandedCostPerUnit", v)} />
+              <FieldNumber label="Referral fees ($)" value={inputs.amzReferralFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzReferralFees", v)} />
+              <FieldNumber label="FBA fulfillment fees ($)" value={inputs.amzFbaFulfillmentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzFbaFulfillmentFees", v)} />
+              <FieldNumber label="Storage / placement / other Amazon fees ($)" value={inputs.amzStoragePlacementOther ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzStoragePlacementOther", v)} />
+              <FieldNumber label="Advertising ($)" value={inputs.amzAdvertising ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzAdvertising", v)} />
+              <FieldNumber label="Coupons / promotions ($)" value={inputs.amzCouponsPromotions ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzCouponsPromotions", v)} />
+              <FieldNumber label="Other variable costs ($)" value={inputs.amzOtherVariableCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzOtherVariableCosts", v)} />
+              <FieldNumber label="Selling plan / software ($)" value={inputs.amzSellingPlanSoftware ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzSellingPlanSoftware", v)} />
+              <FieldNumber label="Testing / compliance ($)" value={inputs.amzTestingCompliance ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzTestingCompliance", v)} />
+              <FieldNumber label="Insurance / professional ($)" value={inputs.amzInsuranceProfessional ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzInsuranceProfessional", v)} />
+              <FieldNumber label="Photography / design ($)" value={inputs.amzPhotographyDesign ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzPhotographyDesign", v)} />
+              <FieldNumber label="Other overhead ($)" value={inputs.amzOtherOverhead ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzOtherOverhead", v)} />
+              <p className="guide-revenue-calc__section-label">Inventory</p>
+              <FieldNumber label="Units on hand" value={inputs.amzUnitsOnHand ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzUnitsOnHand", v)} />
+              <FieldNumber label="Lead time (days)" value={inputs.amzLeadTimeDays ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzLeadTimeDays", v)} />
+              <FieldNumber label="Average units sold / day" value={inputs.amzAvgUnitsSoldPerDay ?? 0} resetKey={fieldKey} onChange={(v) => setInput("amzAvgUnitsSoldPerDay", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "virtual-call-assistant" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Hourly coverage revenue ($)" value={inputs.vcaHourlyRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaHourlyRevenue", v)} />
+              <FieldNumber label="Retainer revenue ($)" value={inputs.vcaRetainerRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaRetainerRevenue", v)} />
+              <FieldNumber label="Setup / pilot revenue ($)" value={inputs.vcaSetupPilotRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaSetupPilotRevenue", v)} />
+              <FieldNumber label="Overage / add-on revenue ($)" value={inputs.vcaOverageAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaOverageAddOnRevenue", v)} />
+              <FieldNumber label="Other revenue ($)" value={inputs.vcaOtherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaOtherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="VoIP / CRM / software ($)" value={inputs.vcaVoipCrmSoftware ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaVoipCrmSoftware", v)} />
+              <FieldNumber label="Equipment / internet / backup ($)" value={inputs.vcaEquipmentInternetBackup ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaEquipmentInternetBackup", v)} />
+              <FieldNumber label="Operator payroll / contractors ($)" value={inputs.vcaOperatorPayrollContractors ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaOperatorPayrollContractors", v)} />
+              <FieldNumber label="Insurance / legal / compliance ($)" value={inputs.vcaInsuranceLegalCompliance ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaInsuranceLegalCompliance", v)} />
+              <FieldNumber label="Payment fees / marketing ($)" value={inputs.vcaPaymentFeesMarketing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaPaymentFeesMarketing", v)} />
+              <FieldNumber label="Other expenses ($)" value={inputs.vcaOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours and volume</p>
+              <FieldNumber label="Reserved coverage hours" value={inputs.vcaReservedCoverageHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaReservedCoverageHours", v)} />
+              <FieldNumber label="Setup / training / reporting hours" value={inputs.vcaSetupTrainingReportingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaSetupTrainingReportingHours", v)} />
+              <FieldNumber label="Owner admin / marketing hours" value={inputs.vcaOwnerAdminMarketingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaOwnerAdminMarketingHours", v)} />
+              <FieldNumber label="Operator hours paid" value={inputs.vcaOperatorHoursPaid ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaOperatorHoursPaid", v)} />
+              <FieldNumber label="Calls answered" value={inputs.vcaCallsAnswered ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaCallsAnswered", v)} />
+              <FieldNumber label="Average handle + after-call minutes" value={inputs.vcaAvgHandleAfterCallMinutes ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaAvgHandleAfterCallMinutes", v)} />
+              <FieldNumber label="Peak concurrent calls" value={inputs.vcaPeakConcurrentCalls ?? 0} resetKey={fieldKey} onChange={(v) => setInput("vcaPeakConcurrentCalls", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "ai-social-helper" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Caption packs / month" value={inputs.ashCaptionPacks ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashCaptionPacks", v)} />
+              <FieldNumber label="Average pack fee ($)" value={inputs.ashAvgPackFee ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashAvgPackFee", v)} />
+              <FieldNumber label="Calendar / caption revenue ($)" value={inputs.ashCalendarCaptionRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashCalendarCaptionRevenue", v)} />
+              <FieldNumber label="Monthly package revenue ($)" value={inputs.ashMonthlyPackageRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashMonthlyPackageRevenue", v)} />
+              <FieldNumber label="Add-on revenue ($)" value={inputs.ashAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashAddOnRevenue", v)} />
+              <FieldNumber label="Other revenue ($)" value={inputs.ashOtherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashOtherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="AI / design tools ($)" value={inputs.ashAiDesignTools ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashAiDesignTools", v)} />
+              <FieldNumber label="Licensed media ($)" value={inputs.ashLicensedMedia ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashLicensedMedia", v)} />
+              <FieldNumber label="Equipment / internet ($)" value={inputs.ashEquipmentInternet ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashEquipmentInternet", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.ashPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashPaymentFees", v)} />
+              <FieldNumber label="Contractors ($)" value={inputs.ashContractors ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashContractors", v)} />
+              <FieldNumber label="Other expenses ($)" value={inputs.ashOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Brief / research" value={inputs.ashBriefResearchHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashBriefResearchHours", v)} />
+              <FieldNumber label="Draft / edit" value={inputs.ashDraftEditHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashDraftEditHours", v)} />
+              <FieldNumber label="Approval / revision" value={inputs.ashApprovalRevisionHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashApprovalRevisionHours", v)} />
+              <FieldNumber label="Marketing / admin" value={inputs.ashMarketingAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashMarketingAdminHours", v)} />
+              <FieldNumber label="Approved posts" value={inputs.ashApprovedPosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashApprovedPosts", v)} />
+              <FieldNumber label="Drafts submitted" value={inputs.ashDraftsSubmitted ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashDraftsSubmitted", v)} />
+              <FieldNumber label="Posts requiring revision" value={inputs.ashPostsRequiringRevision ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ashPostsRequiringRevision", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "birthday-party-helper" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Short jobs / month" value={inputs.bphShortJobs ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphShortJobs", v)} />
+              <FieldNumber label="Average short-job price ($)" value={inputs.bphAvgShortPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphAvgShortPrice", v)} />
+              <FieldNumber label="Full parties / month" value={inputs.bphFullParties ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphFullParties", v)} />
+              <FieldNumber label="Average full-party price ($)" value={inputs.bphAvgFullPartyPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphAvgFullPartyPrice", v)} />
+              <FieldNumber label="Add-on revenue ($)" value={inputs.bphAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphAddOnRevenue", v)} />
+              <FieldNumber label="Tips / other ($)" value={inputs.bphTipsOther ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphTipsOther", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Supplies ($)" value={inputs.bphSupplies ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphSupplies", v)} />
+              <FieldNumber label="Travel / parking ($)" value={inputs.bphTravelParking ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphTravelParking", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.bphPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphPaymentFees", v)} />
+              <FieldNumber label="Advertising ($)" value={inputs.bphAdvertising ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphAdvertising", v)} />
+              <FieldNumber label="Insurance / licensing if applicable ($)" value={inputs.bphInsuranceLicensing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphInsuranceLicensing", v)} />
+              <FieldNumber label="Other ($)" value={inputs.bphOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Event hours" value={inputs.bphEventHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphEventHours", v)} />
+              <FieldNumber label="Prep / shopping hours" value={inputs.bphPrepShoppingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphPrepShoppingHours", v)} />
+              <FieldNumber label="Travel / admin hours" value={inputs.bphTravelAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("bphTravelAdminHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "closet-organizer" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Short sessions / month" value={inputs.coShortSessions ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coShortSessions", v)} />
+              <FieldNumber label="Average short-session price ($)" value={inputs.coAvgShortPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coAvgShortPrice", v)} />
+              <FieldNumber label="Standard projects / month" value={inputs.coStandardProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coStandardProjects", v)} />
+              <FieldNumber label="Average project price ($)" value={inputs.coAvgProjectPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coAvgProjectPrice", v)} />
+              <FieldNumber label="Add-on revenue ($)" value={inputs.coAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coAddOnRevenue", v)} />
+              <FieldNumber label="Tips / other ($)" value={inputs.coTipsOther ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coTipsOther", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Labels / bags / supplies ($)" value={inputs.coLabelsBagsSupplies ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coLabelsBagsSupplies", v)} />
+              <FieldNumber label="Travel / parking ($)" value={inputs.coTravelParking ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coTravelParking", v)} />
+              <FieldNumber label="Donation / disposal ($)" value={inputs.coDonationDisposal ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coDonationDisposal", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.coPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coPaymentFees", v)} />
+              <FieldNumber label="Advertising ($)" value={inputs.coAdvertising ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coAdvertising", v)} />
+              <FieldNumber label="Insurance / licensing if applicable ($)" value={inputs.coInsuranceLicensing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coInsuranceLicensing", v)} />
+              <FieldNumber label="Other ($)" value={inputs.coOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Organizing hours" value={inputs.coOrganizingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coOrganizingHours", v)} />
+              <FieldNumber label="Shopping / drop-off hours" value={inputs.coShoppingDropOffHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coShoppingDropOffHours", v)} />
+              <FieldNumber label="Travel / admin hours" value={inputs.coTravelAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("coTravelAdminHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "lien-tax-sales" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Deal cash invested</p>
+              <FieldNumber label="Winning bid ($)" value={inputs.ltsWinningBid ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsWinningBid", v)} />
+              <FieldNumber label="Buyer premium ($)" value={inputs.ltsBuyerPremium ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsBuyerPremium", v)} />
+              <FieldNumber label="Title / legal / notice ($)" value={inputs.ltsTitleLegalNotice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsTitleLegalNotice", v)} />
+              <FieldNumber label="Surviving taxes / liens ($)" value={inputs.ltsSurvivingTaxesLiens ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsSurvivingTaxesLiens", v)} />
+              <FieldNumber label="Repairs / environmental ($)" value={inputs.ltsRepairsEnvironmental ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsRepairsEnvironmental", v)} />
+              <FieldNumber label="Insurance / security / utilities ($)" value={inputs.ltsInsuranceSecurityUtilities ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsInsuranceSecurityUtilities", v)} />
+              <FieldNumber label="Financing / holding ($)" value={inputs.ltsFinancingHolding ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsFinancingHolding", v)} />
+              <FieldNumber label="Selling / closing ($)" value={inputs.ltsSellingClosing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsSellingClosing", v)} />
+              <FieldNumber label="Other costs ($)" value={inputs.ltsOtherCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsOtherCosts", v)} />
+              <p className="guide-revenue-calc__section-label">Exit</p>
+              <FieldNumber label="Actual proceeds ($)" value={inputs.ltsActualProceeds ?? 0} resetKey={fieldKey} onChange={(v) => setInput("ltsActualProceeds", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "junior-content-create" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Single pieces / month" value={inputs.singlePiecesPerMonth ?? 0} resetKey={fieldKey} onChange={(v) => setInput("singlePiecesPerMonth", v)} />
+              <FieldNumber label="Average price / single piece ($)" value={inputs.avgPricePerSinglePiece ?? 0} resetKey={fieldKey} onChange={(v) => setInput("avgPricePerSinglePiece", v)} />
+              <FieldNumber label="3-post packs / month" value={inputs.threePostPacksPerMonth ?? 0} resetKey={fieldKey} onChange={(v) => setInput("threePostPacksPerMonth", v)} />
+              <FieldNumber label="Average price / pack ($)" value={inputs.avgPricePerPack ?? 0} resetKey={fieldKey} onChange={(v) => setInput("avgPricePerPack", v)} />
+              <FieldNumber label="Other approved creative revenue ($)" value={inputs.otherApprovedCreativeRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("otherApprovedCreativeRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Design app costs ($)" value={inputs.designAppCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("designAppCosts", v)} />
+              <FieldNumber label="Props / printing ($)" value={inputs.propsPrinting ?? 0} resetKey={fieldKey} onChange={(v) => setInput("propsPrinting", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.paymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("paymentFees", v)} />
+              <FieldNumber label="Other business expenses ($)" value={inputs.otherBusinessExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("otherBusinessExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Total hours" value={inputs.totalHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("totalHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "kids-craft-hustle" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Items sold" value={inputs.itemsSold ?? 0} resetKey={fieldKey} onChange={(v) => setInput("itemsSold", v)} />
+              <FieldNumber label="Average price / item ($)" value={inputs.avgPricePerItem ?? 0} resetKey={fieldKey} onChange={(v) => setInput("avgPricePerItem", v)} />
+              <FieldNumber label="Sets sold" value={inputs.setsSold ?? 0} resetKey={fieldKey} onChange={(v) => setInput("setsSold", v)} />
+              <FieldNumber label="Average price / set ($)" value={inputs.avgPricePerSet ?? 0} resetKey={fieldKey} onChange={(v) => setInput("avgPricePerSet", v)} />
+              <FieldNumber label="Other revenue ($)" value={inputs.otherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("otherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Materials ($)" value={inputs.materials ?? 0} resetKey={fieldKey} onChange={(v) => setInput("materials", v)} />
+              <FieldNumber label="Packaging ($)" value={inputs.packaging ?? 0} resetKey={fieldKey} onChange={(v) => setInput("packaging", v)} />
+              <FieldNumber label="Platform / payment fees ($)" value={inputs.platformPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("platformPaymentFees", v)} />
+              <FieldNumber label="Event table fees ($)" value={inputs.eventTableFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("eventTableFees", v)} />
+              <FieldNumber label="Shipping ($)" value={inputs.shipping ?? 0} resetKey={fieldKey} onChange={(v) => setInput("shipping", v)} />
+              <FieldNumber label="Refunds / replacements ($)" value={inputs.refundsReplacements ?? 0} resetKey={fieldKey} onChange={(v) => setInput("refundsReplacements", v)} />
+              <FieldNumber label="Kindness extras / giving ($)" value={inputs.kindnessExtrasGiving ?? 0} resetKey={fieldKey} onChange={(v) => setInput("kindnessExtrasGiving", v)} />
+              <FieldNumber label="Other expenses ($)" value={inputs.otherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("otherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Units</p>
+              <FieldNumber label="Items made" value={inputs.itemsMade ?? 0} resetKey={fieldKey} onChange={(v) => setInput("itemsMade", v)} />
+              <FieldNumber label="Items unsold / damaged" value={inputs.itemsUnsoldDamaged ?? 0} resetKey={fieldKey} onChange={(v) => setInput("itemsUnsoldDamaged", v)} />
+              <FieldNumber label="Total units sold override" value={inputs.totalUnitsSoldOverride ?? 0} resetKey={fieldKey} onChange={(v) => setInput("totalUnitsSoldOverride", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "create-games-kids" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Fair play cards sold" value={inputs.fairPlayCardsSold ?? 0} resetKey={fieldKey} onChange={(v) => setInput("fairPlayCardsSold", v)} />
+              <FieldNumber label="Price / play card ($)" value={inputs.pricePerPlayCard ?? 0} resetKey={fieldKey} onChange={(v) => setInput("pricePerPlayCard", v)} />
+              <FieldNumber label="Parent-approved family tips ($)" value={inputs.parentApprovedFamilyTips ?? 0} resetKey={fieldKey} onChange={(v) => setInput("parentApprovedFamilyTips", v)} />
+              <FieldNumber label="Custom family games" value={inputs.customFamilyGames ?? 0} resetKey={fieldKey} onChange={(v) => setInput("customFamilyGames", v)} />
+              <FieldNumber label="Average price / custom game ($)" value={inputs.avgPricePerCustomGame ?? 0} resetKey={fieldKey} onChange={(v) => setInput("avgPricePerCustomGame", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Printing / event fees ($)" value={inputs.printingEventFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("printingEventFees", v)} />
+              <FieldNumber label="Supplies ($)" value={inputs.supplies ?? 0} resetKey={fieldKey} onChange={(v) => setInput("supplies", v)} />
+              <FieldNumber label="Tool / asset costs ($)" value={inputs.toolAssetCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("toolAssetCosts", v)} />
+              <FieldNumber label="Other expenses ($)" value={inputs.otherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("otherExpenses", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "create-games-junior" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Paid downloads / tips" value={inputs.paidDownloadsTips ?? 0} resetKey={fieldKey} onChange={(v) => setInput("paidDownloadsTips", v)} />
+              <FieldNumber label="Average gross amount ($)" value={inputs.avgGrossAmount ?? 0} resetKey={fieldKey} onChange={(v) => setInput("avgGrossAmount", v)} />
+              <FieldNumber label="Commission projects" value={inputs.commissionProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("commissionProjects", v)} />
+              <FieldNumber label="Average commission price ($)" value={inputs.avgCommissionPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("avgCommissionPrice", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Platform revenue share / fees ($)" value={inputs.platformRevenueShareFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("platformRevenueShareFees", v)} />
+              <FieldNumber label="Payment processing fees ($)" value={inputs.paymentProcessingFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("paymentProcessingFees", v)} />
+              <FieldNumber label="Refunds / chargebacks ($)" value={inputs.refundsChargebacks ?? 0} resetKey={fieldKey} onChange={(v) => setInput("refundsChargebacks", v)} />
+              <FieldNumber label="Tool / asset costs ($)" value={inputs.toolAssetCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("toolAssetCosts", v)} />
+              <FieldNumber label="Other business expenses ($)" value={inputs.otherBusinessExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("otherBusinessExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Total hours" value={inputs.totalHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("totalHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "custom-bookmark-creator" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Singles sold" value={inputs.cbcSinglesSold ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcSinglesSold", v)} />
+              <FieldNumber label="Average single price ($)" value={inputs.cbcAvgSinglePrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcAvgSinglePrice", v)} />
+              <FieldNumber label="Sets sold" value={inputs.cbcSetsSold ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcSetsSold", v)} />
+              <FieldNumber label="Average set price ($)" value={inputs.cbcAvgSetPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcAvgSetPrice", v)} />
+              <FieldNumber label="Projects" value={inputs.cbcProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcProjects", v)} />
+              <FieldNumber label="Average project price ($)" value={inputs.cbcAvgProjectPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcAvgProjectPrice", v)} />
+              <FieldNumber label="Other revenue ($)" value={inputs.cbcOtherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcOtherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Cardstock / blanks ($)" value={inputs.cbcCardstockBlanks ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcCardstockBlanks", v)} />
+              <FieldNumber label="Ink / art supplies ($)" value={inputs.cbcInkArtSupplies ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcInkArtSupplies", v)} />
+              <FieldNumber label="Laminate ($)" value={inputs.cbcLaminate ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcLaminate", v)} />
+              <FieldNumber label="Ribbon / tassels ($)" value={inputs.cbcRibbonTassels ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcRibbonTassels", v)} />
+              <FieldNumber label="Packaging ($)" value={inputs.cbcPackaging ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcPackaging", v)} />
+              <FieldNumber label="Platform / payment fees ($)" value={inputs.cbcPlatformPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcPlatformPaymentFees", v)} />
+              <FieldNumber label="Event fees ($)" value={inputs.cbcEventFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcEventFees", v)} />
+              <FieldNumber label="Shipping ($)" value={inputs.cbcShipping ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcShipping", v)} />
+              <FieldNumber label="Refunds / replacements ($)" value={inputs.cbcRefundsReplacements ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcRefundsReplacements", v)} />
+              <FieldNumber label="Other expenses ($)" value={inputs.cbcOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("cbcOtherExpenses", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "web-leads" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Audits / month" value={inputs.wlAuditsPerMonth ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlAuditsPerMonth", v)} />
+              <FieldNumber label="Average audit price ($)" value={inputs.wlAvgAuditPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlAvgAuditPrice", v)} />
+              <FieldNumber label="Builds / month" value={inputs.wlBuildsPerMonth ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlBuildsPerMonth", v)} />
+              <FieldNumber label="Average build price ($)" value={inputs.wlAvgBuildPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlAvgBuildPrice", v)} />
+              <FieldNumber label="Retainer revenue ($)" value={inputs.wlRetainerRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlRetainerRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Software / hosting ($)" value={inputs.wlSoftwareHosting ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlSoftwareHosting", v)} />
+              <FieldNumber label="Contractor costs ($)" value={inputs.wlContractorCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlContractorCosts", v)} />
+              <FieldNumber label="Payment fees / refunds ($)" value={inputs.wlPaymentFeesRefunds ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlPaymentFeesRefunds", v)} />
+              <FieldNumber label="Outreach / travel ($)" value={inputs.wlOutreachTravel ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlOutreachTravel", v)} />
+              <FieldNumber label="Other expenses ($)" value={inputs.wlOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Total hours" value={inputs.wlTotalHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("wlTotalHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "mailbox-cleaning" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Jobs / week" value={inputs.mcJobsPerWeek ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcJobsPerWeek", v)} />
+              <FieldNumber label="Average individual price ($)" value={inputs.mcAvgIndividualPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcAvgIndividualPrice", v)} />
+              <FieldNumber label="Route jobs / month" value={inputs.mcRouteJobsPerMonth ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcRouteJobsPerMonth", v)} />
+              <FieldNumber label="Average route price ($)" value={inputs.mcAvgRoutePrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcAvgRoutePrice", v)} />
+              <FieldNumber label="Recurring touch-up revenue ($)" value={inputs.mcRecurringTouchUpRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcRecurringTouchUpRevenue", v)} />
+              <FieldNumber label="Tips / other revenue ($)" value={inputs.mcTipsOtherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcTipsOtherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Cleaning supplies ($)" value={inputs.mcCleaningSupplies ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcCleaningSupplies", v)} />
+              <FieldNumber label="Protective gear ($)" value={inputs.mcProtectiveGear ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcProtectiveGear", v)} />
+              <FieldNumber label="Travel ($)" value={inputs.mcTravel ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcTravel", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.mcPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcPaymentFees", v)} />
+              <FieldNumber label="Advertising ($)" value={inputs.mcAdvertising ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcAdvertising", v)} />
+              <FieldNumber label="Insurance / licensing if applicable ($)" value={inputs.mcInsuranceLicensing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcInsuranceLicensing", v)} />
+              <FieldNumber label="Other ($)" value={inputs.mcOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Cleaning hours" value={inputs.mcCleaningHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcCleaningHours", v)} />
+              <FieldNumber label="Travel / admin hours" value={inputs.mcTravelAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("mcTravelAdminHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "digital-photo-organizer" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Small projects / month" value={inputs.dpoSmallProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoSmallProjects", v)} />
+              <FieldNumber label="Average small-project price ($)" value={inputs.dpoAvgSmallPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoAvgSmallPrice", v)} />
+              <FieldNumber label="Medium / large projects / month" value={inputs.dpoLargeProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoLargeProjects", v)} />
+              <FieldNumber label="Average larger-project price ($)" value={inputs.dpoAvgLargePrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoAvgLargePrice", v)} />
+              <FieldNumber label="Maintenance revenue ($)" value={inputs.dpoMaintenanceRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoMaintenanceRevenue", v)} />
+              <FieldNumber label="Add-on revenue ($)" value={inputs.dpoAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoAddOnRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Storage / drives ($)" value={inputs.dpoStorageDrives ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoStorageDrives", v)} />
+              <FieldNumber label="Software ($)" value={inputs.dpoSoftware ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoSoftware", v)} />
+              <FieldNumber label="Cables / adapters ($)" value={inputs.dpoCablesAdapters ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoCablesAdapters", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.dpoPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoPaymentFees", v)} />
+              <FieldNumber label="Advertising ($)" value={inputs.dpoAdvertising ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoAdvertising", v)} />
+              <FieldNumber label="Travel ($)" value={inputs.dpoTravel ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoTravel", v)} />
+              <FieldNumber label="Other ($)" value={inputs.dpoOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Inventory / transfer" value={inputs.dpoInventoryTransferHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoInventoryTransferHours", v)} />
+              <FieldNumber label="Sorting / review" value={inputs.dpoSortingReviewHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoSortingReviewHours", v)} />
+              <FieldNumber label="Delivery / admin" value={inputs.dpoDeliveryAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpoDeliveryAdminHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "digital-product-formatter" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Small projects / month" value={inputs.dpfSmallProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfSmallProjects", v)} />
+              <FieldNumber label="Average small-project price ($)" value={inputs.dpfAvgSmallPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfAvgSmallPrice", v)} />
+              <FieldNumber label="Large projects / month" value={inputs.dpfLargeProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfLargeProjects", v)} />
+              <FieldNumber label="Average large-project price ($)" value={inputs.dpfAvgLargePrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfAvgLargePrice", v)} />
+              <FieldNumber label="Monthly add-on / rush revenue ($)" value={inputs.dpfAddOnRushRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfAddOnRushRevenue", v)} />
+              <FieldNumber label="Other revenue ($)" value={inputs.dpfOtherRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfOtherRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Software ($)" value={inputs.dpfSoftware ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfSoftware", v)} />
+              <FieldNumber label="Fonts / stock assets ($)" value={inputs.dpfFontsStock ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfFontsStock", v)} />
+              <FieldNumber label="Cloud storage ($)" value={inputs.dpfCloudStorage ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfCloudStorage", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.dpfPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfPaymentFees", v)} />
+              <FieldNumber label="Advertising ($)" value={inputs.dpfAdvertising ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfAdvertising", v)} />
+              <FieldNumber label="Contractor help ($)" value={inputs.dpfContractorHelp ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfContractorHelp", v)} />
+              <FieldNumber label="Other ($)" value={inputs.dpfOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Production hours" value={inputs.dpfProductionHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfProductionHours", v)} />
+              <FieldNumber label="Revision hours" value={inputs.dpfRevisionHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfRevisionHours", v)} />
+              <FieldNumber label="Admin / marketing hours" value={inputs.dpfAdminMarketingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("dpfAdminMarketingHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "garage-sale-helper" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly helper revenue (not the owner’s sale proceeds)</p>
+              <FieldNumber label="Short jobs / month" value={inputs.gshShortJobs ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshShortJobs", v)} />
+              <FieldNumber label="Average short-job price ($)" value={inputs.gshAvgShortPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshAvgShortPrice", v)} />
+              <FieldNumber label="Sale packages / month" value={inputs.gshSalePackages ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshSalePackages", v)} />
+              <FieldNumber label="Average package price ($)" value={inputs.gshAvgPackagePrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshAvgPackagePrice", v)} />
+              <FieldNumber label="Commission revenue ($)" value={inputs.gshCommissionRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshCommissionRevenue", v)} />
+              <FieldNumber label="Add-on revenue ($)" value={inputs.gshAddOnRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshAddOnRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="Signs / printing ($)" value={inputs.gshSignsPrinting ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshSignsPrinting", v)} />
+              <FieldNumber label="Tags / bags / supplies ($)" value={inputs.gshTagsBagsSupplies ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshTagsBagsSupplies", v)} />
+              <FieldNumber label="Travel ($)" value={inputs.gshTravel ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshTravel", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.gshPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshPaymentFees", v)} />
+              <FieldNumber label="Permit / advertising reimbursements not recovered ($)" value={inputs.gshUnrecoveredPermitAds ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshUnrecoveredPermitAds", v)} />
+              <FieldNumber label="Other ($)" value={inputs.gshOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Sorting / pricing" value={inputs.gshSortingPricingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshSortingPricingHours", v)} />
+              <FieldNumber label="Setup / sale / cleanup" value={inputs.gshSetupSaleCleanupHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshSetupSaleCleanupHours", v)} />
+              <FieldNumber label="Travel / admin" value={inputs.gshTravelAdminHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("gshTravelAdminHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "local-business-ai-setup" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Monthly revenue</p>
+              <FieldNumber label="Mini projects per month" value={inputs.lbaiMiniProjects ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiMiniProjects", v)} />
+              <FieldNumber label="Average mini project price ($)" value={inputs.lbaiAvgMiniPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiAvgMiniPrice", v)} />
+              <FieldNumber label="Full setups per month" value={inputs.lbaiFullSetups ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiFullSetups", v)} />
+              <FieldNumber label="Average setup price ($)" value={inputs.lbaiAvgSetupPrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiAvgSetupPrice", v)} />
+              <FieldNumber label="Training hours" value={inputs.lbaiTrainingHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiTrainingHours", v)} />
+              <FieldNumber label="Training rate ($)" value={inputs.lbaiTrainingRate ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiTrainingRate", v)} />
+              <FieldNumber label="Monthly support revenue ($)" value={inputs.lbaiMonthlySupportRevenue ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiMonthlySupportRevenue", v)} />
+              <p className="guide-revenue-calc__section-label">Expenses</p>
+              <FieldNumber label="AI / software costs ($)" value={inputs.lbaiAiSoftwareCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiAiSoftwareCosts", v)} />
+              <FieldNumber label="Printing / travel ($)" value={inputs.lbaiPrintingTravel ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiPrintingTravel", v)} />
+              <FieldNumber label="Payment fees ($)" value={inputs.lbaiPaymentFees ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiPaymentFees", v)} />
+              <FieldNumber label="Other business expenses ($)" value={inputs.lbaiOtherExpenses ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiOtherExpenses", v)} />
+              <p className="guide-revenue-calc__section-label">Hours</p>
+              <FieldNumber label="Total hours" value={inputs.lbaiTotalHours ?? 0} resetKey={fieldKey} onChange={(v) => setInput("lbaiTotalHours", v)} />
+            </>
+          ) : profile.mode === "service" && guideId === "flipping-properties" ? (
+            <>
+              <p className="guide-revenue-calc__section-label">Sale / assignment</p>
+              <FieldNumber label="Gross sale price / assignment revenue ($)" value={inputs.flipGrossSalePrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipGrossSalePrice", v)} />
+              <FieldNumber label="Purchase price ($)" value={inputs.flipPurchasePrice ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipPurchasePrice", v)} />
+              <p className="guide-revenue-calc__section-label">Project costs</p>
+              <FieldNumber label="Purchase closing costs ($)" value={inputs.flipPurchaseClosing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipPurchaseClosing", v)} />
+              <FieldNumber label="Financing points / interest / fees ($)" value={inputs.flipFinancingCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipFinancingCosts", v)} />
+              <FieldNumber label="Inspection / title / legal / design ($)" value={inputs.flipInspectionTitleLegalDesign ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipInspectionTitleLegalDesign", v)} />
+              <FieldNumber label="Permits ($)" value={inputs.flipPermits ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipPermits", v)} />
+              <FieldNumber label="Labor / materials ($)" value={inputs.flipLaborMaterials ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipLaborMaterials", v)} />
+              <FieldNumber label="Utilities / insurance / taxes / HOA / security ($)" value={inputs.flipUtilitiesInsuranceTaxesHoaSecurity ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipUtilitiesInsuranceTaxesHoaSecurity", v)} />
+              <FieldNumber label="Contingency used ($)" value={inputs.flipContingencyUsed ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipContingencyUsed", v)} />
+              <FieldNumber label="Selling commissions / concessions / closing costs ($)" value={inputs.flipSellingCommissionsConcessionsClosing ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipSellingCommissionsConcessionsClosing", v)} />
+              <FieldNumber label="Other costs ($)" value={inputs.flipOtherCosts ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipOtherCosts", v)} />
+              <p className="guide-revenue-calc__section-label">Return metrics</p>
+              <FieldNumber label="Actual cash invested ($)" value={inputs.flipCashInvested ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipCashInvested", v)} />
+              <FieldNumber label="Total project months" value={inputs.flipProjectMonths ?? 0} resetKey={fieldKey} onChange={(v) => setInput("flipProjectMonths", v)} />
+            </>
           ) : profile.mode === "service" && guideId === "virtual-assistant" ? (
             <>
               <p className="guide-revenue-calc__section-label">Monthly VA revenue (collected only — not unsigned proposals)</p>
@@ -3527,7 +3954,7 @@ export function GuideRevenueCalculator({ guideId, guideName }: GuideRevenueCalcu
           {profile.mode === "impact" || profile.mode === "kindness" || profile.mode === "split" || profile.mode === "savings" ? null : (
           <p className="guide-revenue-calc__margin">
             {profile.mode === "resale" ? "Profit margin" : "Margin"}{" "}
-            {result.marginPercent.toFixed(0)}%
+            {(Number.isFinite(result.marginPercent) ? result.marginPercent : 0).toFixed(0)}%
             {profile.mode === "resale" && result.metrics?.roiPercent != null
               ? ` · ROI ${result.metrics.roiPercent.toFixed(0)}%`
               : ""}

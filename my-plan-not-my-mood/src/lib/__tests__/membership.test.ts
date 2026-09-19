@@ -6,6 +6,7 @@ import {
   clearMembershipJoined,
   MEMBERSHIP_JOINED_STORAGE_KEY,
   MEMBERSHIP_TIERS,
+  AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE,
 } from '../membership';
 
 describe('membership', () => {
@@ -16,6 +17,8 @@ describe('membership', () => {
   it('defines preliminary membership tiers with perks', () => {
     expect(MEMBERSHIP_TIERS.length).toBeGreaterThanOrEqual(4);
     expect(MEMBERSHIP_TIERS[0].perks.some((p) => p.includes('Affirmations'))).toBe(true);
+    expect(AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE).toMatch(/scope change/i);
+    expect(AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE).toMatch(/Join to Unlock/);
     expect(MEMBERSHIP_TIERS.some((t) => t.perks.some((p) => p.toLowerCase().includes('mentorship')))).toBe(true);
   });
 

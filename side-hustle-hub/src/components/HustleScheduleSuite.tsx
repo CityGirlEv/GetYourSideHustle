@@ -19,6 +19,9 @@ import {
   SCHEDULE_REMINDER_CADENCE_OPTIONS,
   applyScheduleBlockCheckbox,
   applyScheduleWeekGrade,
+  applyLaunchGuideChecksToPlan,
+  applyLaunchGuideChecksToStore,
+  mergePlanCheckIntoLaunchGuideProgress,
   canAccessPnl,
   canAccessScheduleSuite,
   collectScheduleValidationErrors,
@@ -86,6 +89,7 @@ import {
   type ScheduleReminderCadence,
   type ScheduleSuiteView,
 } from "../lib/hustle-schedule";
+import { isGuideStepBlockId } from "../lib/schedule-guide-plan";
 import {
   BLUEPRINT_MAX_DAYS,
   PNL_EXPENSE_CATEGORIES,
@@ -215,6 +219,7 @@ export function HustleScheduleSuite({
     title: string;
     errors: string[];
   } | null>(null);
+  const [guideStepChecks, setGuideStepChecks] = useState<Record<string, boolean>>({});
 
   const hustleChoices = useMemo(
     () => hustleOptionsForOwner(pickOwner, blueprints),
@@ -245,9 +250,17 @@ export function HustleScheduleSuite({
     setError(null);
     (async () => {
       try {
-        const raw = await fetchMemberProgress("hustle_schedule");
+        const [raw, stepsRaw] = await Promise.all([
+          fetchMemberProgress("hustle_schedule"),
+          fetchMemberProgress<Record<string, boolean>>("launch_guide_steps").catch(
+            () => ({}) as Record<string, boolean>,
+          ),
+        ]);
         if (cancelled) return;
-        setStore(normalizeHustleScheduleStore(raw));
+        const checks =
+          stepsRaw && typeof stepsRaw === "object" && !Array.isArray(stepsRaw) ? stepsRaw : {};
+        setGuideStepChecks(checks);
+        setStore(applyLaunchGuideChecksToStore(normalizeHustleScheduleStore(raw), checks));
         setDirty(false);
       } catch (e) {
         if (cancelled) return;
@@ -350,16 +363,19 @@ export function HustleScheduleSuite({
     const hustle = hustleChoices.find((h) => h.hustleId === pickHustle);
     if (!owner || !hustle) return;
     const existing = schedulesForOwnerHustle(store, owner.id, hustle.hustleId);
-    const plan = createSchedulePlan({
-      ownerId: owner.id,
-      ownerLabel: owner.label,
-      hustleId: hustle.hustleId,
-      hustleLabel: hustle.hustleLabel,
-      ageGroup: hustle.ageGroup,
-      blueprintId: hustle.blueprintId,
-      // Always allocate a new tab — even when this member+hustle already has a schedule.
-      distinct: existing.length > 0,
-    });
+    const plan = applyLaunchGuideChecksToPlan(
+      createSchedulePlan({
+        ownerId: owner.id,
+        ownerLabel: owner.label,
+        hustleId: hustle.hustleId,
+        hustleLabel: hustle.hustleLabel,
+        ageGroup: hustle.ageGroup,
+        blueprintId: hustle.blueprintId,
+        // Always allocate a new tab — even when this member+hustle already has a schedule.
+        distinct: existing.length > 0,
+      }),
+      guideStepChecks,
+    );
     applyLocal(upsertSchedule(store, plan));
     setOwnerFilter(owner.id);
     setSuiteView(SCHEDULE_SUITE_DEFAULT_VIEW);
@@ -373,6 +389,18 @@ export function HustleScheduleSuite({
   const patchPlan = (fn: (p: HustleSchedulePlan) => HustleSchedulePlan) => {
     if (!active) return;
     applyLocal(patchActivePlan(store, active.id, fn));
+  };
+
+  const persistGuideStepCheck = (hustleId: string, blockId: string, checked: boolean) => {
+    setGuideStepChecks((prev) => {
+      const next = mergePlanCheckIntoLaunchGuideProgress(prev, hustleId, blockId, checked);
+      if (next !== prev) {
+        void saveMemberProgress("launch_guide_steps", next).catch(() => {
+          /* next Schedule Suite / Steps-tab load will resync */
+        });
+      }
+      return next;
+    });
   };
 
   const confirmDelete = async () => {
@@ -715,6 +743,7 @@ export function HustleScheduleSuite({
                     canSave={canSave}
                     onViewChange={setSuiteView}
                     onPatch={patchPlan}
+                    onGuideStepCheck={persistGuideStepCheck}
                     onSave={() => void saveStore()}
                     onOpenGuide={onOpenGuide}
                     onRequestDelete={() => setPendingDeleteId(active.id)}
@@ -771,6 +800,7 @@ function ScheduleDetail({
   canSave,
   onViewChange,
   onPatch,
+  onGuideStepCheck,
   onSave,
   onOpenGuide,
   onRequestDelete,
@@ -785,6 +815,7 @@ function ScheduleDetail({
   canSave: boolean;
   onViewChange: (v: SuiteView) => void;
   onPatch: (fn: (p: HustleSchedulePlan) => HustleSchedulePlan) => void;
+  onGuideStepCheck?: (hustleId: string, blockId: string, checked: boolean) => void;
   onSave: () => void;
   onOpenGuide?: (ageGroup: BlueprintAgeGroup, hustleId: string) => void;
   onRequestDelete: () => void;
@@ -1321,7 +1352,7 @@ function ScheduleDetail({
           </div>
           <p>
             {plan.blocks.filter((b) => isScheduleBlockComplete(b)).length} of{" "}
-            {plan.blocks.length} day blocks done · {hours} hours logged toward{" "}
+            {plan.blocks.length} guide steps done · {hours} hours logged toward{" "}
             <strong>{plan.hustleLabel}</strong>.
           </p>
           <ul>
@@ -1340,6 +1371,11 @@ function ScheduleDetail({
       )}
 
       {suiteView === "tracker" && (
+        <>
+        <p className="hustle-schedule-suite__hint" data-testid="schedule-tracker-guide-hint">
+          Every Launch Guide step for <strong>{plan.hustleLabel}</strong> is on this tracker — one
+          step per weekday, in guide order.
+        </p>
         <ul className="hustle-schedule-suite__days" data-testid="schedule-suite-days">
           {plan.blocks.map((block) => {
             const hoursRequired = scheduleBlockRequiresHours(block);
@@ -1363,12 +1399,14 @@ function ScheduleDetail({
                       data-testid={`schedule-block-check-${block.id}`}
                       onChange={(e) => {
                         if (!unlocked) return;
+                        const checked = e.target.checked;
+                        onGuideStepCheck?.(plan.hustleId, block.id, checked);
                         onPatch((p) =>
                           withRefreshedWeekGrade(
                             applyScheduleBlockCheckbox(
                               p,
                               block.id as ScheduleBlockId,
-                              e.target.checked,
+                              checked,
                             ),
                           ),
                         );
@@ -1382,7 +1420,13 @@ function ScheduleDetail({
                     type="text"
                     value={block.focus}
                     disabled={!unlocked}
+                    readOnly={isGuideStepBlockId(block.id)}
                     aria-label={`${block.dayLabel} focus`}
+                    title={
+                      isGuideStepBlockId(block.id)
+                        ? "Matches the Launch Guide Steps tab"
+                        : undefined
+                    }
                     onChange={(e) =>
                       onPatch((p) => setBlockFocus(p, block.id as ScheduleBlockId, e.target.value))
                     }
@@ -1397,12 +1441,16 @@ function ScheduleDetail({
                       data-testid={`schedule-block-status-${block.id}`}
                       onChange={(e) => {
                         if (!unlocked) return;
+                        const status = e.target.value as ScheduleBlockStatus;
+                        if (status === "done" || status === "not_started") {
+                          onGuideStepCheck?.(plan.hustleId, block.id, status === "done");
+                        }
                         onPatch((p) =>
                           withRefreshedWeekGrade(
                             setScheduleBlockStatus(
                               p,
                               block.id as ScheduleBlockId,
-                              e.target.value as ScheduleBlockStatus,
+                              status,
                             ),
                           ),
                         );
@@ -1535,6 +1583,7 @@ function ScheduleDetail({
             );
           })}
         </ul>
+        </>
       )}
 
       {suiteView === "tracker" && !planHasRequiredHours(plan) && (
@@ -1693,7 +1742,7 @@ function SchedulePnLPanel({
         <div>
           <span>Plan tracker</span>
           <strong data-testid="schedule-pnl-blueprint-pct">{blockPct}% complete</strong>
-          <em>Day blocks Done toward finishing this blueprint</em>
+          <em>Guide steps marked Done toward finishing this blueprint</em>
         </div>
         <div className="hustle-schedule-suite__pnl-target">
           <label>

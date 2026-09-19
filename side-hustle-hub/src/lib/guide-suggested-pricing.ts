@@ -3,6 +3,22 @@
  */
 
 import { ERRAND_RUNNER_PRICING } from "./errand-runner-guide";
+import { NEIGHBORHOOD_HELPER_PRICING } from "./neighborhood-helper-guide";
+import { AI_ASSETS_PRICING } from "./ai-assets-guide";
+import { AIRBNB_COHOST_PRICING } from "./airbnb-cohost-guide";
+import { AMAZON_FBA_SELLER_PRICING } from "./amazon-fba-seller-guide";
+import { VIRTUAL_CALL_ASSISTANT_PRICING } from "./virtual-call-assistant-guide";
+import { AI_SOCIAL_HELPER_PRICING } from "./ai-social-helper-guide";
+import { BIRTHDAY_PARTY_HELPER_PRICING } from "./birthday-party-helper-guide";
+import { CLOSET_ORGANIZER_PRICING } from "./closet-organizer-guide";
+import { LIEN_TAX_SALES_PRICING } from "./lien-tax-sales-guide";
+import { JUNIOR_CONTENT_CREATE_PRICING } from "./junior-content-create-guide";
+import { KIDS_CRAFT_HUSTLE_PRICING } from "./kids-craft-hustle-guide";
+import { CREATE_GAMES_KIDS_PRICING } from "./create-games-kids-guide";
+import { CREATE_GAMES_JUNIOR_PRICING } from "./create-games-junior-guide";
+import { CUSTOM_BOOKMARK_CREATOR_PRICING } from "./custom-bookmark-creator-guide";
+import { WEB_LEADS_PRICING } from "./web-leads-guide";
+import { MAILBOX_CLEANING_PRICING } from "./mailbox-cleaning-guide";
 import { AI_AGENTS_PRICING } from "./ai-agents-guide";
 import { AI_PROMO_VIDEO_PRICING } from "./ai-promo-video-guide";
 import { STR_COHOST_PRICING } from "./str-cohost-guide";
@@ -215,12 +231,100 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
     items: TRASH_CAN_SERVICE_PRICING.items.map((item) => ({ ...item })),
   },
   "neighborhood-helper": {
-    raiseTip: RAISE,
-    items: [
-      p("carry", "Grocery carry-in", "$10–15"),
-      p("porch", "Porch tidy", "$15–20"),
-      p("bundle", "Carry-in + porch tidy same visit", "$20–35"),
-    ],
+    tabLabel: NEIGHBORHOOD_HELPER_PRICING.tabLabel,
+    raiseTip: NEIGHBORHOOD_HELPER_PRICING.raiseTip,
+    intro: NEIGHBORHOOD_HELPER_PRICING.intro,
+    items: NEIGHBORHOOD_HELPER_PRICING.items.map((item) => ({ ...item })),
+  },
+  "ai-assets": {
+    tabLabel: AI_ASSETS_PRICING.tabLabel,
+    raiseTip: AI_ASSETS_PRICING.raiseTip,
+    intro: AI_ASSETS_PRICING.intro,
+    items: AI_ASSETS_PRICING.items.map((item) => ({ ...item })),
+  },
+  "airbnb-cohost": {
+    tabLabel: AIRBNB_COHOST_PRICING.tabLabel,
+    raiseTip: AIRBNB_COHOST_PRICING.raiseTip,
+    intro: AIRBNB_COHOST_PRICING.intro,
+    items: AIRBNB_COHOST_PRICING.items.map((item) => ({ ...item })),
+  },
+  amazon: {
+    tabLabel: AMAZON_FBA_SELLER_PRICING.tabLabel,
+    raiseTip: AMAZON_FBA_SELLER_PRICING.raiseTip,
+    intro: AMAZON_FBA_SELLER_PRICING.intro,
+    items: AMAZON_FBA_SELLER_PRICING.items.map((item) => ({ ...item })),
+  },
+  "virtual-call-assistant": {
+    tabLabel: VIRTUAL_CALL_ASSISTANT_PRICING.tabLabel,
+    raiseTip: VIRTUAL_CALL_ASSISTANT_PRICING.raiseTip,
+    intro: VIRTUAL_CALL_ASSISTANT_PRICING.intro,
+    items: VIRTUAL_CALL_ASSISTANT_PRICING.items.map((item) => ({ ...item })),
+  },
+  "ai-social-helper": {
+    tabLabel: AI_SOCIAL_HELPER_PRICING.tabLabel,
+    raiseTip: AI_SOCIAL_HELPER_PRICING.raiseTip,
+    intro: AI_SOCIAL_HELPER_PRICING.intro,
+    items: AI_SOCIAL_HELPER_PRICING.items.map((item) => ({ ...item })),
+  },
+  "birthday-party-helper": {
+    tabLabel: BIRTHDAY_PARTY_HELPER_PRICING.tabLabel,
+    raiseTip: BIRTHDAY_PARTY_HELPER_PRICING.raiseTip,
+    intro: BIRTHDAY_PARTY_HELPER_PRICING.intro,
+    items: BIRTHDAY_PARTY_HELPER_PRICING.items.map((item) => ({ ...item })),
+  },
+  "closet-organizer": {
+    tabLabel: CLOSET_ORGANIZER_PRICING.tabLabel,
+    raiseTip: CLOSET_ORGANIZER_PRICING.raiseTip,
+    intro: CLOSET_ORGANIZER_PRICING.intro,
+    items: CLOSET_ORGANIZER_PRICING.items.map((item) => ({ ...item })),
+  },
+  "lien-tax-sales": {
+    tabLabel: LIEN_TAX_SALES_PRICING.tabLabel,
+    raiseTip: LIEN_TAX_SALES_PRICING.raiseTip,
+    intro: LIEN_TAX_SALES_PRICING.intro,
+    items: LIEN_TAX_SALES_PRICING.items.map((item) => ({ ...item })),
+  },
+  "junior-content-create": {
+    tabLabel: JUNIOR_CONTENT_CREATE_PRICING.tabLabel,
+    raiseTip: JUNIOR_CONTENT_CREATE_PRICING.raiseTip,
+    intro: JUNIOR_CONTENT_CREATE_PRICING.intro,
+    items: JUNIOR_CONTENT_CREATE_PRICING.items.map((item) => ({ ...item })),
+  },
+  "kids-craft-hustle": {
+    tabLabel: KIDS_CRAFT_HUSTLE_PRICING.tabLabel,
+    raiseTip: KIDS_CRAFT_HUSTLE_PRICING.raiseTip,
+    intro: KIDS_CRAFT_HUSTLE_PRICING.intro,
+    items: KIDS_CRAFT_HUSTLE_PRICING.items.map((item) => ({ ...item })),
+  },
+  "create-games-kids": {
+    tabLabel: CREATE_GAMES_KIDS_PRICING.tabLabel,
+    raiseTip: CREATE_GAMES_KIDS_PRICING.raiseTip,
+    intro: CREATE_GAMES_KIDS_PRICING.intro,
+    items: CREATE_GAMES_KIDS_PRICING.items.map((item) => ({ ...item })),
+  },
+  "create-games-junior": {
+    tabLabel: CREATE_GAMES_JUNIOR_PRICING.tabLabel,
+    raiseTip: CREATE_GAMES_JUNIOR_PRICING.raiseTip,
+    intro: CREATE_GAMES_JUNIOR_PRICING.intro,
+    items: CREATE_GAMES_JUNIOR_PRICING.items.map((item) => ({ ...item })),
+  },
+  "custom-bookmark-creator": {
+    tabLabel: CUSTOM_BOOKMARK_CREATOR_PRICING.tabLabel,
+    raiseTip: CUSTOM_BOOKMARK_CREATOR_PRICING.raiseTip,
+    intro: CUSTOM_BOOKMARK_CREATOR_PRICING.intro,
+    items: CUSTOM_BOOKMARK_CREATOR_PRICING.items.map((item) => ({ ...item })),
+  },
+  "web-leads": {
+    tabLabel: WEB_LEADS_PRICING.tabLabel,
+    raiseTip: WEB_LEADS_PRICING.raiseTip,
+    intro: WEB_LEADS_PRICING.intro,
+    items: WEB_LEADS_PRICING.items.map((item) => ({ ...item })),
+  },
+  "mailbox-cleaning": {
+    tabLabel: MAILBOX_CLEANING_PRICING.tabLabel,
+    raiseTip: MAILBOX_CLEANING_PRICING.raiseTip,
+    intro: MAILBOX_CLEANING_PRICING.intro,
+    items: MAILBOX_CLEANING_PRICING.items.map((item) => ({ ...item })),
   },
   "leaf-raking": {
     tabLabel: LEAF_RAKING_PRICING.tabLabel,

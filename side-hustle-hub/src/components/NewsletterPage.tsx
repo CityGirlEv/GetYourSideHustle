@@ -66,9 +66,9 @@ export function NewsletterPage({
         <span className="flat-label flat-label--accent">
           <Newspaper size={13} aria-hidden /> {NEWSLETTER_CADENCE_LABEL}
         </span>
-        <h2>GYSH Weekly Newsletter</h2>
+        <h2>GYSH Bi-Weekly Newsletter</h2>
         <p>
-          A {NEWSLETTER_SEND_DAY} issue for the whole family — kids glow story on one side, adult hustle tip
+          Two issues a month for the whole family — kids glow story on one side, adult hustle tip
           on the other. Content Factory drafts go live here once they are marked Published.
         </p>
         <MembershipLockBadge minTier="starter" unlocked={unlocked} data-testid="newsletter-lock-badge" />
@@ -127,7 +127,7 @@ export function NewsletterPage({
       </div>
 
       <p className="newsletter-page__footnote">
-        <Mail size={14} aria-hidden />         Issues send on {NEWSLETTER_SEND_DAY}s. Unsubscribe anytime from the email
+        <Mail size={14} aria-hidden /> Two issues a month (typically {NEWSLETTER_SEND_DAY}s). Unsubscribe anytime from the email
         footer.
       </p>
     </div>

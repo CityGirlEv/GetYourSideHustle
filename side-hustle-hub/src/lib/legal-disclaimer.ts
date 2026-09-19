@@ -11,15 +11,26 @@ export const LEGAL_DISCLAIMER_BODY = `Income examples, calculators, and workshop
 
 export const LEGAL_DISCLAIMER_LIABILITY = `By using our platform, you agree that ${SITE_NAME} is not responsible or liable for any business losses, damages, or legal issues you may experience while building your side hustle.`;
 
+/** Personal-use license — member guides and printables. Never stamp “AI generated”. */
+export const LEGAL_COPYRIGHT_LICENSE =
+  "Licensed for personal use by authorized members. Do not copy, share, resell, or republish.";
+
+export function legalCopyrightNotice(year: number = new Date().getFullYear()): string {
+  return `© ${year} ${SITE_NAME}. All rights reserved. ${LEGAL_COPYRIGHT_LICENSE}`;
+}
+
 const DISCLAIMER_MARKER = /your hustle,\s*your results/i;
 
 export function legalDisclaimerPlainText(): string {
   return `${LEGAL_DISCLAIMER_HEADLINE} ${LEGAL_DISCLAIMER_BODY} ${LEGAL_DISCLAIMER_LIABILITY}`;
 }
 
-/** Two paragraphs for PDF wrapping (headline+body, then liability). */
-export function legalDisclaimerPdfParagraphs(): [string, string] {
+/** Copyright + income disclaimer for PDF wrapping (every printable page). */
+export function legalDisclaimerPdfParagraphs(
+  year: number = new Date().getFullYear(),
+): string[] {
   return [
+    legalCopyrightNotice(year),
     `${LEGAL_DISCLAIMER_HEADLINE} ${LEGAL_DISCLAIMER_BODY}`,
     LEGAL_DISCLAIMER_LIABILITY,
   ];

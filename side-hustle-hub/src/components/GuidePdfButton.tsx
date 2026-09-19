@@ -2,35 +2,32 @@ import { useState } from "react";
 import { Download } from "lucide-react";
 import {
   GUIDE_PDF_MIN_TIER,
-  guidePdfAvailableLabel,
+  guidePdfGateLabel,
   resolveGuideAccess,
+  type GuideMinTier,
 } from "../lib/guide-access";
-import { downloadLaunchGuidePdf } from "../lib/launch-guide-pdf";
+import { downloadLaunchGuidePdf, guideHasPdfDownload } from "../lib/launch-guide-pdf";
 import { reservePdfTab } from "../lib/open-pdf";
-import { hustleById } from "../lib/side-hustle-catalog";
-import { LAUNCH_GUIDES } from "../lib/launch-guides";
 
-/** True when a printable launch-guide PDF exists for this id. */
-export function guideHasPdfDownload(guideId: string): boolean {
-  const id = String(guideId || "").trim();
-  if (!id) return false;
-  return Boolean(hustleById(id) || LAUNCH_GUIDES.some((g) => g.id === id));
-}
+export { guideHasPdfDownload };
 
 type GuidePdfButtonProps = {
   guideId: string;
   isMember: boolean;
   membershipTier?: string | null;
   isAdmin?: boolean;
+  /** Guide’s own membership floor — PDF unlocks with the same ladder as on-screen viewing. */
+  minTier?: GuideMinTier;
   onJoin?: () => void;
 };
 
-/** Per-card PDF download for the Guide Library listing. */
+/** Per-guide PDF download (library listing + open launch guide). Members only. */
 export function GuidePdfButton({
   guideId,
   isMember,
   membershipTier = null,
   isAdmin = false,
+  minTier = GUIDE_PDF_MIN_TIER,
   onJoin,
 }: GuidePdfButtonProps) {
   const [busy, setBusy] = useState(false);
@@ -39,8 +36,9 @@ export function GuidePdfButton({
   const pdfAccess = resolveGuideAccess({
     isMember,
     membershipTier,
-    minTier: GUIDE_PDF_MIN_TIER,
+    minTier,
     isAdmin,
+    guideId,
   });
   const canDownload = pdfAccess.unlocked;
 
@@ -78,7 +76,7 @@ export function GuidePdfButton({
           id={`guide-library-pdf-gate-${guideId}`}
           data-testid={`guide-library-pdf-gate-${guideId}`}
         >
-          {guidePdfAvailableLabel()}
+          {guidePdfGateLabel(pdfAccess)}
         </span>
       ) : null}
     </button>

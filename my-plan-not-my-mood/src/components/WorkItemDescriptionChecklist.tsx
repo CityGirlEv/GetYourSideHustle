@@ -6,6 +6,7 @@ import {
   applyChecklistStepEdit,
   canEditWorkChecklistSteps,
   checklistProgress,
+  formatStepPageHref,
   toggleChecklistStep,
   type WorkChecklistActor,
   type WorkChecklistStep,
@@ -90,52 +91,75 @@ export function WorkItemDescriptionChecklist({
                 {index + 1}.
               </span>
               {canEdit ? (
-                <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-1">
-                  <input
-                    type="text"
-                    value={step.label}
-                    onChange={(event) =>
-                      onStepsChange(
-                        applyChecklistStepEdit(steps, step.id, { label: event.target.value }, actor),
-                      )
-                    }
-                    onKeyDown={(event) => event.stopPropagation()}
-                    onBlur={(event) => {
-                      const trimmed = event.target.value.trim();
-                      if (trimmed === step.label) return;
-                      onStepsChange(
-                        applyChecklistStepEdit(steps, step.id, { label: trimmed || step.label }, actor),
-                      );
-                    }}
-                    className="w-full min-h-[44px] px-2 rounded-lg border-2 border-[#E5DFD3] bg-white text-xs text-[#1F1917]"
-                    aria-label={`Step ${index + 1} label`}
-                    data-testid={`${testId}-step-label-${step.id}`}
-                  />
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <input
+                      type="text"
+                      value={step.label}
+                      onChange={(event) =>
+                        onStepsChange(
+                          applyChecklistStepEdit(steps, step.id, { label: event.target.value }, actor),
+                        )
+                      }
+                      onKeyDown={(event) => event.stopPropagation()}
+                      onBlur={(event) => {
+                        const trimmed = event.target.value.trim();
+                        if (trimmed === step.label) return;
+                        onStepsChange(
+                          applyChecklistStepEdit(steps, step.id, { label: trimmed || step.label }, actor),
+                        );
+                      }}
+                      className="w-full min-h-[44px] px-2 rounded-lg border-2 border-[#E5DFD3] bg-white text-xs text-[#1F1917]"
+                      aria-label={`Step ${index + 1} label`}
+                      data-testid={`${testId}-step-label-${step.id}`}
+                    />
+                    {index === 0 ? (
+                      <input
+                        type="text"
+                        value={step.href ?? ''}
+                        placeholder="Page link"
+                        onChange={(event) =>
+                          onStepsChange(
+                            applyChecklistStepEdit(steps, step.id, { href: event.target.value }, actor),
+                          )
+                        }
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="w-full sm:max-w-[16rem] min-h-[44px] px-2 rounded-lg border-2 border-[#C2410C]/40 bg-[#FFFCF7] text-xs font-mono text-[#C2410C]"
+                        aria-label={`Step ${index + 1} page link`}
+                        data-testid={`${testId}-step-href-${step.id}`}
+                      />
+                    ) : null}
+                  </div>
                   {step.href ? (
                     <a
                       href={step.href}
                       {...(/^https?:\/\//i.test(step.href)
                         ? { target: '_blank', rel: 'noreferrer' }
                         : {})}
-                      className="inline-flex items-center justify-center gap-1 min-h-[44px] px-2.5 shrink-0 rounded-lg border border-[#C2410C]/40 text-[10px] font-black uppercase tracking-wide text-[#C2410C]"
+                      className="inline-flex items-center gap-1.5 min-h-[44px] px-2.5 w-fit rounded-lg border-2 border-[#C2410C] bg-[#FFEDD5] text-[11px] font-black tracking-wide text-[#C2410C]"
                       data-testid={`${testId}-step-open-${step.id}`}
                     >
-                      <ExternalLink className="w-3.5 h-3.5" /> Open
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      <span className="normal-case font-mono font-bold">{formatStepPageHref(step.href)}</span>
                     </a>
                   ) : null}
                 </div>
               ) : (
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-[#1F1917] leading-tight min-h-[44px] inline-flex items-center">
+                  <p className="text-xs text-[#1F1917] leading-tight min-h-[44px] inline-flex flex-wrap items-center gap-x-2 gap-y-1">
                     {step.href ? (
                       <a
                         href={step.href}
                         {...(/^https?:\/\//i.test(step.href)
                           ? { target: '_blank', rel: 'noreferrer' }
                           : {})}
-                        className="font-semibold text-[#C2410C] underline underline-offset-2 min-h-[44px] inline-flex items-center"
+                        className="font-semibold text-[#C2410C] underline underline-offset-2 min-h-[44px] inline-flex items-center gap-1.5"
+                        data-testid={`${testId}-step-open-${step.id}`}
                       >
                         {step.label}
+                        <span className="font-mono text-[10px] font-bold no-underline">
+                          {formatStepPageHref(step.href)}
+                        </span>
                       </a>
                     ) : (
                       step.label

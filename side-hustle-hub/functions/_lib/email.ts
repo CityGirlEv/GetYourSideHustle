@@ -431,6 +431,7 @@ export async function sendRegistrationConfirmation(
      * Keeps register + Resend fast.
      */
     includeCertificate?: boolean;
+    heardAbout?: string | null;
   },
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
@@ -469,18 +470,25 @@ export async function sendRegistrationConfirmation(
     meta: { tier, audience, certificateAttached: Boolean(cert) },
   });
 
+  const heardAbout = String(opts?.heardAbout || "").trim();
+  const heardLine = heardAbout
+    ? `<p style="margin:0 0 8px;"><strong>How they heard about us:</strong> ${escapeHtml(heardAbout)}</p>`
+    : "";
+  const summaryHeard = heardAbout ? ` · heard: ${heardAbout}` : "";
+
   // Admin: new member signup
   try {
     await sendAdminFormNotify(env, {
       formName: "New member signup",
-      summary: `${user.name} · ${user.email} · ${tierLabel(tier)} / ${audiencePretty(audience)}`,
+      summary: `${user.name} · ${user.email} · ${tierLabel(tier)} / ${audiencePretty(audience)}${summaryHeard}`,
       detailsHtml: `<p style="margin:0 0 8px;"><strong>Name:</strong> ${escapeHtml(user.name)}</p>
         <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${escapeHtml(user.email)}" style="color:#9B2F28;">${escapeHtml(user.email)}</a></p>
         <p style="margin:0 0 8px;"><strong>Plan:</strong> ${escapeHtml(tierLabel(tier))} (pending activation)</p>
         <p style="margin:0 0 8px;"><strong>Lane:</strong> ${escapeHtml(audiencePretty(audience))}</p>
+        ${heardLine}
         <p style="margin:12px 0 0;padding:12px;background:#fff4e8;border-radius:10px;"><strong>Action needed:</strong> Open Admin → Users Area and set status to <strong>active</strong> to let them sign in. Activation sends their welcome email + certificate.</p>`,
       replyTo: user.email,
-      meta: { userId: user.id, tier, audience },
+      meta: { userId: user.id, tier, audience, heardAbout: heardAbout || null },
     });
   } catch {
     /* non-fatal */
@@ -520,7 +528,7 @@ export async function sendMembershipSubscriptionEmails(
       membership_tier?: string | null;
     };
     previousTier?: string | null;
-    source: "stripe" | "profile" | "credits";
+    source: "stripe" | "profile" | "credits" | "admin";
     amountLabel?: string;
     amountCents?: number;
     creditsApplied?: number;
@@ -791,6 +799,36 @@ export async function sendAccountActivatedWelcome(
     userId: user.id,
     attachments: cert?.attachments,
     meta: { tier, audience, joinUrl, certificateAttached: Boolean(cert) },
+  });
+  return true;
+}
+
+export async function sendMembershipMerchReadyEmail(
+  env: Env,
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    membership_tier?: string | null;
+  },
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const tier = normalizeTier(user.membership_tier);
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "membership_merch_ready", {
+    name: user.name || "Side Hustler",
+    tier: tierLabel(tier),
+    ctaUrl: `${SITE_URL}/my-dashboard#merch`,
+  });
+  if (!rendered) return false;
+  await sendResendEmail(env, {
+    to: user.email,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: "membership_merch_ready",
+    userId: user.id,
+    meta: { tier, merchClaim: true },
   });
   return true;
 }

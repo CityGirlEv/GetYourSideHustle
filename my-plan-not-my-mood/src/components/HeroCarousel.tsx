@@ -8,6 +8,7 @@ import {
   HERO_CAROUSEL_MATTE,
   HERO_CAROUSEL_SLIDE_MS,
   HERO_CAROUSEL_SOURCE_FOLDER,
+  HERO_CAROUSEL_ASPECT_CLASS,
   addHeroCarouselSlides,
   buildHeroCarouselTrack,
   canFetchHeroCarouselFolder,
@@ -32,8 +33,10 @@ import {
 import { MAX_UPLOAD_BYTES, folderFileTooLargeReason } from '../lib/uploadLimits';
 import { carouselGearTargetForSlide, gearProductPath } from '../lib/heroCarouselProducts';
 
-const CONTROL_BTN =
-  'min-h-[44px] min-w-[44px] rounded-full bg-white/95 hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#1F1917] inline-flex items-center justify-center shadow-lg cursor-pointer';
+const CONTROL_HIT =
+  'min-h-[44px] min-w-[44px] inline-flex items-center justify-center cursor-pointer rounded-full bg-transparent border-0 p-0';
+const CONTROL_FACE =
+  'rounded-full bg-white/95 hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#1F1917] inline-flex items-center justify-center shadow-lg';
 
 async function hydrateSlides(store: HeroCarouselStore): Promise<HeroCarouselSlide[]> {
   const slides = visibleHeroCarouselSlides(store);
@@ -58,6 +61,8 @@ interface HeroCarouselProps {
   canManage?: boolean;
   aside?: React.ReactNode;
   size?: 'default' | 'compact';
+  fill?: boolean;
+  portrait?: boolean;
   onOpenProduct?: (path: string) => void;
 }
 
@@ -65,6 +70,8 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
   canManage = false,
   aside,
   size = 'default',
+  fill = false,
+  portrait = false,
   onOpenProduct,
 }) => {
   const [store, setStore] = useState<HeroCarouselStore>(() => loadHeroCarouselStore());
@@ -85,11 +92,22 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
   const index = realIndexFromTrack(trackIndex, slides.length);
   const current = slides[index];
   const compact = size === 'compact';
-  const frameMin = compact ? '' : 'min-h-[24rem] sm:min-h-[32rem] lg:min-h-full';
-  const photoMin = compact ? 'min-h-[11rem] sm:min-h-[13rem] lg:min-h-[15rem]' : 'min-h-[22rem] sm:min-h-[30rem] lg:min-h-[38rem]';
-  const colMin = compact ? '' : 'min-h-[24rem] sm:min-h-[32rem] lg:min-h-[42rem]';
-  const stackGap = compact ? 'gap-1.5' : 'gap-3';
-  const photoGrow = compact ? 'flex-none' : 'flex-1';
+  const frameMin = compact || portrait ? (fill && !portrait ? 'h-full min-h-[22rem] md:min-h-0' : '') : 'min-h-[24rem] sm:min-h-[32rem] lg:min-h-full';
+  const photoMin = portrait
+    ? `${HERO_CAROUSEL_ASPECT_CLASS} w-full`
+    : compact
+      ? fill
+        ? 'h-full min-h-[22rem] md:min-h-0'
+        : 'h-[18.5rem] sm:h-[19rem]'
+      : 'min-h-[22rem] sm:min-h-[30rem] lg:min-h-[38rem]';
+  const colMin = compact || portrait ? '' : 'min-h-[24rem] sm:min-h-[32rem] lg:min-h-[42rem]';
+  const stackGap = compact || portrait ? 'gap-1.5' : 'gap-3';
+  const photoGrow = portrait || (compact && !fill) ? 'flex-none' : 'flex-1';
+  const faceSafeCrop = compact || portrait;
+  const compactShell = (compact || portrait) && !fill;
+  const compactControls = compact || portrait;
+  const controlFace = compactControls ? `${CONTROL_FACE} h-8 w-8 shadow-md` : `${CONTROL_FACE} h-11 w-11`;
+  const controlIcon = compactControls ? 'w-3.5 h-3.5' : 'w-5 h-5';
 
   const openSlideProduct = (event: React.MouseEvent<HTMLAnchorElement>, name: string) => {
     if (!onOpenProduct) return;
@@ -229,7 +247,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 
   const frame = (
     <div
-      className={`${compact ? 'w-full' : `relative h-full w-full ${frameMin}`} flex flex-col ${stackGap}`}
+      className={`${compactShell ? 'relative w-full' : `relative h-full w-full ${frameMin}`} flex flex-col ${stackGap}`}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
@@ -263,7 +281,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
                         className="absolute inset-0 h-full w-full"
                         style={{
                           objectFit: heroCarouselObjectFitFor(slide.name),
-                          objectPosition: heroCarouselObjectPositionFor(slide.name),
+                          objectPosition: heroCarouselObjectPositionFor(slide.name, faceSafeCrop),
                         }}
                         draggable={false}
                       />
@@ -282,50 +300,57 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
             )}
           </div>
         </div>
+        {slides.length > 1 ? (
+          <div
+            className={`absolute left-1/2 z-10 -translate-x-1/2 flex items-center justify-center shrink-0 rounded-2xl bg-[#FAF8F5]/95 border border-[#E5DFD3] shadow-lg ${
+              compactControls ? 'bottom-2 gap-0 px-0.5 py-0' : 'bottom-3 gap-2 px-1 py-1'
+            }`}
+          >
+            <button
+              type="button"
+              className={CONTROL_HIT}
+              aria-label="Previous slide"
+              data-testid="hero-carousel-prev"
+              onClick={() => go(-1)}
+            >
+              <span className={controlFace} aria-hidden="true">
+                <ChevronLeft className={controlIcon} />
+              </span>
+            </button>
+            <button
+              type="button"
+              className={CONTROL_HIT}
+              aria-label={playing ? 'Pause slideshow' : 'Play slideshow'}
+              data-testid="hero-carousel-pause"
+              onClick={() => setPlaying((value) => !value)}
+            >
+              <span className={controlFace} aria-hidden="true">
+                {playing ? <Pause className={controlIcon} /> : <Play className={controlIcon} />}
+              </span>
+            </button>
+            <p
+              className={`min-h-[44px] inline-flex items-center font-mono font-black uppercase tracking-wider text-[#1F1917] ${
+                compactControls ? 'px-1 text-[10px]' : 'px-3 text-xs'
+              }`}
+              data-testid="hero-carousel-dots"
+              aria-live="polite"
+            >
+              {index + 1} / {slides.length}
+            </p>
+            <button
+              type="button"
+              className={CONTROL_HIT}
+              aria-label="Next slide"
+              data-testid="hero-carousel-next"
+              onClick={() => go(1)}
+            >
+              <span className={controlFace} aria-hidden="true">
+                <ChevronRight className={controlIcon} />
+              </span>
+            </button>
+          </div>
+        ) : null}
       </div>
-
-      {slides.length > 1 ? (
-        <div
-          className={`flex items-center justify-center gap-2 shrink-0 px-1 py-1 rounded-2xl bg-[#FAF8F5]/95 border border-[#E5DFD3] ${
-            compact ? '' : 'absolute bottom-3 left-1/2 z-10 -translate-x-1/2 shadow-lg'
-          }`}
-        >
-          <button
-            type="button"
-            className={CONTROL_BTN}
-            aria-label="Previous slide"
-            data-testid="hero-carousel-prev"
-            onClick={() => go(-1)}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            className={CONTROL_BTN}
-            aria-label={playing ? 'Pause slideshow' : 'Play slideshow'}
-            data-testid="hero-carousel-pause"
-            onClick={() => setPlaying((value) => !value)}
-          >
-            {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          </button>
-          <p
-            className="min-h-[44px] px-3 inline-flex items-center text-xs font-mono font-black uppercase tracking-wider text-[#1F1917]"
-            data-testid="hero-carousel-dots"
-            aria-live="polite"
-          >
-            {index + 1} / {slides.length}
-          </p>
-          <button
-            type="button"
-            className={CONTROL_BTN}
-            aria-label="Next slide"
-            data-testid="hero-carousel-next"
-            onClick={() => go(1)}
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 
@@ -438,8 +463,24 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col gap-2" data-testid="hero-carousel">
-      <div className="flex-1 min-h-[24rem] sm:min-h-[32rem]">{frame}</div>
+    <div
+      className={compactShell ? 'space-y-2' : 'h-full flex flex-col gap-2'}
+      data-testid="hero-carousel"
+      data-size={size}
+      data-fill={fill && !portrait ? 'true' : undefined}
+      data-aspect={portrait ? '3/4' : undefined}
+    >
+      <div
+        className={
+          compactShell
+            ? ''
+            : fill
+              ? 'flex-1 min-h-0 h-full'
+              : 'flex-1 min-h-[24rem] sm:min-h-[32rem]'
+        }
+      >
+        {frame}
+      </div>
       {manager}
     </div>
   );

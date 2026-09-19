@@ -411,6 +411,15 @@ export function quoteMixedUsdPayment(input: {
   };
 }
 
+/** “Apply all” only when the slider is below the cart max — Pay is the checkout CTA. */
+export function shouldShowApplyAllCredits(
+  quote: Pick<MixedPayQuote, "creditsApplied" | "creditsMax">,
+): boolean {
+  const max = Math.max(0, Math.floor(Number(quote.creditsMax) || 0));
+  const applied = Math.max(0, Math.floor(Number(quote.creditsApplied) || 0));
+  return max > 0 && applied < max;
+}
+
 export function mixedCheckoutButtonLabel(quote: MixedPayQuote): string {
   if (quote.cashDueCents <= 0 && quote.creditsApplied > 0) {
     return `Pay ${quote.creditsApplied} credit${quote.creditsApplied === 1 ? "" : "s"}`;

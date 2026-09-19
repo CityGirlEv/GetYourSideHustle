@@ -663,7 +663,7 @@ describe('gearSelections', () => {
     expect(GEAR_COLLECTIONS_HEADING).toBe('Tee, Hoodie & Hat Collections');
     expect(GEAR_SHOP_LABEL).toBe('Accountability Gear');
     expect(GEAR_SHOP_PAGE_HREF).toBe('/gear');
-    expect(GEAR_SHOP_HREF.tee).toBe('https://snatchvault.com/collections/all-tees');
+    expect(GEAR_SHOP_HREF.tee).toBe('https://snatchvault.com/collections/non-negotiables-letter-tees');
     expect(GEAR_SHOP_HREF.hoodie).toBe('https://snatchvault.com/collections/my-plan-hoodie-collection');
     expect(GEAR_SHOP_HREF.hat).toBe('https://snatchvault.com/collections/my-plan-sports-hat');
     expect(SHOW_ALL_GEAR_LABEL).toBe('Show all');

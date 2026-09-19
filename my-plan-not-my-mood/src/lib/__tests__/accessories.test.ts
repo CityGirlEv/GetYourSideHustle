@@ -6,7 +6,9 @@ import {
   ACCESSORY_PHASE2_ITEMS,
   ACCESSORY_PHASE2_LABEL,
   ACCESSORY_PHASE3_EXAMPLES,
+  PLANNER_CART_COMING_SOON,
   accessoryBrandedName,
+  plannerAddToCartIsEnabled,
   accessoryPhase2Item,
   accessoriesPhase2Summary,
   DEFAULT_ACCESSORY_TAB,
@@ -29,6 +31,8 @@ describe('accessories', () => {
     ]);
     expect(accessoriesPhase2Summary()).toContain('Journal, Planner, Bracelets');
     expect(accessoriesPhase2Summary()).toContain('Phase 2');
+    expect(PLANNER_CART_COMING_SOON).toBe(true);
+    expect(plannerAddToCartIsEnabled()).toBe(false);
   });
 
   it('resolves accessory tabs and branded names', () => {
