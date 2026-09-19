@@ -84,9 +84,9 @@ describe("boardSourceAllowedByStatusFacets", () => {
 });
 
 describe("Testing Portal filter layout defaults", () => {
-  it("opens Assignees, then Sprint (expanded), then Other (collapsed) with Status inside Other", () => {
+  it("starts Assignees collapsed, then Sprint (expanded), then Other (collapsed) with Status inside Other", () => {
     expect([...TESTING_PORTAL_FILTER_DEFAULTS.order]).toEqual(["assignees", "sprint", "status", "other"]);
-    expect(TESTING_PORTAL_FILTER_DEFAULTS.testersOpen).toBe(true);
+    expect(TESTING_PORTAL_FILTER_DEFAULTS.testersOpen).toBe(false);
     expect(TESTING_PORTAL_FILTER_DEFAULTS.sprintOpen).toBe(true);
     expect(TESTING_PORTAL_FILTER_DEFAULTS.otherOpen).toBe(false);
     expect(TESTING_PORTAL_FILTER_DEFAULTS.statusOpen).toBe(true);

@@ -58,7 +58,7 @@ export const TESTING_PORTAL_FILTER_DEFAULTS: {
   statusOpen: boolean;
 } = {
   order: ["assignees", "sprint", "status", "other"],
-  testersOpen: true,
+  testersOpen: false,
   /** Open so All sprints vs individual sprint chips are visible on load. */
   sprintOpen: true,
   otherOpen: false,

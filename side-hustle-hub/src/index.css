@@ -12533,9 +12533,16 @@ button.checklist-checkbox:hover {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  row-gap: 4px;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.qa-testing-portal__tester-chips .qa-tester-meta {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
 }
 
 /* Schedule Assignee: same 2-col chip layout as Testing Portal QA Testors */

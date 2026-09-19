@@ -54,4 +54,20 @@ describe("Testing Portal filter layout", () => {
     expect(src).toContain('data-testid="qa-sprint-bubbles"');
     expect(src).toContain("schedule-sprint-bubble-grid");
   });
+
+  it("shows assignee filter boxes as a checkbox, tester name, and count only", () => {
+    const assignees = src.slice(
+      src.indexOf('data-testid="qa-assignees-panel"'),
+      src.indexOf('data-testid="qa-sprint-panel"'),
+    );
+    expect(src).toContain('className="qa-filter-chip__check"');
+    expect(assignees).toContain("<FilterChip");
+    expect(assignees).toContain("{tester.name}");
+    expect(assignees).toContain("{tester.total}");
+    expect(assignees).toContain("qa-filter-assignee-all");
+    expect(assignees).not.toContain("TesterChipStatusCounts");
+    expect(assignees).not.toContain("qa-tester-dot");
+    expect(assignees).not.toContain("TesterStatusAbbrevLegend");
+    expect(assignees).not.toContain("tester.shortName");
+  });
 });

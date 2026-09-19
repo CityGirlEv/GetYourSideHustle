@@ -209,7 +209,6 @@ import { SprintStatusBars } from "./SprintStatusBars";
 import {
   QaProgressBars,
   TesterChipStatusCounts,
-  TesterStatusAbbrevLegend,
   TesterStatusRow,
   emptyTally,
   formatTesterResultMeta,
@@ -3254,12 +3253,9 @@ export function TestingPortal({
                     — {testerFilterSummary}
                   </span>
                 ) : (
-                  <>
-                    <TesterStatusAbbrevLegend />
-                    <span className="schedule-board-filters__label-hint">
-                      tap to multi-select · Shift+click for a range
-                    </span>
-                  </>
+                  <span className="schedule-board-filters__label-hint">
+                    check a name to filter · Shift+click for a range
+                  </span>
                 )}
               </button>
               <ShowHideToggle
@@ -3277,15 +3273,13 @@ export function TestingPortal({
                     setTesterFilters(new Set());
                     lastTesterIdx.current = null;
                   }}
-                  title={`Clear tester filter · ${formatTesterResultMeta(testerStats.allTally)} · ${testerStats.allRolloverLabel || "no rollovers"}`}
+                  title={`All testers · ${testerStats.allTotal}`}
+                  testId="qa-filter-assignee-all"
                 >
                   All testers
-                  <TesterChipStatusCounts
-                    tally={testerStats.allTally}
-                    rolledFrom={testerStats.allRolledFrom}
-                    rolledTo={testerStats.allRolledTo}
-                    rolloverLabel={testerStats.allRolloverLabel}
-                  />
+                  <span className="qa-tester-meta" data-testid="qa-assignee-count-all">
+                    {testerStats.allTotal}
+                  </span>
                 </FilterChip>
                 {testerStats.testers.map((tester) => {
                   const active = testerFilters.has(tester.id);
@@ -3293,36 +3287,27 @@ export function TestingPortal({
                     <FilterChip
                       key={tester.id}
                       active={active}
-                      accent={tester.accent}
-                      title={`${tester.name} — ${formatTesterResultMeta(tester.tally)} · ${tester.rolloverLabel || "no rollovers"} — tap to multi-select · Shift+click for a range`}
+                      title={`${tester.name} · ${tester.total}`}
+                      testId={`qa-filter-assignee-${tester.id}`}
                       onToggle={(e) => toggleTesterFilter(tester.id, e)}
                     >
-                      <span className="qa-tester-dot" style={{ background: tester.accent }} />
-                      {tester.shortName}
-                      <TesterChipStatusCounts
-                        tally={tester.tally}
-                        rolledFrom={tester.rolledFrom}
-                        rolledTo={tester.rolledTo}
-                        rolloverLabel={tester.rolloverLabel}
-                      />
+                      {tester.name}
+                      <span className="qa-tester-meta" data-testid={`qa-assignee-count-${tester.id}`}>
+                        {tester.total}
+                      </span>
                     </FilterChip>
                   );
                 })}
                 <FilterChip
                   active={testerFilters.has("unassigned")}
-                  accent={UNASSIGNED_TESTER_ACCENT}
-                  title={`Unassigned — no QA owner · ${formatTesterResultMeta(testerStats.unassigned.tally)} · ${testerStats.unassigned.rolloverLabel || "no rollovers"} — tap to multi-select · Shift+click for a range`}
+                  title={`Unassigned · ${testerStats.unassigned.total}`}
                   testId="qa-filter-assignee-unassigned"
                   onToggle={(e) => toggleTesterFilter("unassigned", e)}
                 >
-                  <span className="qa-tester-dot" style={{ background: UNASSIGNED_TESTER_ACCENT }} />
                   Unassigned
-                  <TesterChipStatusCounts
-                    tally={testerStats.unassigned.tally}
-                    rolledFrom={testerStats.unassigned.rolledFrom}
-                    rolledTo={testerStats.unassigned.rolledTo}
-                    rolloverLabel={testerStats.unassigned.rolloverLabel}
-                  />
+                  <span className="qa-tester-meta" data-testid="qa-assignee-count-unassigned">
+                    {testerStats.unassigned.total}
+                  </span>
                 </FilterChip>
                 {AUTOMATED_SUITE_OWNERS.map((owner) => {
                   const stats = autoAssigneeStats[owner.id];
@@ -3331,8 +3316,7 @@ export function TestingPortal({
                     <FilterChip
                       key={owner.id}
                       active={active}
-                      accent={owner.accent}
-                      title={`${owner.name} — filter list to this suite · ${formatTesterResultMeta(stats.tally)} (full catalog). Run suites under Test Suites.`}
+                      title={`${owner.name} · ${stats.tally.total}`}
                       testId={`qa-filter-assignee-${owner.id}`}
                       onToggle={(e) => {
                         setTesterFilters(new Set());
@@ -3340,9 +3324,10 @@ export function TestingPortal({
                         toggleSuiteFilter(owner.id, e);
                       }}
                     >
-                      <span className="qa-tester-dot" style={{ background: owner.accent }} />
-                      {owner.shortName}
-                      <TesterChipStatusCounts tally={stats.tally} rolled={stats.rolled} />
+                      {owner.name}
+                      <span className="qa-tester-meta" data-testid={`qa-assignee-count-${owner.id}`}>
+                        {stats.tally.total}
+                      </span>
                     </FilterChip>
                   );
                 })}
