@@ -6,6 +6,12 @@ import {
   legalDisclaimerEmailInnerHtml,
   legalDisclaimerPlainText,
 } from "../../src/lib/legal-disclaimer";
+import {
+  MEMBERSHIP_TIERS,
+  numberedTierPerks,
+  type MemberPerkAudience,
+} from "../../src/lib/membership";
+import { membershipTierPriceLabel } from "../../src/lib/membership-email-copy";
 
 export const ROOT_DOMAIN = "getyoursidehustle.com";
 export const SITE_NAME = "Get Your Side Hustle";
@@ -38,45 +44,10 @@ export type TierId = "free" | "starter" | "pro" | "elite";
 export type PerkAudience = "adult" | "kids" | "junior" | "senior";
 
 const TIER_LABEL: Record<TierId, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  elite: "Elite",
-};
-
-const TIER_PRICE: Record<TierId, string> = {
-  free: "$0",
-  starter: "$39/mo",
-  pro: "$69/mo",
-  elite: "$119/mo",
-};
-
-/** Slim perk lists for email (mirrors membership.ts highlights). */
-const PERKS: Record<TierId, Record<PerkAudience, string[]>> = {
-  free: {
-    adult: ["Open free launch guides", "Run the Adult Match Wizard anytime", "Preview your Side Hustle Blueprint"],
-    kids: ["Kids Corner free tips + stories preview", "Piggy Bank goal preview", "Safe Match Wizard with a parent"],
-    junior: ["Teens Match Wizard", "Free CEO / give-back guides", "My Bank basics"],
-    senior: ["Senior lane preview", "Flexible Match Wizard pacing", "Interest-list updates"],
-  },
-  starter: {
-    adult: ["Full member guides", "GYSH Community", "Bi-weekly newsletter (2× per month)", "Priority workshop access", "One 60-minute or two 30-minute sessions with Tina & Evelyn"],
-    kids: ["Kids Team member guides", "Bi-weekly newsletter (2× per month)", "Training videos", "Kevina Glow Getter extras", "Piggy Bank challenges"],
-    junior: ["Teens Team guides", "Bi-weekly newsletter (2× per month)", "Training videos", "CEO starter checklists", "My Bank goals"],
-    senior: ["Senior Side Hustle team", "Bi-weekly newsletter (2× per month)", "Peer learning circle", "Priority workshop access", "One 60-minute or two 30-minute sessions"],
-  },
-  pro: {
-    adult: ["Hustle schedule suite", "Two 60-minute sessions", "Family kid-credit pool"],
-    kids: ["Craft hustle playbooks", "Make games with AI (parent nearby)", "Kids schedule & tracker", "Workshop discounts"],
-    junior: ["AI game + content starters", "Teens schedule suite", "Workshop invites", "Earn · save · reinvest tools"],
-    senior: ["Flexible hustle schedule", "Progress reports", "Two 60-minute sessions", "Workshop member seats"],
-  },
-  elite: {
-    adult: ["Three 60-minute sessions", "Entry to all workshops (2 seats)", "Priority support", "Highest credit pool"],
-    kids: ["Max kid credits", "Priority family support", "All Pro kids perks"],
-    junior: ["Max teen credits", "Priority support", "All Pro teens perks"],
-    senior: ["Three 60-minute sessions", "Entry to all workshops (2 seats)", "Priority senior support"],
-  },
+  free: MEMBERSHIP_TIERS.find((t) => t.id === "free")?.name ?? "Free",
+  starter: MEMBERSHIP_TIERS.find((t) => t.id === "starter")?.name ?? "Starter",
+  pro: MEMBERSHIP_TIERS.find((t) => t.id === "pro")?.name ?? "Pro",
+  elite: MEMBERSHIP_TIERS.find((t) => t.id === "elite")?.name ?? "Elite",
 };
 
 const UPGRADES: Record<TierId, TierId[]> = {
@@ -265,11 +236,11 @@ export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text
 }
 
 export function perkBulletsHtml(tier: TierId, audience: PerkAudience): string {
-  const items = PERKS[tier][audience];
+  const items = numberedTierPerks(tier, audience as MemberPerkAudience);
   return `<ul style="margin:0 0 16px;padding:0 0 0 18px;">${items
     .map(
       (p) =>
-        `<li style="margin:0 0 8px;"><strong style="color:#2d2a26;">${escapeHtml(p)}</strong></li>`,
+        `<li style="margin:0 0 8px;"><strong style="color:#2d2a26;">${escapeHtml(p.title)}</strong></li>`,
     )
     .join("")}</ul>`;
 }
@@ -285,14 +256,16 @@ export function upgradesHtml(current: TierId, audience?: PerkAudience): string {
   }
   const cards = next
     .map((t) => {
-      const perks = PERKS[t].adult.slice(0, 3);
+      const perks = numberedTierPerks(t, "adult")
+        .filter((p) => !/^everything in /i.test(p.title))
+        .slice(0, 3);
       const tierUrl = membershipDeepLink(audience, t);
       return `<td width="50%" valign="top" style="padding:6px;">
         <a href="${tierUrl}" style="display:block;text-decoration:none;color:inherit;border:1px solid #e2d5bc;border-radius:14px;padding:14px;background:#fff;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#9B2F28;">Upgrade</p>
-          <p style="margin:0 0 6px;font-size:18px;font-weight:800;color:#2d2a26;">${TIER_LABEL[t]} · ${TIER_PRICE[t]}</p>
+          <p style="margin:0 0 6px;font-size:18px;font-weight:800;color:#2d2a26;">${TIER_LABEL[t]} · ${membershipTierPriceLabel(t)}</p>
           <ul style="margin:0;padding:0 0 0 16px;font-size:13px;color:#5c4f42;">
-            ${perks.map((p) => `<li style="margin:0 0 4px;">${escapeHtml(p)}</li>`).join("")}
+            ${perks.map((p) => `<li style="margin:0 0 4px;">${escapeHtml(p.title)}</li>`).join("")}
           </ul>
           <p style="margin:10px 0 0;font-size:12px;font-weight:800;color:#9B2F28;">View on membership page →</p>
         </a>

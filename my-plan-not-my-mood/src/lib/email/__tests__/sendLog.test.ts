@@ -3,6 +3,7 @@ import {
   createEmailSendLogEntry,
   emailSendLogForTemplate,
   emailSendLogStatusFromResult,
+  guessEmailTemplateId,
   parseEmailSendLog,
   prependEmailSendLog,
   readEmailSendLog,
@@ -56,5 +57,14 @@ describe('email send log', () => {
     expect(entry.test).toBe(true);
     expect(readEmailSendLog()[0]?.id).toBe(entry.id);
     expect(parseEmailSendLog([{ ...entry, status: 'bogus' }])).toEqual([]);
+  });
+
+  it('maps a Beta Tester stand-by subject to the beta confirmation template', () => {
+    expect(guessEmailTemplateId('Stand by, Beta Tester — your assignments are coming')).toBe(
+      'beta-tester-confirmation',
+    );
+    expect(guessEmailTemplateId('[TEST] Stand by, Beta Tester — your assignments are coming')).toBe(
+      'beta-tester-confirmation',
+    );
   });
 });

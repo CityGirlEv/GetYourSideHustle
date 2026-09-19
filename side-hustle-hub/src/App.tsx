@@ -1860,7 +1860,7 @@ function App() {
             <div className="top-header-row top-header-row--primary">
               <nav className="nav-primary" aria-label="Primary">
                 <ul className="nav-links nav-links--primary">
-                  {canUseAdminPortal && !previewingAsMember ? (
+                  {canUseAdminPortal ? (
                     <li className="nav-item-admin">
                       <div
                         ref={adminMenuRef}
@@ -1872,7 +1872,13 @@ function App() {
                       >
                         <button
                           type="button"
-                          onClick={() => setAdminMenuOpen((open) => !open)}
+                          onClick={() => {
+                            if (mobileMenuOpen) {
+                              setAdminMenuOpen((open) => !open);
+                              return;
+                            }
+                            goToAdmin(adminTab);
+                          }}
                           className={`nav-link-btn admin-nav-trigger${activeView === "admin" ? " active" : ""}`}
                           aria-expanded={adminMenuOpen}
                           aria-haspopup="menu"
@@ -3418,7 +3424,7 @@ function App() {
               onMembershipChanged={(tier: string) => {
                 setAuthUser((prev) => (prev ? { ...prev, membershipTier: tier } : prev));
               }}
-              onMerchSaved={(user) => {
+              onMerchSaved={(user: AuthUser) => {
                 setAuthUser((prev) => (prev ? { ...prev, notes: user.notes } : prev));
               }}
               onAccountDeactivated={() => {

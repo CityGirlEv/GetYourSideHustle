@@ -14,10 +14,11 @@ import { buildTemplateTestPayload, emailVarsForRecipient, renderManagedEmail } f
 import { shouldAutoSendSignupConfirmation } from './sendSettings';
 import {
   SIGNUP_CONFIRMATION_TEMPLATE_ID,
+  BETA_TESTER_CONFIRMATION_TEMPLATE_ID,
   buildOutboundSubject,
   validateSendEmailBody,
 } from './sendPayload';
-import { buildLoginUrl, buildSignupConfirmationHtml, buildSignupConfirmationSubject } from './templates';
+import { buildLoginUrl, buildSignupConfirmationHtml, buildSignupConfirmationSubject, buildBetaTesterConfirmationHtml, buildBetaTesterConfirmationSubject } from './templates';
 
 export interface EmailApiResult {
   ok: boolean;
@@ -114,25 +115,36 @@ export async function sendTemplateTestEmail(
 export async function sendSignupConfirmationEmail(
   user: Pick<AppUser, 'name' | 'email' | 'wantsBeta'> & { phone?: string },
 ): Promise<EmailApiResult> {
-  const template = getEmailTemplate(SIGNUP_CONFIRMATION_TEMPLATE_ID);
+  const templateId = user.wantsBeta ? BETA_TESTER_CONFIRMATION_TEMPLATE_ID : SIGNUP_CONFIRMATION_TEMPLATE_ID;
+  const template = getEmailTemplate(templateId) || getEmailTemplate(SIGNUP_CONFIRMATION_TEMPLATE_ID);
   const rendered = template
     ? renderManagedEmail(template, emailVarsForRecipient(user, getAppUrl()))
-    : {
-        subject: buildSignupConfirmationSubject(),
-        html: buildSignupConfirmationHtml({
-          name: user.name,
-          email: user.email,
-          wantsBeta: user.wantsBeta,
-          phone: user.phone,
-        }),
-      };
+    : user.wantsBeta
+      ? {
+          subject: buildBetaTesterConfirmationSubject(),
+          html: buildBetaTesterConfirmationHtml({
+            name: user.name,
+            email: user.email,
+            wantsBeta: true,
+            phone: user.phone,
+          }),
+        }
+      : {
+          subject: buildSignupConfirmationSubject(),
+          html: buildSignupConfirmationHtml({
+            name: user.name,
+            email: user.email,
+            wantsBeta: user.wantsBeta,
+            phone: user.phone,
+          }),
+        };
 
   return sendRenderedEmail({
     to: user.email,
     subject: rendered.subject,
     html: rendered.html,
-    templateId: SIGNUP_CONFIRMATION_TEMPLATE_ID,
-    templateName: template?.name || 'Signup confirmation',
+    templateId,
+    templateName: template?.name || (user.wantsBeta ? 'Beta Tester confirmation' : 'Signup confirmation'),
   });
 }
 

@@ -99,7 +99,7 @@ export async function handleSendMerchClaimEmail(
     ok: true,
     emailSent: sent,
     message: sent
-      ? `Merch size request emailed to ${member.email}.`
+      ? `GYSH Gear shop email sent to ${member.email}.`
       : "Email was not sent (check Resend configuration).",
   });
 }

@@ -574,6 +574,6 @@ export async function sendMerchClaimEmail(
   });
   return {
     emailSent: data.emailSent === true,
-    message: data.message || (data.emailSent ? "Merch size request emailed." : "Email was not sent."),
+    message: data.message || (data.emailSent ? "GYSH Gear shop email sent." : "Email was not sent."),
   };
 }

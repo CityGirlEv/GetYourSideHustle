@@ -14,6 +14,12 @@ import gear07 from "../assets/gear-gallery-07.jpg";
 import gear08 from "../assets/gear-gallery-08.jpg";
 import { SITE_NAME } from "../lib/site-config";
 import { nextGearGalleryIndex } from "../lib/gear-gallery";
+import {
+  GYSH_FAMILY_DISCOUNT_CODE,
+  GYSH_FAMILY_DISCOUNT_PERCENT,
+  GYSH_GEAR_COLLECTION_URL,
+} from "../lib/gysh-gear-store";
+import { merchCompareCell, merchItemPhrase } from "../lib/membership-email-copy";
 
 const GEAR_PHOTOS: { src: string; alt: string }[] = [
   { src: gear01, alt: "Tina and Evelyn in GYSH tees and caps, pointing at the logo" },
@@ -63,13 +69,31 @@ export function ShopPage({
         </span>
         <h2>Wear the hustle</h2>
         <p>
-          {SITE_NAME} tees, caps, and Gang merch — Ideas. Action. Income. Freedom. Paid memberships
-          include complimentary T-shirt(s) or hat(s); extra gear will check out from this shop when
-          the drop is live. Message us in the meantime.
+          {SITE_NAME} tees and hats are live in the GYSH Gear shop. Starter includes{" "}
+          {merchCompareCell("starter").toLowerCase()} ({merchItemPhrase(1)}); Pro and Elite include{" "}
+          {merchCompareCell("pro").toLowerCase()} ({merchItemPhrase(2)}). At checkout, enter{" "}
+          {GYSH_FAMILY_DISCOUNT_CODE} for {GYSH_FAMILY_DISCOUNT_PERCENT}% off complimentary items.
+          Extra gear is also available at regular price.
         </p>
-        <button type="button" className="btn btn-primary" onClick={onContact} data-testid="shop-contact">
-          Contact us to order
-        </button>
+        <div className="shop-page__actions">
+          <a
+            href={GYSH_GEAR_COLLECTION_URL}
+            className="btn btn-primary"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="shop-store-link"
+          >
+            Shop GYSH Gear
+          </a>
+          <button type="button" className="btn btn-outline" onClick={onContact} data-testid="shop-contact">
+            Questions? Contact us
+          </button>
+        </div>
+        <p className="shop-page__code-note">
+          Complimentary code: <code className="shop-page__code">{GYSH_FAMILY_DISCOUNT_CODE}</code> ·
+          Starter {merchCompareCell("starter").toLowerCase()} · Pro/Elite{" "}
+          {merchCompareCell("pro").toLowerCase()}
+        </p>
       </section>
 
       <section

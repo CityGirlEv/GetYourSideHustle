@@ -444,6 +444,27 @@ export function getRoleLabel(role: UserRole | string): string {
   return ROLE_LABELS[role as UserRole] ?? role;
 }
 
+export const USER_STATUS_LABELS: Record<UserStatus, string> = {
+  active: 'Active',
+  pending: 'Pending',
+  inactive: 'Inactive',
+};
+
+const STAFF_PORTAL_ROLES: UserRole[] = ['super_admin', 'admin', 'dev'];
+const TESTER_STATUS_RANK: Record<UserStatus, number> = {
+  active: 0,
+  pending: 1,
+  inactive: 2,
+};
+
+/** Beta Testers and QA Testers — not staff who also happen to carry a qa role. */
+export function isPortalTester(user: Pick<AppUser, 'role' | 'roles' | 'wantsBeta'>): boolean {
+  if (user.wantsBeta) return true;
+  const roles = user.roles?.length ? user.roles : [user.role];
+  if (roles.some((role) => STAFF_PORTAL_ROLES.includes(role))) return false;
+  return user.role === 'qa' || roles.includes('qa');
+}
+
 export const getAppUsers = (): (AppUser & { passwordHash: string })[] => {
   if (!useLocalUserStore()) {
     return remoteUsersCache.map((u) => ({ ...u, passwordHash: '' }));
@@ -484,6 +505,17 @@ export const getAppUsers = (): (AppUser & { passwordHash: string })[] => {
     return INITIAL_SEED_USERS;
   }
 };
+
+/** Every Beta Tester and QA Tester, active first then pending, then by name. */
+export function listPortalTesters(users: AppUser[] = getAppUsers()): AppUser[] {
+  return [...users]
+    .filter(isPortalTester)
+    .sort((a, b) => {
+      const byStatus = TESTER_STATUS_RANK[a.status] - TESTER_STATUS_RANK[b.status];
+      if (byStatus !== 0) return byStatus;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+}
 
 function readRawUserSession(): AppUser | null {
   if (!useLocalUserStore()) {

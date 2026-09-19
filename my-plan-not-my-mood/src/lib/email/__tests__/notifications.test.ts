@@ -46,8 +46,11 @@ describe('email notifications', () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body.to).toBe('pat@example.com');
     expect(body.test).toBe(false);
-    expect(body.subject).toMatch(/We got your signup/i);
+    expect(body.subject).toMatch(/Stand by, Beta Tester/i);
     expect(body.html).toContain('Pat');
+    expect(body.html).toContain('instructions and assignments');
+    expect(body.html).toContain('/beta-guide');
+    expect(body.templateId).toBe('beta-tester-confirmation');
     expect(body.html).not.toMatch(/^\[TEST\]/);
   });
 

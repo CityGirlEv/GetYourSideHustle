@@ -23,16 +23,42 @@ export function buildSignupConfirmationSubject(): string {
   return 'We got your signup — My Plan, Not My Mood';
 }
 
+export function buildBetaTesterConfirmationSubject(): string {
+  return 'Stand by, Beta Tester — your assignments are coming';
+}
+
+export const BETA_GUIDE_URL = 'https://nonnegotiation.com/beta-guide';
+export const BETA_REWARDS_URL = 'https://nonnegotiation.com/beta-rewards';
+
+export function betaTesterConfirmationInnerHtml(name: string, email: string): string {
+  return `<div style="font-family: Inter, Arial, sans-serif; color: #1F1917;">
+  <div style="display:inline-block;margin:0 0 12px 0;padding:6px 12px;border-radius:999px;background:#FFEDD5;border:1px solid #C2410C;color:#C2410C;font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">Beta Tester</div>
+  <h1 style="color: #C2410C; font-size: 22px; margin: 0 0 12px 0;">You're in, ${name}. Stand by.</h1>
+  <p>Thank you for stepping up as a <strong>Beta Tester</strong> for <strong>My Plan, Not My Mood</strong>. We received your signup for <strong>${email}</strong>.</p>
+  <p>Your account is still <strong>pending activation</strong>. You will get another email when you can sign in. You do not need to do anything else right now.</p>
+  <div style="margin:20px 0;padding:16px 18px;border:2px solid #1F1917;border-radius:16px;background:#FAF8F5;">
+    <p style="margin:0 0 8px 0;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#C2410C;">What happens next</p>
+    <p style="margin:0;">Stand by for further <strong>instructions and assignments</strong>. We will send you what to test, where to leave notes, and how we thank you (a tee, a hat, or both).</p>
+  </div>
+  <p>When your assignment arrives, follow the Beta Testing Guide and complete the tests honestly. Feel it. Follow the Plan anyway.</p>
+  <p style="margin: 24px 0 8px 0;">
+    <a href="${BETA_GUIDE_URL}" style="background: #C2410C; color: #fff; padding: 12px 20px; border-radius: 999px; text-decoration: none; font-weight: 700;">Open the Beta Testing Guide</a>
+  </p>
+  <p style="font-size: 13px; color: #3F3832;">Rewards and thank-you gear: <a href="${BETA_REWARDS_URL}" style="color:#C2410C;font-weight:800;text-decoration:none;">Beta Tester Rewards</a></p>
+</div>`;
+}
+
+export function buildBetaTesterConfirmationHtml(payload: SignupEmailPayload): string {
+  return wrapEmailHtml(betaTesterConfirmationInnerHtml(escapeHtml(payload.name), escapeHtml(payload.email)));
+}
+
 export function buildSignupConfirmationHtml(payload: SignupEmailPayload): string {
-  const betaLine = payload.wantsBeta
-    ? '<p>You also asked to join as a <strong>Beta Tester</strong>. We will review that request with your account.</p>'
-    : '';
+  if (payload.wantsBeta) return buildBetaTesterConfirmationHtml(payload);
   return wrapEmailHtml(`
     <div style="font-family: Inter, Arial, sans-serif; color: #1F1917;">
       <h1 style="color: #C2410C; font-size: 20px;">We got your signup, ${escapeHtml(payload.name)}</h1>
       <p>Thanks for joining <strong>My Plan, Not My Mood</strong>. This email confirms we received your signup for <strong>${escapeHtml(payload.email)}</strong>.</p>
       <p>Your account is still <strong>pending activation</strong>. You will get another email when you can sign in.</p>
-      ${betaLine}
     </div>
   `);
 }
@@ -43,7 +69,7 @@ export function buildSignupPendingSubject(): string {
 
 export function buildSignupPendingHtml(payload: SignupEmailPayload): string {
   const betaLine = payload.wantsBeta
-    ? '<p>You also opted in as a <strong>Beta Tester</strong>. We will prioritize your review.</p>'
+    ? '<p>You also opted in as a <strong>Beta Tester</strong>. Stand by for further instructions and assignments after we activate your account.</p>'
     : '';
   return wrapEmailHtml(`
     <div style="font-family: Inter, Arial, sans-serif; color: #1F1917;">

@@ -1,5 +1,6 @@
 import { getRolePermissions, type UserOrRoleInput } from '../userAuth';
 import { wrapEmailHtml } from './emailChrome';
+import { betaTesterConfirmationInnerHtml } from './templates';
 
 export interface ManagedEmailTemplate {
   id: string;
@@ -25,6 +26,14 @@ export const SYSTEM_EMAIL_TEMPLATES: ManagedEmailTemplate[] = [
 </div>`),
     isSystem: true,
     updatedAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'beta-tester-confirmation',
+    name: 'Beta Tester confirmation — stand by for assignments',
+    subject: 'Stand by, Beta Tester — your assignments are coming',
+    html: wrapEmailHtml(betaTesterConfirmationInnerHtml('{{name}}', '{{email}}')),
+    isSystem: true,
+    updatedAt: '2026-09-19T00:00:00.000Z',
   },
   {
     id: 'signup-pending',

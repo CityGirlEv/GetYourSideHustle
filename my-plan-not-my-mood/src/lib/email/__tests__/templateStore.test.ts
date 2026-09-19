@@ -33,6 +33,7 @@ describe('email template store & access gate', () => {
     expect(list.length).toBeGreaterThanOrEqual(3);
     expect(list.some((t) => t.id === 'signup-pending')).toBe(true);
     expect(list.some((t) => t.id === 'signup-confirmation')).toBe(true);
+    expect(list.some((t) => t.id === 'beta-tester-confirmation')).toBe(true);
     expect(list.some((t) => t.id === 'password-reset')).toBe(true);
     for (const template of list.filter((t) => t.isSystem)) {
       expect(template.html).toContain('official_logo_seal.png');

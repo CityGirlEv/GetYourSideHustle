@@ -1,6 +1,7 @@
 export const DEFAULT_FROM_ADDRESS = 'info@nonnegotiation.com';
 export const DEFAULT_FROM_EMAIL = `My Plan, Not My Mood <${DEFAULT_FROM_ADDRESS}>`;
 export const SIGNUP_CONFIRMATION_TEMPLATE_ID = 'signup-confirmation';
+export const BETA_TESTER_CONFIRMATION_TEMPLATE_ID = 'beta-tester-confirmation';
 export const TEST_SUBJECT_PREFIX = '[TEST] ';
 export const MAX_EMAIL_HTML_CHARS = 150_000;
 export const MAX_EMAIL_SUBJECT_CHARS = 200;

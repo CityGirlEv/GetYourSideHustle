@@ -11,6 +11,10 @@ import {
   type MerchTshirtSize,
   type TierId,
 } from "../lib/membership";
+import {
+  GYSH_GEAR_COLLECTION_URL,
+} from "../lib/gysh-gear-store";
+import { merchEmailVars } from "../lib/membership-email-copy";
 import { MembershipMerchChoice, type MerchChoiceSlot } from "./MembershipMerchChoice";
 
 export function MembershipMerchClaim({
@@ -38,6 +42,7 @@ export function MembershipMerchClaim({
   const [ok, setOk] = useState("");
 
   if (!isMembershipSubscriber(tier)) return null;
+  const merchCopy = merchEmailVars(tier);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -81,8 +86,20 @@ export function MembershipMerchClaim({
         <Shirt size={18} aria-hidden /> Complimentary GYSH gear
       </h4>
       <p>
-        Starter includes one T-shirt or hat; Pro and Elite include two. If you were upgraded without
-        choosing, pick here so we can ship when the drop is packed.
+        Your <strong>{merchCopy.tier}</strong> plan includes <strong>{merchCopy.merchPerkTitle}</strong>{" "}
+        ({merchCopy.merchCell} on the membership page) — {merchCopy.merchItemPhrase}.{" "}
+        {merchCopy.merchPerkDetail}
+      </p>
+      <p>
+        <a
+          href={GYSH_GEAR_COLLECTION_URL}
+          className="btn btn-primary"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="user-portal-merch-store-link"
+        >
+          Shop GYSH Gear
+        </a>
       </p>
       {current ? (
         <p className="user-portal-merch-claim__saved" data-testid="user-portal-merch-saved">

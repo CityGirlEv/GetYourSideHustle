@@ -5,6 +5,7 @@ import {
   buildSignupPendingSubject,
   buildSignupConfirmationHtml,
   buildSignupConfirmationSubject,
+  buildBetaTesterConfirmationSubject,
   buildUserApprovedHtml,
   buildUserApprovedSubject,
   buildAdminNewSignupHtml,
@@ -21,13 +22,21 @@ describe('email templates', () => {
 
   it('builds signup confirmation subject and html without a login button', () => {
     expect(buildSignupConfirmationSubject()).toMatch(/We got your signup/i);
+    expect(buildBetaTesterConfirmationSubject()).toMatch(/Stand by, Beta Tester/i);
     const html = buildSignupConfirmationHtml({ name: 'Pat', email: 'pat@example.com', wantsBeta: true });
     expect(html).toContain('Pat');
     expect(html).toContain('pat@example.com');
     expect(html).toContain('pending activation');
     expect(html).toContain('Beta Tester');
+    expect(html).toContain('Stand by');
+    expect(html).toContain('instructions and assignments');
+    expect(html).toContain('/beta-guide');
+    expect(html).toContain('/beta-rewards');
     expect(html).not.toContain('auth=login');
     expect(html).toContain('official_logo_seal.png');
+    const regular = buildSignupConfirmationHtml({ name: 'Pat', email: 'pat@example.com', wantsBeta: false });
+    expect(regular).not.toContain('Stand by');
+    expect(regular).toContain('We got your signup');
   });
 
   it('builds signup pending subject and html', () => {
@@ -35,6 +44,7 @@ describe('email templates', () => {
     const html = buildSignupPendingHtml({ name: 'Pat', email: 'pat@example.com', wantsBeta: true });
     expect(html).toContain('Pat');
     expect(html).toContain('Beta Tester');
+    expect(html).toContain('instructions and assignments');
     expect(html).toContain('pending administrator approval');
     expect(html).toContain('official_logo_seal.png');
     expect(html).toContain('https://nonnegotiation.com');

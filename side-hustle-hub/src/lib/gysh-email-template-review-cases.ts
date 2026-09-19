@@ -99,9 +99,9 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
   },
   {
     slug: "membership_merch_ready",
-    name: "Membership merch · pick size",
+    name: "GYSHFamily t-shirt discount · hat or tee",
     description:
-      "Follow-up when complimentary GYSH T-shirt/hat shipping is ready — especially members upgraded without a size choice.",
+      "Email to Starter and up with the t-shirt/hat discount: shop GYSH Gear, pick the complimentary hat or t-shirt count for their plan, enter GYSHFamily at checkout for 100% off.",
   },
   {
     slug: "alacarte_purchased",

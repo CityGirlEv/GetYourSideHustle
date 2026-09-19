@@ -132,11 +132,12 @@ export const TASK_ASSIGNEE_OPTIONS: WorkAssignee[] = [
 ];
 /** People, QA, Unknown, Vitest, and Playwright on the task board. */
 export const ASSIGNEE_OPTIONS: WorkAssignee[] = TASK_ASSIGNEE_OPTIONS;
-/** Testing Portal chips: Unknown instead of QA, plus Vitest and Playwright. */
+/** Testing Portal chips: people, Testers, Unknown, Vitest, and Playwright. */
 export const TEST_ASSIGNEE_OPTIONS: WorkAssignee[] = [
   'angela',
   'evelyn',
   'dev',
+  'qa',
   'unassigned',
   'vitest',
   'playwright',
@@ -183,7 +184,7 @@ export const ASSIGNEE_LABELS: Record<WorkAssignee, string> = {
   angela: 'Angela',
   evelyn: 'Evelyn',
   dev: 'Dev Team',
-  qa: 'QA',
+  qa: 'Testers',
   unassigned: 'Unknown',
   system: 'System',
   vitest: 'Vitest',
@@ -217,10 +218,12 @@ const TASK_PROGRESS_RANK: Record<TaskStatus, number> = {
   done: 3,
 };
 
-/** Manual tests never sit on QA — Unknown until a person picks them up. Automated suites own Vitest/Playwright. */
+/** Automated suites own Vitest/Playwright. Testers, Angela, Evelyn, and Dev stay named. Everyone else is Unknown. */
 export function normalizeTestAssignee(assignee: unknown, suite?: TestSuite): WorkAssignee {
   if (suite === 'vitest' || suite === 'playwright') return suite;
-  if (assignee === 'angela' || assignee === 'evelyn' || assignee === 'dev') return assignee;
+  if (assignee === 'angela' || assignee === 'evelyn' || assignee === 'dev' || assignee === 'qa') {
+    return assignee;
+  }
   return 'unassigned';
 }
 
@@ -876,12 +879,14 @@ export function defaultTaskBoardFilters<T extends string>(
   return defaultPersonSprintBoardFilters<T>(actor, now);
 }
 
-/** Testing Portal: current sprint + the signed-in person's work. Status, priority, and category stay All. */
+/** Testing Portal: current sprint and every assignee so all testers show. Status, priority, and category stay All. */
 export function defaultTestingPortalFilters<T extends string>(
-  actor?: { email?: string; name?: string } | null,
+  _actor?: { email?: string; name?: string } | null,
   now = new Date(),
 ): WorkBoardFilters<T> {
-  return defaultPersonSprintBoardFilters<T>(actor, now);
+  const filters = emptyFilters<T>();
+  filters.sprint = new Set([currentSprintLabel(now)]);
+  return filters;
 }
 
 export function isWorkBoardFilterActive<T extends string>(

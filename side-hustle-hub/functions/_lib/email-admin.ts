@@ -14,7 +14,9 @@ import {
   EMAIL_TEMPLATE_CATALOG,
   isLegacyHustleFamilyHeadline,
   isLegacyLowercaseGyshWelcomeHeadline,
-  PREVIEW_SAMPLE_VARS,
+  isLegacyMerchDashboardClaimUrl,
+  isLegacyMerchReadyBody,
+  previewSampleVarsForSlug,
   renderContent,
   type EmailTemplateContent,
   type EmailTemplateVars,
@@ -125,8 +127,16 @@ async function seedCatalogRows(env: Env): Promise<void> {
   // One read of existing rows — avoid per-slug INSERT+SELECT on every list (remote D1 is ~2–4s each).
   const existing = await withD1Retry(() =>
     env.DB.prepare(
-      `SELECT slug, content_seeded, body_html, headline FROM email_templates`,
-    ).all<{ slug: string; content_seeded: number; body_html: string; headline: string }>(),
+      `SELECT slug, name, description, content_seeded, body_html, headline, cta_url FROM email_templates`,
+    ).all<{
+      slug: string;
+      name: string;
+      description: string;
+      content_seeded: number;
+      body_html: string;
+      headline: string;
+      cta_url: string;
+    }>(),
   );
   const bySlug = new Map((existing.results ?? []).map((r) => [r.slug, r]));
 
@@ -162,6 +172,13 @@ async function seedCatalogRows(env: Env): Promise<void> {
       continue;
     }
     if (!defaults) continue;
+    if (row.name !== t.name || row.description !== t.description) {
+      await withD1Retry(() =>
+        env.DB.prepare(`UPDATE email_templates SET name = ?, description = ? WHERE slug = ?`)
+          .bind(t.name, t.description, t.slug)
+          .run(),
+      );
+    }
     if (Number(row.content_seeded) === 0) {
       await withD1Retry(() =>
         env.DB.prepare(
@@ -217,6 +234,44 @@ async function seedCatalogRows(env: Env): Promise<void> {
           .run(),
       );
     }
+    if (
+      t.slug === "membership_merch_ready" &&
+      isLegacyMerchReadyBody(row.body_html)
+    ) {
+      await withD1Retry(() =>
+        env.DB.prepare(
+          `UPDATE email_templates SET
+             subject = ?, preheader = ?, eyebrow = ?, headline = ?, subhead = ?,
+             body_html = ?, cta_label = ?, cta_url = ?, footer_note = ?,
+             name = ?, description = ?
+           WHERE slug = ?`,
+        )
+          .bind(
+            defaults.subject,
+            defaults.preheader,
+            defaults.eyebrow,
+            defaults.headline,
+            defaults.subhead,
+            defaults.bodyHtml,
+            defaults.ctaLabel,
+            defaults.ctaUrl,
+            defaults.footerNote,
+            t.name,
+            t.description,
+            t.slug,
+          )
+          .run(),
+      );
+    } else if (
+      t.slug === "membership_merch_ready" &&
+      isLegacyMerchDashboardClaimUrl(row.cta_url)
+    ) {
+      await withD1Retry(() =>
+        env.DB.prepare(`UPDATE email_templates SET cta_url = ?, cta_label = ? WHERE slug = ?`)
+          .bind(defaults.ctaUrl, defaults.ctaLabel, t.slug)
+          .run(),
+      );
+    }
   }
 }
 
@@ -249,7 +304,7 @@ export async function renderCatalogEmail(
     const content = await getTemplateContent(env, "daily_admin_digest");
     if (!content) return buildSampleDigestPreview();
     // Live digests pass digestBodyHtml; admin preview fills {{digestBodyHtml}} from sample vars.
-    return renderContent(content, { ...PREVIEW_SAMPLE_VARS, ...vars });
+    return renderContent(content, { ...previewSampleVarsForSlug("daily_admin_digest"), ...vars });
   }
 
   const content = await getTemplateContent(env, slug);
@@ -268,7 +323,7 @@ export function buildTemplatePreview(slug: string): {
   if (slug === DIGEST_TEMPLATE_SLUG || slug === "daily_admin_digest") {
     return buildSampleDigestPreview();
   }
-  return renderContent(content, PREVIEW_SAMPLE_VARS);
+  return renderContent(content, previewSampleVarsForSlug(slug));
 }
 
 export async function listEmailTemplates(env: Env): Promise<Response> {
@@ -290,6 +345,33 @@ export async function listEmailTemplates(env: Env): Promise<Response> {
   );
   const countMap = new Map((counts.results ?? []).map((r) => [r.slug, r.n]));
 
+  const bySlug = new Map((results ?? []).map((t) => [t.slug, t]));
+  const templates = EMAIL_TEMPLATE_CATALOG.map((catalog) => {
+    const t = bySlug.get(catalog.slug);
+    if (!t) return null;
+    const content = rowToContent(t);
+    const defaults = defaultContentForSlug(t.slug);
+    return {
+      slug: t.slug,
+      name: catalog.name,
+      description: catalog.description,
+      subject: content.subject,
+      enabled: Boolean(t.enabled),
+      updatedAt: t.updated_at,
+      updatedBy: t.updated_by,
+      preheader: content.preheader,
+      eyebrow: content.eyebrow,
+      headline: content.headline,
+      subhead: content.subhead,
+      bodyHtml: content.bodyHtml,
+      ctaLabel: content.ctaLabel,
+      ctaUrl: content.ctaUrl,
+      footerNote: content.footerNote,
+      dynamicBody: Boolean(defaults?.dynamicBody),
+      sendCount: (countMap.get(t.slug) ?? 0) + (countMap.get(`test_${t.slug}`) ?? 0),
+    };
+  }).filter((t): t is NonNullable<typeof t> => Boolean(t));
+
   return json({
     emailConfigured: emailConfigured(env),
     logoUrl: `${SITE_URL}/brand/gysh-logo-rocket.png`,
@@ -301,35 +383,16 @@ export async function listEmailTemplates(env: Env): Promise<Response> {
       "{{resetUrl}}",
       "{{consentUrl}}",
       "{{tier}}",
+      "{{merchPerkTitle}}",
+      "{{merchItemPhrase}}",
+      "{{merchCheckoutCode}}",
       "{{perksHtml}}",
       "{{upgradesHtml}}",
       "{{childName}}",
       "{{periodKey}}",
       "{{digestBodyHtml}}",
     ],
-    templates: (results ?? []).map((t) => {
-      const content = rowToContent(t);
-      const defaults = defaultContentForSlug(t.slug);
-      return {
-        slug: t.slug,
-        name: t.name,
-        description: t.description,
-        subject: content.subject,
-        enabled: Boolean(t.enabled),
-        updatedAt: t.updated_at,
-        updatedBy: t.updated_by,
-        preheader: content.preheader,
-        eyebrow: content.eyebrow,
-        headline: content.headline,
-        subhead: content.subhead,
-        bodyHtml: content.bodyHtml,
-        ctaLabel: content.ctaLabel,
-        ctaUrl: content.ctaUrl,
-        footerNote: content.footerNote,
-        dynamicBody: Boolean(defaults?.dynamicBody),
-        sendCount: (countMap.get(t.slug) ?? 0) + (countMap.get(`test_${t.slug}`) ?? 0),
-      };
-    }),
+    templates,
   });
 }
 
@@ -389,55 +452,59 @@ export async function updateEmailTemplate(
     typeof body.enabled === "boolean" ? (body.enabled ? 1 : 0) : undefined;
 
   if (enabled === undefined) {
-    await env.DB.prepare(
-      `UPDATE email_templates SET
-         subject = ?, preheader = ?, eyebrow = ?, headline = ?, subhead = ?,
-         body_html = ?, cta_label = ?, cta_url = ?, footer_note = ?,
-         content_seeded = 1, updated_at = ?, updated_by = ?
-       WHERE slug = ?`,
-    )
-      .bind(
-        next.subject,
-        next.preheader,
-        next.eyebrow,
-        next.headline,
-        next.subhead,
-        next.bodyHtml,
-        next.ctaLabel,
-        next.ctaUrl,
-        next.footerNote,
-        now,
-        actor.email,
-        slug,
+    await withD1Retry(() =>
+      env.DB.prepare(
+        `UPDATE email_templates SET
+           subject = ?, preheader = ?, eyebrow = ?, headline = ?, subhead = ?,
+           body_html = ?, cta_label = ?, cta_url = ?, footer_note = ?,
+           content_seeded = 1, updated_at = ?, updated_by = ?
+         WHERE slug = ?`,
       )
-      .run();
+        .bind(
+          next.subject,
+          next.preheader,
+          next.eyebrow,
+          next.headline,
+          next.subhead,
+          next.bodyHtml,
+          next.ctaLabel,
+          next.ctaUrl,
+          next.footerNote,
+          now,
+          actor.email,
+          slug,
+        )
+        .run(),
+    );
   } else {
-    await env.DB.prepare(
-      `UPDATE email_templates SET
-         subject = ?, preheader = ?, eyebrow = ?, headline = ?, subhead = ?,
-         body_html = ?, cta_label = ?, cta_url = ?, footer_note = ?,
-         enabled = ?, content_seeded = 1, updated_at = ?, updated_by = ?
-       WHERE slug = ?`,
-    )
-      .bind(
-        next.subject,
-        next.preheader,
-        next.eyebrow,
-        next.headline,
-        next.subhead,
-        next.bodyHtml,
-        next.ctaLabel,
-        next.ctaUrl,
-        next.footerNote,
-        enabled,
-        now,
-        actor.email,
-        slug,
+    await withD1Retry(() =>
+      env.DB.prepare(
+        `UPDATE email_templates SET
+           subject = ?, preheader = ?, eyebrow = ?, headline = ?, subhead = ?,
+           body_html = ?, cta_label = ?, cta_url = ?, footer_note = ?,
+           enabled = ?, content_seeded = 1, updated_at = ?, updated_by = ?
+         WHERE slug = ?`,
       )
-      .run();
+        .bind(
+          next.subject,
+          next.preheader,
+          next.eyebrow,
+          next.headline,
+          next.subhead,
+          next.bodyHtml,
+          next.ctaLabel,
+          next.ctaUrl,
+          next.footerNote,
+          enabled,
+          now,
+          actor.email,
+          slug,
+        )
+        .run(),
+    );
   }
 
-  const preview = renderContent(next as EmailTemplateContent, PREVIEW_SAMPLE_VARS);
+  const preview = renderContent(next as EmailTemplateContent, previewSampleVarsForSlug(slug));
   return json({
     ok: true,
     slug,
@@ -567,7 +634,7 @@ export async function previewEmailTemplate(env: Env, request: Request): Promise<
     if (slug === "daily_admin_digest" && !/\{\{\s*digestBodyHtml\s*\}\}/.test(merged.bodyHtml)) {
       // Keep digest tables when the draft shell omits the placeholder.
       const sample = buildSampleDigestPreview();
-      const subject = applyContentVars(merged, PREVIEW_SAMPLE_VARS).subject;
+      const subject = applyContentVars(merged, previewSampleVarsForSlug(slug)).subject;
       return json({
         slug,
         subject: subject || sample.subject,
@@ -575,11 +642,11 @@ export async function previewEmailTemplate(env: Env, request: Request): Promise<
         text: sample.text,
       });
     }
-    const preview = renderContent(merged, PREVIEW_SAMPLE_VARS);
+    const preview = renderContent(merged, previewSampleVarsForSlug(slug));
     return json({ slug, ...preview });
   }
 
-  const preview = await renderCatalogEmail(env, slug, PREVIEW_SAMPLE_VARS);
+  const preview = await renderCatalogEmail(env, slug, previewSampleVarsForSlug(slug));
   if (!preview) return error("Unknown template.", 404);
   return json({ slug, ...preview });
 }
@@ -607,7 +674,7 @@ export async function sendTestEmail(
     return error("A valid to email is required.");
   }
 
-  const preview = await renderCatalogEmail(env, slug, PREVIEW_SAMPLE_VARS);
+  const preview = await renderCatalogEmail(env, slug, previewSampleVarsForSlug(slug));
   if (!preview) return error("Unknown template.", 404);
 
   try {

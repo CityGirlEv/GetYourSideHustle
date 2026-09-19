@@ -692,6 +692,11 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("shop-page")).toBeVisible();
     await expect(page.getByTestId("gear-carousel")).toBeVisible();
     await expect(page.getByTestId("gear-gallery-grid")).toBeVisible();
+    await expect(page.getByTestId("shop-store-link")).toHaveAttribute(
+      "href",
+      "https://snatchvault.com/collections/gysh-gear",
+    );
+    await expect(page.getByTestId("shop-contact")).toBeVisible();
   });
 
   test("Memberships nav opens membership plans", async ({ page }) => {

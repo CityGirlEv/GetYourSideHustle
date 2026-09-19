@@ -4,11 +4,15 @@ import {
   MAILING_LIST_NOT_MEMBERSHIP_NOTE,
   subscribeToMailingList,
 } from '../lib/mailingList';
+import { HearAboutUsField } from './HearAboutUsField';
 
 interface MailingListSignupProps {
   heading?: string;
   compact?: boolean;
 }
+
+const fieldClass =
+  'w-full min-h-[44px] rounded-xl border-2 border-[#E5DFD3] bg-[#FAF8F5] px-3 text-sm font-medium text-[#1F1917]';
 
 export const MailingListSignup: React.FC<MailingListSignupProps> = ({
   heading = 'Join the mailing list',
@@ -16,12 +20,14 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [heardAbout, setHeardAbout] = useState('');
   const [error, setError] = useState('');
   const [successEmail, setSuccessEmail] = useState('');
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const result = subscribeToMailingList({ email, firstName });
+    const result = subscribeToMailingList({ email, firstName, lastName, heardAbout });
     if (!result.ok) {
       setSuccessEmail('');
       setError(result.error);
@@ -31,6 +37,8 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
     setSuccessEmail(result.signup.email);
     setEmail('');
     setFirstName('');
+    setLastName('');
+    setHeardAbout('');
   };
 
   return (
@@ -63,18 +71,32 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
       ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-3" data-testid="mailing-list-form" noValidate>
-        <label className="block space-y-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">First name (optional)</span>
-          <input
-            type="text"
-            name="mailing-list-first-name"
-            autoComplete="given-name"
-            value={firstName}
-            onChange={(event) => setFirstName(event.target.value)}
-            className="w-full min-h-[44px] rounded-xl border-2 border-[#E5DFD3] bg-[#FAF8F5] px-3 text-sm font-medium text-[#1F1917]"
-            data-testid="mailing-list-first-name"
-          />
-        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">First name (optional)</span>
+            <input
+              type="text"
+              name="mailing-list-first-name"
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              className={fieldClass}
+              data-testid="mailing-list-first-name"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Last name (optional)</span>
+            <input
+              type="text"
+              name="mailing-list-last-name"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              className={fieldClass}
+              data-testid="mailing-list-last-name"
+            />
+          </label>
+        </div>
         <label className="block space-y-1.5">
           <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Email</span>
           <input
@@ -84,10 +106,17 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full min-h-[44px] rounded-xl border-2 border-[#E5DFD3] bg-[#FAF8F5] px-3 text-sm font-medium text-[#1F1917]"
+            className={fieldClass}
             data-testid="mailing-list-email"
           />
         </label>
+        <HearAboutUsField
+          id="mailing-list-heard-about"
+          name="mailing-list-heard-about"
+          value={heardAbout}
+          onChange={setHeardAbout}
+          testId="mailing-list-heard-about"
+        />
         {error ? (
           <p className="text-sm font-semibold text-[#9A3412]" data-testid="mailing-list-error" role="alert">
             {error}

@@ -24,6 +24,8 @@ import { PARTNER_ADMINS } from "./partners";
 import { ensureEmailLegalDisclaimer } from "../../src/lib/legal-disclaimer";
 import { STRIPE_CATALOG } from "./stripe-catalog.generated";
 import { formatPurchasePaymentDetail } from "../../src/lib/purchase-payment";
+import { merchItemCount } from "../../src/lib/membership";
+import { merchEmailVars } from "../../src/lib/membership-email-copy";
 
 export { ROOT_DOMAIN, SITE_NAME, EMAIL_SENDER_DOMAIN, ADMIN_EMAIL } from "./email-brand";
 export { SITE_URL };
@@ -67,6 +69,20 @@ export function defaultFromAddress(env: Env): string {
   if (override) return override;
   // Match contact / ops mail — same From used across GYSH transactional email.
   return `${SITE_NAME} <${ADMIN_EMAIL}>`;
+}
+
+function membershipCatalogEmailVars(
+  tier: ReturnType<typeof normalizeTier>,
+  audience: PerkAudience,
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  return {
+    tier: tierLabel(tier),
+    perksHtml: perkBulletsHtml(tier, audience),
+    upgradesHtml: upgradesHtml(tier, audience),
+    ...(merchItemCount(tier) > 0 ? merchEmailVars(tier) : {}),
+    ...extra,
+  };
 }
 
 async function ensureEmailLog(env: Env): Promise<void> {
@@ -140,6 +156,7 @@ export async function sendResendEmail(
   const toList = (Array.isArray(payload.to) ? payload.to : [payload.to])
     .map((e) => String(e || "").trim().toLowerCase())
     .filter(Boolean);
+  const bccList = outgoingAdminCopy(toList, env);
 
   const withLegal = ensureEmailLegalDisclaimer({
     html: payload.html,
@@ -153,7 +170,7 @@ export async function sendResendEmail(
       subject: payload.subject,
       status: "skipped",
       error: "RESEND_API_KEY is not configured",
-      meta: payload.meta,
+      meta: { ...payload.meta, adminBcc: bccList },
     });
     throw new EmailSendError("RESEND_API_KEY is not configured", 500);
   }
@@ -168,6 +185,7 @@ export async function sendResendEmail(
       body: JSON.stringify({
         from: payload.from || defaultFromAddress(env),
         to: toList,
+        ...(bccList.length ? { bcc: bccList } : {}),
         subject: payload.subject,
         html: withLegal.html,
         text: withLegal.text,
@@ -201,7 +219,7 @@ export async function sendResendEmail(
         subject: payload.subject,
         status: "failed",
         error: message,
-        meta: payload.meta,
+        meta: { ...payload.meta, adminBcc: bccList },
       });
       throw new EmailSendError(message, res.status);
     }
@@ -213,7 +231,7 @@ export async function sendResendEmail(
       subject: payload.subject,
       status: "sent",
       providerId,
-      meta: payload.meta,
+      meta: { ...payload.meta, adminBcc: bccList },
     });
     return { id: providerId };
   } catch (e) {
@@ -225,7 +243,7 @@ export async function sendResendEmail(
       subject: payload.subject,
       status: "failed",
       error: message,
-      meta: payload.meta,
+      meta: { ...payload.meta, adminBcc: bccList },
     });
     throw new EmailSendError(message, 500);
   }
@@ -322,6 +340,23 @@ export function adminRecipients(env: Env): string[] {
   const partners = PARTNER_ADMINS.map((p) => p.email.trim().toLowerCase());
   const cc = ADMIN_NOTIFY_CC.map((e) => e.trim().toLowerCase());
   return [...new Set([primary, ...partners, ...cc].filter(Boolean))];
+}
+
+/** BCC on every member-facing send so admin sees outgoing mail (skip addresses already in To). */
+export function outgoingAdminCopy(
+  to: string | string[],
+  env?: { CONTACT_TO?: string },
+): string[] {
+  const toSet = new Set(
+    (Array.isArray(to) ? to : [to]).map((e) => String(e || "").trim().toLowerCase()).filter(Boolean),
+  );
+  const copies = [
+    (env?.CONTACT_TO?.trim() || ADMIN_EMAIL).toLowerCase(),
+    ADMIN_EMAIL.toLowerCase(),
+    "evelyn3@cox.net",
+    ...ADMIN_NOTIFY_CC.map((e) => e.trim().toLowerCase()),
+  ];
+  return [...new Set(copies)].filter((e) => e && !toSet.has(e));
 }
 
 function audiencePretty(raw: string | null | undefined): string {
@@ -451,12 +486,10 @@ export async function sendRegistrationConfirmation(
   const { renderCatalogEmail } = await import("./email-admin");
   const rendered = await renderCatalogEmail(env, "registration_confirmation", {
     name: user.name || "Side Hustler",
-    tier: tierLabel(tier),
     audience: audiencePretty(audience),
-    perksHtml: perkBulletsHtml(tier, audience),
-    upgradesHtml: upgradesHtml(tier, audience),
     certHtml: cert?.certHtml || "",
     ctaUrl: joinUrl,
+    ...membershipCatalogEmailVars(tier, audience),
   });
   if (!rendered) return false;
   await sendResendEmail(env, {
@@ -553,13 +586,11 @@ export async function sendMembershipSubscriptionEmails(
   const { renderCatalogEmail } = await import("./email-admin");
   const rendered = await renderCatalogEmail(env, slug, {
     name: input.user.name || "Side Hustler",
-    tier: tierLabel(tier),
     previousTier: tierLabel(previousTier),
     audience: audiencePretty(audience),
-    perksHtml: perkBulletsHtml(tier, audience),
-    upgradesHtml: upgradesHtml(tier, audience),
     certHtml: cert?.certHtml || "",
     ctaUrl: joinUrl,
+    ...membershipCatalogEmailVars(tier, audience),
   });
   if (rendered) {
     await sendResendEmail(env, {
@@ -579,6 +610,17 @@ export async function sendMembershipSubscriptionEmails(
         certificateAttached: Boolean(cert),
       },
     });
+  }
+
+  try {
+    await sendMembershipMerchReadyEmail(env, {
+      id: input.user.id,
+      email: input.user.email,
+      name: input.user.name,
+      membership_tier: tier,
+    });
+  } catch {
+    /* merch follow-up is non-fatal */
   }
 
   const formName = kind === "upgrade" ? "Membership upgrade" : "Membership subscription";
@@ -783,11 +825,9 @@ export async function sendAccountActivatedWelcome(
   const { renderCatalogEmail } = await import("./email-admin");
   const rendered = await renderCatalogEmail(env, slug, {
     name: user.name || "Side Hustler",
-    tier: tierLabel(tier),
-    perksHtml: perkBulletsHtml(tier, audience),
-    upgradesHtml: upgradesHtml(tier, audience),
     certHtml: cert?.certHtml || "",
     ctaUrl: joinUrl,
+    ...membershipCatalogEmailVars(tier, audience),
   });
   if (!rendered) return false;
   await sendResendEmail(env, {
@@ -814,11 +854,11 @@ export async function sendMembershipMerchReadyEmail(
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
   const tier = normalizeTier(user.membership_tier);
+  if (merchItemCount(tier) === 0) return false;
   const { renderCatalogEmail } = await import("./email-admin");
   const rendered = await renderCatalogEmail(env, "membership_merch_ready", {
     name: user.name || "Side Hustler",
-    tier: tierLabel(tier),
-    ctaUrl: `${SITE_URL}/my-dashboard#merch`,
+    ...merchEmailVars(tier),
   });
   if (!rendered) return false;
   await sendResendEmail(env, {

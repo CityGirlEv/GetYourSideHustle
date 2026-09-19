@@ -49,6 +49,9 @@ export function emailSendLogStatusFromResendEvent(lastEvent: string): EmailSendL
 export function guessEmailTemplateId(subject: string): string {
   const normalized = subject.replace(/^\[TEST\]\s*/i, '').toLowerCase();
   if (normalized.includes('new signup pending approval')) return 'admin-new-signup';
+  if (normalized.includes('stand by') || normalized.includes('beta tester')) {
+    return 'beta-tester-confirmation';
+  }
   if (normalized.includes('got your signup')) return 'signup-confirmation';
   if (normalized.includes('signup received') || normalized.includes('pending approval')) {
     return 'signup-pending';

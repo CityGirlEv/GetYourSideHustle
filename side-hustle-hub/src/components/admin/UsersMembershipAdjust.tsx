@@ -177,8 +177,8 @@ export function UsersMembershipAdjust({
           {merchBusy
             ? "Sending…"
             : needsMerch
-              ? "Email merch size request"
-              : "Re-send merch size email"}
+              ? "Email GYSH Gear shop link"
+              : "Re-send GYSH Gear email"}
         </button>
       ) : null}
       {error ? (

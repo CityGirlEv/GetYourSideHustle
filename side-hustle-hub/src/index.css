@@ -30208,6 +30208,13 @@ small {
   gap: 10px;
   justify-content: space-between;
   align-items: flex-start;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 10px 0 12px;
+  margin: -4px 0 0;
+  border-bottom: 1px solid var(--border-color);
 }
 .email-templates-admin__editor-head h3 {
   margin: 0 0 4px;
@@ -30222,6 +30229,21 @@ small {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  flex-shrink: 0;
+}
+.email-templates-admin__editor-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 12px 0 4px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-color);
 }
 .email-templates-admin__meta {
   margin-top: 4px !important;
@@ -30373,6 +30395,28 @@ small {
   gap: 8px;
   max-height: 70vh;
   overflow: auto;
+}
+.email-templates-admin__search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface, #fff);
+  padding-bottom: 4px;
+}
+.email-templates-admin__search input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  font: inherit;
+}
+.email-templates-admin__list-empty {
+  margin: 0;
+  padding: 10px 4px;
+  font-size: 0.92rem;
+  color: var(--text-muted, #5c5348);
 }
 .certificates-admin__list h3 {
   margin: 0 0 4px;

@@ -7,13 +7,16 @@ import {
   type ContactFormValues,
 } from '../lib/contactForm';
 import { sendContactFormEmail } from '../lib/email/notifications';
+import { HearAboutUsField } from './HearAboutUsField';
 
 const fieldClass =
   'w-full min-h-[44px] rounded-xl border-2 border-[#E5DFD3] bg-[#FAF8F5] px-3 text-sm font-medium text-[#1F1917]';
 
 export const ContactForm: React.FC = () => {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [heardAbout, setHeardAbout] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +26,7 @@ export const ContactForm: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const result = validateContactForm({ name, email, subject, message });
+    const result = validateContactForm({ firstName, lastName, email, heardAbout, subject, message });
     if (!result.ok) {
       setSuccess(null);
       setMailtoFallback(false);
@@ -45,8 +48,10 @@ export const ContactForm: React.FC = () => {
 
     setMailtoFallback(false);
     setSuccess(result.values);
-    setName('');
+    setFirstName('');
+    setLastName('');
     setEmail('');
+    setHeardAbout('');
     setSubject('');
     setMessage('');
   };
@@ -98,30 +103,52 @@ export const ContactForm: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-3" data-testid="contact-form" noValidate>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label className="block space-y-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Name</span>
-          <input
-            type="text"
-            name="contact-name"
-            autoComplete="name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className={fieldClass}
-            data-testid="contact-name"
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">First name</span>
+            <input
+              type="text"
+              name="contact-first-name"
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              className={fieldClass}
+              data-testid="contact-first-name"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Last name</span>
+            <input
+              type="text"
+              name="contact-last-name"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              className={fieldClass}
+              data-testid="contact-last-name"
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Email</span>
+            <input
+              type="email"
+              name="contact-email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className={fieldClass}
+              data-testid="contact-email"
+            />
+          </label>
+          <HearAboutUsField
+            id="contact-heard-about"
+            name="contact-heard-about"
+            value={heardAbout}
+            onChange={setHeardAbout}
+            required
+            testId="contact-heard-about"
           />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Email</span>
-          <input
-            type="email"
-            name="contact-email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className={fieldClass}
-            data-testid="contact-email"
-          />
-        </label>
         </div>
         <label className="block space-y-1.5">
           <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Subject</span>

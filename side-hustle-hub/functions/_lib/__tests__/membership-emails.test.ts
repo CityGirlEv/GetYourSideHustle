@@ -40,12 +40,34 @@ describe("membership subscription emails", () => {
     expect(up?.subhead).toContain("{{previousTier}}");
   });
 
-  it("asks complimentary members to pick T-shirt or hat and size", () => {
+  it("sends complimentary Starter members to the live GYSH Gear shop", () => {
     const merch = defaultContentForSlug("membership_merch_ready");
-    expect(merch?.subject).toMatch(/T-shirt or hat/i);
-    expect(merch?.bodyHtml).toMatch(/upgraded without choosing/i);
-    expect(merch?.ctaUrl).toMatch(/my-dashboard#merch/);
-    expect(merch?.ctaLabel).toMatch(/Choose my GYSH gear/i);
+    expect(merch?.subject).toMatch(/hat or tee/i);
+    expect(merch?.preheader).toMatch(/GYSHFamily/);
+    expect(merch?.bodyHtml).toMatch(/\{\{merchCheckoutCode\}\}/);
+    expect(merch?.bodyHtml).toMatch(/\{\{merchItemPhrase\}\}/);
+    expect(merch?.ctaUrl).toBe("https://snatchvault.com/collections/gysh-gear");
+    expect(merch?.ctaLabel).toMatch(/Shop GYSH Gear/i);
+    expect(merch?.ctaUrl).not.toMatch(/my-dashboard#merch/);
+    const rendered = renderContent(merch!, {
+      name: "Evelyn",
+      tier: "Starter",
+      merchCheckoutCode: "GYSHFamily",
+      merchItemPhrase: "1 hat or 1 tee",
+      merchCheckoutPercent: "100",
+      merchPerkTitle: "1 complimentary GYSH hat or tee",
+    });
+    expect(rendered.html).toMatch(/GYSHFamily/);
+    expect(rendered.html).toMatch(/1 hat or 1 tee/i);
+    expect(rendered.html).toMatch(/100%/);
+  });
+
+  it("treats Starter and up as merch-email recipients", async () => {
+    const { merchItemCount } = await import("../../../src/lib/membership");
+    expect(merchItemCount("free")).toBe(0);
+    expect(merchItemCount("starter")).toBe(1);
+    expect(merchItemCount("pro")).toBe(2);
+    expect(merchItemCount("elite")).toBe(2);
   });
 
   it("admin form notify CTA opens Users Area, not mailto", () => {

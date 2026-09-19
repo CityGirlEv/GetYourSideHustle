@@ -19,6 +19,7 @@ import {
 import {
   DEFAULT_FROM_EMAIL,
   SIGNUP_CONFIRMATION_TEMPLATE_ID,
+  BETA_TESTER_CONFIRMATION_TEMPLATE_ID,
   isValidEmail,
 } from '../lib/email/sendPayload';
 import {
@@ -250,11 +251,15 @@ export const EmailTemplatesPanel: React.FC<EmailTemplatesPanelProps> = ({ actor 
     setConfirmBusy(true);
     const result = await sendSignupConfirmationEmail(user);
     setConfirmBusy(false);
+    const confirmationId = user.wantsBeta ? BETA_TESTER_CONFIRMATION_TEMPLATE_ID : SIGNUP_CONFIRMATION_TEMPLATE_ID;
+    const confirmationName = user.wantsBeta
+      ? getEmailTemplate(BETA_TESTER_CONFIRMATION_TEMPLATE_ID)?.name || 'Beta Tester confirmation'
+      : confirmationTemplate?.name || 'Signup confirmation';
     recordEmailSendLog({
-      templateId: SIGNUP_CONFIRMATION_TEMPLATE_ID,
-      templateName: confirmationTemplate?.name || 'Signup confirmation',
+      templateId: confirmationId,
+      templateName: confirmationName,
       to: user.email,
-      subject: 'Signup confirmation',
+      subject: user.wantsBeta ? 'Stand by, Beta Tester — your assignments are coming' : 'Signup confirmation',
       status: emailSendLogStatusFromResult(result),
       detail: emailSendLogDetailFromResult(result),
       test: false,

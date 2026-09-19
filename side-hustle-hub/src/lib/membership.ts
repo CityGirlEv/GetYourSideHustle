@@ -59,7 +59,7 @@ export const MEMBERSHIP_FEATURES: MembershipFeature[] = [
     id: "merch",
     label: "GYSH merch",
     detail:
-      "Starter includes one GYSH T-shirt or hat; Pro and Elite include 2 (mix and match). Choose at signup.",
+      "Starter includes one GYSH T-shirt or hat; Pro and Elite include 2 (mix and match). Pick in the GYSH Gear shop and enter GYSHFamily at checkout for 100% off.",
   },
 ];
 
@@ -407,13 +407,14 @@ export const ALL_AGES_MATCH_WIZARDS_PERK: TierMemberPerk = {
 
 export const MERCH_STARTER_PERK: TierMemberPerk = {
   title: "One GYSH T-shirt or hat",
-  detail: "One complimentary GYSH merch item — choose a T-shirt or hat when you sign up.",
+  detail:
+    "One complimentary GYSH merch item — pick 1 hat or 1 tee in the GYSH Gear shop. Enter GYSHFamily at checkout for 100% off.",
 };
 
 export const MERCH_PRO_PERK: TierMemberPerk = {
   title: "2 GYSH T-shirts or hats",
   detail:
-    "Two complimentary GYSH merch items (T-shirt or hat, mix and match) — up from Starter’s 1. Choose at signup.",
+    "Two complimentary GYSH merch items (T-shirt or hat, mix and match) — up from Starter’s 1. Pick in the GYSH Gear shop. Enter GYSHFamily at checkout for 100% off.",
 };
 
 export const PRIORITY_WORKSHOP_PERK: TierMemberPerk = {
@@ -1357,7 +1358,7 @@ export const MEMBERSHIP_COMPARE_ROWS: readonly MembershipCompareRow[] = [
   {
     id: "merch",
     label: "GYSH T-shirt or hat",
-    whyUpgrade: "Starter includes one; Pro and Elite include 2. Choose at signup.",
+    whyUpgrade: "Starter includes one; Pro and Elite include 2. Shop GYSH Gear with GYSHFamily for 100% off.",
     cells: {
       free: "—",
       starter: "One item",

@@ -67,4 +67,26 @@ describe("email-template-content", () => {
     expect(isLegacyLowercaseGyshWelcomeHeadline("{{name}}, welcome to the GYSH family!")).toBe(true);
     expect(isLegacyLowercaseGyshWelcomeHeadline(content!.headline)).toBe(false);
   });
+
+  it("points membership merch at SnatchVault with GYSHFamily", () => {
+    const catalog = EMAIL_TEMPLATE_CATALOG.find((t) => t.slug === "membership_merch_ready");
+    expect(catalog?.name).toMatch(/GYSHFamily/i);
+    expect(catalog?.name).toMatch(/t-shirt discount/i);
+    expect(catalog?.name).toMatch(/hat or tee/i);
+    const merch = defaultContentForSlug("membership_merch_ready");
+    expect(merch?.ctaUrl).toBe("https://snatchvault.com/collections/gysh-gear");
+    expect(merch?.preheader).toContain("GYSHFamily");
+    expect(merch?.bodyHtml).toContain("{{merchCheckoutCode}}");
+    const rendered = renderContent(merch!, {
+      name: "Evelyn",
+      tier: "Starter",
+      merchCheckoutCode: "GYSHFamily",
+      merchPerkTitle: "1 complimentary GYSH hat or tee",
+      merchItemPhrase: "1 hat or 1 tee",
+      merchCheckoutPercent: "100",
+    });
+    expect(rendered.html).toContain("https://snatchvault.com/collections/gysh-gear");
+    expect(rendered.html).toContain("GYSHFamily");
+    expect(rendered.html).not.toMatch(/my-dashboard#merch/);
+  });
 });

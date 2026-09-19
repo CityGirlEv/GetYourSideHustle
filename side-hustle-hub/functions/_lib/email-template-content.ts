@@ -5,11 +5,16 @@
 import {
   ADMIN_EMAIL,
   membershipDeepLink,
+  perkBulletsHtml,
   SITE_NAME,
   SITE_URL,
+  upgradesHtml,
   wrapBrandedEmail,
   type BrandedEmailParts,
+  type TierId,
 } from "./email-brand";
+import { GYSH_GEAR_COLLECTION_URL } from "../../src/lib/gysh-gear-store";
+import { merchEmailVars, membershipTierDisplayName } from "../../src/lib/membership-email-copy";
 
 export type EmailTemplateContent = {
   subject: string;
@@ -137,10 +142,10 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
   },
   {
     slug: "membership_merch_ready",
-    name: "Membership merch · pick size",
+    name: "GYSHFamily t-shirt discount · hat or tee",
     description:
-      "Follow-up when complimentary GYSH T-shirt/hat shipping is ready — especially members upgraded without a size choice.",
-    sampleSubject: `${SITE_NAME} — pick your complimentary GYSH T-shirt or hat`,
+      "Email to Starter and up with the t-shirt/hat discount: shop GYSH Gear, pick the complimentary hat or t-shirt count for their plan, enter GYSHFamily at checkout for 100% off.",
+    sampleSubject: `${SITE_NAME} — pick your complimentary GYSH hat or tee`,
   },
   {
     slug: "alacarte_purchased",
@@ -206,6 +211,42 @@ export const PREVIEW_SAMPLE_VARS: EmailTemplateVars = {
     '<p style="margin:0 0 8px;"><strong>Payment method:</strong> Stripe Checkout</p><p style="margin:0 0 8px;"><strong>Cash charged:</strong> $45</p>',
 };
 
+const PREVIEW_TIER_BY_SLUG: Record<string, TierId> = {
+  welcome_free: "free",
+  welcome_starter: "starter",
+  welcome_pro: "pro",
+  welcome_elite: "elite",
+  membership_subscribed: "starter",
+  membership_upgraded: "pro",
+  membership_merch_ready: "starter",
+  registration_confirmation: "starter",
+};
+
+function previousPreviewTier(tier: TierId): TierId {
+  if (tier === "elite") return "pro";
+  if (tier === "pro") return "starter";
+  return "free";
+}
+
+/** Preview/test vars aligned to the membership page for the template's plan. */
+export function previewSampleVarsForSlug(slug: string): EmailTemplateVars {
+  const tier = PREVIEW_TIER_BY_SLUG[slug] ?? "free";
+  const vars: EmailTemplateVars = {
+    ...PREVIEW_SAMPLE_VARS,
+    tier: membershipTierDisplayName(tier),
+    previousTier: membershipTierDisplayName(previousPreviewTier(tier)),
+    perksHtml: perkBulletsHtml(tier, "adult"),
+    upgradesHtml: upgradesHtml(tier, "adult"),
+  };
+  if (slug === "membership_merch_ready" || tier === "starter" || tier === "pro" || tier === "elite") {
+    Object.assign(vars, merchEmailVars(tier === "free" ? "starter" : tier));
+  }
+  if (slug === "membership_merch_ready") {
+    vars.ctaUrl = GYSH_GEAR_COLLECTION_URL;
+  }
+  return vars;
+}
+
 export function applyTemplateVars(input: string, vars: EmailTemplateVars): string {
   return String(input || "").replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => {
     if (Object.prototype.hasOwnProperty.call(vars, key)) return vars[key] ?? "";
@@ -259,6 +300,11 @@ export function isLegacyHustleFamilyHeadline(headline: string): boolean {
 export function isLegacyLowercaseGyshWelcomeHeadline(headline: string): boolean {
   return String(headline || "").trim() === "{{name}}, welcome to the GYSH family!";
 }
+
+export {
+  isLegacyMerchDashboardClaimUrl,
+  isLegacyMerchReadyBody,
+} from "../../src/lib/gysh-gear-store";
 
 function welcomeDefault(tierLabelText: string): EmailTemplateContent {
   const joinUrl = membershipDeepLink();
@@ -464,17 +510,21 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
       };
     case "membership_merch_ready":
       return {
-        subject: `${SITE_NAME} — pick your complimentary GYSH T-shirt or hat`,
-        preheader: "Starter includes one GYSH T-shirt or hat — choose the item and T-shirt size so we can ship.",
+        subject: `${SITE_NAME} — pick your complimentary GYSH hat or tee`,
+        preheader:
+          "Your paid GYSH plan includes complimentary gear. Shop the GYSH Gear collection and enter GYSHFamily at checkout.",
         eyebrow: "Membership · GYSH Gear",
-        headline: "{{name}}, your GYSH gear is included",
-        subhead: "Your {{tier}} plan comes with complimentary merch.",
-        bodyHtml: `<p style="margin:0 0 12px;">Paid GYSH memberships include complimentary gear — Starter gets one T-shirt or hat; Pro and Elite get two (mix and match).</p>
-        <p style="margin:0 0 12px;">If you were upgraded without choosing, we still need your pick (and a T-shirt size) before we can ship.</p>
-        <p style="margin:0 0 12px;">Sign in and tell us T-shirt or hat — plus unisex size if you want a T-shirt. We'll ship after the GYSH drop is packed.</p>`,
-        ctaLabel: "Choose my GYSH gear",
-        ctaUrl: `${SITE_URL}/my-dashboard#merch`,
-        footerNote: "Hats don't need a size. T-shirts are unisex XS–3XL.",
+        headline: "{{name}}, your GYSH gear is live",
+        subhead: "Your {{tier}} plan includes {{merchPerkTitle}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Complimentary GYSH gear is for <strong>Starter and up</strong> — not Free. Your <strong>{{tier}}</strong> plan includes <strong>{{merchPerkTitle}}</strong> ({{merchCell}} on the membership page).</p>
+        <p style="margin:0 0 12px;">That’s {{merchItemPhrase}}. {{merchPerkDetail}}</p>
+        <p style="margin:0 0 12px;">Open the GYSH Gear collection, add your complimentary item(s), then enter discount code <strong>{{merchCheckoutCode}}</strong> at checkout for {{merchCheckoutPercent}}% off.</p>
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Your plan:</strong> {{tier}} · <strong>{{merchPerkTitle}}</strong> · code {{merchCheckoutCode}}
+        </p>`,
+        ctaLabel: "Shop GYSH Gear",
+        ctaUrl: GYSH_GEAR_COLLECTION_URL,
+        footerNote: `Questions? Reply to this email or use Contact Us on getyoursidehustle.com.`,
       };
     case "alacarte_purchased":
       return {
