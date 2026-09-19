@@ -66,7 +66,7 @@ describe('workBoardStore', () => {
     expect(parsed?.tests.find((test) => test.id === 'VT-AUTH-001')?.assignee).toBe('vitest');
   });
 
-  it('remaps QA-owned tests to Unknown and drops cloned task titles', () => {
+  it('keeps QA-owned tests on Testers and drops cloned task titles', () => {
     const parsed = parseWorkBoardStorePayload({
       tasks: [
         { id: 't-1', title: 'Confirm $10,000 budget paid across three phases', status: 'not_started', sprint: 'Sprint 0', category: 'Infrastructure', priority: 'high', assignee: 'angela' },
@@ -78,7 +78,7 @@ describe('workBoardStore', () => {
     expect(budget).toHaveLength(1);
     expect(budget?.[0]?.id).toBe('t-1');
     expect(budget?.[0]?.status).toBe('done');
-    expect(parsed?.tests.find((test) => test.id === 'qa2')?.assignee).toBe('unassigned');
+    expect(parsed?.tests.find((test) => test.id === 'qa2')?.assignee).toBe('qa');
   });
 
   it('builds a persistable payload and keeps local data when the database is empty', () => {

@@ -13,8 +13,9 @@ test.describe('PW-HOME-001 home storefront', () => {
     await page.goto('/');
     await expect(page).toHaveTitle(/MY PLAN, NOT MY MOOD/i);
     await expect(page.getByText(/feel it\. follow the plan anyway/i)).toBeVisible();
-    await expect(page.getByTestId('hero-carousel')).toBeVisible();
-    await expect(page.getByRole('button', { name: /next slide/i })).toBeVisible();
+    await expect(page.getByTestId('home-marketing')).toBeVisible();
+    await expect(page.getByTestId('home-hero-image')).toBeVisible();
+    await expect(page.getByTestId('home-cta-shop')).toBeVisible();
     await expect(page.getByRole('button', { name: /accountability gear/i }).first()).toBeVisible();
     await expect(page.getByTestId('home-product-grid')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: /what won today/i })).toBeVisible();
@@ -25,13 +26,13 @@ test.describe('PW-HOME-001 home storefront', () => {
     await expect(page.getByText(/add gear to cart|recommended gear/i)).toHaveCount(0);
   });
 
-  test('opens the matching gear product from a carousel photo', async ({ page }) => {
+  test('opens Shop Gear from the home collection CTA', async ({ page }) => {
     await page.goto('/');
     await continuePastWelcome(page);
-    await page.getByTestId('hero-carousel-frame').getByTestId('hero-carousel-slide-link').nth(1).click({ force: true });
-    await expect(page).toHaveURL(/\/gear(?:\/hoodies|\/hats)?#product-/);
+    await page.getByTestId('home-cta-shop').click();
+    await expect(page).toHaveURL(/\/gear/);
     await expect(page.getByTestId('shop-gear-page')).toBeVisible();
-    await expect(page.getByTestId('hero-carousel')).toHaveCount(0);
+    await expect(page.getByTestId('home-marketing')).toHaveCount(0);
     await expect(page.getByTestId('gear-hub-carousel-all')).toBeVisible();
     await expect(page.getByTestId('shop-gear-aside')).toBeVisible();
   });

@@ -31,6 +31,7 @@ describe('automatedTests catalog', () => {
     expect(playwright.length).toBe(AUTOMATED_PLAYWRIGHT_SEEDS.length);
     expect(vitest.every((test) => test.assignee === 'vitest')).toBe(true);
     expect(playwright.every((test) => test.assignee === 'playwright')).toBe(true);
-    expect(manual.every((test) => test.assignee !== 'qa')).toBe(true);
+    expect(manual.every((test) => test.assignee === 'qa' || ['angela', 'evelyn', 'dev', 'unassigned'].includes(test.assignee))).toBe(true);
+    expect(manual.some((test) => test.assignee === 'qa')).toBe(true);
   });
 });

@@ -13,7 +13,7 @@ export const SUITE_LABELS: Record<TestSuite, string> = {
 };
 
 export const SUITE_DETAILS: Record<TestSuite, string> = {
-  manual: 'Human walkthroughs for Angela and Evelyn',
+  manual: 'Human walkthroughs for testers, Angela, and Evelyn',
   vitest: 'Unit tests — bun run test',
   playwright: 'Browser e2e — bun run e2e',
 };

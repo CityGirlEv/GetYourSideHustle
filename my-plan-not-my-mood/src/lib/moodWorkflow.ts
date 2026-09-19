@@ -27,14 +27,14 @@ export const MOOD_WORKFLOW_STEPS: MoodWorkflowStep[] = [
     label: 'Go to Home page — What’s Your Mood tool',
     href: MOOD_AREA_HREF,
     detail:
-      'Home is the only public entry. Header “What’s Your Mood?” and the hero “What’s Your Mood Today?” button both scroll to #mood-tool.',
+      'Home is the only public entry. Header “What’s Your Mood?” and the Mood Matrix section both land on #mood-tool.',
   },
   {
     n: 2,
     label: 'Go to Home page — hero mood bubbles',
     href: MOOD_HERO_BUBBLES_HREF,
     detail:
-      'The Interactive Mood Matrix beside the carousel lists every mood bubble (emoji + label). Clicking a bubble selects that mood and scrolls to the mood area.',
+      'The Mood Matrix on Home lists every mood bubble (emoji + label). Clicking a bubble selects that mood and opens the shake-it card in #mood-tool.',
   },
   {
     n: 3,

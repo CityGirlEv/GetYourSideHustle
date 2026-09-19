@@ -118,7 +118,7 @@ export function WorkBoardSprintSections<T extends { id: string; title: string; s
                         type="checkbox"
                         checked={allSelected}
                         onChange={() => onToggleSectionSelected(sectionIds, !allSelected)}
-                        className="w-4 h-4 accent-[#D9A892]"
+                        className="w-4 h-4 accent-[#C2410C]"
                       />
                       Select all in {sprint}
                     </label>
@@ -140,7 +140,7 @@ export function WorkBoardSprintSections<T extends { id: string; title: string; s
                           type="checkbox"
                           checked={selectedIds.has(item.id)}
                           onChange={() => onToggleSelected(item.id)}
-                          className="w-4 h-4 accent-[#D9A892] shrink-0"
+                          className="w-4 h-4 accent-[#C2410C] shrink-0"
                           aria-label={`Select ${item.id}`}
                         />
                         <div className="min-w-0 flex-1">{renderItem(item)}</div>

@@ -85,6 +85,8 @@ import {
   loginUserAsync,
   importBrowserUsersToD1,
   hasLocalUsersToImport,
+  listPortalTesters,
+  USER_STATUS_LABELS,
 } from '../lib/userAuth';
 import { formatPhoneDisplay, phoneSignupError, phoneTelHref } from '../lib/phoneNumber';
 import { rolloverSprint, sprintSelectOptions } from '../lib/sprintRollover';
@@ -985,6 +987,12 @@ function WorkBoardCollapsibleSummary({
   );
 }
 
+function testerStatusChipClass(status: UserStatus): string {
+  if (status === 'active') return 'bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]';
+  if (status === 'pending') return 'bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]';
+  return 'bg-[#E7E0D6] text-[#3F3832] border-[#D6CFC4]';
+}
+
 export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initialTab }) => {
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => resolvePortalAdminSession());
   const [activeTab, setActiveTab] = useState<AdminPortalTab>(() => resolveAdminPortalTab(initialTab));
@@ -1463,12 +1471,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
           ? err.message
           : 'Could not load users from the shared database. Sign out and sign in again.',
       );
-      setAppUsers([]);
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'users') {
+    if (activeTab === 'users' || activeTab === 'testing') {
       void refreshUsers();
     }
   }, [activeTab]);
@@ -2019,6 +2026,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   const qaPriorityChips = buildPriorityChipCounts(suiteScopedQaTests, qaIsDone);
   const qaAssigneeChips = buildAssigneeChipCounts(qaTests, qaIsDone, TEST_ASSIGNEE_OPTIONS);
   const qaCategoryChips = buildCategoryChipCounts(suiteScopedQaTests, QA_CATEGORIES, qaIsDone);
+  const portalTesters = useMemo(() => listPortalTesters(appUsers), [appUsers]);
 
   const visibleTaskIds = filteredTasks.map((task) => task.id);
   const visibleQaIds = filteredQaTests.map((test) => test.id);
@@ -2997,6 +3005,60 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         {/* TAB 3: TESTING PORTAL & QA MATRIX */}
         {activeTab === 'testing' && (
           <div className="space-y-3 animate-fadeIn">
+            <section
+              className="bg-white border-2 border-[#1F1917] rounded-3xl p-4 shadow-xl space-y-3"
+              data-testid="testing-testers"
+            >
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FFEDD5] text-[#C2410C] text-[10px] font-sans font-black uppercase tracking-wide mb-1">
+                  <Users className="w-3 h-3" /> Testers
+                </div>
+                <h3 className="text-base font-black text-[#1F1917] uppercase tracking-tight font-serif">
+                  All testers
+                </h3>
+                <p className="text-xs text-[#3F3832] font-medium">
+                  Beta Testers and QA Testers. Pending accounts still need an admin to activate them.
+                </p>
+              </div>
+              {usersLoadError ? (
+                <p className="text-xs font-medium text-[#9A3412]">{usersLoadError}</p>
+              ) : null}
+              {portalTesters.length === 0 ? (
+                <p className="text-xs font-medium text-[#3F3832]" data-testid="testing-testers-empty">
+                  No testers yet. They register from the storefront Sign In / Register.
+                </p>
+              ) : (
+                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {portalTesters.map((tester) => (
+                    <li
+                      key={tester.id}
+                      data-testid={`testing-tester-${tester.id}`}
+                      className="rounded-2xl border-2 border-[#E7E0D6] bg-[#FAF8F5] px-3 py-3 min-h-[44px]"
+                    >
+                      <div className="font-bold text-sm text-[#1F1917]">{tester.name}</div>
+                      <div className="text-[11px] font-mono text-[#3F3832] break-all">{tester.email}</div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-lg border text-[9px] font-mono font-black uppercase tracking-wider ${testerStatusChipClass(tester.status)}`}
+                        >
+                          {USER_STATUS_LABELS[tester.status]}
+                        </span>
+                        {tester.wantsBeta ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-[#FFEDD5] text-[#C2410C] border border-[#C2410C]/40 text-[9px] font-mono font-black uppercase tracking-wider">
+                            Beta Tester
+                          </span>
+                        ) : null}
+                        {tester.role === 'qa' || (tester.roles ?? [tester.role]).includes('qa') ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-[#DBEAFE] text-[#1E3A8A] border border-[#93C5FD] text-[9px] font-mono font-black uppercase tracking-wider">
+                            QA
+                          </span>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5" data-testid="qa-suite-cards">
               {qaSuiteChips.map((chip) => {
                 const showingAll = qaSuiteFilter.size === 0;
@@ -3015,8 +3077,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                     }}
                     className={`text-left rounded-xl px-3 py-2 border-2 min-h-[44px] cursor-pointer ${
                       selected && !showingAll
-                        ? 'border-[#1F1917] bg-white'
-                        : 'border-[#E8B87A] bg-[#F5D4A8] text-[#4A2C14]'
+                        ? 'border-[#C2410C] bg-[#FFEDD5] text-[#9A3412]'
+                        : 'border-[#E7E0D6] bg-[#FAF8F5] text-[#1F1917]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -3084,7 +3146,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
             <div className="bg-white border-2 border-[#1F1917] rounded-3xl p-3 shadow-xl space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5DFD3] pb-2">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#7FB3A8] text-[#1F3F38] text-[10px] font-sans font-black uppercase tracking-wide mb-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FFEDD5] text-[#C2410C] text-[10px] font-sans font-black uppercase tracking-wide mb-1">
                     <Sparkles className="w-3 h-3" /> QA VERIFICATION MATRIX
                   </div>
                   <h3 className="text-base font-black text-[#1F1917] uppercase tracking-tight font-serif">
@@ -3098,7 +3160,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   </h3>
                 </div>
                 <span
-                  className="text-xs font-mono font-bold text-[#5C3328] bg-[#F6EBE4] px-3 py-1 rounded-xl border border-[#C9A08C]"
+                  className="text-xs font-mono font-bold text-[#1F1917] bg-[#FAF8F5] px-3 py-1 rounded-xl border border-[#E7E0D6]"
                   data-testid="qa-board-counts"
                 >
                   {passedQaCount}/{suiteScopedQaTests.length} Passed

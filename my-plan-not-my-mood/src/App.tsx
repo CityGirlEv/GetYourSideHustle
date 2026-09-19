@@ -430,8 +430,10 @@ export default function App() {
               onOpenChallenge={handleOpenChallenge}
               onOpenJoin={handleOpenJoin}
               onOpenAffirmations={() => handleOpenAffirmations()}
+              onOpenAbout={() => navigateToStore('about')}
               canManageHero={canAccessAdminPortal(currentUser)}
               hasMembershipAccess={membershipUnlocked}
+              editorName={currentUser?.email ?? null}
             />
             <DailyAffirmationsWidget
               onOpenAffirmations={handleOpenAffirmations}

@@ -19,6 +19,9 @@ import {
   logoutUser,
   canAccessAdminPortal,
   getRolePermissions,
+  isPortalTester,
+  listPortalTesters,
+  USER_STATUS_LABELS,
 } from '../userAuth';
 import { ANGELA_HARRIS_SEED_EMAIL, EVELYN_SEED_EMAIL, STAFF_SEED_PASSWORD } from '../seedAccounts';
 import { PHONE_REQUIRED_ERROR } from '../phoneNumber';
@@ -319,5 +322,24 @@ describe('MyPlan App User Auth & RBAC Permissions', () => {
     expect(perms.canViewTesting).toBe(true);
     expect(perms.canViewAgenda).toBe(true);
     expect(perms.canManageTasks).toBe(true);
+  });
+
+  it('lists every Beta Tester and QA Tester on the Testing Portal roster', () => {
+    const testers = listPortalTesters(getAppUsers());
+    expect(testers.map((user) => user.name)).toEqual(['Candace Jackson', 'QA Tester Tina']);
+    expect(testers.every((user) => user.wantsBeta || user.role === 'qa')).toBe(true);
+    expect(testers.some((user) => /evelyn|angela|sarah|narissa|dev lead/i.test(user.name))).toBe(false);
+
+    const pending = registerUser('Beta Pat', 'pat-tester@example.com', 'patpass123', 'member', false, {
+      wantsBeta: true,
+      phone: SIGNUP_PHONE,
+    });
+    expect(pending.user?.wantsBeta).toBe(true);
+    const withPending = listPortalTesters(getAppUsers());
+    expect(withPending.map((user) => user.name)).toContain('Beta Pat');
+    expect(withPending.find((user) => user.name === 'Beta Pat')?.status).toBe('pending');
+    expect(isPortalTester({ role: 'dev', roles: ['dev', 'qa'], wantsBeta: false })).toBe(false);
+    expect(isPortalTester({ role: 'qa', roles: ['qa'], wantsBeta: false })).toBe(true);
+    expect(USER_STATUS_LABELS.pending).toBe('Pending');
   });
 });

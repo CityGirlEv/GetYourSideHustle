@@ -640,11 +640,11 @@ describe('workBoard seed merge', () => {
     expect(taskFilters.due).toBe('all');
   });
 
-  it('defaults Testing Portal filters to the current sprint and signed-in person', () => {
+  it('defaults Testing Portal filters to the current sprint and all assignees', () => {
     const now = new Date('2026-09-14T12:00:00');
     const filters = defaultTestingPortalFilters({ email: 'evelyn3@cox.net', name: 'Evelyn Irving' }, now);
     expect([...filters.sprint]).toEqual([currentSprintLabel(now)]);
-    expect([...filters.assignee]).toEqual(['evelyn']);
+    expect(filters.assignee.size).toBe(0);
     expect(filters.status.size).toBe(0);
     expect(filters.priority.size).toBe(0);
     expect(filters.category.size).toBe(0);
@@ -753,16 +753,16 @@ describe('workBoard seed merge', () => {
   it('gives each filter header its own shaded color instead of one rust fill', () => {
     const headers = Object.values(FILTER_SECTION_TONES).map((tone) => tone.header);
     expect(new Set(headers).size).toBe(headers.length);
-    expect(FILTER_SECTION_TONES.sprint.header).toContain('#E8B89A');
-    expect(FILTER_SECTION_TONES.status.header).toContain('#7FB3A8');
-    expect(FILTER_SECTION_TONES.priority.header).toContain('#E0C878');
-    expect(FILTER_SECTION_TONES.assignee.header).toContain('#8FA8C4');
-    expect(FILTER_SECTION_TONES.category.header).toContain('#C4A8C0');
+    expect(FILTER_SECTION_TONES.sprint.header).toContain('#FFEDD5');
+    expect(FILTER_SECTION_TONES.status.header).toContain('#D1FAE5');
+    expect(FILTER_SECTION_TONES.priority.header).toContain('#FEF3C7');
+    expect(FILTER_SECTION_TONES.assignee.header).toContain('#DBEAFE');
+    expect(FILTER_SECTION_TONES.category.header).toContain('#FCE7F3');
     expect(headers.every((header) => !header.includes('#C2410C'))).toBe(true);
     expect(SPRINT_SECTION_TONES['Sprint 0'].header).not.toContain('#C2410C');
     expect(new Set(SPRINT_OPTIONS.map((sprint) => SPRINT_SECTION_TONES[sprint].ink)).size).toBe(5);
     expect(SPRINT_SECTION_TONES['Sprint 0'].ink).toBe(sprintTextClass('Sprint 0'));
-    expect(SPRINT_SECTION_TONES['Sprint 4'].ink).toContain('#5A3D7A');
+    expect(SPRINT_SECTION_TONES['Sprint 4'].ink).toContain('#6B21A8');
     expect(buildSprintChipCounts(INITIAL_TASKS, taskIsDone).every((chip) => Boolean(chip.accent))).toBe(true);
     expect(TASK_STATUS_TONES.done).toContain('#B8D4C4');
     expect(taskStatusRowClass('done')).toContain('border-l-8');
@@ -893,12 +893,17 @@ describe('workBoard seed merge', () => {
     expect(pruned.removedIds).toHaveLength(40);
   });
 
-  it('puts unclaimed tests on Unknown and Vitest/Playwright on their own assignee chips', () => {
-    expect(normalizeTestAssignee('qa')).toBe('unassigned');
-    expect(INITIAL_QA_TESTS.every((test) => test.assignee !== 'qa')).toBe(true);
+  it('keeps tester-owned tests on Testers and Vitest/Playwright on their own assignee chips', () => {
+    expect(normalizeTestAssignee('qa')).toBe('qa');
+    expect(ASSIGNEE_LABELS.qa).toBe('Testers');
+    expect(TEST_ASSIGNEE_OPTIONS).toContain('qa');
     const seeded = allSeedQaTests();
     const chips = buildAssigneeChipCounts(seeded, qaIsDone, TEST_ASSIGNEE_OPTIONS);
-    expect(chips.find((chip) => chip.id === 'qa')).toBeUndefined();
+    expect(chips.find((chip) => chip.id === 'qa')).toMatchObject({
+      id: 'qa',
+      label: 'Testers',
+      total: seeded.filter((test) => test.assignee === 'qa').length,
+    });
     expect(chips.find((chip) => chip.id === 'unassigned')?.label).toBe('Unknown');
     expect(chips.find((chip) => chip.id === 'vitest')).toMatchObject({ label: 'Vitest', total: 9 });
     expect(chips.find((chip) => chip.id === 'playwright')).toMatchObject({ label: 'Playwright', total: 7 });

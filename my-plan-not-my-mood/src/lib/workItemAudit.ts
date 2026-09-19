@@ -56,7 +56,7 @@ const ASSIGNEE_LABELS: Record<string, string> = {
   angela: 'Angela',
   evelyn: 'Evelyn',
   dev: 'Dev Team',
-  qa: 'QA',
+  qa: 'Testers',
   unassigned: 'Unknown',
   system: 'System',
   vitest: 'Vitest',
