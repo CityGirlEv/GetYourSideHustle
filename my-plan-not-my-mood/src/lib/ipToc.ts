@@ -119,7 +119,7 @@ export function buildIpToc(
       id: IP_PAYMENT_SCHEDULE_ID,
       phase: 'docs',
       label: 'Payments',
-      subtitle: 'Three payments · $3,500 received',
+      subtitle: 'Three payments · $7,000 received',
       itemIds: [],
     });
   }

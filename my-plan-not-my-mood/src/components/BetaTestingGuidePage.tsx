@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Gift, Shirt, TestTube, BookOpen } from 'lucide-react';
-import { HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
+import { launchPageContentOffset } from '../lib/headerClearance';
+import { PAGE_CANVAS_CLASS } from '../lib/brandUi';
 import {
   BETA_TESTING_GUIDE_BLESSING_NOTE,
   BETA_TESTING_GUIDE_INTRO,
@@ -85,11 +86,11 @@ export const BetaTestingGuidePage: React.FC<BetaTestingGuidePageProps> = ({ onAp
 
   return (
     <div
-      className={`bg-[#FAF8F5] min-h-[60vh] ${HEADER_CONTENT_OFFSET}`}
+      className={`${PAGE_CANVAS_CLASS} min-h-[60vh] ${launchPageContentOffset('beta-guide')}`}
       id="beta-testing-guide-page"
       data-testid="beta-testing-guide-page"
     >
-      <section className="bg-gradient-to-br from-[#FFF7ED] via-[#FFEDD5] to-[#FEF3C7] text-[#9A3412] border-b-4 border-[#EA580C] py-4 sm:py-5">
+      <section className="bg-gradient-to-br from-[#FFF7ED] via-[#FFEDD5] to-[#FEF3C7] text-[#9A3412] border-b-4 border-[#EA580C] py-2.5 sm:py-3">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 sm:gap-4">
             <Logo variant="seal-only" size="sm" className="shrink-0 drop-shadow-lg !w-10 !h-10 sm:!w-12 sm:!h-12" />
@@ -106,7 +107,7 @@ export const BetaTestingGuidePage: React.FC<BetaTestingGuidePageProps> = ({ onAp
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 sm:pt-5 sm:pb-10 space-y-6">
         <p className="text-sm text-[#3F3832] font-medium leading-relaxed">{BETA_TESTING_GUIDE_INTRO}</p>
 
         <div className="flex flex-wrap gap-2">

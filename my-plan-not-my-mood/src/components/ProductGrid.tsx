@@ -92,7 +92,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   return (
     <section
       id={isPlannersPage ? 'planners-page' : 'products'}
-      className="py-16 bg-[#FAF8F5]"
+      className="py-16 bg-[#F6F0E6]"
       data-testid={isPlannersPage ? 'planners-grid' : 'home-product-grid'}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

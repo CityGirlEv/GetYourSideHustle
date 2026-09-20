@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Banknote, Check, Copy, ExternalLink, Phone, ShieldCheck, Star } from 'lucide-react';
 import { HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
+import { PAGE_CANVAS_CLASS } from '../lib/brandUi';
 import { formatUsdAmount } from '../lib/gearSalesPlan';
 import { FLAT_RATE_OFFER_DETAIL, FLAT_RATE_OFFER_HEADLINE } from '../lib/planIntro';
 import {
@@ -46,7 +47,7 @@ export const MakePaymentPage: React.FC<{ embedded?: boolean }> = ({ embedded = f
 
   return (
     <div
-      className={`bg-[#FAF8F5] ${embedded ? 'min-h-0' : `min-h-[60vh] ${HEADER_CONTENT_OFFSET}`}`}
+      className={`${PAGE_CANVAS_CLASS} ${embedded ? 'min-h-0' : `min-h-[60vh] ${HEADER_CONTENT_OFFSET}`}`}
       id="pay-page"
       data-testid="pay-page"
     >
@@ -97,7 +98,7 @@ export const MakePaymentPage: React.FC<{ embedded?: boolean }> = ({ embedded = f
                       </span>
                     ) : option.recommended ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-[#EA580C]">
-                        <Star className="w-3 h-3 fill-current" /> Due Sprint 1
+                        <Star className="w-3 h-3 fill-current" /> {option.dueHint || 'Next'}
                       </span>
                     ) : null}
                   </div>

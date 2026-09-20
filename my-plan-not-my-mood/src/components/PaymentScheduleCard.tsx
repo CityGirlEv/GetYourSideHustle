@@ -2,6 +2,7 @@ import React from 'react';
 import {
   PHASE_PAYMENT_SCHEDULE,
   PAYMENT_STATUS_LABELS,
+  duePaymentInstallment,
   formatUsdAmount,
   paymentSchedulePaid,
   paymentScheduleRemaining,
@@ -23,6 +24,7 @@ export const PaymentScheduleCard: React.FC<{
   const paid = paymentSchedulePaid();
   const remaining = paymentScheduleRemaining();
   const total = paymentScheduleTotal();
+  const next = duePaymentInstallment();
 
   return (
     <section
@@ -35,7 +37,9 @@ export const PaymentScheduleCard: React.FC<{
           <h3 className="text-lg font-black uppercase font-serif text-[#1F1917]">Payment schedule</h3>
           <p className="text-sm text-[#3F3832] font-medium mt-1">
             The $10,000 Phase 1 fee is three payments. Angela has already paid {formatUsdAmount(paid)}.
-            Payment 2 is the Sprint 1 installment.
+            {next
+              ? ` ${next.label} is the ${next.sprintLabel} installment.`
+              : ' The $10,000 Phase 1 fee is paid in full.'}
           </p>
         </div>
         <div className="text-right">

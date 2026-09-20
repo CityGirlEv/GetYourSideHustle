@@ -19,6 +19,7 @@ import {
   rolloverOutstandingContentFactoryItems,
   rolloverSprint,
   rolloverWorkItemSprint,
+  sprintChipLabel,
   sprintSectionTitle,
   sprintSelectOptions,
   stampRolloverNote,
@@ -85,6 +86,10 @@ describe('sprintRollover', () => {
     expect(sprintSectionTitle('Sprint 0')).toBe('Sprint 0 · Locked');
     expect(sprintSectionTitle('Sprint 1')).toBe('Sprint 1 · Locked');
     expect(sprintSectionTitle('Sprint 2')).toBe('Sprint 2');
+    expect(sprintChipLabel('Sprint 0')).toMatch(/^Sprint 0 · Locked · /);
+    expect(sprintChipLabel('Sprint 1')).toMatch(/^Sprint 1 · Locked · /);
+    expect(sprintChipLabel('Sprint 2')).toMatch(/^Sprint 2 · /);
+    expect(sprintChipLabel('Sprint 2')).not.toMatch(/Locked/);
     expect(
       rolloverLockedSprintItems([
         { id: 'a', sprint: 'Sprint 0', assignee: 'angela', notes: '' },
@@ -312,6 +317,24 @@ describe('sprintRollover', () => {
       completedOn: '2026-09-14',
     });
     expect(hasRolloverNote(lateMarkYesterdayOrToday.notes)).toBe(false);
+
+    const lateCarryoverDueInSprint0 = rolloverWorkItemSprint({
+      id: 't-27',
+      sprint: 'Sprint 2',
+      status: 'done',
+      assignee: 'evelyn',
+      dueDate: '2026-08-30',
+      completedOn: '2026-09-19',
+      rolledOver: true,
+      notes: stampRolloverNote(''),
+    });
+    expect(lateCarryoverDueInSprint0).toMatchObject({
+      sprint: 'Sprint 0',
+      status: 'done',
+      assignee: 'evelyn',
+      dueDate: '2026-08-30',
+      rolledOver: false,
+    });
 
     expect(countRolledOverItems([{ rolledOver: true }, { rolledOver: false }, { rolledOver: true }])).toBe(2);
     expect(formatRolledOverCount(0)).toBe('');

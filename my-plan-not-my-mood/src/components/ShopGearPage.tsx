@@ -362,7 +362,7 @@ export const ShopGearPage: React.FC<ShopGearPageProps> = ({
   };
 
   return (
-    <section id="gear-page" className="pt-1 pb-8 bg-[#FAF8F5]" data-testid="shop-gear-page">
+    <section id="gear-page" className="pt-1 pb-8 bg-[#F6F0E6]" data-testid="shop-gear-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         <header className="text-center space-y-1 max-w-2xl mx-auto" data-testid="shop-gear-aside">
           <h2 className="text-2xl sm:text-3xl font-black text-[#1F1917] uppercase tracking-tight leading-none">

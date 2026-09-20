@@ -111,7 +111,7 @@ export const LAUNCH_PAGES: LaunchPageCopy[] = [
       },
       {
         heading: 'Phase 1',
-        body: `${HOUSE_BRAND_NAME} is live as a gear-sales site. Shop tees, hoodies, and hats. Memberships stay Coming Soon. Get shop and brand notes on the mailing list — that is not a membership.`,
+        body: `${HOUSE_BRAND_NAME} is live as a gear-sales site. Shop tees, hoodies, and hats. Memberships stay Coming Soon. Join the Movement for shop and brand notes — that is not a membership.`,
         besideImage: true,
       },
     ],
@@ -248,7 +248,7 @@ export const LAUNCH_PAGES: LaunchPageCopy[] = [
     path: '/terms-of-use',
     title: 'Terms of Use',
     kicker: 'How to use this site',
-    lede: `${HOUSE_BRAND_NAME} is a Non-Negotiable brand. Use the site to shop, read, and join the mailing list.`,
+    lede: `${HOUSE_BRAND_NAME} is a Non-Negotiable brand. Use the site to shop, read, and Join the Movement.`,
     compactHero: true,
     lastUpdated: LEGAL_LAST_UPDATED,
     metaTitle: 'Terms of Use | My Plan, Not My Mood',
@@ -266,7 +266,7 @@ export const LAUNCH_PAGES: LaunchPageCopy[] = [
       {
         heading: 'Permitted and prohibited use',
         body: [
-          'You may browse, shop via the linked store, join the mailing list, and use the public tools for personal, non-commercial enjoyment of the brand.',
+          'You may browse, shop via the linked store, Join the Movement, and use the public tools for personal, non-commercial enjoyment of the brand.',
           'You may not copy the marks, copy, photos, or tools to run another shop; scrape the site in a way that burdens our systems; attempt to break security; post unlawful or harassing content; or use the site to send spam.',
         ],
       },
@@ -423,11 +423,11 @@ export const LAUNCH_PAGES: LaunchPageCopy[] = [
           },
           {
             question: 'Are memberships open?',
-            answer: 'No. Join / Memberships is Coming Soon. Use the mailing list if you want updates.',
+            answer: 'No. Join / Memberships is Coming Soon. Join the Movement if you want launch updates.',
           },
           {
             question: 'How do I get updates without joining?',
-            answer: 'Use the mailing list sign-up. Email is required. First name is optional. It is not a membership.',
+            answer: 'Join the Movement. Email is required. First name is optional. It is not a membership.',
           },
         ],
       },
@@ -437,11 +437,11 @@ export const LAUNCH_PAGES: LaunchPageCopy[] = [
   {
     id: 'list',
     path: '/list',
-    title: 'Mailing List',
-    kicker: 'Stay on the plan',
+    title: 'Join the Movement',
+    kicker: 'Pre-register for launch',
     lede: `${MAILING_LIST_NOT_MEMBERSHIP_NOTE} Email is required. First name is optional.`,
-    metaTitle: 'Mailing List | My Plan, Not My Mood',
-    metaDescription: 'Get shop and brand notes from My Plan, Not My Mood. Email plus an optional first name — not a membership.',
+    metaTitle: 'Join the Movement | My Plan, Not My Mood',
+    metaDescription: 'Join the Movement for go-live launch notes from My Plan, Not My Mood. Email plus an optional first name — not a membership.',
     showMailingList: true,
     sections: [
       {

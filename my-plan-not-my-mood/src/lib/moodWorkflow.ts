@@ -12,6 +12,51 @@ export const MOOD_AREA_HREF = '/#mood-tool';
 export const MOOD_HERO_BUBBLES_HREF = '/#mood-hero-bubbles';
 export const MOOD_WORKFLOW_MAP_HREF = '/sitemap#mood-workflow';
 export const MOOD_HOW_IT_WORKS_HREF = '/#mood-how-it-works';
+export const MOOD_SHAKE_RESULT_ID = 'mood-how-it-works';
+export const MOOD_SHAKE_SCROLL_MARGIN_CLASS = 'scroll-mt-28 sm:scroll-mt-32 md:scroll-mt-40';
+export const MOOD_SHAKE_MOBILE_MAX_PX = 767;
+
+export function isMoodShakeMobileViewport(
+  width: number = typeof window === 'undefined' ? 1024 : window.innerWidth,
+): boolean {
+  return width <= MOOD_SHAKE_MOBILE_MAX_PX;
+}
+
+export function moodShakeHeaderClearancePx(header?: HTMLElement | null): number {
+  const measured = header?.getBoundingClientRect().height ?? 0;
+  return Math.max(measured, 96);
+}
+
+export function scrollMoodShakeResultIntoView(
+  getEl: () => HTMLElement | null = () =>
+    typeof document === 'undefined' ? null : document.getElementById(MOOD_SHAKE_RESULT_ID),
+  options?: {
+    force?: boolean;
+    width?: number;
+    header?: HTMLElement | null;
+    scrollY?: number;
+    scrollTo?: (opts: { top: number; behavior: ScrollBehavior }) => void;
+  },
+): boolean {
+  if (!options?.force && !isMoodShakeMobileViewport(options?.width)) return false;
+  const el = getEl();
+  if (!el) return false;
+  const header =
+    options && 'header' in options
+      ? options.header ?? null
+      : typeof document === 'undefined'
+        ? null
+        : document.querySelector<HTMLElement>('header');
+  const scrollY = options?.scrollY ?? (typeof window === 'undefined' ? 0 : window.scrollY);
+  const top = el.getBoundingClientRect().top + scrollY - moodShakeHeaderClearancePx(header) - 8;
+  const scrollTo =
+    options?.scrollTo ??
+    ((opts) => {
+      if (typeof window !== 'undefined') window.scrollTo(opts);
+    });
+  scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  return true;
+}
 
 export type MoodWorkflowStep = {
   n: number;
@@ -46,9 +91,9 @@ export const MOOD_WORKFLOW_STEPS: MoodWorkflowStep[] = [
   {
     n: 4,
     label: 'Go to Home page — shake-it suggestions',
-    href: MOOD_AREA_HREF,
+    href: MOOD_HOW_IT_WORKS_HREF,
     detail:
-      'A suggestion card opens: Mood detected, How to shake it tips, the brand response, and Today’s single play. Reset closes the card.',
+      'A suggestion card opens: Mood detected, How to shake it tips, the brand response, and Today’s single play. On mobile the How to shake it panel scrolls into view. Reset closes the card.',
   },
   {
     n: 5,
@@ -123,12 +168,12 @@ export function buildMoodWorkflowMapSteps(): Array<string | { label: string; hre
     'Read the How What’s Your Mood works map. Confirm it names Home, hero bubbles, mood area, suggestions, Reset, and the member lock.',
     ...MOOD_WORKFLOW_STEPS.map(
       (step) =>
-        `On the map, confirm step ${step.n}: ${step.label}. Follow the deep link and confirm the landing item matches the copy.`,
+        `On the map, confirm step ${step.n}: ${step.label}. Click that step’s page link and confirm you land on the matching Home section.`,
     ),
     { label: 'Go to Home page — How this tool works', href: MOOD_HOW_IT_WORKS_HREF },
     'Walk the five workflow steps on Home against the Site Map explanation. Flag any step the live tool does not match.',
     { label: 'Go to Home page — hero mood bubbles', href: MOOD_HERO_BUBBLES_HREF },
-    'Click one bubble, confirm scroll to #mood-tool, then Reset. Repeat from a mood-area button. Confirm both paths open the same suggestion card.',
+    'Click one bubble, confirm the How to shake it tips appear on the page (slide into view on a phone). Click Reset to close the tips. Then pick a mood from the buttons in the mood area (not the hero row). Confirm both paths show the same tips (Mood detected, How to shake it, Today’s play).',
   ];
 }
 

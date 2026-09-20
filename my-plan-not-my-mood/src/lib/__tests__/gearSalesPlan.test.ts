@@ -5,6 +5,8 @@ import {
   GEAR_SALES_LINE_ITEMS_SEED,
   MEMBERSHIPS_COMING_SOON_NOTE,
   PHASE_1_PAID_TO_DATE,
+  PHASE_1_PAYMENT_2_RECEIVED_ISO,
+  PHASE_1_PAYMENT_2_RECEIVED_LABEL,
   PHASE_PAYMENT_SCHEDULE,
   MARKETING_VIDEOS_COMP_NAME,
   MARKETING_VIDEOS_COUNT,
@@ -18,6 +20,7 @@ import {
   paymentScheduleRemaining,
   paymentScheduleTotal,
   phase1LineItemTotal,
+  phase1PaidBudgetCopy,
   upgradeDeliverableLabel,
 } from '../gearSalesPlan';
 
@@ -28,14 +31,20 @@ describe('gearSalesPlan', () => {
     expect(GEAR_SALES_LINE_ITEMS_SEED.filter((item) => item.phase === 'phase1_build')).toHaveLength(5);
   });
 
-  it('splits the $10,000 fee into three payments and marks $3,500 received', () => {
+  it('splits the $10,000 fee into three payments and marks $7,000 received after Payment 2', () => {
     expect(paymentScheduleTotal()).toBe(10_000);
     expect(PHASE_PAYMENT_SCHEDULE.map((row) => row.amount)).toEqual([3_500, 3_500, 3_000]);
-    expect(PHASE_1_PAID_TO_DATE).toBe(3_500);
-    expect(paymentSchedulePaid()).toBe(3_500);
-    expect(paymentScheduleRemaining()).toBe(6_500);
-    expect(duePaymentInstallment()?.id).toBe('pay-2');
-    expect(duePaymentInstallment()?.sprintLabel).toBe('Sprint 1');
+    expect(PHASE_1_PAYMENT_2_RECEIVED_ISO).toBe('2026-09-18');
+    expect(PHASE_PAYMENT_SCHEDULE.find((row) => row.id === 'pay-2')).toMatchObject({
+      status: 'paid',
+      dueLabel: PHASE_1_PAYMENT_2_RECEIVED_LABEL,
+    });
+    expect(PHASE_1_PAID_TO_DATE).toBe(7_000);
+    expect(paymentSchedulePaid()).toBe(7_000);
+    expect(paymentScheduleRemaining()).toBe(3_000);
+    expect(duePaymentInstallment()?.id).toBe('pay-3');
+    expect(duePaymentInstallment()?.sprintLabel).toBe('Sprint 3');
+    expect(phase1PaidBudgetCopy()).toBe('$7,000 is already paid. Payment 3 ($3,000) is due Sprint 3.');
     expect(GEAR_SALES_LINE_ITEMS_SEED.find((item) => item.id === 'memberships-phase2')?.baseAmount).toBe(0);
     expect(GEAR_SALES_LINE_ITEMS_SEED.find((item) => item.id === 'future-phase3')?.phase).toBe('phase3_future');
     expect(MEMBERSHIPS_COMING_SOON_NOTE).toMatch(/Coming Soon/i);

@@ -148,7 +148,7 @@ describe('workBoardStore', () => {
     expect(merged.tasks.find((task) => task.id === 't-901')?.title).toBe('Review mockups');
   });
 
-  it('lets a save downgrade status and update title without losing a peer-only task', () => {
+  it('keeps Done and a peer-only task when a later save tries to reopen the row', () => {
     const existing = buildWorkBoardStorePayload(
       [
         { id: 't-1', title: 'Old title', sprint: 'Sprint 1', category: 'Launch', priority: 'medium', status: 'done', assignee: 'angela' },
@@ -167,9 +167,60 @@ describe('workBoardStore', () => {
     const merged = mergeWorkBoardPayloads(existing, incoming);
     expect(merged.tasks.find((task) => task.id === 't-1')).toMatchObject({
       title: 'Renamed',
-      status: 'in_progress',
+      status: 'done',
     });
     expect(merged.tasks.find((task) => task.id === 't-900')?.title).toBe('Angela only');
+  });
+
+  it('keeps Lyriq assigned when a stale save sends Unknown', () => {
+    const lyriq = 'tester:user-114e5567-8f4a-4449-b7f1-ddb4d15e85e3';
+    const existing = buildWorkBoardStorePayload(
+      [{ id: 't-66', title: 'Opulent fonts', sprint: 'Sprint 4', category: 'Launch', priority: 'medium', status: 'not_started', assignee: lyriq }],
+      [{ id: 'faq-qa1', title: 'FAQ page', desc: '', sprint: 'Sprint 3', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: lyriq }],
+      'evelyn3@cox.net',
+      new Date('2026-09-20T06:00:00.000Z'),
+    );
+    const stale = buildWorkBoardStorePayload(
+      [{ id: 't-66', title: 'Opulent fonts', sprint: 'Sprint 4', category: 'Launch', priority: 'medium', status: 'not_started', assignee: 'unassigned' }],
+      [{ id: 'faq-qa1', title: 'FAQ page', desc: '', sprint: 'Sprint 3', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'unassigned' }],
+      'evelyn3@cox.net',
+      new Date('2026-09-20T06:20:00.000Z'),
+    );
+    const merged = mergeWorkBoardPayloads(existing, stale);
+    expect(merged.tasks.find((task) => task.id === 't-66')?.assignee).toBe(lyriq);
+    expect(merged.tests.find((test) => test.id === 'faq-qa1')?.assignee).toBe(lyriq);
+
+    const hydrated = hydrateWorkBoardFromRemote(existing, stale.tasks, stale.tests);
+    expect(hydrated.tasks.find((task) => task.id === 't-66')?.assignee).toBe(lyriq);
+    expect(hydrated.tests.find((test) => test.id === 'faq-qa1')?.assignee).toBe(lyriq);
+  });
+
+  it('keeps Angela’s done task when Evelyn’s stale copy is still not started', () => {
+    const existing = buildWorkBoardStorePayload(
+      [{ id: 't-1', title: 'Budget', sprint: 'Sprint 1', category: 'Launch', priority: 'high', status: 'done', assignee: 'angela' }],
+      [{ id: 'qa1', title: 'FAQ', desc: '', sprint: 'Sprint 3', category: 'Content QA', priority: 'high', status: 'passed', assignee: 'angela' }],
+      'angela@angelasharris.com',
+      new Date('2026-09-20T06:00:00.000Z'),
+    );
+    const stale = buildWorkBoardStorePayload(
+      [{ id: 't-1', title: 'Budget', sprint: 'Sprint 1', category: 'Launch', priority: 'high', status: 'not_started', assignee: 'angela' }],
+      [{ id: 'qa1', title: 'FAQ', desc: '', sprint: 'Sprint 3', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'angela' }],
+      'evelyn3@cox.net',
+      new Date('2026-09-20T06:10:00.000Z'),
+    );
+    const merged = mergeWorkBoardPayloads(existing, stale);
+    expect(merged.tasks.find((task) => task.id === 't-1')?.status).toBe('done');
+    expect(merged.tests.find((test) => test.id === 'qa1')?.status).toBe('passed');
+  });
+
+  it('stamps a completion date on Done and Passed rows that were missing one', () => {
+    const parsed = parseWorkBoardStorePayload({
+      tasks: [{ id: 't-1', title: 'Budget', status: 'done', sprint: 'Sprint 1', category: 'Launch', priority: 'high', assignee: 'angela' }],
+      tests: [{ id: 'qa1', title: 'FAQ', status: 'passed', sprint: 'Sprint 3', category: 'Content QA', priority: 'high', assignee: 'angela' }],
+      updatedAt: '2026-09-19T12:00:00.000Z',
+    });
+    expect(parsed?.tasks.find((task) => task.id === 't-1')?.completedOn).toBe('2026-09-19');
+    expect(parsed?.tests.find((test) => test.id === 'qa1')?.completedOn).toBe('2026-09-19');
   });
 
   it('fingerprints board rows so a live poll can detect Angela’s new task', () => {

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Ban, Coins, Gift, TestTube, Trophy, Zap } from 'lucide-react';
 import { HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
+import { PAGE_CANVAS_CLASS } from '../lib/brandUi';
 import {
   BETA_CREDIT_EARN_RULES,
   BETA_CREDIT_NAME,
@@ -39,7 +40,7 @@ export const BetaRewardsPage: React.FC<BetaRewardsPageProps> = ({ onApply, onSee
 
   return (
     <div
-      className={`bg-[#FAF8F5] min-h-[60vh] ${HEADER_CONTENT_OFFSET}`}
+      className={`${PAGE_CANVAS_CLASS} min-h-[60vh] ${HEADER_CONTENT_OFFSET}`}
       id="beta-rewards-page"
       data-testid="beta-rewards-page"
     >

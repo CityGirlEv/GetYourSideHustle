@@ -1,6 +1,36 @@
 export const DEFAULT_DOCUMENT_TITLE = 'MY PLAN, NOT MY MOOD — a Non-Negotiable brand';
 export const DEFAULT_DOCUMENT_DESCRIPTION =
   'MY PLAN, NOT MY MOOD is a Non-Negotiable brand. Feel it. Follow the plan anyway.';
+export const SITE_CANONICAL_ORIGIN = 'https://nonnegotiation.com';
+export const SHARE_PREVIEW_IMAGE_PATH = '/images/home-hero.jpg';
+
+export function sharePreviewImageUrl(origin = SITE_CANONICAL_ORIGIN): string {
+  return `${String(origin).replace(/\/$/, '')}${SHARE_PREVIEW_IMAGE_PATH}`;
+}
+
+function upsertMeta(attr: 'name' | 'property', key: string, content: string): void {
+  if (typeof document === 'undefined') return;
+  let node = document.head.querySelector(`meta[${attr}="${key}"]`);
+  if (!node) {
+    node = document.createElement('meta');
+    node.setAttribute(attr, key);
+    document.head.appendChild(node);
+  }
+  node.setAttribute('content', content);
+}
+
+export function applySharePreviewMeta(origin = SITE_CANONICAL_ORIGIN): void {
+  const image = sharePreviewImageUrl(origin);
+  upsertMeta('property', 'og:type', 'website');
+  upsertMeta('property', 'og:site_name', 'My Plan, Not My Mood');
+  upsertMeta('property', 'og:url', `${String(origin).replace(/\/$/, '')}/`);
+  upsertMeta('property', 'og:title', DEFAULT_DOCUMENT_TITLE);
+  upsertMeta('property', 'og:description', DEFAULT_DOCUMENT_DESCRIPTION);
+  upsertMeta('property', 'og:image', image);
+  upsertMeta('property', 'og:image:alt', 'Angela Harris at her desk in a My Plan, Not My Mood tee');
+  upsertMeta('name', 'twitter:card', 'summary_large_image');
+  upsertMeta('name', 'twitter:image', image);
+}
 
 export function formatPublicPageTitle(pageTitle: string): string {
   const title = String(pageTitle ?? '').trim();
@@ -22,6 +52,10 @@ export function applyDocumentMeta(meta: { title: string; description: string }):
 
   document.title = meta.title;
   node.setAttribute('content', meta.description);
+  upsertMeta('property', 'og:title', meta.title);
+  upsertMeta('property', 'og:description', meta.description);
+  upsertMeta('property', 'og:image', sharePreviewImageUrl());
+  upsertMeta('name', 'twitter:image', sharePreviewImageUrl());
 
   return () => {
     document.title = previousTitle;

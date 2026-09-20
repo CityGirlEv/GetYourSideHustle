@@ -153,7 +153,7 @@ const HEADER_ADMIN_LABELS: Partial<Record<AdminStudioTab, string>> = {
   plan: 'Plan',
   agenda: 'Agenda',
   tasks: 'Tasks',
-  testing: 'Testing',
+  testing: 'Testing Portal',
   'gear-selections': 'Gear',
   'asset-library': 'Asset Library',
   'logo-concepts': 'Logos',

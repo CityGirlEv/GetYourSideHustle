@@ -41,9 +41,9 @@ describe('storeRoutes', () => {
     expect(routePath('contact')).toBe('/contact');
   });
 
-  it('puts Shop after Home, then Join, About, FAQ, and Contact', () => {
-    expect(HEADER_PRIMARY_NAV_ORDER).toEqual(['home', 'shop', 'join', 'about', 'faq', 'contact']);
-    expect(HEADER_PUBLIC_LINKS.map((link) => link.route)).toEqual(['about', 'faq', 'contact']);
-    expect(HEADER_TRAILING_LINKS.map((link) => link.route)).toEqual(['about', 'faq', 'contact']);
+  it('puts FAQ, About, and Contact after Home, with Shop under Accountability Gear', () => {
+    expect(HEADER_PRIMARY_NAV_ORDER).toEqual(['home', 'faq', 'about', 'contact']);
+    expect(HEADER_PUBLIC_LINKS.map((link) => link.route)).toEqual(['faq', 'about', 'contact']);
+    expect(HEADER_TRAILING_LINKS.map((link) => link.route)).toEqual(['faq', 'about', 'contact']);
   });
 });

@@ -21,14 +21,20 @@ import {
 } from '../phasePayments';
 
 describe('phasePayments', () => {
-  it('prices Payment 2 as the recommended $3,500 Sprint 1 installment', () => {
+  it('prices Payment 3 as the recommended $3,000 Sprint 3 installment after Payment 2 posted', () => {
     const options = phasePayOptions();
     expect(options).toHaveLength(3);
     expect(options[0]).toMatchObject({ label: 'Payment 1', amount: 3_500, paid: true, recommended: false });
-    expect(options[1]).toMatchObject({ label: 'Payment 2', amount: 3_500, recommended: true });
-    expect(options[2]?.amount).toBe(3_000);
-    expect(defaultPayAmount()).toBe(3_500);
-    expect(formatUsdAmount(defaultPayAmount())).toBe('$3,500');
+    expect(options[1]).toMatchObject({ label: 'Payment 2', amount: 3_500, paid: true, recommended: false });
+    expect(options[2]).toMatchObject({
+      label: 'Payment 3',
+      amount: 3_000,
+      recommended: true,
+      paid: false,
+      dueHint: 'Due Sprint 3',
+    });
+    expect(defaultPayAmount()).toBe(3_000);
+    expect(formatUsdAmount(defaultPayAmount())).toBe('$3,000');
   });
 
   it('lists Zelle and Cash App as preferred, then Venmo and Stripe', () => {

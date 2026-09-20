@@ -26,7 +26,7 @@ describe('task ↔ test cross-links and seeded descriptions', () => {
     const [task] = normalizeTasks([
       {
         id: 't-43',
-        title: 'Make Payment — Payment 2 ($3,500) due Sprint 1 via Zelle or Cash App',
+        title: 'Make Payment — Payment 2 ($3,500) received Sep 18',
         sprint: 'Sprint 0',
         category: 'Infrastructure',
         priority: 'high',
@@ -64,7 +64,7 @@ describe('task ↔ test cross-links and seeded descriptions', () => {
     const [budgetTask] = normalizeTasks([
       {
         id: 't-1',
-        title: 'Confirm $10,000 in three payments — $3,500 received',
+        title: 'Confirm $10,000 in three payments — $7,000 received',
         sprint: 'Sprint 0',
         category: 'Infrastructure',
         priority: 'high',

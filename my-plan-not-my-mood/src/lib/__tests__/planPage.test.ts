@@ -139,7 +139,7 @@ describe('planPage', () => {
     expect(groups.find((group) => group.id === 'content')?.items.find((item) => item.id === 'calendar')?.nested).toBe(true);
     expect(groups.find((group) => group.id === 'content')?.items.find((item) => item.id === 'gear-selections')?.nested).toBe(true);
     expect(groups.find((group) => group.id === 'content')?.items.find((item) => item.id === 'logo-concepts')?.nested).toBe(true);
-    expect(groups.find((group) => group.id === 'delivery')?.items.find((item) => item.id === 'testing')?.label).toBe('Testing');
+    expect(groups.find((group) => group.id === 'delivery')?.items.find((item) => item.id === 'testing')?.label).toBe('Testing Portal');
   });
 
   it('sends the header Plan link to the Plan page path', () => {

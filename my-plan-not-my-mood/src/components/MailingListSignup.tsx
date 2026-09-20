@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Mail } from 'lucide-react';
 import {
+  JOIN_THE_MOVEMENT_LABEL,
+  MAILING_LIST_HYPE,
   MAILING_LIST_NOT_MEMBERSHIP_NOTE,
   subscribeToMailingList,
 } from '../lib/mailingList';
@@ -15,19 +17,20 @@ const fieldClass =
   'w-full min-h-[44px] rounded-xl border-2 border-[#E5DFD3] bg-[#FAF8F5] px-3 text-sm font-medium text-[#1F1917]';
 
 export const MailingListSignup: React.FC<MailingListSignupProps> = ({
-  heading = 'Join the mailing list',
+  heading = JOIN_THE_MOVEMENT_LABEL,
   compact = false,
 }) => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [heardAbout, setHeardAbout] = useState('');
   const [error, setError] = useState('');
   const [successEmail, setSuccessEmail] = useState('');
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const result = subscribeToMailingList({ email, firstName, lastName, heardAbout });
+    const result = subscribeToMailingList({ email, firstName, lastName, phone, heardAbout });
     if (!result.ok) {
       setSuccessEmail('');
       setError(result.error);
@@ -38,6 +41,7 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
     setEmail('');
     setFirstName('');
     setLastName('');
+    setPhone('');
     setHeardAbout('');
   };
 
@@ -49,11 +53,14 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
     >
       <div className="space-y-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FFEDD5] text-[#C2410C] border border-[#C2410C]/30 text-[10px] font-mono font-black uppercase tracking-wider">
-          <Mail className="w-3.5 h-3.5" /> Mailing list
+          <Mail className="w-3.5 h-3.5" /> {JOIN_THE_MOVEMENT_LABEL}
         </div>
         <h2 className="text-xl sm:text-2xl font-serif font-black uppercase tracking-tight text-[#1F1917]">
           {heading}
         </h2>
+        <p className="text-base sm:text-lg font-semibold leading-relaxed text-[#C2410C]" data-testid="mailing-list-hype">
+          {MAILING_LIST_HYPE}
+        </p>
         <p className="text-sm text-[#3F3832] font-medium leading-relaxed" data-testid="mailing-list-not-membership">
           {MAILING_LIST_NOT_MEMBERSHIP_NOTE}
         </p>
@@ -110,6 +117,23 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
             data-testid="mailing-list-email"
           />
         </label>
+        <label className="block space-y-1.5">
+          <span className="text-[11px] font-black uppercase tracking-wider text-[#9A6B3D]">Phone (optional)</span>
+          <input
+            type="tel"
+            name="mailing-list-phone"
+            autoComplete="tel"
+            inputMode="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            className={fieldClass}
+            data-testid="mailing-list-phone"
+            aria-describedby="mailing-list-phone-hint"
+          />
+          <span id="mailing-list-phone-hint" className="block text-xs text-[#6B5344]">
+            Optional. US number only if you want a text or call about drops.
+          </span>
+        </label>
         <HearAboutUsField
           id="mailing-list-heard-about"
           name="mailing-list-heard-about"
@@ -127,7 +151,7 @@ export const MailingListSignup: React.FC<MailingListSignupProps> = ({
           className="min-h-[44px] w-full sm:w-auto px-5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-black uppercase tracking-wider cursor-pointer"
           data-testid="mailing-list-submit"
         >
-          Sign up for updates
+          {JOIN_THE_MOVEMENT_LABEL}
         </button>
       </form>
     </div>

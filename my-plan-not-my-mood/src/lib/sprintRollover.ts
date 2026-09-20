@@ -1,6 +1,7 @@
 /** Closed sprints stay on the board as locked sections. Outstanding work rolls forward. */
 
 import { parseWorkNotes, serializeWorkNotes } from './workNoteEntries';
+import { sprintDatesForLabel } from './sprintCalendar';
 
 export const LOCKED_SPRINTS = ['Sprint 0', 'Sprint 1'] as const;
 export const LATEST_CLOSED_SPRINT = 'Sprint 1';
@@ -248,12 +249,28 @@ function notesKeyForItem(item: Record<string, unknown>): 'notes' | 'desc' | 'not
 }
 
 function finishedHomeSprint(item: {
+  id?: string;
   sprint: string;
+  dueDate?: string;
   completedOn?: string;
   audit?: Array<{ field?: string; to?: string; at?: string }>;
+  rolledOver?: boolean;
+  notes?: string;
+  desc?: string;
+  note?: string;
 }): string {
   const finishedOn = workItemFinishedOnIso(item);
   if (finishedOn && finishedOn <= SPRINT_0_END_ISO) return 'Sprint 0';
+
+  const originatedClosed = isSprintLocked(item.sprint) || originatedInClosedSprint(item);
+  if (originatedClosed) {
+    if (finishedOn && finishedOn <= SPRINT_1_LATE_DONE_ISO) return LATEST_CLOSED_SPRINT;
+    const due = isoDateFromUnknown(item.dueDate);
+    if (due && due <= SPRINT_0_END_ISO) return 'Sprint 0';
+    if (item.sprint === 'Sprint 0') return 'Sprint 0';
+    return LATEST_CLOSED_SPRINT;
+  }
+
   if (finishedOn && finishedOn <= SPRINT_1_LATE_DONE_ISO) return LATEST_CLOSED_SPRINT;
   if (finishedOn && finishedOn > SPRINT_1_LATE_DONE_ISO) return OPEN_ROLLOVER_SPRINT;
   // No completion date: Sprint 0 Done stays on Sprint 0. Other finished work is Sprint 1.
@@ -273,9 +290,9 @@ function shouldKeepOnClosedSprint(item: {
   audit?: Array<{ field?: string; to?: string; at?: string }>;
 }): boolean {
   if (isOutstandingWorkStatus(item.status)) return false;
+  if (isSprintLocked(item.sprint) || originatedInClosedSprint(item)) return true;
   const finishedOn = workItemFinishedOnIso(item);
   if (finishedOn && finishedOn > SPRINT_1_LATE_DONE_ISO) return false;
-  if (isSprintLocked(item.sprint) || originatedInClosedSprint(item)) return true;
   return finishedOnOrBeforeClosedSprint(item);
 }
 
@@ -363,6 +380,7 @@ export function rolloverWorkItemSprint<
     sprint: string;
     status?: string;
     rolledOver?: boolean;
+    dueDate?: string;
     completedOn?: string;
     audit?: Array<{ field?: string; to?: string; at?: string }>;
   },
@@ -417,6 +435,13 @@ export function sprintSelectOptions<T extends string>(options: readonly T[], cur
 
 export function sprintSectionTitle(sprint: string): string {
   return isSprintLocked(sprint) ? `${sprint} · Locked` : sprint;
+}
+
+/** Filter bubble label: `Sprint 0 · Locked · Mon, Aug 24 – Sun, Sep 6, 2026`. */
+export function sprintChipLabel(sprint: string): string {
+  const dates = sprintDatesForLabel(sprint);
+  const title = sprintSectionTitle(sprint);
+  return dates ? `${title} · ${dates}` : title;
 }
 
 export function matchesRolledOverStatusFilter(

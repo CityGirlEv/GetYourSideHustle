@@ -2,6 +2,10 @@
 export const BRAND_BUBBLE_ON_CLASS =
   'bg-[#EA580C] text-white border-[#FDBA74] shadow-[0_4px_12px_rgba(234,88,12,0.28)]';
 
+/** Home canvas cream — every public page uses this so About/Join/Shop match Home. */
+export const PAGE_CANVAS_HEX = '#F6F0E6';
+export const PAGE_CANVAS_CLASS = 'bg-[#F6F0E6]';
+
 export const BRAND_TAB_ROW_CLASS =
   'flex flex-wrap gap-0.5 border-b-2 border-[#1F1917] w-full items-end';
 export const BRAND_TAB_SUB_ROW_CLASS =

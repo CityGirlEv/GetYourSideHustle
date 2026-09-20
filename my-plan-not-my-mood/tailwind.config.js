@@ -9,7 +9,6 @@ export default {
         serif: ['Playfair Display', 'Georgia', 'serif'],
         cinzel: ['Cinzel', 'serif'],
         script: ['Great Vibes', 'cursive'],
-        script: ['Great Vibes', 'cursive'],
       },
       colors: {
         earth: {

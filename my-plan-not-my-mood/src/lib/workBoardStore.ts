@@ -1,6 +1,7 @@
 import { isLogoApiUnavailable } from './logoStore';
 import { pruneInflatedQaTests, inflatedQaIdsFromRaw, suiteForQaTest } from './testSuites';
 import { rolloverLockedSprintItems } from './sprintRollover';
+import { overlayWorkItemAudit } from './workItemAudit';
 import {
   INITIAL_TASKS,
   allSeedQaTests,
@@ -11,6 +12,8 @@ import {
   mergeMissingSeedTasks,
   mergeMissingSeedQaTests,
   pruneDuplicateTasks,
+  workBoardTodayIso,
+  preferNamedAssignee,
   type QaTestItem,
   type TaskItem,
 } from './workBoard';
@@ -100,8 +103,36 @@ export const WORKBOARD_AUTOSAVE_MS = 0;
 /** Do not poll D1 after the first load; a live pull reverts fields the user just saved. */
 export const WORKBOARD_POLL_MS = 0;
 
+/** Stamp a completion date on Done/Passed rows so later stale saves cannot look unfinished. */
+export function stampFinishedWorkDates<T extends { status: string; completedOn?: string }>(
+  items: T[],
+  finishedStatus: string,
+  fallbackDate = workBoardTodayIso(),
+): T[] {
+  return items.map((item) => {
+    if (item.status !== finishedStatus || item.completedOn) return item;
+    return { ...item, completedOn: fallbackDate };
+  });
+}
+
+/** Keep higher status; never let Unknown overwrite a named assignee. */
+export function mergeWorkItemEdits<T extends { id: string; status: string; assignee?: string; completedOn?: string }>(
+  incoming: T,
+  existing: T,
+  rank: Record<string, number>,
+): T {
+  const incomingRank = rank[incoming.status] ?? 0;
+  const existingRank = rank[existing.status] ?? 0;
+  const next = incomingRank >= existingRank ? { ...incoming } : { ...incoming, status: existing.status };
+  if (existingRank > incomingRank) {
+    if (existing.completedOn) next.completedOn = existing.completedOn;
+  }
+  next.assignee = preferNamedAssignee(incoming.assignee, existing.assignee);
+  return next;
+}
+
 /** Keep every row from both boards; if the same id exists twice, keep the more progressed status. */
-export function mergeWorkItemsByProgress<T extends { id: string; status: string }>(
+export function mergeWorkItemsByProgress<T extends { id: string; status: string; assignee?: string; completedOn?: string }>(
   remote: T[],
   local: T[],
   rank: Record<string, number>,
@@ -118,12 +149,9 @@ export function mergeWorkItemsByProgress<T extends { id: string; status: string 
       chosen.set(item.id, item);
     }
   } else {
-    // Equal status: later item wins (remote), so a live poll can pick up peer field edits.
     for (const item of [...local, ...remote]) {
       const current = chosen.get(item.id);
-      if (!current || (rank[item.status] ?? 0) >= (rank[current.status] ?? 0)) {
-        chosen.set(item.id, item);
-      }
+      chosen.set(item.id, current ? mergeWorkItemEdits(item, current, rank) : item);
     }
   }
   const out: T[] = [];
@@ -173,12 +201,26 @@ export function hydrateWorkBoardFromRemote(
     ),
   );
   return {
-    tasks: rolloverLockedSprintItems(withoutRemoved(mergedTasks.tasks, removedTaskIds)),
-    tests: rolloverLockedSprintItems(withoutRemoved(mergedTests.tests, removedTestIds)),
+    tasks: overlayWorkItemAudit(
+      stampFinishedWorkDates(
+        rolloverLockedSprintItems(withoutRemoved(mergedTasks.tasks, removedTaskIds)),
+        'done',
+      ),
+      remoteTasks,
+      localTasksKept,
+    ),
+    tests: overlayWorkItemAudit(
+      stampFinishedWorkDates(
+        rolloverLockedSprintItems(withoutRemoved(mergedTests.tests, removedTestIds)),
+        'passed',
+      ),
+      remoteTests,
+      localTestsKept,
+    ),
   };
 }
 
-/** Incoming rows win by id. Keep peer-only rows. Never re-seed over a saved board. */
+/** Keep peer-only rows. Never let a stale save revert a more progressed Done/Passed status. */
 export function mergeWorkBoardPayloads(
   existing: WorkBoardStorePayload | null | undefined,
   incoming: WorkBoardStorePayload,
@@ -186,28 +228,32 @@ export function mergeWorkBoardPayloads(
   if (!existing || existing.empty) return incoming;
   const removedTaskIds = uniqueIds([...(existing.removedTaskIds ?? []), ...(incoming.removedTaskIds ?? [])]);
   const removedTestIds = uniqueIds([...(existing.removedTestIds ?? []), ...(incoming.removedTestIds ?? [])]);
-  const incomingTaskIds = new Set(incoming.tasks.map((task) => task.id));
-  const incomingTestIds = new Set(incoming.tests.map((test) => test.id));
+  const progressedTasks = mergeWorkItemsByProgress(incoming.tasks, existing.tasks, TASK_STATUS_RANK);
+  const progressedTests = mergeWorkItemsByProgress(incoming.tests, existing.tests, QA_STATUS_RANK);
   const mergedTasks = pruneDuplicateTasks(
-    overlaySupersededSeedTasks(
-      withoutRemoved(
-        [...incoming.tasks, ...existing.tasks.filter((task) => !incomingTaskIds.has(task.id))],
-        removedTaskIds,
-      ),
-    ),
+    overlaySupersededSeedTasks(withoutRemoved(progressedTasks, removedTaskIds)),
   );
   const mergedTests = pruneInflatedQaTests(
-    overlayCatalogQaSchedule(
-      withoutRemoved(
-        [...incoming.tests, ...existing.tests.filter((test) => !incomingTestIds.has(test.id))],
-        removedTestIds,
-      ),
-    ),
+    overlayCatalogQaSchedule(withoutRemoved(progressedTests, removedTestIds)),
   );
   return {
     ...incoming,
-    tasks: rolloverLockedSprintItems(withoutRemoved(mergedTasks.tasks, removedTaskIds)),
-    tests: rolloverLockedSprintItems(withoutRemoved(mergedTests.tests, removedTestIds)),
+    tasks: overlayWorkItemAudit(
+      stampFinishedWorkDates(
+        rolloverLockedSprintItems(withoutRemoved(mergedTasks.tasks, removedTaskIds)),
+        'done',
+      ),
+      existing.tasks,
+      incoming.tasks,
+    ),
+    tests: overlayWorkItemAudit(
+      stampFinishedWorkDates(
+        rolloverLockedSprintItems(withoutRemoved(mergedTests.tests, removedTestIds)),
+        'passed',
+      ),
+      existing.tests,
+      incoming.tests,
+    ),
     removedTaskIds: uniqueIds([...removedTaskIds, ...mergedTasks.removedIds]),
     removedTestIds: uniqueIds([...removedTestIds, ...mergedTests.removedIds]),
   };
@@ -227,6 +273,12 @@ export function parseWorkBoardStorePayload(value: unknown): WorkBoardStorePayloa
   // Trust the stored board. Re-seeding here resets titles/status back to the catalog.
   const prunedTests = pruneInflatedQaTests(overlayCatalogQaSchedule(normalizeQaTests(testsRaw ?? [])));
   const prunedTasks = pruneDuplicateTasks(overlaySupersededSeedTasks(normalizeTasks(tasksRaw ?? [])));
+  const finishedDay =
+    typeof value.updatedAt === 'string' && value.updatedAt.trim().slice(0, 10) >= '2026-01-01'
+      ? value.updatedAt.trim().slice(0, 10)
+      : workBoardTodayIso();
+  prunedTasks.tasks = stampFinishedWorkDates(prunedTasks.tasks, 'done', finishedDay);
+  prunedTests.tests = stampFinishedWorkDates(prunedTests.tests, 'passed', finishedDay);
   const removedTaskIds = uniqueIds([
     ...(Array.isArray(value.removedTaskIds) ? value.removedTaskIds : []),
     ...prunedTasks.removedIds,
@@ -257,9 +309,10 @@ export function buildWorkBoardStorePayload(
   const removedTestIds = uniqueIds(removed.testIds);
   const prunedTasks = pruneDuplicateTasks(overlaySupersededSeedTasks(normalizeTasks(tasks)));
   const prunedTests = pruneInflatedQaTests(overlayCatalogQaSchedule(normalizeQaTests(tests)));
+  const finishedDay = now.toISOString().slice(0, 10);
   return {
-    tasks: withoutRemoved(prunedTasks.tasks, removedTaskIds),
-    tests: withoutRemoved(prunedTests.tests, removedTestIds),
+    tasks: withoutRemoved(stampFinishedWorkDates(prunedTasks.tasks, 'done', finishedDay), removedTaskIds),
+    tests: withoutRemoved(stampFinishedWorkDates(prunedTests.tests, 'passed', finishedDay), removedTestIds),
     updatedAt: now.toISOString(),
     updatedBy: updatedBy?.trim() || null,
     removedTaskIds: uniqueIds([...removedTaskIds, ...prunedTasks.removedIds]),

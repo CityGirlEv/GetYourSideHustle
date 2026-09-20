@@ -11,7 +11,7 @@ async function continuePastWelcome(page: Page) {
 }
 
 async function clickMappedControl(page: Page, testId: string) {
-  if (testId === 'header-shop-planners' || testId === 'header-shop-menu-gear') {
+  if (testId === 'header-shop-planners' || testId === 'header-shop-menu-gear' || testId === 'header-shop-gear') {
     await page.getByTestId('header-shop-menu').click();
   }
   await page.getByTestId(testId).click();

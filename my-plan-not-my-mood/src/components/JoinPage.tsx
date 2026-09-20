@@ -11,7 +11,8 @@ import {
   Mic,
 } from 'lucide-react';
 import { MEMBERSHIP_TIERS, MembershipTier, AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE } from '../lib/membership';
-import { HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
+import { HEADER_COMPACT_PAGE_OFFSET } from '../lib/headerClearance';
+import { PAGE_CANVAS_CLASS } from '../lib/brandUi';
 import { Logo } from './Logo';
 
 const TIER_ICONS: Record<string, React.ReactNode> = {
@@ -34,29 +35,29 @@ export const JoinPage: React.FC<JoinPageProps> = ({
   onOpenChallenge,
 }) => {
   return (
-    <div className={`bg-[#FAF8F5] min-h-[60vh] ${HEADER_CONTENT_OFFSET}`} id="join-page">
+    <div className={`${PAGE_CANVAS_CLASS} min-h-[60vh] ${HEADER_COMPACT_PAGE_OFFSET}`} id="join-page" data-testid="join-page">
       {/* Hero */}
-      <section className="bg-gradient-to-br from-[#FFF7ED] via-[#FFEDD5] to-[#FEF3C7] text-[#9A3412] border-b-4 border-[#EA580C] py-10 sm:py-14">
+      <section className="bg-gradient-to-br from-[#FFF7ED] via-[#FFEDD5] to-[#FEF3C7] text-[#9A3412] border-b-4 border-[#EA580C] py-2.5 sm:py-3">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+          <div className="flex items-center gap-2.5 sm:gap-4">
             <Logo
               variant="seal-only"
-              size="xl"
-              className="shrink-0 drop-shadow-lg !w-24 !h-24 sm:!w-32 sm:!h-32 md:!w-40 md:!h-40"
+              size="sm"
+              className="shrink-0 drop-shadow-lg !w-8 !h-8 sm:!w-12 sm:!h-12"
             />
-            <div className="text-center sm:text-left space-y-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EA580C] text-white text-[10px] font-mono font-black uppercase tracking-wider shadow-[0_4px_12px_rgba(234,88,12,0.28)]">
-                <Lock className="w-3.5 h-3.5" /> Coming Soon
+            <div className="text-left min-w-0 space-y-1">
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EA580C] text-white text-[9px] font-mono font-black uppercase tracking-wider leading-none">
+                <Lock className="w-3 h-3" /> Coming Soon
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-black uppercase tracking-tight leading-tight text-[#9A3412]">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-serif font-black uppercase tracking-tight leading-none text-[#9A3412]">
                 Memberships — <span className="text-[#C2410C] italic">Coming Soon</span>
               </h1>
-              <p className="text-sm sm:text-base text-[#C2410C] font-medium max-w-2xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#C2410C] font-medium max-w-2xl leading-snug">
                 Phase 1 is the gear launch. Member accounts, tiers, and access are not configured yet.
                 Shop shirts now — memberships open in Phase 2.
               </p>
               <p
-                className="text-sm sm:text-base text-[#9A3412] font-medium max-w-2xl leading-relaxed"
+                className="text-xs sm:text-sm text-[#9A3412] font-medium max-w-2xl leading-snug"
                 data-testid="affirmations-scope-note"
               >
                 {AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE}

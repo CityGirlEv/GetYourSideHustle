@@ -48,7 +48,7 @@ export const ADMIN_STUDIO_TABS: AdminStudioTabDef[] = [
   { id: 'plan', label: 'Schedule & Plan', description: 'Living implementation plan' },
   { id: 'agenda', label: 'Agenda', description: 'Kickoff and meeting menus' },
   { id: 'tasks', label: 'Task List', description: 'Sprint work board' },
-  { id: 'testing', label: 'Testing', description: 'QA matrix' },
+  { id: 'testing', label: 'Testing Portal', description: 'QA matrix' },
   { id: 'timesheet', label: 'Timesheet', description: 'Hours by sprint' },
   { id: 'daily-progress', label: 'Daily Progress', description: 'What won today' },
   { id: 'users', label: 'Users Area', description: 'Accounts and roles' },

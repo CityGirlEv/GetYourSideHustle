@@ -42,7 +42,7 @@ describe('adminStudio', () => {
     expect(studioTabChildren('asset-library')).toEqual([]);
     expect(studioTabDef('calendar')?.label).toBe('Posting Schedule');
     expect(studioTabDef('gear-selections')?.label).toBe('Gear');
-    expect(studioTabDef('testing')?.label).toBe('Testing');
+    expect(studioTabDef('testing')?.label).toBe('Testing Portal');
     expect(studioTabDef('guides')?.label).toBe('Beta Guide');
     expect(studioTabDef('emails')?.label).toBe('Emails');
     const content = ADMIN_STUDIO_GROUPS.find((group) => group.id === 'content');

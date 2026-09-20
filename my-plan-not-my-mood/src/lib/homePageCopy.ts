@@ -1,14 +1,79 @@
-import { ANGELA_PORTRAIT_ALT, ANGELA_PORTRAIT_PATH } from './planIntro';
+import type { CSSProperties } from 'react';
 
 export const HOME_PAGE_COPY_STORAGE_KEY = 'myplan_home_page_copy_v1';
 
-export const HOME_HERO_IMAGE = ANGELA_PORTRAIT_PATH;
-export const HOME_HERO_IMAGE_ALT = ANGELA_PORTRAIT_ALT;
-export const HOME_MOVEMENT_IMAGE = '/images/multicultural_hero_moods.jpg';
+export const HOME_HERO_IMAGE = '/images/home-hero.jpg?v=hero-final';
+export const HOME_HERO_IMAGE_ALT =
+  'Angela Harris at her desk in a My Plan, Not My Mood tee, with Join the Movement and Shop the Collection';
+
+export type HomeHeroHotspot = {
+  left: string;
+  top: string;
+  width: string;
+  height: string;
+};
+
+/** Percent boxes over the painted Join / Shop buttons on the landscape hero. Must not overlap. */
+export const HOME_HERO_JOIN_HOTSPOT: HomeHeroHotspot = {
+  left: '5.5%',
+  top: '66.5%',
+  width: '28%',
+  height: '8.5%',
+};
+export const HOME_HERO_SHOP_HOTSPOT: HomeHeroHotspot = {
+  left: '5.5%',
+  top: '76%',
+  width: '28%',
+  height: '9%',
+};
+
+export function homeHeroHotspotStyle(hotspot: HomeHeroHotspot): CSSProperties {
+  return {
+    position: 'absolute',
+    left: hotspot.left,
+    top: hotspot.top,
+    width: hotspot.width,
+    height: hotspot.height,
+  };
+}
+
+export const HOME_HERO_SHOP_HREF = '/gear';
+
+export function heroShopHotspotOverlapsJoin(
+  join: HomeHeroHotspot = HOME_HERO_JOIN_HOTSPOT,
+  shop: HomeHeroHotspot = HOME_HERO_SHOP_HOTSPOT,
+): boolean {
+  const joinBottom = Number.parseFloat(join.top) + Number.parseFloat(join.height);
+  return Number.parseFloat(shop.top) < joinBottom;
+}
+export const HOME_MOVEMENT_IMAGE = '/images/home-movement.jpg?v=couple-tees';
 export const HOME_MOVEMENT_IMAGE_ALT =
-  'People wearing My Plan, Not My Mood gear — a movement for real life';
+  'Two people wearing My Plan, Not My Mood tees — a movement for real life';
+export const HOME_QUOTE_IMAGE = '/images/multicultural_hero_moods_bg.jpg';
 
 export const HOME_PILLAR_COUNT = 5;
+
+export type HomePillarDestination = {
+  href: string;
+  kind: 'gear' | 'mood' | 'about' | 'affirmations' | 'join';
+};
+
+export const HOME_PILLAR_DESTINATIONS: readonly HomePillarDestination[] = [
+  { href: '/gear', kind: 'gear' },
+  { href: '/#mood-tool', kind: 'mood' },
+  { href: '/about', kind: 'about' },
+  { href: '/join', kind: 'affirmations' },
+  { href: '/join', kind: 'join' },
+];
+
+export function homePillarDestination(index: number): HomePillarDestination {
+  return HOME_PILLAR_DESTINATIONS[index] ?? HOME_PILLAR_DESTINATIONS[0];
+}
+
+/** Public home copy is Super Admin only — Admin, QA, and Dev cannot edit it. */
+export function canEditHomePageCopy(isSuperAdmin: boolean | null | undefined): boolean {
+  return Boolean(isSuperAdmin);
+}
 
 export type HomePageCopy = {
   kicker: string;
@@ -34,12 +99,12 @@ export type HomePageCopy = {
 };
 
 export const DEFAULT_HOME_PAGE_COPY: HomePageCopy = {
-  kicker: 'THE MOVEMENT',
+  kicker: 'A NONNEGOTIATION BRAND',
   titleLead: 'MY PLAN,',
   titleAccent: 'NOT MY MOOD.',
   lede: 'Do not let a temporary mood determine a permanent outcome.',
   feelIt: 'FEEL IT. FOLLOW THE PLAN ANYWAY.',
-  primaryCta: 'EXPLORE THE MOVEMENT',
+  primaryCta: 'JOIN THE MOVEMENT',
   secondaryCta: 'SHOP THE COLLECTION',
   overlayScript: 'Purpose Looks Good On You.',
   pillars: [
@@ -53,7 +118,7 @@ export const DEFAULT_HOME_PAGE_COPY: HomePageCopy = {
   movementTitle: 'A Movement for Real Life.',
   movementBody:
     'Whether you’re tired, excited, overwhelmed or somewhere in between — the plan still works. This movement is about making choices that align with the life you want, not just how you feel in the moment.',
-  movementCta: 'OUR STORY',
+  movementCta: 'How The Journey Began',
   quote: 'Discipline today creates the freedom you want tomorrow.',
   quoteEmphasis: 'freedom',
   quoteAttribution: 'MY PLAN, NOT MY MOOD',
@@ -89,6 +154,15 @@ function cleanText(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback;
   const trimmed = value.replace(/\s+/g, ' ').trim();
   return trimmed || fallback;
+}
+
+/** Mockup stacks the default overlay as three script lines. */
+export function overlayScriptDisplay(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (/^purpose looks good on you\.?$/i.test(normalized)) {
+    return 'Purpose\nLooks Good\nOn You.';
+  }
+  return text.trim();
 }
 
 function cleanPillars(value: unknown): string[] {

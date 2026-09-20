@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Lock, RefreshCw, Timer, Zap } from 'lucide-react';
 import type { MoodOption } from '../data/moods';
 import {
@@ -16,6 +16,11 @@ import {
   type ShakeTile,
   type ShakeTileKind,
 } from '../lib/moodShake';
+import {
+  MOOD_SHAKE_RESULT_ID,
+  MOOD_SHAKE_SCROLL_MARGIN_CLASS,
+  scrollMoodShakeResultIntoView,
+} from '../lib/moodWorkflow';
 
 type MoodShakePanelProps = {
   mood: MoodOption;
@@ -37,6 +42,7 @@ export const MoodShakePanel: React.FC<MoodShakePanelProps> = ({
   const [tiles, setTiles] = useState<ShakeTile[]>([]);
   const [taps, setTaps] = useState<ShakeTileKind[]>([]);
   const [caught, setCaught] = useState<string[]>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setDoneSteps({});
@@ -45,6 +51,10 @@ export const MoodShakePanel: React.FC<MoodShakePanelProps> = ({
     setTiles([]);
     setTaps([]);
     setCaught([]);
+    const timer = window.setTimeout(() => {
+      scrollMoodShakeResultIntoView(() => panelRef.current);
+    }, 50);
+    return () => window.clearTimeout(timer);
   }, [mood.id]);
 
   useEffect(() => {
@@ -88,7 +98,9 @@ export const MoodShakePanel: React.FC<MoodShakePanelProps> = ({
 
   return (
     <div
-      className="max-w-5xl mx-auto bg-white border-2 border-[#1F1917] rounded-3xl overflow-hidden shadow-2xl text-left animate-fadeIn my-4 grid grid-cols-1 md:grid-cols-2"
+      ref={panelRef}
+      id={MOOD_SHAKE_RESULT_ID}
+      className={`max-w-5xl mx-auto bg-white border-2 border-[#1F1917] rounded-3xl overflow-hidden shadow-2xl text-left animate-fadeIn my-4 grid grid-cols-1 md:grid-cols-2 ${MOOD_SHAKE_SCROLL_MARGIN_CLASS}`}
       data-testid="mood-shake-panel"
     >
       <div className="bg-[#FAF8F5] p-6 border-b md:border-b-0 md:border-r border-[#E5DFD3] space-y-4">

@@ -10,7 +10,7 @@ import {
   requestPasswordResetAsync,
 } from '../lib/passwordReset';
 import { BRAND_TAB_ROW_CLASS, brandTabClass } from '../lib/brandUi';
-import { HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
+import { HEADER_OVERLAY_OFFSET } from '../lib/headerClearance';
 import { Logo } from './Logo';
 import {
   LOGIN_EMAIL_AUTOCOMPLETE,
@@ -260,7 +260,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-start justify-center px-4 pb-6 overflow-y-auto ${HEADER_CONTENT_OFFSET}`}>
+    <div className={`fixed inset-0 z-50 flex items-start justify-center px-4 pb-6 overflow-y-auto ${HEADER_OVERLAY_OFFSET}`}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-[#1F1917]/75 backdrop-blur-sm" onClick={onClose} />
 

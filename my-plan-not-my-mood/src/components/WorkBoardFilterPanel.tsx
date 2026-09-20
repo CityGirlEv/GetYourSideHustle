@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { ChevronDown, Lock, Search, X } from 'lucide-react';
 import type { DueDateFilter, FilterChipCount, FilterSectionId } from '../lib/workBoard';
 import {
   applyFilterChipClick,
   defaultOpenFilterSections,
+  FILTER_CHIP_COUNT_CLASS,
   FILTER_SECTION_LABELS,
   FILTER_SECTION_TONES,
   FILTER_TABS_HINT,
@@ -66,11 +67,11 @@ function FilterChipPanel<T extends string>({
         className={`inline-flex flex-col items-start gap-0.5 px-3 py-2 rounded-full border-2 text-left transition-all cursor-pointer min-w-[5.5rem] min-h-[44px] ${
           isFilterShowingAll(selected, ordered)
             ? `${tone.selectedAll} shadow-sm`
-            : 'border-black/10 bg-white/80 hover:border-black/25'
+            : `${tone.chip} hover:brightness-95`
         }`}
       >
         <span className="text-[10px] font-black uppercase">All</span>
-        <span className="text-[9px] font-mono font-bold tabular-nums text-[#3F3832]">{total}</span>
+        <span className={FILTER_CHIP_COUNT_CLASS}>{total}</span>
       </button>
       {chips.map((chip) => {
         const active = !isFilterShowingAll(selected, ordered) && selected.has(chip.id as T);
@@ -79,13 +80,14 @@ function FilterChipPanel<T extends string>({
             key={chip.id}
             type="button"
             data-active={active}
+            data-locked={chip.locked ? 'true' : undefined}
             data-testid={testId ? `${testId}-${chip.id}` : undefined}
             onClick={(e) => handleChipClick(chip.id as T, e)}
-            title={`${chip.label}: ${chip.done}/${chip.total} done · Click to multi-select`}
+            title={`${chip.label}: ${chip.done}/${chip.total} done${chip.locked ? ' · Locked' : ''} · Click to multi-select`}
             className={`inline-flex flex-col items-start gap-0.5 px-3 py-2 rounded-full border-2 text-left transition-all cursor-pointer min-w-[7rem] min-h-[44px] ${
               active
                 ? `${tone.selected} shadow-sm`
-                : 'border-black/10 bg-white/80 hover:border-black/25'
+                : `${tone.chip} hover:brightness-95`
             }`}
           >
             <span
@@ -97,7 +99,13 @@ function FilterChipPanel<T extends string>({
               ) : null}
               {chip.label}
             </span>
-            <span className="text-[9px] font-mono font-bold tabular-nums text-[#3F3832]">
+            {chip.locked ? (
+              <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wide text-[#1F1917]">
+                <Lock className="w-3 h-3" aria-hidden />
+                Locked
+              </span>
+            ) : null}
+            <span className={FILTER_CHIP_COUNT_CLASS}>
               {chip.done}/{chip.total}
             </span>
           </button>
@@ -200,8 +208,8 @@ export function WorkBoardFilterPanel<TStatus extends string>({
     chips: FilterChipCount[];
     onChange: (next: Set<string>) => void;
   }> = [
-    { id: 'sprint', selected: sprintFilter as Set<string>, ordered: sprintOrdered, chips: sprintChips, onChange: onSprintChange },
     { id: 'assignee', selected: assigneeFilter as Set<string>, ordered: assigneeOrdered, chips: assigneeChips, onChange: onAssigneeChange },
+    { id: 'sprint', selected: sprintFilter as Set<string>, ordered: sprintOrdered, chips: sprintChips, onChange: onSprintChange },
     {
       id: 'status',
       selected: statusFilter as Set<string>,

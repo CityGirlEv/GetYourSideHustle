@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  JOIN_THE_MOVEMENT_LABEL,
   MAILING_LIST_FIELDS,
+  MAILING_LIST_HYPE,
   MAILING_LIST_NOT_MEMBERSHIP_NOTE,
   MAILING_LIST_STORAGE_KEY,
+  mailingListAllowsOptionalPhone,
   mailingListCollectsPhoneOrAddress,
   mailingListIsMembership,
   readMailingListSignups,
@@ -16,10 +19,14 @@ describe('mailingList', () => {
   });
 
   it('accepts email and an optional first name', () => {
-    expect(MAILING_LIST_FIELDS).toEqual(['email', 'firstName']);
+    expect(MAILING_LIST_FIELDS).toEqual(['email', 'firstName', 'lastName', 'phone', 'heardAbout']);
     expect(mailingListIsMembership()).toBe(false);
     expect(mailingListCollectsPhoneOrAddress()).toBe(false);
+    expect(mailingListAllowsOptionalPhone()).toBe(true);
+    expect(MAILING_LIST_HYPE).toMatch(/Get in first/i);
     expect(MAILING_LIST_NOT_MEMBERSHIP_NOTE).toMatch(/not a membership/i);
+    expect(MAILING_LIST_NOT_MEMBERSHIP_NOTE).toContain(JOIN_THE_MOVEMENT_LABEL);
+    expect(JOIN_THE_MOVEMENT_LABEL).toBe('Join the Movement');
     expect(validateMailingListSignup({ email: 'Pat@Example.com', firstName: 'Pat' })).toMatchObject({
       ok: true,
       signup: { email: 'pat@example.com', firstName: 'Pat' },
@@ -43,5 +50,15 @@ describe('mailingList', () => {
     expect(dup.ok).toBe(false);
     expect(dup.ok === false && dup.error).toMatch(/already/i);
     expect(readMailingListSignups()).toHaveLength(1);
+  });
+
+  it('keeps phone optional and stores a valid US number', () => {
+    expect(validateMailingListSignup({ email: 'pat@example.com' }).ok).toBe(true);
+    expect(validateMailingListSignup({ email: 'pat@example.com', phone: '123' }).ok).toBe(false);
+    const withPhone = validateMailingListSignup({ email: 'pat@example.com', phone: '6195550100' });
+    expect(withPhone).toMatchObject({
+      ok: true,
+      signup: { phone: '(619) 555-0100' },
+    });
   });
 });

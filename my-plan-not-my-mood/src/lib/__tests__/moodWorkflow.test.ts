@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MOOD_OPTIONS } from '../../data/moods';
 import {
@@ -17,6 +19,10 @@ import {
   MOOD_AREA_HREF,
   MOOD_BUBBLES_TEST_ID,
   MOOD_HERO_BUBBLES_HREF,
+  MOOD_HOW_IT_WORKS_HREF,
+  MOOD_SHAKE_RESULT_ID,
+  isMoodShakeMobileViewport,
+  scrollMoodShakeResultIntoView,
   MOOD_WORKFLOW_ASSIGNEE,
   MOOD_WORKFLOW_MAP_HREF,
   MOOD_WORKFLOW_MAP_TEST_ID,
@@ -44,6 +50,7 @@ describe('moodWorkflow', () => {
     expect(MOOD_WORKFLOW_STEPS).toHaveLength(5);
     expect(MOOD_WORKFLOW_STEPS[0]?.href).toBe(MOOD_AREA_HREF);
     expect(MOOD_WORKFLOW_STEPS[1]?.href).toBe(MOOD_HERO_BUBBLES_HREF);
+    expect(MOOD_WORKFLOW_STEPS[3]?.href).toBe(MOOD_HOW_IT_WORKS_HREF);
     expect(MOOD_WORKFLOW_STEPS.every((step) => /^Go to /i.test(step.label))).toBe(true);
     const leaves = flattenLeaves(APP_SITE_TREE);
     expect(leaves.find((leaf) => leaf.id === 'mood')?.path).toBe('/#mood-tool');
@@ -113,5 +120,60 @@ describe('moodWorkflow', () => {
       ),
     ).toBe(true);
     expect(nextTaskId(INITIAL_TASKS)).toBe('t-212');
+  });
+
+  it('scrolls the How to shake it panel into view on mobile after a mood is chosen', () => {
+    expect(MOOD_HOW_IT_WORKS_HREF).toBe(`/#${MOOD_SHAKE_RESULT_ID}`);
+    expect(isMoodShakeMobileViewport(390)).toBe(true);
+    expect(isMoodShakeMobileViewport(1024)).toBe(false);
+
+    const el = document.createElement('div');
+    el.getBoundingClientRect = () =>
+      ({
+        top: 800,
+        bottom: 1400,
+        left: 0,
+        right: 320,
+        width: 320,
+        height: 600,
+        x: 0,
+        y: 800,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+    const header = document.createElement('header');
+    header.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        bottom: 112,
+        left: 0,
+        right: 320,
+        width: 320,
+        height: 112,
+        x: 0,
+        y: 0,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+
+    const calls: Array<{ top: number; behavior: ScrollBehavior }> = [];
+    const scrollTo = (opts: { top: number; behavior: ScrollBehavior }) => {
+      calls.push(opts);
+    };
+
+    expect(scrollMoodShakeResultIntoView(() => el, { width: 1024, scrollTo, header })).toBe(false);
+    expect(calls).toHaveLength(0);
+    expect(scrollMoodShakeResultIntoView(() => null, { width: 390, scrollTo, header })).toBe(false);
+    expect(scrollMoodShakeResultIntoView(() => el, { width: 390, scrollTo, header, scrollY: 0 })).toBe(true);
+    expect(calls[0]?.behavior).toBe('smooth');
+    expect(calls[0]?.top).toBe(800 - 112 - 8);
+
+    const panel = readFileSync(resolve(process.cwd(), 'src/components/MoodShakePanel.tsx'), 'utf8');
+    expect(panel).toContain('scrollMoodShakeResultIntoView');
+    expect(panel).toContain('MOOD_SHAKE_RESULT_ID');
+    expect(panel).toContain('MOOD_SHAKE_SCROLL_MARGIN_CLASS');
+    expect(panel).toContain('panelRef.current');
   });
 });

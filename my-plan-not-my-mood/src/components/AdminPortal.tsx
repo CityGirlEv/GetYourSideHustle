@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   FileText,
   Shield,
@@ -65,6 +65,7 @@ import {
   snapshotRowFingerprints,
   workRowHasUnsavedEdits,
 } from '../lib/workBoardStore';
+import { attachWorkItemFieldAudit } from '../lib/workItemAudit';
 import {
   getAppUsers,
   updateUserProfileAsync,
@@ -85,8 +86,8 @@ import {
   loginUserAsync,
   importBrowserUsersToD1,
   hasLocalUsersToImport,
-  listPortalTesters,
   USER_STATUS_LABELS,
+  listPortalTesters,
 } from '../lib/userAuth';
 import { formatPhoneDisplay, phoneSignupError, phoneTelHref } from '../lib/phoneNumber';
 import { rolloverSprint, sprintSelectOptions } from '../lib/sprintRollover';
@@ -163,9 +164,7 @@ import {
   WorkBoardFieldGrid,
   WorkBoardHeaderDate,
   WorkBoardHeaderSelect,
-  RolledOverStatusBadge,
   workBoardFieldClassName,
-  workBoardHeaderBubbleClass,
 } from './WorkBoardExpandableRow';
 import { WorkItemNotesAttachments } from './WorkItemNotesAttachments';
 import { WorkItemDescriptionChecklist } from './WorkItemDescriptionChecklist';
@@ -189,6 +188,7 @@ import {
   PHASE_1_LABEL,
   PHASE_2_LABEL,
   PHASE_3_LABEL,
+  phase1PaidBudgetCopy,
   upgradeDeliverableLabel,
 } from '../lib/gearSalesPlan';
 import { PaymentScheduleCard } from './PaymentScheduleCard';
@@ -255,6 +255,7 @@ import {
   buildPriorityChipCounts,
   buildAssigneeChipCounts,
   buildCategoryChipCounts,
+  filtersOmittingSection,
   taskIsDone,
   qaIsDone,
   TASK_STATUSES,
@@ -267,9 +268,11 @@ import {
   formatRolledOverCount,
   QA_STATUSES,
   PRIORITY_OPTIONS,
-  ASSIGNEE_OPTIONS,
   ASSIGNOR_OPTIONS,
-  TEST_ASSIGNEE_OPTIONS,
+  testingPortalAssigneeOptions,
+  testingPortalHumanAssigneeOptions,
+  taskBoardAssigneeOptions,
+  assigneeDisplayLabel,
   TASK_CATEGORIES,
   QA_CATEGORIES,
   SPRINT_OPTIONS,
@@ -278,10 +281,8 @@ import {
   QA_STATUS_SHORT_LABELS,
   PRIORITY_LABELS,
   ASSIGNEE_LABELS,
-  applyTaskInlinePatchToList,
-  applyBulkTaskPatch,
-  applyQaInlinePatchToList,
-  applyBulkQaPatch,
+  applyTaskInlinePatch,
+  applyQaInlinePatch,
   applyTasksBlockedWithNote,
   taskNeedsBlockedNote,
   currentSprintLabel,
@@ -987,12 +988,6 @@ function WorkBoardCollapsibleSummary({
   );
 }
 
-function testerStatusChipClass(status: UserStatus): string {
-  if (status === 'active') return 'bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]';
-  if (status === 'pending') return 'bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]';
-  return 'bg-[#E7E0D6] text-[#3F3832] border-[#D6CFC4]';
-}
-
 export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initialTab }) => {
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => resolvePortalAdminSession());
   const [activeTab, setActiveTab] = useState<AdminPortalTab>(() => resolveAdminPortalTab(initialTab));
@@ -1302,6 +1297,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   const workBoardSavingRef = useRef(false);
   const workBoardPullEpochRef = useRef(0);
   const applyingRemoteWorkBoardRef = useRef(false);
+  const workBoardPendingSaveRef = useRef(false);
   const lastSavedFingerprintRef = useRef<string | null>(null);
   const lastSavedTaskRowsRef = useRef<Map<string, string> | null>(null);
   const lastSavedTestRowsRef = useRef<Map<string, string> | null>(null);
@@ -1321,6 +1317,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
 
   const persistWorkBoard = useCallback(
     (nextTasks: TaskItem[], nextTests: QaTestItem[]) => {
+      if (!workBoardHydrated.current) {
+        workBoardPendingSaveRef.current = true;
+        return;
+      }
+      if (workBoardSavingRef.current) {
+        workBoardPendingSaveRef.current = true;
+        return;
+      }
       const savedFingerprint = workBoardFingerprint(nextTasks, nextTests);
       workBoardSavingRef.current = true;
       setWorkBoardSaving(true);
@@ -1354,6 +1358,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         .finally(() => {
           workBoardSavingRef.current = false;
           setWorkBoardSaving(false);
+          if (workBoardPendingSaveRef.current) {
+            workBoardPendingSaveRef.current = false;
+            persistWorkBoard(tasksRef.current, qaTestsRef.current);
+          }
         });
     },
     [currentUser],
@@ -1379,8 +1387,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
       removedTestIdsRef.current = [...new Set([...(remote.removedTestIds ?? []), ...removedTestIdsRef.current])];
     }
     const next = hydrateWorkBoardFromRemote(remote, tasksRef.current, qaTestsRef.current, {
-      // After the first load, never let a poll overwrite fields this browser already has.
-      preferLocal: workBoardDirtyRef.current || workBoardHydrated.current,
+      // First load always merges by progress so seed/not-started rows cannot wipe Done.
+      preferLocal: false,
       removedTaskIds: removedTaskIdsRef.current,
       removedTestIds: removedTestIdsRef.current,
     });
@@ -1409,6 +1417,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         if (cancelled || epoch !== workBoardPullEpochRef.current) return;
         applyRemoteWorkBoard(remote);
         workBoardHydrated.current = true;
+        if (workBoardPendingSaveRef.current) {
+          workBoardPendingSaveRef.current = false;
+          persistWorkBoard(tasksRef.current, qaTestsRef.current);
+        }
       });
     };
     pull();
@@ -1425,7 +1437,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [applyRemoteWorkBoard]);
+  }, [applyRemoteWorkBoard, persistWorkBoard]);
 
   // User Management State
   const [appUsers, setAppUsers] = useState<AppUser[]>(() => getAppUsers());
@@ -1841,6 +1853,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     else setDirtyTestIds((prev) => markWorkItemDirty(prev, ids));
   };
 
+  const workBoardAuditActor = () => ({
+    name: permissionActor?.name ?? currentUser?.name ?? 'Unknown',
+    email: permissionActor?.email ?? currentUser?.email,
+  });
+
   const handleUpdateTask = (id: string, patch: TaskInlinePatch) => {
     const actor = workAssigneeFromActor(permissionActor ?? currentUser);
     if (patch.status === 'blocked' && patch.notes === undefined) {
@@ -1850,10 +1867,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         return;
       }
     }
-    const next = applyTaskInlinePatchToList(tasksRef.current, id, patch, actor);
+    const current = tasksRef.current.find((task) => task.id === id);
+    if (!current) return;
+    const patched = applyTaskInlinePatch(current, patch, actor);
+    const nextItem = attachWorkItemFieldAudit(current, patched, workBoardAuditActor(), 'task');
+    const next = tasksRef.current.map((task) => (task.id === id ? nextItem : task));
     tasksRef.current = next;
     flagWorkBoardDirty('task', [id]);
     setTasks(next);
+    if (patch.status !== undefined || patch.assignee !== undefined) persistWorkBoard(next, qaTestsRef.current);
   };
 
   const handleBulkUpdateTasks = (ids: string[], patch: TaskInlinePatch) => {
@@ -1868,12 +1890,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         return;
       }
     }
-    flagWorkBoardDirty('task', ids);
-    setTasks((prev) => {
-      const next = applyBulkTaskPatch(prev, ids, patch, actor);
-      tasksRef.current = next;
-      return next;
+    const selected = new Set(ids);
+    const auditActor = workBoardAuditActor();
+    const next = tasksRef.current.map((task) => {
+      if (!selected.has(task.id)) return task;
+      const patched = applyTaskInlinePatch(task, patch, actor);
+      return attachWorkItemFieldAudit(task, patched, auditActor, 'task');
     });
+    flagWorkBoardDirty('task', ids);
+    tasksRef.current = next;
+    setTasks(next);
+    if (patch.status !== undefined || patch.assignee !== undefined) persistWorkBoard(next, qaTestsRef.current);
   };
 
   const confirmBlockedNote = (note: string) => {
@@ -1888,25 +1915,36 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     tasksRef.current = result.tasks;
     flagWorkBoardDirty('task', ids);
     setTasks(result.tasks);
+    persistWorkBoard(result.tasks, qaTestsRef.current);
     setBlockedNoteTaskIds(null);
   };
 
   const handleUpdateQa = (id: string, patch: QaInlinePatch) => {
     const actor = workAssigneeFromActor(permissionActor ?? currentUser);
-    const next = applyQaInlinePatchToList(qaTestsRef.current, id, patch, actor);
+    const current = qaTestsRef.current.find((test) => test.id === id);
+    if (!current) return;
+    const patched = applyQaInlinePatch(current, patch, actor);
+    const nextItem = attachWorkItemFieldAudit(current, patched, workBoardAuditActor(), 'test');
+    const next = qaTestsRef.current.map((test) => (test.id === id ? nextItem : test));
     qaTestsRef.current = next;
     flagWorkBoardDirty('test', [id]);
     setQaTests(next);
+    if (patch.status !== undefined || patch.assignee !== undefined) persistWorkBoard(tasksRef.current, next);
   };
 
   const handleBulkUpdateQa = (ids: string[], patch: QaInlinePatch) => {
     const actor = workAssigneeFromActor(permissionActor ?? currentUser);
-    flagWorkBoardDirty('test', ids);
-    setQaTests((prev) => {
-      const next = applyBulkQaPatch(prev, ids, patch, actor);
-      qaTestsRef.current = next;
-      return next;
+    const selected = new Set(ids);
+    const auditActor = workBoardAuditActor();
+    const next = qaTestsRef.current.map((test) => {
+      if (!selected.has(test.id)) return test;
+      const patched = applyQaInlinePatch(test, patch, actor);
+      return attachWorkItemFieldAudit(test, patched, auditActor, 'test');
     });
+    flagWorkBoardDirty('test', ids);
+    qaTestsRef.current = next;
+    setQaTests(next);
+    if (patch.status !== undefined || patch.assignee !== undefined) persistWorkBoard(tasksRef.current, next);
   };
 
   const handleCycleTaskStatus = (id: string) => {
@@ -2007,26 +2045,86 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   const filteredQaTests = filterQaTests(suiteScopedQaTests, qaFilters, qaSearch);
   const qaSuiteChips = buildSuiteChipCounts(qaTests, qaIsDone);
 
-  const taskSprintChips = buildSprintChipCounts(tasks, taskIsDone);
-  const taskStatusChips = appendRolledOverStatusChip(
-    buildStatusChipCounts(tasks, TASK_STATUSES, TASK_STATUS_LABELS, (s) => s === 'done', TASK_STATUS_SWATCH),
-    tasks,
+  const taskSprintChips = buildSprintChipCounts(
+    filterTasks(tasks, filtersOmittingSection(taskFilters, 'sprint'), taskSearch),
     taskIsDone,
   );
-  const taskPriorityChips = buildPriorityChipCounts(tasks, taskIsDone);
-  const taskAssigneeChips = buildAssigneeChipCounts(tasks, taskIsDone);
-  const taskCategoryChips = buildCategoryChipCounts(tasks, TASK_CATEGORIES, taskIsDone);
+  const taskStatusChipItems = filterTasks(
+    tasks,
+    filtersOmittingSection(taskFilters, 'status'),
+    taskSearch,
+  );
+  const taskStatusChips = appendRolledOverStatusChip(
+    buildStatusChipCounts(
+      taskStatusChipItems,
+      TASK_STATUSES,
+      TASK_STATUS_LABELS,
+      (s) => s === 'done',
+      TASK_STATUS_SWATCH,
+    ),
+    taskStatusChipItems,
+    taskIsDone,
+  );
+  const taskPriorityChips = buildPriorityChipCounts(
+    filterTasks(tasks, filtersOmittingSection(taskFilters, 'priority'), taskSearch),
+    taskIsDone,
+  );
+  const taskCategoryChips = buildCategoryChipCounts(
+    filterTasks(tasks, filtersOmittingSection(taskFilters, 'category'), taskSearch),
+    TASK_CATEGORIES,
+    taskIsDone,
+  );
 
-  const qaSprintChips = buildSprintChipCounts(suiteScopedQaTests, qaIsDone);
-  const qaStatusChips = appendRolledOverStatusChip(
-    buildStatusChipCounts(suiteScopedQaTests, QA_STATUSES, QA_STATUS_LABELS, (s) => s === 'passed', QA_STATUS_SWATCH),
-    suiteScopedQaTests,
+  const qaSprintChips = buildSprintChipCounts(
+    filterQaTests(suiteScopedQaTests, filtersOmittingSection(qaFilters, 'sprint'), qaSearch),
     qaIsDone,
   );
-  const qaPriorityChips = buildPriorityChipCounts(suiteScopedQaTests, qaIsDone);
-  const qaAssigneeChips = buildAssigneeChipCounts(qaTests, qaIsDone, TEST_ASSIGNEE_OPTIONS);
-  const qaCategoryChips = buildCategoryChipCounts(suiteScopedQaTests, QA_CATEGORIES, qaIsDone);
-  const portalTesters = useMemo(() => listPortalTesters(appUsers), [appUsers]);
+  const qaStatusChipItems = filterQaTests(
+    suiteScopedQaTests,
+    filtersOmittingSection(qaFilters, 'status'),
+    qaSearch,
+  );
+  const qaStatusChips = appendRolledOverStatusChip(
+    buildStatusChipCounts(qaStatusChipItems, QA_STATUSES, QA_STATUS_LABELS, (s) => s === 'passed', QA_STATUS_SWATCH),
+    qaStatusChipItems,
+    qaIsDone,
+  );
+  const qaPriorityChips = buildPriorityChipCounts(
+    filterQaTests(suiteScopedQaTests, filtersOmittingSection(qaFilters, 'priority'), qaSearch),
+    qaIsDone,
+  );
+  const testerPeople = useMemo(
+    () => listPortalTesters(appUsers).map((tester) => ({ id: tester.id, name: tester.name })),
+    [appUsers],
+  );
+  const qaAssigneeOrdered = useMemo(() => testingPortalAssigneeOptions(testerPeople), [testerPeople]);
+  const qaHumanAssignees = useMemo(() => testingPortalHumanAssigneeOptions(testerPeople), [testerPeople]);
+  const qaAssigneeLabels = useMemo(
+    () => Object.fromEntries(qaAssigneeOrdered.map((id) => [id, assigneeDisplayLabel(id, testerPeople)])),
+    [qaAssigneeOrdered, testerPeople],
+  );
+  const taskAssigneeOrdered = useMemo(() => taskBoardAssigneeOptions(testerPeople), [testerPeople]);
+  const taskAssigneeLabels = useMemo(
+    () => Object.fromEntries(taskAssigneeOrdered.map((id) => [id, assigneeDisplayLabel(id, testerPeople)])),
+    [taskAssigneeOrdered, testerPeople],
+  );
+  const qaAssigneeChips = buildAssigneeChipCounts(
+    filterQaTests(suiteScopedQaTests, filtersOmittingSection(qaFilters, 'assignee'), qaSearch),
+    qaIsDone,
+    qaAssigneeOrdered,
+    testerPeople,
+  );
+  const taskAssigneeChips = buildAssigneeChipCounts(
+    filterTasks(tasks, filtersOmittingSection(taskFilters, 'assignee'), taskSearch),
+    taskIsDone,
+    taskAssigneeOrdered,
+    testerPeople,
+  );
+  const qaCategoryChips = buildCategoryChipCounts(
+    filterQaTests(suiteScopedQaTests, filtersOmittingSection(qaFilters, 'category'), qaSearch),
+    QA_CATEGORIES,
+    qaIsDone,
+  );
 
   const visibleTaskIds = filteredTasks.map((task) => task.id);
   const visibleQaIds = filteredQaTests.map((test) => test.id);
@@ -2706,7 +2804,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   <p className="text-xs text-[#3F3832] mt-0.5">
                     {viewingPrevious
                       ? `Archived ${formatBudgetTimestamp(previousBudget.capturedAt)}. This is the pre-payment discount version.`
-                      : `Flat rate $${CURRENT_BUDGET_FLAT_RATE.toLocaleString()} in three payments. $3,500 is already paid. Payment 2 ($3,500) is due Sprint 1.`}
+                      : `Flat rate $${CURRENT_BUDGET_FLAT_RATE.toLocaleString()} in three payments. ${phase1PaidBudgetCopy()}`}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -3005,60 +3103,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         {/* TAB 3: TESTING PORTAL & QA MATRIX */}
         {activeTab === 'testing' && (
           <div className="space-y-3 animate-fadeIn">
-            <section
-              className="bg-white border-2 border-[#1F1917] rounded-3xl p-4 shadow-xl space-y-3"
-              data-testid="testing-testers"
-            >
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FFEDD5] text-[#C2410C] text-[10px] font-sans font-black uppercase tracking-wide mb-1">
-                  <Users className="w-3 h-3" /> Testers
-                </div>
-                <h3 className="text-base font-black text-[#1F1917] uppercase tracking-tight font-serif">
-                  All testers
-                </h3>
-                <p className="text-xs text-[#3F3832] font-medium">
-                  Beta Testers and QA Testers. Pending accounts still need an admin to activate them.
-                </p>
-              </div>
-              {usersLoadError ? (
-                <p className="text-xs font-medium text-[#9A3412]">{usersLoadError}</p>
-              ) : null}
-              {portalTesters.length === 0 ? (
-                <p className="text-xs font-medium text-[#3F3832]" data-testid="testing-testers-empty">
-                  No testers yet. They register from the storefront Sign In / Register.
-                </p>
-              ) : (
-                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {portalTesters.map((tester) => (
-                    <li
-                      key={tester.id}
-                      data-testid={`testing-tester-${tester.id}`}
-                      className="rounded-2xl border-2 border-[#E7E0D6] bg-[#FAF8F5] px-3 py-3 min-h-[44px]"
-                    >
-                      <div className="font-bold text-sm text-[#1F1917]">{tester.name}</div>
-                      <div className="text-[11px] font-mono text-[#3F3832] break-all">{tester.email}</div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-lg border text-[9px] font-mono font-black uppercase tracking-wider ${testerStatusChipClass(tester.status)}`}
-                        >
-                          {USER_STATUS_LABELS[tester.status]}
-                        </span>
-                        {tester.wantsBeta ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-[#FFEDD5] text-[#C2410C] border border-[#C2410C]/40 text-[9px] font-mono font-black uppercase tracking-wider">
-                            Beta Tester
-                          </span>
-                        ) : null}
-                        {tester.role === 'qa' || (tester.roles ?? [tester.role]).includes('qa') ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-[#DBEAFE] text-[#1E3A8A] border border-[#93C5FD] text-[9px] font-mono font-black uppercase tracking-wider">
-                            QA
-                          </span>
-                        ) : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5" data-testid="qa-suite-cards">
               {qaSuiteChips.map((chip) => {
                 const showingAll = qaSuiteFilter.size === 0;
@@ -3122,7 +3166,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
               sprintOrdered={SPRINT_OPTIONS}
               statusOrdered={QA_STATUS_FILTER_OPTIONS}
               priorityOrdered={PRIORITY_OPTIONS}
-              assigneeOrdered={TEST_ASSIGNEE_OPTIONS}
+              assigneeOrdered={qaAssigneeOrdered}
               categoryOrdered={QA_CATEGORIES}
               onSprintChange={(next) => setQaFilters((prev) => ({ ...prev, sprint: next as Set<SprintCategory> }))}
               onStatusChange={(next) => setQaFilters((prev) => ({ ...prev, status: next }))}
@@ -3204,7 +3248,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   {
                     id: 'assignee',
                     label: 'Assignee',
-                    options: TEST_ASSIGNEE_OPTIONS.filter((assignee) => assignee !== 'vitest' && assignee !== 'playwright').map((assignee) => ({ value: assignee, label: ASSIGNEE_LABELS[assignee] })),
+                    options: qaHumanAssignees.map((assignee) => ({ value: assignee, label: qaAssigneeLabels[assignee] })),
                     onApply: (value) => handleBulkUpdateQa([...selectedQaIds], { assignee: value as WorkAssignee }),
                   },
                   {
@@ -3257,8 +3301,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                       statusLabels={QA_STATUS_FILTER_LABELS}
                       onStatusChange={(next) => setQaFilters((prev) => ({ ...prev, status: next }))}
                       assigneeFilter={qaFilters.assignee}
-                      assigneeOrdered={TEST_ASSIGNEE_OPTIONS}
-                      assigneeLabels={ASSIGNEE_LABELS}
+                      assigneeOrdered={qaAssigneeOrdered}
+                      assigneeLabels={qaAssigneeLabels}
                       onAssigneeChange={(next) => setQaFilters((prev) => ({ ...prev, assignee: next as Set<WorkAssignee> }))}
                       dueFilter={qaFilters.due}
                       onDueChange={(next) => setQaFilters((prev) => ({ ...prev, due: next }))}
@@ -3309,7 +3353,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             }))}
                             className={qaStatusBadgeClass(test.status)}
                           />
-                          {test.rolledOver ? <RolledOverStatusBadge testId={`rolled-over-${test.id}`} /> : null}
                           <span
                             className="text-[9px] font-mono font-bold px-1.5 h-7 inline-flex items-center rounded border"
                             style={{
@@ -3329,9 +3372,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                               ariaLabel="Assignee"
                               value={test.assignee}
                               onChange={(value) => handleUpdateQa(test.id, { assignee: value as WorkAssignee })}
-                              options={TEST_ASSIGNEE_OPTIONS.filter((assignee) => assignee !== 'vitest' && assignee !== 'playwright').map((assignee) => ({
+                              options={qaHumanAssignees.map((assignee) => ({
                                 value: assignee,
-                                label: ASSIGNEE_LABELS[assignee],
+                                label: qaAssigneeLabels[assignee],
                               }))}
                               className="bg-[#F6EBE4] text-[#6B3A2C] border-[#C9A08C]/60"
                             />
@@ -3428,7 +3471,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                               className={workBoardFieldClassName}
                               aria-label="Assignee"
                             >
-                              {TEST_ASSIGNEE_OPTIONS.filter((a) => a !== 'vitest' && a !== 'playwright').map((a) => <option key={a} value={a}>{ASSIGNEE_LABELS[a]}</option>)}
+                              {qaHumanAssignees.map((a) => <option key={a} value={a}>{qaAssigneeLabels[a]}</option>)}
                             </select>
                           )}
                         </WorkBoardField>
@@ -3556,7 +3599,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
               sprintOrdered={SPRINT_OPTIONS}
               statusOrdered={TASK_STATUS_FILTER_OPTIONS}
               priorityOrdered={PRIORITY_OPTIONS}
-              assigneeOrdered={ASSIGNEE_OPTIONS}
+              assigneeOrdered={taskAssigneeOrdered}
               categoryOrdered={TASK_CATEGORIES}
               onSprintChange={(next) => setTaskFilters((prev) => ({ ...prev, sprint: next as Set<SprintCategory> }))}
               onStatusChange={(next) => setTaskFilters((prev) => ({ ...prev, status: next }))}
@@ -3630,8 +3673,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   onChange={(e) => setNewTaskAssignee(e.target.value as WorkAssignee)}
                   className="w-full md:w-auto min-h-[44px] bg-[#FAF8F5] border-2 border-[#1F1917] rounded-xl px-3 text-xs font-bold cursor-pointer"
                 >
-                  {ASSIGNEE_OPTIONS.map((a) => (
-                    <option key={a} value={a}>{ASSIGNEE_LABELS[a]}</option>
+                  {taskAssigneeOrdered.map((a) => (
+                    <option key={a} value={a}>{taskAssigneeLabels[a]}</option>
                   ))}
                 </select>
                 <button
@@ -3678,7 +3721,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   {
                     id: 'assignee',
                     label: 'Assignee',
-                    options: ASSIGNEE_OPTIONS.map((assignee) => ({ value: assignee, label: ASSIGNEE_LABELS[assignee] })),
+                    options: taskAssigneeOrdered.map((assignee) => ({ value: assignee, label: taskAssigneeLabels[assignee] })),
                     onApply: (value) => handleBulkUpdateTasks([...selectedTaskIds], { assignee: value as WorkAssignee }),
                   },
                   {
@@ -3731,8 +3774,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                       statusLabels={TASK_STATUS_FILTER_LABELS}
                       onStatusChange={(next) => setTaskFilters((prev) => ({ ...prev, status: next }))}
                       assigneeFilter={taskFilters.assignee}
-                      assigneeOrdered={ASSIGNEE_OPTIONS}
-                      assigneeLabels={ASSIGNEE_LABELS}
+                      assigneeOrdered={taskAssigneeOrdered}
+                      assigneeLabels={taskAssigneeLabels}
                       onAssigneeChange={(next) => setTaskFilters((prev) => ({ ...prev, assignee: next as Set<WorkAssignee> }))}
                       dueFilter={taskFilters.due}
                       onDueChange={(next) => setTaskFilters((prev) => ({ ...prev, due: next }))}
@@ -3780,33 +3823,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             options={TASK_STATUSES.map((status) => ({ value: status, label: TASK_STATUS_LABELS[status] }))}
                             className={taskStatusBadgeClass(t.status)}
                           />
-                          {t.rolledOver ? <RolledOverStatusBadge testId={`rolled-over-${t.id}`} /> : null}
                           <WorkBoardHeaderSelect
                             ariaLabel="Assignee"
                             value={t.assignee}
                             onChange={(value) => handleUpdateTask(t.id, { assignee: value as WorkAssignee })}
-                            options={ASSIGNEE_OPTIONS.map((assignee) => ({ value: assignee, label: ASSIGNEE_LABELS[assignee] }))}
+                            options={taskAssigneeOrdered.map((assignee) => ({ value: assignee, label: taskAssigneeLabels[assignee] }))}
                             className="bg-[#F6EBE4] text-[#6B3A2C] border-[#C9A08C]/60"
                           />
-                          <label
-                            className={`${workBoardHeaderBubbleClass} inline-flex items-center gap-1 ${
-                              t.onAgenda
-                                ? 'bg-[#C2410C] text-white border-[#1F1917]'
-                                : 'bg-white text-[#1F1917] border-[#E5DFD3]'
-                            }`}
-                            onClick={(event) => event.stopPropagation()}
-                            onMouseDown={(event) => event.stopPropagation()}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={Boolean(t.onAgenda)}
-                              aria-label={ADD_TO_AGENDA_LABEL}
-                              data-testid={`task-add-to-agenda-${t.id}`}
-                              className="w-3.5 h-3.5 accent-[#C2410C]"
-                              onChange={() => handleToggleTaskAgenda(t)}
-                            />
-                            {t.onAgenda ? ON_AGENDA_LABEL : ADD_TO_AGENDA_LABEL}
-                          </label>
                           <WorkBoardHeaderDate
                             value={t.dueDate ?? ''}
                             overdue={isWorkDueDatePast(t.dueDate) && t.status !== 'done'}
@@ -3922,7 +3945,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             className={workBoardFieldClassName}
                             aria-label="Assignee"
                           >
-                            {ASSIGNEE_OPTIONS.map((a) => <option key={a} value={a}>{ASSIGNEE_LABELS[a]}</option>)}
+                            {taskAssigneeOrdered.map((a) => <option key={a} value={a}>{taskAssigneeLabels[a]}</option>)}
                           </select>
                         </WorkBoardField>
                         <WorkBoardField label="Assignor">

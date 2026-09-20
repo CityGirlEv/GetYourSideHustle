@@ -27,7 +27,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: 'Super Admin',
   admin: 'Admin',
   dev: 'Developer',
-  qa: 'QA Tester',
+  qa: 'Beta Testers',
   member: 'Member',
 };
 
@@ -1121,6 +1121,8 @@ export const getRolePermissions = (userOrRole?: UserOrRoleInput) => {
     canDeleteGearCards: superAdmin,
     /** Super Admin only — edit and delete task/test steps */
     canEditWorkChecklistSteps: superAdmin,
+    /** Super Admin only — inline home page copy */
+    canEditHomePage: superAdmin,
     canViewIP: rolesArr.some((r) => ['super_admin', 'admin', 'dev'].includes(r)),
     canViewTesting: rolesArr.some((r) => ['super_admin', 'admin', 'dev', 'qa'].includes(r)),
     canManageTasks: rolesArr.some((r) => ['super_admin', 'admin', 'dev', 'qa'].includes(r)),

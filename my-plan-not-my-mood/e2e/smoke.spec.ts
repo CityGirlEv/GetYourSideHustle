@@ -15,6 +15,7 @@ test.describe('PW-HOME-001 home storefront', () => {
     await expect(page.getByText(/feel it\. follow the plan anyway/i)).toBeVisible();
     await expect(page.getByTestId('home-marketing')).toBeVisible();
     await expect(page.getByTestId('home-hero-image')).toBeVisible();
+    await expect(page.getByTestId('hero-carousel')).toHaveCount(0);
     await expect(page.getByTestId('home-cta-shop')).toBeVisible();
     await expect(page.getByRole('button', { name: /accountability gear/i }).first()).toBeVisible();
     await expect(page.getByTestId('home-product-grid')).toHaveCount(0);

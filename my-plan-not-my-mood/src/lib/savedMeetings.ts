@@ -12,7 +12,7 @@ export const SAVED_KICKOFF_PATH = `/admin/agenda?meeting=${SAVED_KICKOFF_MEETING
 export const SAVED_KICKOFF_LINK_LABEL = 'Open saved kickoff meeting';
 
 export const SAVED_KICKOFF_DECISIONS = [
-  'Angela has a $10,000 budget in three payments. $3,500 is already received; Payment 2 is due Sprint 1.',
+  'Angela has a $10,000 budget in three payments. $7,000 is received (Payments 1 and 2, including Payment 2 on Sep 18); Payment 3 is due Sprint 3.',
   'Phase 1 is the initial website rollout for T-shirt / gear sales — not the full 15-page platform.',
   'Developing Shirts is a Task List item. T-shirt design sits inside the $10K Phase 1 budget.',
   'First drop to scope: 3 shirt styles, 1 hoodie, and 1 hat. Angela selects which 2–3 designs go first.',

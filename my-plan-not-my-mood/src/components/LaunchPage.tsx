@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, FileText } from 'lucide-react';
 import { launchPageContentOffset } from '../lib/headerClearance';
+import { PAGE_CANVAS_CLASS } from '../lib/brandUi';
 import {
   flattenLaunchFaqs,
   groupLaunchSections,
@@ -82,7 +83,7 @@ export const LaunchPage: React.FC<LaunchPageProps> = ({ pageId, embedded = false
 
   return (
     <div
-      className={`bg-[#FAF8F5] ${embedded ? 'min-h-0' : `min-h-[60vh] ${launchPageContentOffset(page.id)}`}`}
+      className={`${PAGE_CANVAS_CLASS} ${embedded ? 'min-h-0' : `min-h-[60vh] ${launchPageContentOffset(page.id)}`}`}
       id={`${page.id}-page`}
       data-testid={`${page.id}-page`}
     >

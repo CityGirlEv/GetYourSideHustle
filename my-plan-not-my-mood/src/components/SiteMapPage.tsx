@@ -1,6 +1,7 @@
 import React from 'react';
 import { GitBranch, LayoutGrid, Lock, Map } from 'lucide-react';
 import { HEADER_CONTENT_OFFSET } from '../lib/headerClearance';
+import { PAGE_CANVAS_CLASS } from '../lib/brandUi';
 import {
   APP_SITE_TREE,
   filterSiteTree,
@@ -55,7 +56,7 @@ export const SiteMapPage: React.FC<SiteMapPageProps> = ({ onNavigate, canSeeMemb
   };
 
   return (
-    <div className={`${embedded ? '' : HEADER_CONTENT_OFFSET} ${embedded ? 'pb-6 px-0' : 'pb-16 px-4 sm:px-6 lg:px-8'}`} data-testid="site-map-page">
+    <div className={`${PAGE_CANVAS_CLASS} ${embedded ? '' : HEADER_CONTENT_OFFSET} ${embedded ? 'pb-6 px-0' : 'pb-16 px-4 sm:px-6 lg:px-8'}`} data-testid="site-map-page">
       <div className="max-w-7xl mx-auto space-y-8">
         <header className="bg-white border-2 border-[#1F1917] rounded-3xl p-6 sm:p-8 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">

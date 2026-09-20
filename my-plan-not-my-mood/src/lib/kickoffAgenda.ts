@@ -45,7 +45,7 @@ export const KICKOFF_SEED_TOPICS: AgendaItem[] = [
     label: 'Three-phase gear plan',
     minutes: 20,
     notes: 'Phase 1 is website + T-shirt design. Phase 2 is memberships. Phase 3 is future discussion.',
-    actionItems: 'Price Phase 1 at $10,000. Angela pays $10K in three payments. $3,500 is already received; Payment 2 is due Sprint 1.',
+    actionItems: 'Price Phase 1 at $10,000. Angela pays $10K in three payments. $7,000 is received (Payments 1 and 2); Payment 3 is due Sprint 3.',
   }),
   normalizeAgendaItem({
     id: 'kickoff-5',

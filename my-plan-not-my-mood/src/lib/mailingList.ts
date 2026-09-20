@@ -1,17 +1,22 @@
 import { isValidEmail, normalizeEmail } from './email/sendPayload';
 import { validateHearAboutUs } from './hearAboutUs';
+import { optionalPhoneSignupError, storePhoneNumber } from './phoneNumber';
 
 export const MAILING_LIST_STORAGE_KEY = 'myplan_mailing_list_v1';
 export const MAX_MAILING_LIST_NAME_CHARS = 40;
 export const MAX_MAILING_LIST_FIRST_NAME_CHARS = MAX_MAILING_LIST_NAME_CHARS;
+export const JOIN_THE_MOVEMENT_LABEL = 'Join the Movement';
+export const MAILING_LIST_HYPE =
+  'Get in first. Shop drops, Non-Negotiable notes, and the real-life tools before they hit the feed. This is the list that moves.';
 export const MAILING_LIST_NOT_MEMBERSHIP_NOTE =
-  'This is a mailing list sign-up, not a membership. Join / Memberships stays Coming Soon.';
-export const MAILING_LIST_FIELDS = ['email', 'firstName', 'lastName', 'heardAbout'] as const;
+  'Join the Movement is launch pre-registration by email — not a membership. Memberships stay Coming Soon.';
+export const MAILING_LIST_FIELDS = ['email', 'firstName', 'lastName', 'phone', 'heardAbout'] as const;
 
 export type MailingListSignup = {
   email: string;
   firstName: string;
   lastName: string;
+  phone: string;
   heardAbout: string;
   subscribedAt: string;
 };
@@ -20,6 +25,7 @@ export type MailingListInput = {
   email?: string;
   firstName?: string;
   lastName?: string;
+  phone?: string;
   heardAbout?: string;
 };
 
@@ -49,6 +55,10 @@ export function mailingListIsMembership(): boolean {
 
 export function mailingListCollectsPhoneOrAddress(): boolean {
   return false;
+}
+
+export function mailingListAllowsOptionalPhone(): boolean {
+  return true;
 }
 
 function looksLikeExtraPii(value: string): boolean {
@@ -81,6 +91,9 @@ export function validateMailingListSignup(input: MailingListInput): MailingListR
   if (firstNameError) return firstNameError;
   const lastNameError = validateOptionalName(lastName, 'Last name');
   if (lastNameError) return lastNameError;
+  const phoneError = optionalPhoneSignupError(input.phone);
+  if (phoneError) return { ok: false, error: phoneError };
+  const phone = String(input.phone ?? '').trim() ? storePhoneNumber(String(input.phone)) : '';
   if (!heard.ok) return { ok: false, error: heard.error };
 
   return {
@@ -89,6 +102,7 @@ export function validateMailingListSignup(input: MailingListInput): MailingListR
       email,
       firstName,
       lastName,
+      phone,
       heardAbout: heard.value,
       subscribedAt: new Date().toISOString(),
     },
@@ -106,12 +120,14 @@ export function readMailingListSignups(): MailingListSignup[] {
       if (!isValidEmail(email)) return [];
       const firstName = normalizeMailingListName((row as MailingListSignup)?.firstName);
       const lastName = normalizeMailingListName((row as MailingListSignup)?.lastName);
+      const rawPhone = typeof (row as MailingListSignup)?.phone === 'string' ? (row as MailingListSignup).phone : '';
+      const phone = rawPhone && !optionalPhoneSignupError(rawPhone) ? storePhoneNumber(rawPhone) : '';
       const heard = validateHearAboutUs((row as MailingListSignup)?.heardAbout, false);
       const subscribedAt =
         typeof (row as MailingListSignup)?.subscribedAt === 'string'
           ? (row as MailingListSignup).subscribedAt
           : '';
-      return [{ email, firstName, lastName, heardAbout: heard.ok ? heard.value : '', subscribedAt }];
+      return [{ email, firstName, lastName, phone, heardAbout: heard.ok ? heard.value : '', subscribedAt }];
     });
   } catch {
     return [];

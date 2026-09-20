@@ -20,6 +20,7 @@ export interface PhasePayOption {
   amount: number;
   recommended?: boolean;
   paid?: boolean;
+  dueHint?: string;
 }
 
 export interface PaymentMethod {
@@ -31,15 +32,28 @@ export interface PaymentMethod {
 }
 
 export function phasePayOptions(
-  schedule: readonly { id?: string; label: string; amount: number; status?: 'paid' | 'due' | 'upcoming' }[] = PHASE_PAYMENT_SCHEDULE,
+  schedule: readonly {
+    id?: string;
+    label: string;
+    amount: number;
+    status?: 'paid' | 'due' | 'upcoming';
+    dueLabel?: string;
+  }[] = PHASE_PAYMENT_SCHEDULE,
 ): PhasePayOption[] {
-  return schedule.map((row, index) => ({
-    id: row.id ?? `phase-${index + 1}`,
-    label: row.label.replace(/ payment$/i, ''),
-    amount: row.amount,
-    recommended: row.status ? row.status === 'due' : index === 0,
-    paid: row.status === 'paid',
-  }));
+  const recommendedId =
+    schedule.find((row) => row.status === 'due')?.id ??
+    schedule.find((row) => row.status !== 'paid')?.id;
+  return schedule.map((row, index) => {
+    const id = row.id ?? `phase-${index + 1}`;
+    return {
+      id,
+      label: row.label.replace(/ payment$/i, ''),
+      amount: row.amount,
+      recommended: recommendedId ? id === recommendedId : index === 0,
+      paid: row.status === 'paid',
+      dueHint: row.status === 'paid' ? undefined : row.dueLabel,
+    };
+  });
 }
 
 export function defaultPayAmount(options: PhasePayOption[] = phasePayOptions()): number {
@@ -129,5 +143,6 @@ export function methodCopyValue(methodId: PaymentMethodId): string {
   if (methodId === 'zelle') return ZELLE_PHONE;
   if (methodId === 'cashapp') return `$${CASH_APP_CASHTAG}`;
   if (methodId === 'venmo') return `@${VENMO_HANDLE}`;
-  return paymentMemo(defaultPayAmount(), 'Payment 2');
+  const next = phasePayOptions().find((option) => option.recommended) ?? phasePayOptions()[0];
+  return paymentMemo(next?.amount ?? defaultPayAmount(), next?.label ?? 'Phase 1');
 }

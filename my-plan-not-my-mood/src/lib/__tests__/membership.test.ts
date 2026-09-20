@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   canSeeMemberships,
   hasMembershipAccess,
@@ -88,5 +90,14 @@ describe('membership', () => {
       phone: '',
       createdAt: '2026-01-01',
     })).toBe(true);
+  });
+
+  it('sits Memberships tight under the in-flow header', () => {
+    const join = readFileSync(resolve(process.cwd(), 'src/components/JoinPage.tsx'), 'utf8');
+    expect(join).toContain('HEADER_COMPACT_PAGE_OFFSET');
+    expect(join).toContain('PAGE_CANVAS_CLASS');
+    expect(join).not.toContain('HEADER_CONTENT_OFFSET');
+    expect(join).toContain('py-2.5 sm:py-3');
+    expect(join).toContain('data-testid="join-page"');
   });
 });

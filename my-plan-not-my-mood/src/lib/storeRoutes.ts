@@ -13,10 +13,10 @@ export type StoreRoute =
   | 'beta-guide'
   | LaunchPageId;
 
-export const HEADER_PRIMARY_NAV_ORDER = ['home', 'shop', 'join', 'about', 'faq', 'contact'] as const;
+export const HEADER_PRIMARY_NAV_ORDER = ['home', 'faq', 'about', 'contact'] as const;
 export const HEADER_TRAILING_LINKS = [
-  { route: 'about', label: 'About' },
   { route: 'faq', label: 'FAQ' },
+  { route: 'about', label: 'About' },
   { route: 'contact', label: 'Contact' },
 ] as const;
 export const HEADER_PUBLIC_LINKS = HEADER_TRAILING_LINKS;

@@ -107,6 +107,42 @@ export function resolvePersistedSteps(
 }
 
 /**
+ * Refresh walkthrough wording from the catalog without wiping checked boxes.
+ * Passed tests keep the wording they were signed off with.
+ */
+export function overlayQaSeedStepCopy(
+  existing: WorkChecklistStep[] | undefined,
+  seeded: WorkChecklistStep[],
+  options: { persisted: boolean; passed: boolean },
+): WorkChecklistStep[] {
+  if (options.persisted && (!existing || existing.length === 0)) return existing ?? [];
+  if (options.passed || seeded.length === 0) {
+    return existing && existing.length > 0 ? existing : seeded;
+  }
+  const prevById = new Map((existing ?? []).map((step) => [step.id, step]));
+  const used = new Set<string>();
+  const overlaid = seeded.map((seed, index) => {
+    const prev = prevById.get(seed.id) ?? existing?.[index];
+    if (!prev) return seed;
+    used.add(prev.id);
+    return {
+      ...prev,
+      label: seed.label,
+      href: seed.href || prev.href,
+    };
+  });
+  const extras = (existing ?? []).filter((step) => !used.has(step.id));
+  return [...overlaid, ...extras];
+}
+
+/** Tester-facing walkthrough copy must name the click, not jargon like “open modal”. */
+export const QA_WALKTHROUGH_JARGON = /\b(modals?|drawers?|micro-?sets?|CTAs?|hydrate|viewport|hamburger|localStorage)\b/i;
+
+export function qaWalkthroughTextHasJargon(text: string): boolean {
+  return QA_WALKTHROUGH_JARGON.test(text);
+}
+
+/**
  * First-step destination for a task or test — the page being reviewed or tested.
  * Used so saved boards pick up links even when step copy already existed.
  */
@@ -275,22 +311,22 @@ function teeSalesVideosSeed(sprintLabel: string): WorkItemContentSeed {
 
 export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
   't-1': {
-    description: 'Confirm the $10,000 Phase 1 fee is three payments and that $3,500 is already received.',
+    description: 'Confirm the $10,000 Phase 1 fee is three payments and that $7,000 is already received (Payments 1 and 2).',
     steps: [
       { label: 'Review the three-payment schedule on the Plan / Budget', href: '/admin/budget' },
       'Confirm $3,500 + $3,500 + $3,000 add to $10,000',
-      'Confirm Payment 1 is marked paid and Payment 2 is due Sprint 1',
+      'Confirm Payment 1 and Payment 2 are marked paid ($7,000) and Payment 3 is due Sprint 3',
       'Confirm with Evelyn that the ledger matches',
     ],
   },
   't-43': {
-    description: 'Pay Payment 2 ($3,500) due Sprint 1 using preferred methods (Zelle or Cash App).',
+    description: 'Payment 2 ($3,500) was received Sep 18. Confirm the schedule shows $7,000 paid and Payment 3 due Sprint 3.',
     steps: [
       { label: 'Open the Make Payment page', href: '/pay' },
-      'Choose Zelle or Cash App (preferred)',
-      'Send $3,500 for Payment 2 / Sprint 1',
-      'Save or screenshot the payment confirmation',
-      'Tell Evelyn the payment is complete',
+      'Confirm Payment 1 and Payment 2 show as Paid',
+      'Confirm Payment 3 is $3,000 due Sprint 3',
+      'Save or screenshot the payment confirmation if you still have it',
+      'Tell Evelyn the Payment 2 ledger matches',
     ],
   },
   't-2': {
@@ -878,406 +914,439 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
 
 export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
   qa1: {
-    description: 'Clicking hero speech bubbles selects mood and scrolls smoothly to the action card.',
+    description:
+      'On Home, click each mood bubble (the round emoji + word buttons near “What’s Your Mood”). The matching mood should highlight, and the page should slide down to the tips card — you should not have to hunt for it.',
     steps: [
-      { label: 'Open the home page', href: '/' },
-      'Click each of the 5 character speech bubbles',
-      'Confirm the mood selection updates',
-      'Confirm smooth scroll to the action card',
+      { label: 'Go to Home (nonnegotiation.com). You should see the brand name and the What’s Your Mood section.', href: '/' },
+      'Find the row of round mood buttons with an emoji and a word (Tired, Anxious, and the rest). Click the first one.',
+      'Confirm that button looks selected (highlighted / ACTIVE) and the page slides down to a tips card — not to a blank area.',
+      'Click each remaining mood button the same way. Each click should change the selected mood and show a new tips card.',
     ],
   },
   qa2: {
-    description: 'WHICH MOOD AM I IN TODAY banner uses Rust Orange background and crisp white type.',
+    description:
+      'On Home, the orange question strip that says WHICH MOOD AM I IN TODAY must be rust orange with crisp white letters — same family as the orange buttons.',
     steps: [
-      { label: 'Open the home page', href: '/' },
-      'Locate the mood question banner',
-      'Confirm Rust Orange background',
-      'Confirm white text is crisp and readable',
+      { label: 'Go to Home. Scroll until you see the orange strip that asks WHICH MOOD AM I IN TODAY.', href: '/' },
+      'Confirm that strip is rust orange (not pale peach, not brown, not gray).',
+      'Confirm the letters are white and easy to read — not faded, not cut off.',
     ],
   },
   qa3: {
-    description: 'Desktop product/mood layout is a 2-column grid (mockups left, details right).',
+    description:
+      'On a wide computer screen, product/mood layout is two columns: pictures on the left, details on the right.',
     steps: [
-      { label: 'Open the home or shop experience on desktop width', href: '/' },
-      'Confirm left column shows mockup images',
-      'Confirm right column shows details',
-      'Resize slightly and confirm the grid holds',
+      { label: 'Go to Home on a computer (wide window, not a phone).', href: '/' },
+      'Confirm pictures / mockups sit on the left side.',
+      'Confirm the details text sits on the right side.',
+      'Make the window a little narrower, then wider again. The two columns should stay two columns on a wide screen — they should not pile into a broken mess.',
     ],
   },
   qa4: {
-    description: 'Cart drawer slides over and the badge count updates when items are added.',
+    description:
+      'When you add a shirt to the cart, the number on the shopping-bag icon in the top right should go up, and a cart panel should slide in from the side listing that item.',
     steps: [
-      { label: 'Open Shop Gear', href: '/gear' },
-      'Add an item to the cart',
-      'Confirm badge count updates',
-      'Confirm the slide-over drawer opens with the item',
+      { label: 'Go to Shop Gear (header Shop Gear, or nonnegotiation.com/gear).', href: '/gear' },
+      'Click a product’s add-to-cart / shop control so an item is added.',
+      'Look at the shopping-bag icon in the top-right corner. Confirm the little orange number on it went up (for example 0 → 1).',
+      'Confirm a cart panel slides in from the side of the screen and lists the item you added. If it did not open, click the shopping-bag icon once.',
     ],
   },
   qa5: {
-    description: '#WhatWonToday receipt generates with share and download.',
+    description:
+      'What Won Today builds a victory card you can share or save. Start from the header or the Home receipt section — do not guess a hidden URL.',
     steps: [
-      { label: 'Open What Won Today / receipt flow', href: '/' },
-      'Generate a victory receipt',
-      'Confirm share action is available',
-      'Confirm download works',
+      { label: 'Go to Home. In the top links, click “What Won Today?” Receipt Builder — or scroll to the What Won Today section on the page.', href: '/' },
+      'Fill in today’s win the way the form asks, then click the button that builds / generates the receipt.',
+      'Confirm you see a finished card (not a blank page). Confirm there is a Share control you can click.',
+      'Confirm there is a Download or Save control, click it, and confirm a file starts downloading or a save dialog appears.',
     ],
   },
   qa6: {
-    description: '7-Day Reset Starter Kit modal collects email + goal and offers a printable PDF.',
+    description:
+      'The 7-Day Challenge asks for an email and a 7-day goal, then offers a printable PDF. Click the orange “7-Day Challenge” button in the top header — a form should appear on top of the page. If you are not a member, you should land on Join / Coming Soon instead.',
     steps: [
-      { label: 'Open the 7-Day Reset entry point', href: '/' },
-      'Open the modal',
-      'Enter email and 7-day goal',
-      'Confirm printable / PDF path works',
+      { label: 'Go to Home. In the top header, find the orange button that says 7-Day Challenge (lock icon if you are not a member).', href: '/' },
+      'Click 7-Day Challenge. If a form appears on top of the page, that is the challenge sign-up — stay here. If the site takes you to Join the Movement / Coming Soon, that is also a pass for a logged-out visitor; stop and note it.',
+      'If the form opened: type a DEMO DATA email (tester@example.com) and a short 7-day goal in the fields you see. Do not use a real personal inbox.',
+      'Click the button that prints or downloads the PDF. Confirm a print window or a PDF file appears — not an error.',
     ],
   },
   'aff-qa1': {
-    description: 'Morning micro-set loads identity + confidence affirmations with breath cue timing.',
+    description:
+      'Morning Affirmations: click Affirmations in the header, choose Morning, and walk the short identity/confidence lines with the breath pause.',
     steps: [
-      { label: 'Open Daily Affirmations (morning)', href: '/' },
-      'Confirm the morning pool loads',
-      'Confirm breath cue timing (~3s)',
-      'Complete or skip through the short sequence',
+      { label: 'Go to Home. In the top header, click the orange Affirmations button (sparkle icon). A member should see today’s affirmations on top of the page. A guest should go to Join / Coming Soon — that is expected.', href: '/' },
+      'If the affirmations opened, choose Morning (not Midday or Night).',
+      'Confirm you see short identity / confidence lines, and each line pauses about 3 seconds for a breath before the next.',
+      'Walk through the short set: click Continue / Next, or Skip if you want to skip one. Confirm you can finish the Morning set.',
     ],
   },
   'aff-qa2': {
-    description: 'Midday micro-set loads boundary-focused affirmations.',
+    description:
+      'Midday Affirmations: same Affirmations button, choose Midday, confirm boundary / truth lines.',
     steps: [
-      { label: 'Open Daily Affirmations (midday)', href: '/' },
-      'Confirm boundary / truth pool loads',
-      'Confirm the reset trigger feels correct',
-      'Complete or skip the sequence',
+      { label: 'Go to Home. Click Affirmations in the top header. Member: the affirmations should appear on top of the page. Guest: Join / Coming Soon is expected.', href: '/' },
+      'Choose Midday.',
+      'Confirm the lines are about boundaries / telling the truth — not the same Morning identity set.',
+      'Walk through or Skip the short set until it finishes.',
     ],
   },
   'aff-qa3': {
-    description: 'Night micro-set loads healing, release, and faith affirmations.',
+    description:
+      'Night Affirmations: same Affirmations button, choose Night, confirm healing / release / faith lines.',
     steps: [
-      { label: 'Open Daily Affirmations (night)', href: '/' },
-      'Confirm night pool loads',
-      'Confirm day-closing protocol copy',
-      'Complete or skip the sequence',
+      { label: 'Go to Home. Click Affirmations in the top header.', href: '/' },
+      'Choose Night.',
+      'Confirm the lines are about healing, letting go, or faith — a day-closing tone.',
+      'Walk through or Skip the short set until it finishes.',
     ],
   },
   'aff-qa4': {
-    description: 'Rotation engine avoids repetition fatigue and weights personalization.',
+    description:
+      'Affirmations should not start on the exact same first line every time you open Morning, Midday, and Night.',
     steps: [
-      'Run morning/midday/night across two sessions',
-      'Confirm phrases are not stuck on the same first item',
-      'Confirm reflection weighting still feels sensible',
-      'Note any obvious repeats for Dev',
+      'Open Affirmations from the header, run Morning, then Midday, then Night. Write down the first line of each.',
+      'Close it, open Affirmations again, and run the three times of day a second time.',
+      'Confirm you are not stuck on the same first line every single time. A repeat now and then is OK; the same first line forever is a fail.',
+      'Write a note for Dev if the same first line repeats every session.',
     ],
   },
   'aff-qa5': {
-    description: '10-second reflection + zero-guilt skip persists a resonant phrase.',
+    description:
+      'You can mark a line that lands, or skip one without a guilt lecture, and that choice should still be there after you refresh the page.',
     steps: [
-      { label: 'Open affirmations reflection', href: '/' },
-      'Select a resonant phrase',
-      'Use skip without guilt / friction',
-      'Reload and confirm persistence where expected',
+      { label: 'Go to Home. Click Affirmations in the top header.', href: '/' },
+      'When a line feels right, click the control that saves / keeps / reflects on that line (whatever the screen labels it — not a hidden trick).',
+      'On another line, click Skip. Confirm the site does not scold you or block you.',
+      'Refresh the page, open Affirmations again, and confirm the line you kept is still remembered.',
     ],
   },
   'aff-qa6': {
-    description: 'Daily completion state tracks morning/midday/night and resets by calendar day.',
+    description:
+      'Morning, Midday, and Night can be finished separately. Finishing Morning should not mark Night done. A new calendar day should start them over.',
     steps: [
-      { label: 'Open affirmations', href: '/' },
-      'Complete one day-part and confirm it shows done',
-      'Confirm other day-parts remain independent',
-      'Confirm a new calendar day resets appropriately',
+      { label: 'Go to Home. Click Affirmations in the top header.', href: '/' },
+      'Finish only Morning. Confirm Morning shows done / complete, and Midday and Night do not.',
+      'Finish Midday. Confirm Night is still open.',
+      'Note: a new calendar day (after midnight) should clear the checkmarks. If you cannot wait for midnight, write that in notes and still pass the independent Morning/Midday/Night checks.',
     ],
   },
   'aff-qa7': {
-    description: 'Affirmations UI is usable on mobile, tablet, and desktop with strong contrast.',
+    description:
+      'Affirmations must be usable on a phone, a tablet, and a computer — readable text, no sideways scrolling on a phone.',
     steps: [
-      'Check mobile width (~320–390px): no horizontal scroll',
-      'Check tablet width',
-      'Check desktop width',
-      'Confirm contrast is readable',
+      'On a phone-width (~320–390px), open Affirmations. Confirm you do not have to swipe left/right to read the lines, and buttons are easy to tap.',
+      'On a tablet-width, open Affirmations and confirm it still fits.',
+      'On a computer-width, open Affirmations and confirm it still fits.',
+      'Confirm the letters have enough contrast against the background (not pale gray on white).',
     ],
   },
   'aff-qa8': {
-    description: 'Voice Trust Layer remains planned — specs/data model only for now.',
+    description:
+      'Voice / spoken-coach affirmations are not a live Phase 1 feature. You should not need a microphone or a talking coach to pass this site.',
     steps: [
-      'Confirm Voice Trust is labeled Future / Planned in Admin Testing',
-      'Confirm no broken live Voice Trust UI is required for Phase 1',
-      'Note any missing spec fields for later',
+      'On the live site, confirm there is no required “speak to the coach / voice trust” flow you must finish to use Affirmations.',
+      'If you see a “Coming later / Planned” note about voice, that is fine. A broken microphone screen is a fail.',
+      'Write down anything that looks like an unfinished voice feature so Dev can park it.',
     ],
   },
   'auth-qa1': {
-    description: 'Admin role gates show only Testing + Task List for limited admin users.',
+    description:
+      'A limited Admin (not Super Admin) should see Testing Portal and Task List, and should not see Budget / money tabs.',
     steps: [
-      { label: 'Open Admin Studio as a limited admin', href: '/admin' },
-      'Confirm Testing tab is visible',
-      'Confirm Task List tab is visible',
-      'Confirm budget / restricted tabs stay gated',
+      { label: 'Sign in as a limited Admin and open the Admin area (Admin in the header).', href: '/admin' },
+      'Confirm you can open Testing Portal (the tests list).',
+      'Confirm you can open Task List.',
+      'Confirm Budget / pay / money tabs are hidden or locked — you should not be able to edit the budget.',
     ],
   },
   'gear-sel-qa1': {
-    description: 'Gear Selections upload and Angela picks work within style-card rules.',
+    description:
+      'On Gear Selections, Evelyn can upload style cards and Angela can pick up to 3 tees, 1 hoodie, and 1 hat. Bad files are rejected with a message.',
     steps: [
-      { label: 'Open Gear Selections', href: '/admin/gear-selections' },
-      'Upload a valid style-card image',
-      'Confirm tee/hoodie/hat grouping on a card',
-      'As Angela, pick within limits (≤3 tees, 1 hoodie, 1 hat)',
-      'Confirm PDF/SVG/oversized rejects work',
+      { label: 'Sign in as Admin. Open Admin → Gear Selections (not Shop Gear).', href: '/admin/gear-selections' },
+      'Click the upload control and add a normal image (JPG or PNG). Confirm it appears on a style card.',
+      'Confirm one style card can show a tee, a hoodie, and a hat together.',
+      'As Angela, pick no more than 3 tees, 1 hoodie, and 1 hat. Trying a 4th tee should be blocked.',
+      'Try a PDF, an SVG, or a huge file. Confirm the site says no and does not add it.',
     ],
   },
   'sprint-roi-qa1': {
-    description: 'Plan shows organic ROI, the weekly scorecard, expected hoodie sales, and improvement suggestions.',
+    description:
+      'On the Plan, each Phase 1 sprint shows organic ROI notes and a weekly scorecard. No paid ads.',
     steps: [
-      { label: 'Open the Plan', href: '/admin/plan' },
-      'Confirm each Phase 1 sprint lists ROI / sales notes',
-      'Confirm the scorecard lists min / target / stretch for followers, engagement, clicks, and sales',
-      'Confirm organic-only / no paid ads assumption is clear',
+      { label: 'Sign in as Admin. Open Admin → Schedule & Plan (or Plan).', href: '/admin/plan' },
+      'Find the Phase 1 sprints. Confirm each one has ROI / sales notes you can read.',
+      'Confirm the scorecard lists min / target / stretch for followers, engagement, clicks, and sales.',
+      'Confirm the Plan says organic only / no paid ads.',
     ],
   },
   'cf-qa1': {
-    description: 'Content Factory lists Phase 1 posts filterable by sprint, assignee, and channel, plus one Posting Schedule document.',
+    description:
+      'Content Factory lists posts and prep. Posting Schedule is one calendar of date, platform, time, and what to post. Filters actually change the list.',
     steps: [
-      { label: 'Open Content Factory', href: '/admin/factory' },
-      { label: 'Open the Posting Schedule tab', href: '/admin/calendar' },
-      'Confirm the document lists date, platform, time, and what to post',
-      'Filter by sprint',
-      'Filter by assignee',
-      'Filter by channel (Facebook, YouTube, TikTok, Personal)',
-      'Confirm Angela post vs Evelyn prep rows',
+      { label: 'Sign in as Admin. Open Admin → Content Factory (Factory).', href: '/admin/factory' },
+      { label: 'Open Admin → Calendar / Posting Schedule.', href: '/admin/calendar' },
+      'Confirm each row shows a date, a platform (Facebook, YouTube, TikTok, or Personal), a time, and what to post.',
+      'Use the sprint filter (the sprint bubbles or dropdown). Confirm the list changes.',
+      'Use the assignee filter. Confirm the list changes.',
+      'Use the channel filter (Facebook, YouTube, TikTok, Personal). Confirm the list changes.',
+      'Confirm you can tell Angela’s post rows from Evelyn’s prep rows.',
     ],
   },
   'cf-qa2': {
-    description: 'Asset Library groups cards by style name with tee/hoodie/hat on the same card.',
+    description:
+      'Asset Library groups images by style name. Tee, hoodie, and hat can live on the same card.',
     steps: [
-      { label: 'Open Asset Library', href: '/admin/asset-library' },
-      'Confirm grouping by style name',
-      'Confirm a style can hold several cards',
-      'Confirm tee, hoodie, and hat can share a card',
+      { label: 'Sign in as Admin. Open Admin → Asset Library.', href: '/admin/asset-library' },
+      'Confirm cards are grouped by style name (not one giant unsorted pile).',
+      'Confirm one style name can hold more than one card.',
+      'Confirm a tee, hoodie, and hat can sit on the same style card.',
     ],
   },
   'cf-qa3': {
-    description: 'Asset Library rejects bad images; captions can save without an image.',
+    description:
+      'Asset Library refuses junk files and still lets you save a caption with no picture.',
     steps: [
-      { label: 'Open Asset Library', href: '/admin/asset-library' },
-      'Attempt a non-image upload — expect reject',
-      'Attempt an oversized upload — expect reject',
-      'Save a caption-only asset successfully',
+      { label: 'Sign in as Admin. Open Admin → Asset Library.', href: '/admin/asset-library' },
+      'Try to upload a non-picture (Word doc or similar). Confirm a reject message — the file should not appear as an image.',
+      'Try a file that is way too large. Confirm a reject message.',
+      'Save a caption / text-only asset with no image. Confirm it saves.',
     ],
   },
   'logo-qa1': {
-    description: 'Logo Concepts folder upload + Angela’s chosen mark selection.',
+    description:
+      'On Logo Concepts, upload a folder of logos and pick one chosen mark. PDF and oversized files are rejected; SVG is allowed.',
     steps: [
-      { label: 'Open Logo Concepts', href: '/admin/logo-concepts' },
-      'Upload a logo folder (or files)',
-      'Confirm subfolder sorting when present',
-      'Select the chosen mark as Angela',
-      'Confirm PDF/oversized rejects; SVG allowed',
+      { label: 'Sign in as Admin. Open Admin → Logo Concepts.', href: '/admin/logo-concepts' },
+      'Use the upload control to add a folder of logo files, or several files at once.',
+      'If folders are named seal, wordmark, lockup, or colorway, confirm they sort into those groups.',
+      'As Angela, click one logo as the chosen mark. Confirm it stays selected.',
+      'Try a PDF or a huge file — expect a reject. Try an SVG — it should be allowed.',
     ],
   },
   'pay-qa1': {
-    description: 'Make Payment page shows Zelle, Cash App, Venmo, and Stripe options for Phase 1.',
+    description:
+      'Make Payment lists how to pay Phase 1. Payments 1 and 2 ($7,000) are paid. Payment 3 is $3,000 due Sprint 3. Zelle and Cash App are preferred.',
     steps: [
-      { label: 'Open Make Payment', href: '/pay' },
-      'Confirm Payment 2 amount ($3,500) is due Sprint 1',
-      'Confirm Zelle and Cash App are preferred',
-      'Confirm Venmo and Stripe are present',
+      { label: 'Go to Make Payment (footer Make Payment, or nonnegotiation.com/pay).', href: '/pay' },
+      'Confirm Payment 1 and Payment 2 show as paid. Payment 3 should be $3,000 due Sprint 3.',
+      'Confirm Zelle and Cash App are marked preferred, with the numbers/names shown on the page.',
+      'Confirm Venmo and Stripe (card / Apple Pay) are also listed.',
     ],
   },
   'shop-gear-page-qa1': {
-    description: 'Evelyn walks Shop Gear: styles, brands, hats, and Shopify links.',
+    description:
+      'Evelyn walks the public Shop Gear page: selected styles, brands, hat colors, and checkout links.',
     steps: [
-      { label: 'Open Shop Gear', href: '/gear' },
-      'Confirm selected styles',
-      'Confirm hoodie/shirt brand and hat colors',
-      'Confirm Shopify / checkout links',
+      { label: 'Go to Shop Gear (header Shop Gear).', href: '/gear' },
+      'Confirm the selected styles show with sharp pictures — not broken-image icons.',
+      'Confirm hoodie/shirt brand and hat colors match what Angela picked.',
+      'Click a shop / checkout link. Confirm it opens the store (Shopify or SnatchVault) — not a dead page.',
     ],
   },
   'shop-gear-page-qa2': {
-    description: 'Angela walks Shop Gear and confirms her selections before go-live.',
+    description:
+      'Angela walks Shop Gear and confirms her picks look right before go-live.',
     steps: [
-      { label: 'Open Shop Gear', href: '/gear' },
-      'Confirm your selected styles',
-      'Confirm shirt/hoodie brand and hat colors',
-      'Send pass/fail notes to Evelyn',
+      { label: 'Go to Shop Gear (header Shop Gear).', href: '/gear' },
+      'Confirm the styles you picked are the ones on the page.',
+      'Confirm shirt/hoodie brand and hat colors look right.',
+      'Write pass or fail notes for Evelyn on this test (what is wrong, in plain words).',
     ],
   },
   'gear-brand-qa1': {
-    description: 'Angela can pick up to 2 blank brands for shirts/hoodies on Gear Selections.',
+    description:
+      'On Gear Selections, Angela picks up to 2 blank shirt/hoodie brands. The pick saves.',
     steps: [
-      { label: 'Open Gear Selections', href: '/admin/gear-selections' },
-      'Open the shirt/hoodie brand picker',
-      'Select up to 2 brands',
-      'Confirm the pick saves with other gear selections',
+      { label: 'Sign in as Admin. Open Admin → Gear Selections.', href: '/admin/gear-selections' },
+      'Find the shirt/hoodie brand picker (brand names like Gildan, Comfort Colors — not the style-card pictures). Click it so the brand list opens.',
+      'Select 1 or 2 brands. A third brand should be blocked.',
+      'Leave the page and come back. Confirm the same 1–2 brands are still selected with the other gear picks.',
     ],
   },
   'home-qa1': {
-    description: 'Home loads with brand line and mood tool entry; no horizontal scroll on mobile.',
+    description:
+      'Home shows the brand line and a way into What’s Your Mood. On a phone, you should not scroll sideways.',
     steps: [
-      { label: 'Open the home page', href: '/' },
-      'Confirm the brand line is visible',
-      'Confirm mood tool entry is reachable',
-      'Confirm no horizontal scroll on mobile (~320px)',
+      { label: 'Go to Home.', href: '/' },
+      'Confirm the brand line is visible (MY PLAN, NOT MY MOOD / NonNegotiation wording at the top of the page).',
+      'Confirm you can reach What’s Your Mood without guessing — header What’s Your Mood? or the mood buttons on the page.',
+      'On a phone-width (~320px), confirm you do not have to swipe left/right to see the page.',
     ],
   },
   'domain-qa1': {
-    description: 'https://nonnegotiation.com serves the Phase 1 storefront over HTTPS.',
+    description:
+      'https://nonnegotiation.com loads the live storefront over the lock/https connection, and Shop Gear is one click away.',
     steps: [
-      { label: 'Open production (nonnegotiation.com)', href: 'https://nonnegotiation.com' },
-      'Confirm HTTPS and the storefront load',
-      'Confirm Shop Gear is reachable from the domain',
+      { label: 'In the browser address bar, open https://nonnegotiation.com (the live site, not localhost).', href: 'https://nonnegotiation.com' },
+      'Confirm the address starts with https and the Home storefront loads (brand name, not an error page).',
+      'Click Shop Gear. Confirm that page loads on the same site.',
     ],
   },
   'mood-qa1': {
-    description: 'Mood bubbles select a mood and scroll to the action area.',
+    description:
+      'Click a What’s Your Mood bubble; the page should slide down to the tips / action card.',
     steps: [
-      { label: 'Open the home page mood tool', href: '/' },
-      'Select a mood from the bubbles',
-      'Confirm scroll to the action area',
+      { label: 'Go to Home. Scroll to What’s Your Mood, or click What’s Your Mood? in the header.', href: '/' },
+      'Click one mood bubble (emoji + word).',
+      'Confirm the page slides down to the tips card (How to shake it / today’s play). You should not be left at the top of the page.',
     ],
   },
   'receipt-qa1': {
-    description: 'Receipt generator creates a shareable/downloadable card.',
+    description:
+      'What Won Today builds a card you can share or download.',
     steps: [
-      { label: 'Open What Won Today / receipt flow', href: '/' },
-      'Generate a receipt',
-      'Confirm share and download',
+      { label: 'Go to Home. Click “What Won Today?” Receipt Builder in the header, or scroll to that section.', href: '/' },
+      'Fill the form and click the button that builds the receipt.',
+      'Confirm Share and Download/Save are both there and do something (share sheet, copy, or a file).',
     ],
   },
   'about-qa1': {
-    description: 'About page loads with brand story; mobile has no horizontal scroll.',
+    description: 'About tells the brand story and does not scroll sideways on a phone.',
     steps: [
-      { label: 'Open About', href: '/about' },
-      'Confirm brand story is present',
-      'Confirm mobile layout',
+      { label: 'Go to About (header About, or footer About).', href: '/about' },
+      'Confirm you can read a brand story — not an empty page or “lorem ipsum”.',
+      'On a phone-width (~320px), confirm no sideways scroll.',
     ],
   },
   'contact-qa1': {
-    description: 'Contact page lists working contact paths and is mobile-friendly.',
+    description: 'Contact lists real ways to reach the brand and works on a phone.',
     steps: [
-      { label: 'Open Contact', href: '/contact' },
-      'Confirm contact paths work',
-      'Confirm mobile layout',
+      { label: 'Go to Contact (header Contact, or footer Contact).', href: '/contact' },
+      'Confirm the listed contact paths are real (email, form, or the methods printed on the page) — click/tap each one that looks clickable.',
+      'On a phone-width (~320px), confirm no sideways scroll and you can still submit or copy a contact method.',
     ],
   },
   'privacy-qa1': {
-    description: 'Privacy Policy is reachable from the footer and readable on mobile.',
+    description: 'Privacy Policy is in the footer and readable on a phone.',
     steps: [
-      { label: 'Open Privacy Policy', href: '/privacy' },
-      'Confirm footer reaches this page',
-      'Confirm it is readable on mobile',
+      { label: 'Go to Privacy Policy (footer Privacy Policy).', href: '/privacy' },
+      'From Home, scroll to the footer and click Privacy Policy. Confirm you land on this same policy.',
+      'On a phone-width, confirm you can read it without sideways scroll.',
     ],
   },
   'terms-qa1': {
-    description: 'Terms of Use is reachable from the footer and readable on mobile.',
+    description: 'Terms of Use is in the footer and readable on a phone.',
     steps: [
-      { label: 'Open Terms of Use', href: '/terms' },
-      'Confirm footer reaches this page',
-      'Confirm it is readable on mobile',
+      { label: 'Go to Terms of Use (footer Terms of Use).', href: '/terms' },
+      'From Home, scroll to the footer and click Terms of Use. Confirm you land on this same page.',
+      'On a phone-width, confirm you can read it without sideways scroll.',
     ],
   },
   'faq-qa1': {
-    description: 'FAQ answers order/brand questions and works on mobile.',
+    description: 'FAQ answers Phase 1 order and brand questions and works on a phone.',
     steps: [
-      { label: 'Open FAQ', href: '/faq' },
-      'Confirm key Phase 1 questions are answered',
-      'Confirm mobile layout',
+      { label: 'Go to FAQ (header FAQ, or footer FAQ).', href: '/faq' },
+      'Read the questions. Confirm orders, shipping, and brand basics are answered in plain words.',
+      'On a phone-width, confirm no sideways scroll.',
     ],
   },
   'join-qa1': {
-    description: 'Join shows Coming Soon; no live member signup in Phase 1.',
+    description: 'Join the Movement is Coming Soon. There is no live paid membership signup in Phase 1.',
     steps: [
-      { label: 'Open Join / Memberships', href: '/join' },
-      'Confirm Coming Soon is visible',
-      'Confirm no live signup',
+      { label: 'Click Join the Movement in the header (orange, says Coming Soon).', href: '/join' },
+      'Confirm Coming Soon is obvious on the page.',
+      'Confirm there is no working checkout / pay-now membership button that takes a real card.',
     ],
   },
   'email-qa1': {
-    description: 'Admin Emails area has Phase 1 templates; a test send delivers.',
+    description:
+      'Admin Emails has Phase 1 templates. A test send should arrive at the DEMO DATA inbox — never a real personal inbox.',
     steps: [
-      { label: 'Open Emails in Admin Studio', href: '/admin/emails' },
-      'Confirm Phase 1 templates exist',
-      'Send a test email and confirm delivery',
+      { label: 'Sign in as Admin. Open Admin → Emails.', href: '/admin/emails' },
+      'Confirm Phase 1 templates are listed (you can open a preview).',
+      'Send a test email to a DEMO DATA address. Confirm it shows as sent / delivered in the log — do not use a real personal inbox.',
     ],
   },
   'launch-qa1': {
-    description: 'After launch, Shop Gear and payment/store links work on production.',
+    description: 'After launch, Shop Gear and pay/store links work on the live site.',
     steps: [
-      { label: 'Open Shop Gear', href: '/gear' },
-      'Confirm selected styles load',
-      'Confirm payment / store links work',
+      { label: 'Go to Shop Gear on the live site.', href: '/gear' },
+      'Confirm selected styles load with pictures.',
+      'Click a payment or store link. Confirm it opens a real checkout or store page.',
     ],
   },
   'cf-s0-qa': {
-    description: 'Sprint 0 CF calendar spans two weeks: sell-now posts, bios, live talk track, lifestyle tee mockup.',
+    description:
+      'Content Factory Sprint 0 covers two weeks of sell-now posts, bios, live talk, and the lifestyle tee picture.',
     steps: [
-      { label: 'Open Content Factory Sprint 0', href: '/admin/factory' },
-      'Confirm week 1 shop-link posts and week 2 pin/bios/live rows',
-      'Confirm the lifestyle tee mockup is the visual for sell posts',
-      'Confirm sprint filter works',
+      { label: 'Sign in as Admin. Open Content Factory. Click the Sprint 0 filter / section.', href: '/admin/factory' },
+      'Confirm week 1 rows are shop-link posts and week 2 includes pin, bios, and live.',
+      'Confirm the lifestyle tee picture is the visual called out for sell posts.',
+      'Turn Sprint 0 off and on. Confirm the list actually filters.',
     ],
   },
   'cf-s1-qa': {
-    description: 'Sprint 1 CF includes gear uploads/picks and organic posts; filters work.',
+    description: 'Content Factory Sprint 1 includes gear rows and organic posts; the sprint filter works.',
     steps: [
-      { label: 'Open Content Factory Sprint 1', href: '/admin/factory' },
-      'Confirm gear rows',
-      'Confirm organic posts',
-      'Confirm sprint filter works',
+      { label: 'Open Content Factory. Click the Sprint 1 filter / section.', href: '/admin/factory' },
+      'Confirm gear upload/pick rows are there.',
+      'Confirm organic post rows are there.',
+      'Confirm changing the sprint filter changes the list.',
     ],
   },
   'cf-s2-qa': {
-    description: 'Sprint 2 CF keeps selling tees, hoodie, and hat with the Shop Gear URL. Shop is already live.',
+    description:
+      'Sprint 2 keep-selling posts include https://nonnegotiation.com/gear. No “coming soon” shop copy.',
     steps: [
-      { label: 'Open Content Factory Sprint 2', href: '/admin/factory' },
-      'Confirm keep-selling posts include nonnegotiation.com/gear',
-      'Confirm no coming-soon / link-soon copy',
+      { label: 'Open Content Factory. Click the Sprint 2 filter / section.', href: '/admin/factory' },
+      'Open a keep-selling post. Confirm the Shop Gear URL https://nonnegotiation.com/gear is in the copy.',
+      'Confirm none of those posts say the shop is coming soon or that the link is not ready.',
     ],
   },
   'cf-s3-qa': {
-    description: 'Sprint 3 CF includes About/FAQ posts and weekend prep.',
+    description: 'Sprint 3 includes About/FAQ posts and weekend prep rows.',
     steps: [
-      { label: 'Open Content Factory Sprint 3', href: '/admin/factory' },
-      'Confirm About/FAQ posts',
-      'Confirm weekend prep rows',
+      { label: 'Open Content Factory. Click the Sprint 3 filter / section.', href: '/admin/factory' },
+      'Confirm About and FAQ posts are listed.',
+      'Confirm weekend prep rows are listed.',
     ],
   },
   'cf-s4-qa': {
-    description: 'Sprint 4 CF includes drop announcement and launch-week organic posts.',
+    description: 'Sprint 4 includes drop announcement and launch-week posts.',
     steps: [
-      { label: 'Open Content Factory Sprint 4', href: '/admin/factory' },
-      'Confirm drop announcement posts',
-      'Confirm launch-week cadence',
+      { label: 'Open Content Factory. Click the Sprint 4 filter / section.', href: '/admin/factory' },
+      'Confirm drop-announcement posts are listed.',
+      'Confirm launch-week posts are listed.',
     ],
   },
   'website-qa1': {
-    description: 'About, Contact, Privacy, Terms, and FAQ load from the footer. Home introduces the website.',
+    description:
+      'Home introduces the website. Footer links open About, Contact, Privacy, Terms, and FAQ.',
     steps: [
-      { label: 'Open Home', href: '/' },
-      'Confirm the website intro is visible',
-      'Open each launch page from the footer',
+      { label: 'Go to Home.', href: '/' },
+      'Confirm a website intro is visible (this is a site people can browse, not a blank landing).',
+      'Scroll to the footer. Click About, Contact, Privacy Policy, Terms of Use, and FAQ one at a time. Each should open that page — not a 404.',
     ],
   },
   'list-qa1': {
-    description: 'Mailing list accepts a valid email, rejects bad input, and is not a membership.',
+    description:
+      'The mailing list accepts a valid DEMO DATA email, rejects junk, and is not a membership. Use tester@example.com — never a real personal inbox.',
     steps: [
-      { label: 'Open the mailing list', href: '/list' },
-      'Submit a valid email',
-      'Confirm empty, invalid, and duplicate emails are rejected',
-      'Confirm Join / memberships does not open',
+      { label: 'Go to Home and scroll to the mailing-list / email sign-up, or open /list if you have that page.', href: '/list' },
+      'Type tester@example.com (DEMO DATA) and submit. Confirm a success message that you are on the list.',
+      'Try empty, a bad email (no @), and the same email again. Confirm each is rejected with a clear message.',
+      'Confirm this did not open Join / Memberships and did not ask for phone or home address.',
     ],
   },
   'analytics-qa1': {
     description:
-      'Angela uploads the latest analytics for Facebook, Instagram, TikTok, YouTube, and Personal starting tomorrow, then every 3 days. Do not re-upload today’s already-captured screenshots. Each task lists the screens to capture.',
+      'Angela uploads the latest analytics screenshots on each platform’s gather task. Use the Task List — each task names the screens. Do not re-upload today’s already-saved screenshots.',
     steps: [
-      { label: 'Open the first Facebook gather task', href: '/admin/factory' },
-      'Confirm each platform task lists the screens to capture',
-      'Confirm the latest screenshots upload on that day’s platform task — not today’s already-uploaded set',
+      { label: 'Sign in as Admin. Open Task List. Find Angela’s Facebook gather task for the next due date.', href: '/admin/tasks' },
+      'Open that task. Confirm the steps list the exact screens to capture (for example Reach).',
+      'Upload the latest screenshots on that day’s task only — not a copy of today’s already-uploaded set.',
     ],
   },
   'analytics-qa2': {
     description:
-      'Evelyn has an associated review task due the day after each platform gather. Recommendations from that review guide the next create on that platform.',
+      'Evelyn’s review task is due the day after each gather. Notes from that review should guide the next create on that platform.',
     steps: [
-      { label: 'Open the first Facebook review task', href: '/admin/factory' },
-      'Confirm every listed screen was uploaded',
-      'Confirm recommendations guide the next create on that platform',
+      { label: 'Sign in as Admin. Open Task List. Find Evelyn’s Facebook review task (due the day after Angela’s gather).', href: '/admin/tasks' },
+      'Open it. Confirm every listed screen has an upload from Angela.',
+      'Write or confirm recommendations in the notes, in plain words, for what to create next on that platform.',
     ],
   },
   ...phase1WebsiteReviewQaContent(),

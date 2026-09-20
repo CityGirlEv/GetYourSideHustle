@@ -11,7 +11,6 @@ import { AdminPortal } from './components/AdminPortal';
 import { UserAuthModal } from './components/UserAuthModal';
 import { BetaWelcomeModal } from './components/BetaWelcomeModal';
 import { DailyAffirmationsModal } from './components/DailyAffirmationsModal';
-import { DailyAffirmationsWidget } from './components/DailyAffirmationsWidget';
 import { JoinPage } from './components/JoinPage';
 import { MakePaymentPage } from './components/MakePaymentPage';
 import { SiteMapPage } from './components/SiteMapPage';
@@ -20,7 +19,7 @@ import { BetaRewardsPage } from './components/BetaRewardsPage';
 import { BetaTestingGuidePage } from './components/BetaTestingGuidePage';
 import { WebsiteIntroSection } from './components/WebsiteIntroSection';
 import { SessionType } from './data/affirmations';
-import { AppUser, getCurrentUserSession, logoutUserAsync, canAccessAdminPortal, hasRole, hydrateAuthFromServer } from './lib/userAuth';
+import { AppUser, getCurrentUserSession, logoutUserAsync, canAccessAdminPortal, getRolePermissions, hasRole, hydrateAuthFromServer } from './lib/userAuth';
 import {
   SESSION_IDLE_ACTIVITY_EVENTS,
   SESSION_IDLE_RELOGIN_MESSAGE,
@@ -42,6 +41,7 @@ import { canSeeMemberships, hasMembershipAccess, markMembershipJoined, Membershi
 import { parseGearKindFromPath, parseGearProductHandle } from './lib/heroCarouselProducts';
 import { shopifyGearSitePath, type ShopifyPublicCollectionId } from './lib/shopifyStore';
 import { canManageGearHubThumbnails } from './lib/gearHubThumbnails';
+import { canManageMovementCarousel } from './lib/movementCarousel';
 
 interface CartItem {
   productId: string;
@@ -364,7 +364,7 @@ export default function App() {
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1F1917] flex flex-col font-sans selection:bg-[#C2410C] selection:text-[#FFFFFF]">
+    <div className="min-h-screen bg-[#F6F0E6] text-[#1F1917] flex flex-col font-sans selection:bg-[#C2410C] selection:text-[#FFFFFF]">
       <Header
         cartCount={totalCartCount}
         currentUser={currentUser}
@@ -426,20 +426,14 @@ export default function App() {
             <Hero
               onScrollToSection={handleScrollToSection}
               onNavigateToGear={() => navigateToStore('gear')}
-              onOpenCarouselProduct={navigateToPath}
               onOpenChallenge={handleOpenChallenge}
               onOpenJoin={handleOpenJoin}
-              onOpenAffirmations={() => handleOpenAffirmations()}
-              onOpenAbout={() => navigateToStore('about')}
-              canManageHero={canAccessAdminPortal(currentUser)}
-              hasMembershipAccess={membershipUnlocked}
-              editorName={currentUser?.email ?? null}
-            />
-            <DailyAffirmationsWidget
               onOpenAffirmations={handleOpenAffirmations}
+              onOpenAbout={() => navigateToStore('about')}
+              onNavigate={navigateToStore}
               hasMembershipAccess={membershipUnlocked}
-              onOpenJoin={handleOpenJoin}
               membershipsVisible={canSeeMemberships(currentUser)}
+              canManageMovementCarousel={canManageMovementCarousel(currentUser)}
             />
             <WebsiteIntroSection onNavigate={navigateToStore} />
             <ReceiptBuilder />

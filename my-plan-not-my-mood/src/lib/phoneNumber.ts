@@ -40,6 +40,14 @@ export function phoneSignupError(value: string | undefined): string | null {
   return null;
 }
 
+/** Empty is allowed; a filled value must be a valid US number. */
+export function optionalPhoneSignupError(value: string | undefined): string | null {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return null;
+  if (!isValidPhoneNumber(trimmed)) return PHONE_INVALID_ERROR;
+  return null;
+}
+
 export function storePhoneNumber(value: string): string {
   return formatPhoneDisplay(value);
 }

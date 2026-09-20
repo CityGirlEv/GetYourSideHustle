@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Flame, Download, Share2, CheckSquare, Sparkles } from 'lucide-react';
+import { HOME_RECEIPTS_HEADING, homeReceiptsTitleDisplay } from '../lib/homePillars';
+import { FancySectionHeading } from './FancySectionHeading';
 
 export const ReceiptBuilder: React.FC = () => {
   const [mood, setMood] = useState('Exhausted & Overwhelmed');
@@ -11,16 +13,26 @@ export const ReceiptBuilder: React.FC = () => {
   };
 
   return (
-    <section id="receipts" className="py-16 bg-[#FAF8F5]">
+    <section id="receipts" className="pt-4 pb-12 sm:pt-5 sm:pb-16 bg-[#F6F0E6]">
+      <div
+        className="w-full px-8 sm:px-16 py-1"
+        data-testid="receipts-section-separator"
+        aria-hidden="true"
+      >
+        <div className="h-px w-full max-w-6xl mx-auto bg-[#E8C49A]" />
+      </div>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-2xl bg-[#FFEDD5] border border-[#C2410C]/40 text-[#C2410C] text-xs font-black uppercase tracking-wider mb-3 shadow-sm">
             <Flame className="w-4 h-4 text-[#C2410C]" />
             Social Accountability Engine
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black text-[#1F1917] uppercase tracking-tight font-serif">
-            WHAT WON TODAY? (PLAN RECEIPTS)
-          </h2>
+          <FancySectionHeading
+            title={HOME_RECEIPTS_HEADING}
+            display={homeReceiptsTitleDisplay(HOME_RECEIPTS_HEADING)}
+            testId="receipts-heading"
+            align="center"
+          />
           <p className="text-[#3F3832] max-w-xl mx-auto text-sm mt-3 font-medium">
             Generate your daily digital receipt to log your follow-through and share your victory with the community.
           </p>

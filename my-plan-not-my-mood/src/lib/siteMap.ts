@@ -82,7 +82,7 @@ export const APP_SITE_TREE: SiteTreeNode = {
         { id: 'plan', label: 'Plan', path: '/admin/plan', status: 'gated', branch: 'admin', weight: 5 },
         { id: 'budget', label: 'Budget (Super Admin)', path: '/admin/budget', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'inventory-pricing', label: 'Inventory (Admin)', path: '/admin/inventory-pricing', status: 'gated', branch: 'admin', weight: 4 },
-        { id: 'testing', label: 'Testing', path: '/admin/testing', status: 'gated', branch: 'admin', weight: 4 },
+        { id: 'testing', label: 'Testing Portal', path: '/admin/testing', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'tasks', label: 'Tasks', path: '/admin/tasks', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'factory', label: 'Content Factory', path: '/admin/factory', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'gear-selections', label: 'Gear', path: '/admin/gear-selections', status: 'gated', branch: 'admin', weight: 3 },

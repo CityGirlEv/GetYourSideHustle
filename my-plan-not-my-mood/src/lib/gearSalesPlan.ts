@@ -60,8 +60,9 @@ export interface PhasePaymentInstallment {
   status: PaymentInstallmentStatus;
 }
 
-/** Angela already sent this first installment of the $10,000 Phase 1 fee. */
-export const PHASE_1_PAID_TO_DATE = 3_500;
+/** Angela sent Payment 2 on Friday Sep 18, 2026 (Sprint 2). */
+export const PHASE_1_PAYMENT_2_RECEIVED_ISO = '2026-09-18';
+export const PHASE_1_PAYMENT_2_RECEIVED_LABEL = 'Received Sep 18';
 
 /** $10,000 Phase 1 fee in three payments — not Phase 2 / Phase 3 work. */
 export const PHASE_PAYMENT_SCHEDULE: readonly PhasePaymentInstallment[] = [
@@ -78,12 +79,12 @@ export const PHASE_PAYMENT_SCHEDULE: readonly PhasePaymentInstallment[] = [
   {
     id: 'pay-2',
     label: 'Payment 2',
-    dueLabel: 'Due Sprint 1',
+    dueLabel: PHASE_1_PAYMENT_2_RECEIVED_LABEL,
     sprintLabel: 'Sprint 1',
     sprintId: 'sprint1',
     amount: 3_500,
     percent: 35,
-    status: 'due',
+    status: 'paid',
   },
   {
     id: 'pay-3',
@@ -96,6 +97,9 @@ export const PHASE_PAYMENT_SCHEDULE: readonly PhasePaymentInstallment[] = [
     status: 'upcoming',
   },
 ];
+
+/** Payment 1 + Payment 2 received. */
+export const PHASE_1_PAID_TO_DATE = 7_000;
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentInstallmentStatus, string> = {
   paid: 'Paid',
@@ -121,6 +125,15 @@ export function duePaymentInstallment(
   return schedule.find((row) => row.status === 'due') ?? schedule.find((row) => row.status !== 'paid');
 }
 
+export function phase1PaidBudgetCopy(
+  schedule: readonly PhasePaymentInstallment[] = PHASE_PAYMENT_SCHEDULE,
+): string {
+  const paid = formatUsdAmount(paymentSchedulePaid(schedule));
+  const next = duePaymentInstallment(schedule);
+  if (!next) return `${paid} is already paid.`;
+  return `${paid} is already paid. ${next.label} (${formatUsdAmount(next.amount)}) is due ${next.sprintLabel}.`;
+}
+
 export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
   {
     id: 'sprint0',
@@ -139,7 +152,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Order Angela’s sample tees (hoodie/hat if ready) so she has product in hand',
       'Stand up TikTok / YouTube / Instagram in parallel — not a sales gate',
       'Canonical domain and SSL (nonnegotiation.com / localhost:3001)',
-      'Angela $10,000 in three payments — $3,500 received; Payment 2 due Sprint 1',
+      'Angela $10,000 in three payments — $7,000 received; Payment 3 due Sprint 3',
       TEE_SALES_VIDEOS_DELIVERABLE,
       MARKETING_VIDEOS_DELIVERABLE,
     ],
@@ -164,7 +177,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Finish 3 shirt styles / hoodie / hat picks on Gear Selections',
       'T-shirt design stays inside the $10,000 Phase 1 budget',
       TEE_SALES_VIDEOS_DELIVERABLE,
-      'Collect Payment 2 ($3,500) — Sprint 1 installment',
+      'Payment 2 ($3,500) received Sep 18 — Sprint 1 installment',
       SITE_ANALYTICS_SPRINT_DELIVERABLE,
     ],
     description:

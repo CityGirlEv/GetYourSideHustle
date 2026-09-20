@@ -5,6 +5,7 @@ import {
   formatPhoneDisplay,
   isValidPhoneNumber,
   normalizePhoneDigits,
+  optionalPhoneSignupError,
   phoneSignupError,
   phoneTelHref,
   storePhoneNumber,
@@ -30,6 +31,13 @@ describe('phoneNumber', () => {
     expect(phoneSignupError('')).toBe(PHONE_REQUIRED_ERROR);
     expect(phoneSignupError('123')).toBe(PHONE_INVALID_ERROR);
     expect(phoneSignupError('6195550100')).toBeNull();
+  });
+
+  it('treats phone as optional unless a value is entered', () => {
+    expect(optionalPhoneSignupError(undefined)).toBeNull();
+    expect(optionalPhoneSignupError('')).toBeNull();
+    expect(optionalPhoneSignupError('123')).toBe(PHONE_INVALID_ERROR);
+    expect(optionalPhoneSignupError('6195550100')).toBeNull();
   });
 
   it('formats a stored number and builds a click-to-call link', () => {

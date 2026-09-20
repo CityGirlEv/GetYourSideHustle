@@ -2,7 +2,7 @@
  * Task & QA test board — filter chips, search, and counts (GYSH-style).
  */
 
-import { currentSprintWindow, dueDateForSprintLabel, sprintLabelWithDates } from './sprintCalendar';
+import { currentSprintWindow, dueDateForSprintLabel } from './sprintCalendar';
 
 import { normalizeWorkAttachments, type WorkAttachmentMeta } from './workAttachments';
 import { addWorkNote, workNotesHaveText, type WorkNoteActor } from './workNoteEntries';
@@ -12,14 +12,17 @@ import {
   clearFailedHere,
   markFailedHere,
   normalizeWorkChecklist,
+  applyFirstStepPageHref,
   type WorkChecklistStep,
 } from './workChecklist';
 import {
   buildSeededSteps,
   linkedTasksForTest,
   linkedTestsForTask,
+  overlayQaSeedStepCopy,
   pageHrefForWorkItem,
   qaContentSeed,
+  qaWalkthroughTextHasJargon,
   resolvePersistedSteps,
   taskContentSeed,
 } from './workItemContentSeed';
@@ -59,6 +62,7 @@ import {
   matchesRolledOverStatusFilter,
   rolloverLockedSprintItems,
   rolloverWorkItemSprint,
+  sprintChipLabel,
   ROLLOVER_STATUS_ID,
   ROLLOVER_STATUS_LABEL,
 } from './sprintRollover';
@@ -85,7 +89,7 @@ export type QaStatus =
   | 'blocked'
   | 'fixed_retest'
   | 'failed_retest';
-export type WorkAssignee =
+export type NamedWorkAssignee =
   | 'angela'
   | 'evelyn'
   | 'dev'
@@ -94,6 +98,115 @@ export type WorkAssignee =
   | 'system'
   | 'vitest'
   | 'playwright';
+export type TesterAssignee = `tester:${string}`;
+export type WorkAssignee = NamedWorkAssignee | TesterAssignee;
+
+export const TESTER_ASSIGNEE_PREFIX = 'tester:';
+
+export type TesterChipPerson = { id: string; name: string };
+
+export function isTesterAssignee(value: unknown): value is TesterAssignee {
+  return typeof value === 'string' && value.startsWith(TESTER_ASSIGNEE_PREFIX) && value.length > TESTER_ASSIGNEE_PREFIX.length;
+}
+
+export function testerAssigneeId(userId: string): TesterAssignee {
+  return `${TESTER_ASSIGNEE_PREFIX}${userId}`;
+}
+
+export function testerIdFromAssignee(assignee: string): string | null {
+  return isTesterAssignee(assignee) ? assignee.slice(TESTER_ASSIGNEE_PREFIX.length) : null;
+}
+
+/** Testing Portal assignee chips: people, each QA tester, Unknown, Vitest, Playwright. No lumped Testers chip. */
+export function testingPortalAssigneeOptions(testers: TesterChipPerson[]): WorkAssignee[] {
+  return [
+    'angela',
+    'evelyn',
+    'dev',
+    ...testers.map((tester) => testerAssigneeId(tester.id)),
+    'unassigned',
+    'vitest',
+    'playwright',
+  ];
+}
+
+export function testingPortalHumanAssigneeOptions(testers: TesterChipPerson[]): WorkAssignee[] {
+  return testingPortalAssigneeOptions(testers).filter((assignee) => assignee !== 'vitest' && assignee !== 'playwright');
+}
+
+export function firstNameFromDisplayName(name: string): string {
+  const trimmed = String(name ?? '').trim();
+  if (!trimmed) return '';
+  return trimmed.split(/\s+/)[0] ?? trimmed;
+}
+
+export function assigneeDisplayLabel(assignee: string, testers: TesterChipPerson[] = []): string {
+  const named = ASSIGNEE_LABELS[assignee];
+  if (named) return named;
+  const testerId = testerIdFromAssignee(assignee);
+  if (testerId) {
+    const full = testers.find((tester) => tester.id === testerId)?.name.trim() || 'Tester';
+    return firstNameFromDisplayName(full) || 'Tester';
+  }
+  return firstNameFromDisplayName(assignee) || assignee;
+}
+
+export function assigneeAccent(assignee: string): string {
+  if (assignee === 'angela') return '#C2410C';
+  if (assignee === 'evelyn') return '#1F1917';
+  if (assignee === 'dev') return '#2563EB';
+  if (assignee === 'vitest') return '#2563EB';
+  if (assignee === 'playwright') return '#7C3AED';
+  if (isTesterAssignee(assignee)) return '#0F766E';
+  return '#9CA3AF';
+}
+
+export function isAllowedTestAssignee(value: unknown): value is WorkAssignee {
+  return (
+    value === 'angela'
+    || value === 'evelyn'
+    || value === 'dev'
+    || value === 'qa'
+    || value === 'unassigned'
+    || value === 'vitest'
+    || value === 'playwright'
+    || isTesterAssignee(value)
+  );
+}
+
+export function isAllowedTaskAssignee(value: unknown): value is WorkAssignee {
+  return isAllowedTestAssignee(value);
+}
+
+/** Unknown / System / blank do not count as a person assignment. */
+export function isNamedWorkAssignee(value: unknown): value is WorkAssignee {
+  if (value === 'unassigned' || value === 'system' || value == null || value === '') return false;
+  return isAllowedTaskAssignee(value);
+}
+
+/** Never let Unknown overwrite a named person, tester, or automation assignee. */
+export function preferNamedAssignee(incoming: unknown, existing: unknown): WorkAssignee {
+  const incomingNamed = isNamedWorkAssignee(incoming);
+  const existingNamed = isNamedWorkAssignee(existing);
+  if (existingNamed && !incomingNamed) return existing;
+  if (incomingNamed) return incoming;
+  if (existingNamed) return existing;
+  return 'unassigned';
+}
+
+/** Task List chips: people, each tester, Beta Testers leftover, Unknown, automation. */
+export function taskBoardAssigneeOptions(testers: TesterChipPerson[]): WorkAssignee[] {
+  return [
+    'angela',
+    'evelyn',
+    'dev',
+    ...testers.map((tester) => testerAssigneeId(tester.id)),
+    'qa',
+    'unassigned',
+    'vitest',
+    'playwright',
+  ];
+}
 
 export const SPRINT_OPTIONS: SprintCategory[] = [
   'Sprint 0',
@@ -132,12 +245,11 @@ export const TASK_ASSIGNEE_OPTIONS: WorkAssignee[] = [
 ];
 /** People, QA, Unknown, Vitest, and Playwright on the task board. */
 export const ASSIGNEE_OPTIONS: WorkAssignee[] = TASK_ASSIGNEE_OPTIONS;
-/** Testing Portal chips: people, Testers, Unknown, Vitest, and Playwright. */
+/** Testing Portal static chips before live testers are merged in. */
 export const TEST_ASSIGNEE_OPTIONS: WorkAssignee[] = [
   'angela',
   'evelyn',
   'dev',
-  'qa',
   'unassigned',
   'vitest',
   'playwright',
@@ -180,11 +292,11 @@ export const QA_CATEGORIES = [
 export type TaskCategory = (typeof TASK_CATEGORIES)[number];
 export type QaCategory = (typeof QA_CATEGORIES)[number];
 
-export const ASSIGNEE_LABELS: Record<WorkAssignee, string> = {
+export const ASSIGNEE_LABELS: Record<string, string> = {
   angela: 'Angela',
   evelyn: 'Evelyn',
   dev: 'Dev Team',
-  qa: 'Testers',
+  qa: 'Beta Testers',
   unassigned: 'Unknown',
   system: 'System',
   vitest: 'Vitest',
@@ -192,7 +304,7 @@ export const ASSIGNEE_LABELS: Record<WorkAssignee, string> = {
 };
 
 export function isPersonAssignor(value: unknown): value is WorkAssignee {
-  return value === 'angela' || value === 'evelyn' || value === 'dev' || value === 'qa';
+  return value === 'angela' || value === 'evelyn' || value === 'dev' || value === 'qa' || isTesterAssignee(value);
 }
 
 /** Assignor is never Unknown. Missing or Unknown seeded rows were created by System. */
@@ -218,12 +330,11 @@ const TASK_PROGRESS_RANK: Record<TaskStatus, number> = {
   done: 3,
 };
 
-/** Automated suites own Vitest/Playwright. Testers, Angela, Evelyn, and Dev stay named. Everyone else is Unknown. */
+/** Automated suites own Vitest/Playwright. Named people and each QA tester stay named. Everyone else is Unknown. */
 export function normalizeTestAssignee(assignee: unknown, suite?: TestSuite): WorkAssignee {
   if (suite === 'vitest' || suite === 'playwright') return suite;
-  if (assignee === 'angela' || assignee === 'evelyn' || assignee === 'dev' || assignee === 'qa') {
-    return assignee;
-  }
+  if (assignee === 'angela' || assignee === 'evelyn' || assignee === 'dev' || assignee === 'qa') return assignee;
+  if (isTesterAssignee(assignee)) return assignee;
   return 'unassigned';
 }
 
@@ -996,7 +1107,12 @@ export interface FilterChipCount {
   total: number;
   done: number;
   accent?: string;
+  locked?: boolean;
 }
+
+/** Dark ink so 0/12 style counts stay readable on the filled bubbles. */
+export const FILTER_CHIP_COUNT_CLASS =
+  'text-[10px] font-mono font-black tabular-nums text-[#1F1917]';
 
 function inferTaskCategory(title: string, sprint?: string): TaskCategory {
   const t = title.toLowerCase();
@@ -1031,9 +1147,7 @@ export function normalizeTask(raw: Record<string, unknown>): TaskItem {
       ? (categoryRaw as TaskCategory)
       : inferTaskCategory(String(raw.title ?? ''), sprint);
 
-  const assignee = TASK_ASSIGNEE_OPTIONS.includes(raw.assignee as WorkAssignee)
-    ? (raw.assignee as WorkAssignee)
-    : 'unassigned';
+  const assignee = isAllowedTaskAssignee(raw.assignee) ? raw.assignee : 'unassigned';
 
   const priority = PRIORITY_OPTIONS.includes(raw.priority as WorkPriority)
     ? (raw.priority as WorkPriority)
@@ -1178,7 +1292,7 @@ export function applyTaskInlinePatch(task: TaskItem, patch: TaskInlinePatch, act
       }
     }
   }
-  if (patch.assignee !== undefined && ASSIGNEE_OPTIONS.includes(patch.assignee)) next.assignee = patch.assignee;
+  if (patch.assignee !== undefined && isAllowedTaskAssignee(patch.assignee)) next.assignee = patch.assignee;
   if (patch.assignor !== undefined) {
     next.assignor = normalizeAssignor(patch.assignor);
   } else if (patch.assignee !== undefined && next.assignee !== task.assignee) {
@@ -1302,7 +1416,7 @@ export function applyQaInlinePatch(test: QaTestItem, patch: QaInlinePatch, actor
       next.completedOn = undefined;
     }
   }
-  if (patch.assignee !== undefined && TEST_ASSIGNEE_OPTIONS.includes(patch.assignee)) next.assignee = patch.assignee;
+  if (patch.assignee !== undefined && isAllowedTestAssignee(patch.assignee)) next.assignee = patch.assignee;
   if (patch.assignor !== undefined) next.assignor = normalizeAssignor(patch.assignor);
   if (patch.dueDate !== undefined) {
     next.dueDate = patch.dueDate === '' ? '' : parseWorkDueDate(patch.dueDate) || test.dueDate;
@@ -1416,34 +1530,34 @@ export interface BoardTone {
   ink: string;
 }
 
-/** Distinct sprint palettes — cream washes with clear ink, not muddy tan. */
+/** Saturated sprint headers so collapsible sections read at a glance, with light panels underneath. */
 export const SPRINT_SECTION_TONES: Record<SprintCategory, BoardTone> = {
   'Sprint 0': {
-    header: 'bg-[#FED7AA] text-[#9A3412] border-[#FDBA74]',
-    chip: 'bg-[#FFF7ED] text-[#9A3412]',
+    header: 'bg-[#FB923C] text-[#7C2D12] border-[#EA580C]',
+    chip: 'bg-[#FFF7ED] text-[#7C2D12]',
     panel: 'bg-[#FFF7ED]',
     selected: 'border-[#FDBA74] bg-[#FED7AA] text-[#9A3412]',
     selectedAll: 'border-[#FDBA74] bg-[#FDBA74] text-[#7C2D12]',
-    ink: 'text-[#9A3412]',
+    ink: 'text-[#7C2D12]',
   },
   'Sprint 1': {
-    header: 'bg-[#FDE68A] text-[#92400E] border-[#FCD34D]',
-    chip: 'bg-[#FFFBEB] text-[#92400E]',
+    header: 'bg-[#FBBF24] text-[#78350F] border-[#D97706]',
+    chip: 'bg-[#FFFBEB] text-[#78350F]',
     panel: 'bg-[#FFFBEB]',
     selected: 'border-[#FCD34D] bg-[#FDE68A] text-[#92400E]',
     selectedAll: 'border-[#FCD34D] bg-[#FCD34D] text-[#78350F]',
-    ink: 'text-[#92400E]',
+    ink: 'text-[#78350F]',
   },
   'Sprint 2': {
-    header: 'bg-[#A7F3D0] text-[#065F46] border-[#6EE7B7]',
-    chip: 'bg-[#ECFDF5] text-[#065F46]',
+    header: 'bg-[#34D399] text-[#064E3B] border-[#059669]',
+    chip: 'bg-[#ECFDF5] text-[#064E3B]',
     panel: 'bg-[#ECFDF5]',
     selected: 'border-[#6EE7B7] bg-[#A7F3D0] text-[#065F46]',
     selectedAll: 'border-[#6EE7B7] bg-[#6EE7B7] text-[#064E3B]',
-    ink: 'text-[#065F46]',
+    ink: 'text-[#064E3B]',
   },
   'Sprint 3': {
-    header: 'bg-[#BFDBFE] text-[#1E3A8A] border-[#93C5FD]',
+    header: 'bg-[#60A5FA] text-[#1E3A8A] border-[#2563EB]',
     chip: 'bg-[#EFF6FF] text-[#1E3A8A]',
     panel: 'bg-[#EFF6FF]',
     selected: 'border-[#93C5FD] bg-[#BFDBFE] text-[#1E3A8A]',
@@ -1451,21 +1565,21 @@ export const SPRINT_SECTION_TONES: Record<SprintCategory, BoardTone> = {
     ink: 'text-[#1E3A8A]',
   },
   'Sprint 4': {
-    header: 'bg-[#E9D5FF] text-[#6B21A8] border-[#D8B4FE]',
-    chip: 'bg-[#FAF5FF] text-[#6B21A8]',
+    header: 'bg-[#C084FC] text-[#581C87] border-[#7E22CE]',
+    chip: 'bg-[#FAF5FF] text-[#581C87]',
     panel: 'bg-[#FAF5FF]',
     selected: 'border-[#D8B4FE] bg-[#E9D5FF] text-[#6B21A8]',
     selectedAll: 'border-[#D8B4FE] bg-[#D8B4FE] text-[#581C87]',
-    ink: 'text-[#6B21A8]',
+    ink: 'text-[#581C87]',
   },
 };
 
 export const SPRINT_SWATCH: Record<SprintCategory, string> = {
-  'Sprint 0': '#9A3412',
-  'Sprint 1': '#92400E',
-  'Sprint 2': '#065F46',
+  'Sprint 0': '#7C2D12',
+  'Sprint 1': '#78350F',
+  'Sprint 2': '#064E3B',
   'Sprint 3': '#1E3A8A',
-  'Sprint 4': '#6B21A8',
+  'Sprint 4': '#581C87',
 };
 
 export function sprintTextClass(sprint: SprintCategory): string {
@@ -1477,10 +1591,18 @@ export function sprintControlClass(sprint: SprintCategory): string {
   return `${tone.chip} ${tone.ink}`;
 }
 
-export const FILTER_SECTION_IDS = ['sprint', 'assignee', 'status', 'category', 'priority'] as const;
+export const FILTER_SECTION_IDS = ['assignee', 'sprint', 'status', 'category', 'priority'] as const;
 export type FilterSectionId = (typeof FILTER_SECTION_IDS)[number];
-export const PRIMARY_FILTER_SECTION_IDS = ['sprint', 'assignee'] as const;
+export const PRIMARY_FILTER_SECTION_IDS = ['assignee', 'sprint'] as const;
 export const COLLAPSED_FILTER_SECTION_IDS = ['status', 'category', 'priority'] as const;
+
+/** Count a facet against every other selected filter, so Evelyn’s chips show Evelyn’s sprints/statuses. */
+export function filtersOmittingSection<T extends string>(
+  filters: WorkBoardFilters<T>,
+  section: FilterSectionId,
+): WorkBoardFilters<T> {
+  return { ...filters, [section]: new Set() };
+}
 
 export const FILTER_SECTION_LABELS: Record<FilterSectionId, string> = {
   assignee: 'Assignee',
@@ -1548,44 +1670,44 @@ export function filterSectionSummary(
 
 export const FILTER_SECTION_TONES: Record<FilterSectionId, BoardTone> = {
   sprint: {
-    header: 'bg-[#FFEDD5] text-[#9A3412]',
-    chip: 'bg-[#FFF7ED] text-[#9A3412]',
-    panel: 'bg-[#FFF7ED]',
-    selected: 'border-[#FDBA74] bg-[#FED7AA] text-[#9A3412]',
-    selectedAll: 'border-[#FDBA74] bg-[#FED7AA] text-[#7C2D12]',
-    ink: 'text-[#9A3412]',
+    header: 'bg-[#FB923C] text-[#7C2D12]',
+    chip: 'bg-[#FED7AA] text-[#7C2D12] border-[#EA580C]',
+    panel: 'bg-[#FFEDD5]',
+    selected: 'border-[#EA580C] bg-[#FB923C] text-[#7C2D12]',
+    selectedAll: 'border-[#C2410C] bg-[#F97316] text-[#7C2D12]',
+    ink: 'text-[#7C2D12]',
   },
   status: {
-    header: 'bg-[#D1FAE5] text-[#065F46]',
-    chip: 'bg-[#ECFDF5] text-[#065F46]',
-    panel: 'bg-[#ECFDF5]',
-    selected: 'border-[#6EE7B7] bg-[#A7F3D0] text-[#065F46]',
-    selectedAll: 'border-[#6EE7B7] bg-[#A7F3D0] text-[#064E3B]',
-    ink: 'text-[#065F46]',
+    header: 'bg-[#34D399] text-[#064E3B]',
+    chip: 'bg-[#A7F3D0] text-[#064E3B] border-[#059669]',
+    panel: 'bg-[#D1FAE5]',
+    selected: 'border-[#059669] bg-[#34D399] text-[#064E3B]',
+    selectedAll: 'border-[#047857] bg-[#10B981] text-[#064E3B]',
+    ink: 'text-[#064E3B]',
   },
   priority: {
-    header: 'bg-[#FEF3C7] text-[#92400E]',
-    chip: 'bg-[#FFFBEB] text-[#92400E]',
-    panel: 'bg-[#FFFBEB]',
-    selected: 'border-[#FCD34D] bg-[#FDE68A] text-[#92400E]',
-    selectedAll: 'border-[#FCD34D] bg-[#FDE68A] text-[#78350F]',
-    ink: 'text-[#92400E]',
+    header: 'bg-[#FBBF24] text-[#78350F]',
+    chip: 'bg-[#FDE68A] text-[#78350F] border-[#D97706]',
+    panel: 'bg-[#FEF3C7]',
+    selected: 'border-[#D97706] bg-[#FBBF24] text-[#78350F]',
+    selectedAll: 'border-[#B45309] bg-[#F59E0B] text-[#78350F]',
+    ink: 'text-[#78350F]',
   },
   assignee: {
-    header: 'bg-[#DBEAFE] text-[#1E3A8A]',
-    chip: 'bg-[#EFF6FF] text-[#1E3A8A]',
-    panel: 'bg-[#EFF6FF]',
-    selected: 'border-[#93C5FD] bg-[#BFDBFE] text-[#1E3A8A]',
-    selectedAll: 'border-[#93C5FD] bg-[#BFDBFE] text-[#1E40AF]',
+    header: 'bg-[#60A5FA] text-[#1E3A8A]',
+    chip: 'bg-[#BFDBFE] text-[#1E3A8A] border-[#2563EB]',
+    panel: 'bg-[#DBEAFE]',
+    selected: 'border-[#2563EB] bg-[#60A5FA] text-[#1E3A8A]',
+    selectedAll: 'border-[#1D4ED8] bg-[#3B82F6] text-[#1E3A8A]',
     ink: 'text-[#1E3A8A]',
   },
   category: {
-    header: 'bg-[#FCE7F3] text-[#9D174D]',
-    chip: 'bg-[#FDF2F8] text-[#9D174D]',
-    panel: 'bg-[#FDF2F8]',
-    selected: 'border-[#F9A8D4] bg-[#FBCFE8] text-[#9D174D]',
-    selectedAll: 'border-[#F9A8D4] bg-[#FBCFE8] text-[#831843]',
-    ink: 'text-[#9D174D]',
+    header: 'bg-[#F472B6] text-[#831843]',
+    chip: 'bg-[#F9A8D4] text-[#831843] border-[#DB2777]',
+    panel: 'bg-[#FCE7F3]',
+    selected: 'border-[#DB2777] bg-[#F472B6] text-[#831843]',
+    selectedAll: 'border-[#BE185D] bg-[#EC4899] text-[#831843]',
+    ink: 'text-[#831843]',
   },
 };
 
@@ -1593,7 +1715,7 @@ export const TASK_STATUS_TONES: Record<TaskStatus, string> = {
   done: 'bg-[#B8D4C4] text-[#2F5A48] border-[#8FB5A4]',
   in_progress: 'bg-[#F6E56A] text-[#6B5808] border-[#D4C43A]',
   blocked: 'bg-[#E8D4A0] text-[#5C4A1C] border-[#C9B46A]',
-  not_started: 'bg-[#F4EBE6] text-[#6B4538] border-[#DCC0B0]',
+  not_started: 'bg-white text-[#1F1917] border-[#E5DFD3]',
 };
 
 export const QA_STATUS_TONES: Record<QaStatus, string> = {
@@ -1601,7 +1723,7 @@ export const QA_STATUS_TONES: Record<QaStatus, string> = {
   in_progress: 'bg-[#F6E56A] text-[#6B5808] border-[#D4C43A]',
   failed: 'bg-[#E4B8A4] text-[#5C3328] border-[#C9A08C]',
   blocked: 'bg-[#E8D4A0] text-[#5C4A1C] border-[#C9B46A]',
-  untested: 'bg-[#F4EBE6] text-[#6B4538] border-[#DCC0B0]',
+  untested: 'bg-white text-[#1F1917] border-[#E5DFD3]',
   fixed_retest: 'bg-[#B8C8DC] text-[#2F4460] border-[#8FA4BC]',
   failed_retest: 'bg-[#DCC8B8] text-[#5C3328] border-[#C9A08C]',
 };
@@ -1680,8 +1802,8 @@ export function workDueDateControlClass(overdue: boolean): string {
 }
 
 export const INITIAL_TASKS: TaskItem[] = rolloverLockedSprintItems([
-  { id: 't-1', title: 'Confirm $10,000 in three payments — $3,500 received', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela' },
-  { id: 't-43', title: 'Make Payment — Payment 2 ($3,500) due Sprint 1 via Zelle or Cash App', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-1', title: 'Confirm $10,000 in three payments — $7,000 received', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela' },
+  { id: 't-43', title: 'Make Payment — Payment 2 ($3,500) received Sep 18', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-2', title: 'Keep the brand line on every Phase 1 page and email', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-3', title: 'Host the shirt drop on nonnegotiation.com', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'evelyn' },
   { id: 't-4', title: 'Brand foundation and gear storefront shell', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn' },
@@ -1781,6 +1903,8 @@ export function shouldResetWorkBoardStatuses(
 /** Append seed tasks that are missing from a saved board (keeps user progress). */
 /** Prior seed titles we still rewrite when the task is not started. */
 const SUPERSEDED_SEED_TITLES: Record<string, string[]> = {
+  't-1': ['Confirm $10,000 in three payments — $3,500 received'],
+  't-43': ['Make Payment — Payment 2 ($3,500) due Sprint 1 via Zelle or Cash App'],
   't-24': [
     'Build ROI per phase after shirt costs are known',
     'Build ROI per phase after production costs are known',
@@ -1889,17 +2013,17 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'qa1', title: 'Hero Interactive Speech Bubbles over 5 Characters', desc: 'Clicking bubbles selects mood and scrolls smoothly to action card', sprint: 'Sprint 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'qa2', title: 'WHICH MOOD AM I IN TODAY Banner Style Match', desc: 'Question banner uses Rust Orange bg and crisp white font matching buttons', sprint: 'Sprint 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'qa3', title: '2-Column Desktop Grid for Products & Mood Output', desc: 'Left column renders mockup images; right column renders details box', sprint: 'Sprint 2', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'qa4', title: 'Slide-Over Shopping Cart Drawer & Badge Count', desc: 'Adding items updates cart badge counter dynamically', sprint: 'Sprint 2', category: 'E2E Flows', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'qa5', title: '#WhatWonToday Social Digital Receipt Generator', desc: 'Generates victory determination card with 1-click share & download', sprint: 'Sprint 2', category: 'E2E Flows', priority: 'medium', status: 'untested', assignee: 'qa' },
-  { id: 'qa6', title: 'Free 7-Day Reset Starter Kit Printable Modal', desc: 'Modal collects email & 7-day goal, dispatching printable PDF', sprint: 'Sprint 2', category: 'E2E Flows', priority: 'medium', status: 'untested', assignee: 'angela' },
-  { id: 'aff-qa1', title: 'Morning Micro-Set (Identity + Confidence)', desc: 'Loads 8-affirmation pool, 3s breath cue, 20-30s sequence', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'aff-qa2', title: 'Midday Micro-Set (Boundaries + Truths)', desc: 'Loads boundary-focused pool, emotional reset trigger', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'aff-qa3', title: 'Night Micro-Set (Healing + Release + Faith)', desc: 'Loads release & faith pool, day closing protocol', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'aff-qa4', title: 'Rotation & Weighted Personalization Engine', desc: 'Prevents repetition fatigue, dynamic reflection weighting', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'dev' },
-  { id: 'aff-qa5', title: '10-Second Reflection & Zero-Guilt Skip', desc: 'Allows selecting resonant phrase, persists to localStorage', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'medium', status: 'untested', assignee: 'qa' },
-  { id: 'aff-qa6', title: 'Daily Completion State (Morning/Midday/Night)', desc: 'Tracks day-by-day status, persistent calendar resetting', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'aff-qa7', title: 'Responsive & Accessibility Compliance', desc: 'Tested on Mobile, Tablet & Desktop with high contrast', sprint: 'Sprint 3', category: 'Affirmations QA', priority: 'medium', status: 'untested', assignee: 'qa' },
-  { id: 'aff-qa8', title: 'Voice Trust Layer Architectural Specs', desc: 'Planned data model & coach effect fields prepared', sprint: 'Sprint 3', category: 'Affirmations QA', priority: 'low', status: 'untested', assignee: 'dev' },
+  { id: 'qa4', title: 'Shopping bag — cart panel and item count', desc: 'Adding an item raises the number on the shopping-bag icon and slides in the cart panel.', sprint: 'Sprint 2', category: 'E2E Flows', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'qa5', title: 'What Won Today — build, share, and save the receipt', desc: 'Builds a victory card with Share and Download from the Home receipt section.', sprint: 'Sprint 2', category: 'E2E Flows', priority: 'medium', status: 'untested', assignee: 'qa' },
+  { id: 'qa6', title: '7-Day Challenge — email, goal, and printable PDF', desc: 'Click 7-Day Challenge in the header. A form should appear (or Join / Coming Soon if you are not a member).', sprint: 'Sprint 2', category: 'E2E Flows', priority: 'medium', status: 'untested', assignee: 'angela' },
+  { id: 'aff-qa1', title: 'Morning Affirmations (Identity + Confidence)', desc: 'Click Affirmations in the header, choose Morning, walk the short identity/confidence lines.', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'aff-qa2', title: 'Midday Affirmations (Boundaries + Truths)', desc: 'Click Affirmations, choose Midday, confirm boundary/truth lines.', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'aff-qa3', title: 'Night Affirmations (Healing + Release + Faith)', desc: 'Click Affirmations, choose Night, confirm day-closing lines.', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'aff-qa4', title: 'Affirmations do not start on the same first line every time', desc: 'Open Morning, Midday, and Night twice. The first line should not be glued to the same sentence forever.', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'dev' },
+  { id: 'aff-qa5', title: 'Keep a line or skip it — no guilt, still remembered after refresh', desc: 'Save a line that lands, skip another, refresh, and confirm the saved line is still there.', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'medium', status: 'untested', assignee: 'qa' },
+  { id: 'aff-qa6', title: 'Morning, Midday, and Night finish separately', desc: 'Finishing Morning does not mark Night done. A new calendar day starts them over.', sprint: 'Sprint 2', category: 'Affirmations QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'aff-qa7', title: 'Affirmations on phone, tablet, and computer', desc: 'Readable on a small phone with no sideways scroll, and on tablet and computer.', sprint: 'Sprint 3', category: 'Affirmations QA', priority: 'medium', status: 'untested', assignee: 'qa' },
+  { id: 'aff-qa8', title: 'No live voice / spoken-coach feature required', desc: 'Phase 1 Affirmations are on-screen only. A microphone or talking coach is not required.', sprint: 'Sprint 3', category: 'Affirmations QA', priority: 'low', status: 'untested', assignee: 'dev' },
   { id: 'auth-qa1', title: 'Admin Role Gates — Testing + Tasks Only', desc: 'Admin users see only Testing Portal and Task List tabs', sprint: 'Sprint 3', category: 'Auth & Admin', priority: 'high', status: 'untested', assignee: 'angela' },
   { id: 'gear-sel-qa1', title: 'Gear Selections — style-card upload and Angela picks', desc: 'Evelyn loads style cards named like E-ShirtLebberingBeige and TShirtTieDieRainbowSpiral. Cards already include hat, hoodie, and tee and group by style. Angela picks up to 3 tees, 1 hoodie, and 1 hat. PDF, SVG, and oversized files are rejected.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'sprint-roi-qa1', title: 'Sprint ROI — hoodie sales, scorecard, and improvement suggestions on the Plan', desc: 'Each Phase 1 sprint lists organic ROI and a weekly scorecard (followers, engagement, clicks, sales). Shop is live from Sprint 0. 6.2K personal Facebook, organic-only, no paid ads.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
@@ -1907,7 +2031,7 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'cf-qa2', title: 'Content Factory — Asset Library grouped by style', desc: 'Asset Library groups cards by style name (E-ShirtLebberingBeige, TShirtTieDieRainbowSpiral). Each style can hold several cards; tee, hoodie, and hat live on the same card.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-qa3', title: 'Asset Library — image reject paths', desc: 'Non-image and oversized files are rejected. Caption assets save text without an image.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'logo-qa1', title: 'Logo Concepts — upload and Angela’s chosen mark', desc: 'Evelyn chooses a logo folder to load every file at once. Subfolders named seal, wordmark, lockup, or colorway sort automatically. Angela picks one chosen mark. PDF and oversized files are rejected. SVG is allowed.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'pay-qa1', title: 'Make Payment page — Zelle, Cash App, Venmo, Stripe', desc: 'Angela’s Make Payment task opens /pay. Payment 1 ($3,500) is already paid. Payment 2 ($3,500) is due Sprint 1. Zelle (619-507-9568) and Cash App ($ChingChicks) are preferred. Venmo is @Evelyn-Irving. Stripe is card/Apple Pay.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'pay-qa1', title: 'Make Payment page — Zelle, Cash App, Venmo, Stripe', desc: 'Angela’s Make Payment task opens /pay. Payments 1 and 2 ($7,000) are paid. Payment 3 ($3,000) is due Sprint 3. Zelle (619-507-9568) and Cash App ($ChingChicks) are preferred. Venmo is @Evelyn-Irving. Stripe is card/Apple Pay.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'shop-gear-page-qa1', title: 'Shop Gear page — Evelyn test', desc: 'Walk the Shop Gear page: selected styles, hoodie/shirt brand, hat colors, and Shopify listings. Confirm the page loads, images are sharp, and checkout or store links work.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
   { id: 'shop-gear-page-qa2', title: 'Shop Gear page — Angela test', desc: 'Angela opens Shop Gear and confirms her selected styles, shirt/hoodie brand, and hat colors look right before the Shopify listings go live.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'angela' },
   { id: 'gear-brand-qa1', title: 'Gear Selections — shirt/hoodie brand pick', desc: 'Angela chooses up to 2 blank brands (Gildan, Comfort Colors, Bella+Canvas, Next Level, Independent Trading, Lane Seven) for shirts and hoodies. The pick saves with her other gear selections.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
@@ -2004,17 +2128,29 @@ export function normalizeQaTests(rawList: unknown[] | null | undefined, legacyCh
     const legacyPlainDesc = rawDesc.trim() && !rawDesc.trim().startsWith('[') ? rawDesc.trim() : '';
     const notesRaw = legacyPlainDesc && !rawDescription ? '' : rawDesc;
     const seededSteps = seed ? buildSeededSteps(id, seed.steps) : [];
+    const persistedSteps = Array.isArray(item.steps);
+    const existingSteps = normalizeWorkChecklist(item.steps);
+    const passed = status === 'passed';
     const suite = suiteForQaTest({ id, suite: item.suite, category: item.category });
     const audit = parseWorkItemAudit(item.audit);
     const completedOn = parseWorkDueDate(item.completedOn) || undefined;
+    const rawTitle = String(item.title ?? '').trim() || catalog?.title || '';
+    const title =
+      !passed && catalog?.title && qaWalkthroughTextHasJargon(rawTitle) ? catalog.title : rawTitle;
+    const description = passed
+      ? rawDescription || seed?.description || legacyPlainDesc || title
+      : seed?.description || rawDescription || legacyPlainDesc || title;
 
     return [
       rolloverWorkItemSprint({
         id,
-        title: String(item.title ?? '').trim() || catalog?.title || '',
-        description: rawDescription || seed?.description || legacyPlainDesc || String(item.title ?? '').trim(),
+        title,
+        description,
         desc: notesRaw,
-        steps: resolvePersistedSteps(item.steps, seededSteps, pageHrefForWorkItem(id)),
+        steps: applyFirstStepPageHref(
+          overlayQaSeedStepCopy(existingSteps, seededSteps, { persisted: persistedSteps, passed }),
+          pageHrefForWorkItem(id),
+        ),
         linkedTaskIds: linkedTasksForTest(id),
         sprint,
         phase: PHASE_OPTIONS.includes(item.phase as WorkPhase) ? (item.phase as WorkPhase) : phaseForSprint(sprint),
@@ -2131,10 +2267,11 @@ export function buildSprintChipCounts<T extends TaskItem | QaTestItem>(
     const matched = items.filter((i) => i.sprint === sprint);
     return {
       id: sprint,
-      label: sprintLabelWithDates(sprint),
+      label: sprintChipLabel(sprint),
       total: matched.length,
       done: matched.filter(isDone).length,
       accent: SPRINT_SWATCH[sprint],
+      locked: isSprintLocked(sprint),
     };
   });
 }
@@ -2195,28 +2332,16 @@ export function buildAssigneeChipCounts<T extends { assignee: WorkAssignee; stat
   items: T[],
   isDone: (item: T) => boolean,
   assignees: WorkAssignee[] = TASK_ASSIGNEE_OPTIONS,
+  testers: TesterChipPerson[] = [],
 ): FilterChipCount[] {
   return assignees.map((assignee) => {
     const matched = items.filter((i) => i.assignee === assignee);
     return {
       id: assignee,
-      label: ASSIGNEE_LABELS[assignee],
+      label: assigneeDisplayLabel(assignee, testers),
       total: matched.length,
       done: matched.filter(isDone).length,
-      accent:
-        assignee === 'angela'
-          ? '#C2410C'
-          : assignee === 'evelyn'
-            ? '#1F1917'
-            : assignee === 'dev'
-              ? '#2563EB'
-              : assignee === 'qa'
-                ? '#10B981'
-                : assignee === 'vitest'
-                  ? '#2563EB'
-                  : assignee === 'playwright'
-                    ? '#7C3AED'
-                    : '#9CA3AF',
+      accent: assigneeAccent(assignee),
     };
   });
 }

@@ -225,7 +225,7 @@ export const PHASE_1_WEBSITE_REVIEW_PAGES: Phase1WebsiteReviewPage[] = [
     path: '/pay',
     desc: 'Review Make Payment copy and payment methods from the footer click.',
     contentChecks: [
-      'Confirm Payment 2 / Phase 1 amounts match the plan',
+      'Confirm Payment 3 / remaining Phase 1 amount matches the plan',
       'Confirm Zelle and Cash App are preferred and readable',
     ],
   },
@@ -279,8 +279,8 @@ const AFFIRMATIONS_TEST: Phase1WebsiteReviewPage = {
   path: '/',
   desc: AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE,
   contentChecks: [
-    'On Home, click Affirmations while logged out — it must Join / Coming Soon, not open the daily set',
-    'Confirm the lock / Join to Unlock treatment on Affirmations and the 7-Day Challenge',
+    'On Home, click Affirmations in the top header while logged out — you should land on Join / Coming Soon. A box of today’s affirmations should not appear on top of the page.',
+    'Confirm Affirmations and 7-Day Challenge in the header show a lock or say Join to Unlock.',
     'If Angela wants Affirmations free on the public site, mark this test as a scope change — do not treat it as Phase 1 included work',
   ],
 };

@@ -15,15 +15,17 @@ describe('siteLinkDestinations', () => {
   it('maps every public header control to a destination, including FAQ, About, Contact, and Shop Gear', () => {
     const header = headerPublicLinkDestinations();
     expect(header.map((link) => link.label)).toEqual(
-      expect.arrayContaining(['Home', 'FAQ', 'About', 'Contact', 'Accountability Gear', "What's Your Mood?", 'Plan Receipts']),
+      expect.arrayContaining(['Home', 'FAQ', 'About', 'Contact', 'Accountability Gear']),
     );
+    expect(header.map((link) => link.label)).not.toContain("What's Your Mood?");
+    expect(header.map((link) => link.label)).not.toContain('Plan Receipts');
     for (const link of HEADER_PUBLIC_LINKS) {
       expect(header.find((row) => row.id === `header-${link.route}`)?.expectedPath).toBe(
         routePath(link.route as StoreRoute),
       );
     }
     expect(header.find((link) => link.id === 'header-shop-gear')?.expectedPath).toBe('/gear');
-    expect(header.find((link) => link.id === 'header-shop-menu-gear')?.label).toBe('Shop → Gear');
+    expect(header.find((link) => link.id === 'header-shop-menu-gear')?.label).toBe('Accountability Gear → Gear');
     expect(header.find((link) => link.id === 'header-shop-menu-gear')?.expectedPath).toBe('/gear');
     expect(header.find((link) => link.id === 'header-shop-menu-gear')?.testId).toBe('header-shop-menu-gear');
     expect(publicHeaderHasNoListLink()).toBe(true);

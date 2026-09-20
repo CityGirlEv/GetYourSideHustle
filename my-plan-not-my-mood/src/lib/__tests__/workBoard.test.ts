@@ -21,6 +21,9 @@ import {
   defaultWorkBoardFilters,
   defaultTaskBoardFilters,
   defaultTestingPortalFilters,
+  emptyFilters,
+  filtersOmittingSection,
+  filterQaTests,
   filterTasks,
   matchesDueDateFilter,
   setSingleFilterValue,
@@ -66,8 +69,19 @@ import {
   pruneDuplicateTasks,
   buildAssigneeChipCounts,
   buildSprintChipCounts,
+  FILTER_CHIP_COUNT_CLASS,
+  buildStatusChipCounts,
+  QA_STATUSES,
+  QA_STATUS_LABELS,
+  type QaTestItem,
   TEST_ASSIGNEE_OPTIONS,
+  testingPortalAssigneeOptions,
+  taskBoardAssigneeOptions,
+  assigneeDisplayLabel,
+  firstNameFromDisplayName,
+  isAllowedTestAssignee,
   normalizeTestAssignee,
+  preferNamedAssignee,
   qaIsDone,
   taskIsDone,
   sprintTextClass,
@@ -372,6 +386,19 @@ describe('workBoard seed merge', () => {
     expect(started.find((t) => t.id === 't-24')?.title).toBe('Build ROI per phase after shirt costs are known');
   });
 
+  it('rewrites payment task titles after Angela’s Payment 2 posted Sep 18', () => {
+    const saved = INITIAL_TASKS.map((t) =>
+      t.id === 't-43'
+        ? { ...t, title: 'Make Payment — Payment 2 ($3,500) due Sprint 1 via Zelle or Cash App' }
+        : t.id === 't-1'
+          ? { ...t, title: 'Confirm $10,000 in three payments — $3,500 received' }
+          : t,
+    );
+    const overlay = overlaySupersededSeedTasks(saved);
+    expect(overlay.find((t) => t.id === 't-43')?.title).toMatch(/received Sep 18/i);
+    expect(overlay.find((t) => t.id === 't-1')?.title).toMatch(/\$7,000 received/);
+  });
+
   it('overlays analytics and new-review due dates onto saved incomplete rows', () => {
     const staleAnalytics = overlaySupersededSeedTasks([
       {
@@ -447,14 +474,11 @@ describe('workBoard seed merge', () => {
     expect(finishedCarryover).toMatchObject({
       id: 't-1',
       status: 'done',
+      sprint: 'Sprint 1',
+      rolledOver: false,
       completedOn: workBoardTodayIso(),
     });
-    if (workBoardTodayIso() <= '2026-09-14') {
-      expect(finishedCarryover).toMatchObject({ sprint: 'Sprint 1', rolledOver: false });
-      expect(finishedCarryover.notes).not.toMatch(/Rolled Over to Sprint 2/);
-    } else {
-      expect(finishedCarryover.sprint).toBe('Sprint 2');
-    }
+    expect(finishedCarryover.notes).not.toMatch(/Rolled Over to Sprint 2/);
     const lateSprint1Mark = applyTaskInlinePatch(
       { ...INITIAL_TASKS.find((row) => row.id === 't-1')!, completedOn: '2026-09-14' },
       { status: 'done' },
@@ -753,22 +777,44 @@ describe('workBoard seed merge', () => {
   it('gives each filter header its own shaded color instead of one rust fill', () => {
     const headers = Object.values(FILTER_SECTION_TONES).map((tone) => tone.header);
     expect(new Set(headers).size).toBe(headers.length);
-    expect(FILTER_SECTION_TONES.sprint.header).toContain('#FFEDD5');
-    expect(FILTER_SECTION_TONES.status.header).toContain('#D1FAE5');
-    expect(FILTER_SECTION_TONES.priority.header).toContain('#FEF3C7');
-    expect(FILTER_SECTION_TONES.assignee.header).toContain('#DBEAFE');
-    expect(FILTER_SECTION_TONES.category.header).toContain('#FCE7F3');
+    expect(FILTER_SECTION_TONES.sprint.header).toContain('#FB923C');
+    expect(FILTER_SECTION_TONES.status.header).toContain('#34D399');
+    expect(FILTER_SECTION_TONES.priority.header).toContain('#FBBF24');
+    expect(FILTER_SECTION_TONES.assignee.header).toContain('#60A5FA');
+    expect(FILTER_SECTION_TONES.category.header).toContain('#F472B6');
+    expect(FILTER_SECTION_TONES.sprint.chip).toContain('#FED7AA');
+    expect(FILTER_SECTION_TONES.status.chip).toContain('#A7F3D0');
+    expect(FILTER_SECTION_TONES.priority.chip).toContain('#FDE68A');
+    expect(FILTER_SECTION_TONES.assignee.chip).toContain('#BFDBFE');
+    expect(FILTER_SECTION_TONES.category.chip).toContain('#F9A8D4');
+    expect(FILTER_SECTION_TONES.sprint.selected).toContain('#FB923C');
+    expect(FILTER_SECTION_TONES.assignee.selected).toContain('#60A5FA');
     expect(headers.every((header) => !header.includes('#C2410C'))).toBe(true);
     expect(SPRINT_SECTION_TONES['Sprint 0'].header).not.toContain('#C2410C');
+    expect(SPRINT_SECTION_TONES['Sprint 0'].header).toContain('#FB923C');
+    expect(SPRINT_SECTION_TONES['Sprint 1'].header).toContain('#FBBF24');
+    expect(SPRINT_SECTION_TONES['Sprint 2'].header).toContain('#34D399');
+    expect(SPRINT_SECTION_TONES['Sprint 3'].header).toContain('#60A5FA');
+    expect(SPRINT_SECTION_TONES['Sprint 4'].header).toContain('#C084FC');
     expect(new Set(SPRINT_OPTIONS.map((sprint) => SPRINT_SECTION_TONES[sprint].ink)).size).toBe(5);
     expect(SPRINT_SECTION_TONES['Sprint 0'].ink).toBe(sprintTextClass('Sprint 0'));
-    expect(SPRINT_SECTION_TONES['Sprint 4'].ink).toContain('#6B21A8');
+    expect(SPRINT_SECTION_TONES['Sprint 4'].ink).toContain('#581C87');
     expect(buildSprintChipCounts(INITIAL_TASKS, taskIsDone).every((chip) => Boolean(chip.accent))).toBe(true);
+    const sprintChips = buildSprintChipCounts(INITIAL_TASKS, taskIsDone);
+    expect(sprintChips.find((chip) => chip.id === 'Sprint 0')).toMatchObject({
+      locked: true,
+    });
+    expect(sprintChips.find((chip) => chip.id === 'Sprint 0')?.label).toMatch(/Locked/i);
+    expect(sprintChips.find((chip) => chip.id === 'Sprint 1')?.label).toMatch(/Locked/i);
+    expect(sprintChips.find((chip) => chip.id === 'Sprint 2')?.locked).toBeFalsy();
+    expect(FILTER_CHIP_COUNT_CLASS).toContain('#1F1917');
+    expect(FILTER_CHIP_COUNT_CLASS).toContain('font-black');
     expect(TASK_STATUS_TONES.done).toContain('#B8D4C4');
     expect(taskStatusRowClass('done')).toContain('border-l-8');
     expect(taskStatusRowClass('in_progress')).toContain('#F6E56A');
     expect(taskStatusRowClass('blocked')).toContain('#E8D4A0');
-    expect(taskStatusRowClass('not_started')).toContain('#F4EBE6');
+    expect(taskStatusRowClass('not_started')).toContain('bg-white');
+    expect(taskStatusRowClass('not_started')).not.toContain('#F4EBE6');
     expect(workPriorityTextClass('high')).toBe('text-[#DC2626]');
     expect(workPriorityTextClass('medium')).toBe('text-[#1F1917]');
     expect(workPriorityTextClass('low')).toBe('text-[#1F1917]');
@@ -786,14 +832,15 @@ describe('workBoard seed merge', () => {
     expect(qaStatusRowClass('in_progress')).toContain('#F6E56A');
     expect(qaStatusRowClass('failed')).toContain('#E4B8A4');
     expect(qaStatusRowClass('blocked')).toContain('#E8D4A0');
-    expect(qaStatusRowClass('untested')).toContain('#F4EBE6');
+    expect(qaStatusRowClass('untested')).toContain('bg-white');
+    expect(qaStatusRowClass('untested')).not.toContain('#F4EBE6');
     expect(new Set(taskStatusLegend().map((item) => item.className)).size).toBe(4);
     expect(new Set(qaStatusLegend().map((item) => item.className)).size).toBe(7);
     expect(QA_STATUS_TONES.failed).not.toBe(QA_STATUS_TONES.passed);
   });
 
   it('opens Sprint and Assignee filter sections and toggles them independently', () => {
-    expect(FILTER_SECTION_IDS).toEqual(['sprint', 'assignee', 'status', 'category', 'priority']);
+    expect(FILTER_SECTION_IDS).toEqual(['assignee', 'sprint', 'status', 'category', 'priority']);
     expect(defaultFilterSectionTab()).toBe('assignee');
     expect(FILTER_SECTION_LABELS.assignee).toBe('Assignee');
     expect(isFilterSectionTab('assignee')).toBe(true);
@@ -893,16 +940,40 @@ describe('workBoard seed merge', () => {
     expect(pruned.removedIds).toHaveLength(40);
   });
 
-  it('keeps tester-owned tests on Testers and Vitest/Playwright on their own assignee chips', () => {
+  it('lists each tester as their own assignee chip and labels qa as Beta Testers', () => {
     expect(normalizeTestAssignee('qa')).toBe('qa');
-    expect(ASSIGNEE_LABELS.qa).toBe('Testers');
-    expect(TEST_ASSIGNEE_OPTIONS).toContain('qa');
+    expect(ASSIGNEE_LABELS.qa).toBe('Beta Testers');
+    expect(TEST_ASSIGNEE_OPTIONS).not.toContain('qa');
+    const testers = [
+      { id: 'candace', name: 'Candace Jackson' },
+      { id: 'gina', name: 'Gina Sewell' },
+    ];
+    const options = testingPortalAssigneeOptions(testers);
+    expect(options).toEqual([
+      'angela',
+      'evelyn',
+      'dev',
+      'tester:candace',
+      'tester:gina',
+      'unassigned',
+      'vitest',
+      'playwright',
+    ]);
+    expect(assigneeDisplayLabel('tester:candace', testers)).toBe('Candace');
+    expect(firstNameFromDisplayName('Candace Jackson')).toBe('Candace');
+    expect(firstNameFromDisplayName('Lyriq')).toBe('Lyriq');
+    expect(firstNameFromDisplayName('  Gina   Sewell  ')).toBe('Gina');
+    expect(isAllowedTestAssignee('tester:gina')).toBe(true);
+    expect(preferNamedAssignee('unassigned', 'tester:candace')).toBe('tester:candace');
+    expect(preferNamedAssignee('angela', 'unassigned')).toBe('angela');
+    expect(preferNamedAssignee('evelyn', 'tester:gina')).toBe('evelyn');
     const seeded = allSeedQaTests();
-    const chips = buildAssigneeChipCounts(seeded, qaIsDone, TEST_ASSIGNEE_OPTIONS);
-    expect(chips.find((chip) => chip.id === 'qa')).toMatchObject({
-      id: 'qa',
-      label: 'Testers',
-      total: seeded.filter((test) => test.assignee === 'qa').length,
+    const chips = buildAssigneeChipCounts(seeded, qaIsDone, options, testers);
+    expect(chips.find((chip) => chip.id === 'qa')).toBeUndefined();
+    expect(chips.find((chip) => chip.id === 'tester:candace')).toMatchObject({
+      id: 'tester:candace',
+      label: 'Candace',
+      total: 0,
     });
     expect(chips.find((chip) => chip.id === 'unassigned')?.label).toBe('Unknown');
     expect(chips.find((chip) => chip.id === 'vitest')).toMatchObject({ label: 'Vitest', total: 9 });
@@ -916,12 +987,78 @@ describe('workBoard seed merge', () => {
         journalMakeReviewTestIds().length,
     );
     expect(chips.find((chip) => chip.id === 'evelyn')?.total).toBe(4);
-    const taskChips = buildAssigneeChipCounts(INITIAL_TASKS, taskIsDone);
+    const assigned = applyQaInlinePatch(seeded.find((test) => test.assignee === 'angela')!, {
+      assignee: 'tester:gina',
+    });
+    expect(assigned.assignee).toBe('tester:gina');
+    const taskChips = buildAssigneeChipCounts(INITIAL_TASKS, taskIsDone, taskBoardAssigneeOptions(testers), testers);
     expect(taskChips.find((chip) => chip.id === 'angela')?.total).toBe(107);
     expect(taskChips.find((chip) => chip.id === 'evelyn')?.total).toBe(84);
-    expect(taskChips.find((chip) => chip.id === 'qa')?.total).toBe(1);
+    expect(taskChips.find((chip) => chip.id === 'qa')).toMatchObject({ label: 'Beta Testers', total: 1 });
+    expect(taskChips.find((chip) => chip.id === 'tester:gina')?.label).toBe('Gina');
     expect(taskChips.find((chip) => chip.id === 'vitest')).toMatchObject({ label: 'Vitest', total: 0 });
     expect(taskChips.find((chip) => chip.id === 'playwright')).toMatchObject({ label: 'Playwright', total: 0 });
+  });
+
+  it('cross-filters chip counts so other bubbles follow the selected facet', () => {
+    const tests: QaTestItem[] = [
+      {
+        id: 'e2-open',
+        title: 'Evelyn Sprint 2 untested',
+        desc: '',
+        sprint: 'Sprint 2',
+        category: 'Storefront QA',
+        priority: 'high',
+        status: 'untested',
+        assignee: 'evelyn',
+      },
+      {
+        id: 'e2-pass',
+        title: 'Evelyn Sprint 2 passed',
+        desc: '',
+        sprint: 'Sprint 2',
+        category: 'Storefront QA',
+        priority: 'high',
+        status: 'passed',
+        assignee: 'evelyn',
+      },
+      {
+        id: 'a3-open',
+        title: 'Angela Sprint 3 untested',
+        desc: '',
+        sprint: 'Sprint 3',
+        category: 'Content QA',
+        priority: 'low',
+        status: 'untested',
+        assignee: 'angela',
+      },
+    ];
+    const evelynFilters = { ...emptyFilters(), assignee: new Set(['evelyn'] as const) };
+    const sprintUnderEvelyn = buildSprintChipCounts(
+      filterQaTests(tests, filtersOmittingSection(evelynFilters, 'sprint'), ''),
+      qaIsDone,
+    );
+    expect(sprintUnderEvelyn.find((chip) => chip.id === 'Sprint 2')?.total).toBe(2);
+    expect(sprintUnderEvelyn.find((chip) => chip.id === 'Sprint 3')?.total).toBe(0);
+
+    const statusUnderEvelyn = buildStatusChipCounts(
+      filterQaTests(tests, filtersOmittingSection(evelynFilters, 'status'), ''),
+      QA_STATUSES,
+      QA_STATUS_LABELS,
+      (status) => status === 'passed',
+    );
+    expect(statusUnderEvelyn.find((chip) => chip.id === 'untested')?.total).toBe(1);
+    expect(statusUnderEvelyn.find((chip) => chip.id === 'passed')?.total).toBe(1);
+    expect(statusUnderEvelyn.find((chip) => chip.id === 'failed')?.total).toBe(0);
+
+    const untestedFilters = { ...emptyFilters(), status: new Set(['untested'] as const) };
+    const assigneesUnderUntested = buildAssigneeChipCounts(
+      filterQaTests(tests, filtersOmittingSection(untestedFilters, 'assignee'), ''),
+      qaIsDone,
+      ['evelyn', 'angela'],
+    );
+    expect(assigneesUnderUntested.find((chip) => chip.id === 'evelyn')?.total).toBe(1);
+    expect(assigneesUnderUntested.find((chip) => chip.id === 'angela')?.total).toBe(1);
   });
 
   it('lets a task be assigned to Vitest or Playwright', () => {

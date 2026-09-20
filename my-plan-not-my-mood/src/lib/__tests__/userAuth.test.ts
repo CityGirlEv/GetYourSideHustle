@@ -22,6 +22,7 @@ import {
   isPortalTester,
   listPortalTesters,
   USER_STATUS_LABELS,
+  ROLE_LABELS,
 } from '../userAuth';
 import { ANGELA_HARRIS_SEED_EMAIL, EVELYN_SEED_EMAIL, STAFF_SEED_PASSWORD } from '../seedAccounts';
 import { PHONE_REQUIRED_ERROR } from '../phoneNumber';
@@ -341,5 +342,6 @@ describe('MyPlan App User Auth & RBAC Permissions', () => {
     expect(isPortalTester({ role: 'dev', roles: ['dev', 'qa'], wantsBeta: false })).toBe(false);
     expect(isPortalTester({ role: 'qa', roles: ['qa'], wantsBeta: false })).toBe(true);
     expect(USER_STATUS_LABELS.pending).toBe('Pending');
+    expect(ROLE_LABELS.qa).toBe('Beta Testers');
   });
 });

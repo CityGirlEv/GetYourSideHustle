@@ -16,7 +16,7 @@ export const MoodTool: React.FC<MoodToolProps> = ({
   const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
 
   return (
-    <section id="mood-tool-standalone" className="py-16 bg-[#F4EFE6] border-y border-[#E5DFD3]">
+    <section id="mood-tool-standalone" className="py-16 bg-[#F6F0E6] border-y border-[#E5DFD3]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFEDD5] border border-[#C2410C]/30 text-[#C2410C] text-xs font-bold uppercase tracking-wider mb-3">

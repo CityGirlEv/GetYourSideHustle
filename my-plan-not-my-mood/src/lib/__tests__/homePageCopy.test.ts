@@ -3,9 +3,15 @@ import {
   DEFAULT_HOME_PAGE_COPY,
   HOME_PAGE_COPY_STORAGE_KEY,
   HOME_PILLAR_COUNT,
+  HOME_HERO_JOIN_HOTSPOT,
+  HOME_HERO_SHOP_HREF,
+  HOME_HERO_SHOP_HOTSPOT,
+  heroShopHotspotOverlapsJoin,
+  homeHeroHotspotStyle,
   homePageCopyEquals,
   loadHomePageCopy,
   mergeHomePageCopy,
+  overlayScriptDisplay,
   parseHomePageCopy,
   patchHomePageCopy,
   patchHomePagePillar,
@@ -23,7 +29,7 @@ describe('homePageCopy', () => {
     expect(DEFAULT_HOME_PAGE_COPY.titleLead).toBe('MY PLAN,');
     expect(DEFAULT_HOME_PAGE_COPY.titleAccent).toBe('NOT MY MOOD.');
     expect(DEFAULT_HOME_PAGE_COPY.feelIt).toMatch(/feel it\. follow the plan anyway/i);
-    expect(DEFAULT_HOME_PAGE_COPY.primaryCta).toBe('EXPLORE THE MOVEMENT');
+    expect(DEFAULT_HOME_PAGE_COPY.primaryCta).toBe('JOIN THE MOVEMENT');
     expect(DEFAULT_HOME_PAGE_COPY.secondaryCta).toBe('SHOP THE COLLECTION');
     expect(DEFAULT_HOME_PAGE_COPY.overlayScript).toBe('Purpose Looks Good On You.');
     expect(DEFAULT_HOME_PAGE_COPY.pillars).toHaveLength(HOME_PILLAR_COUNT);
@@ -69,6 +75,12 @@ describe('homePageCopy', () => {
     expect(loadHomePageCopy()).toEqual(DEFAULT_HOME_PAGE_COPY);
   });
 
+  it('stacks the mockup overlay as three script lines', () => {
+    expect(overlayScriptDisplay('Purpose Looks Good On You.')).toBe('Purpose\nLooks Good\nOn You.');
+    expect(overlayScriptDisplay('  purpose looks good on you  ')).toBe('Purpose\nLooks Good\nOn You.');
+    expect(overlayScriptDisplay('Stay the course.')).toBe('Stay the course.');
+  });
+
   it('splits the quote so the emphasis word can stay italic', () => {
     expect(quoteParts(DEFAULT_HOME_PAGE_COPY)).toEqual({
       before: 'Discipline today creates the ',
@@ -80,5 +92,25 @@ describe('homePageCopy', () => {
       emphasis: '',
       after: '',
     });
+  });
+
+  it('maps Join and Shop hotspots onto the painted hero buttons without overlap', () => {
+    expect(HOME_HERO_SHOP_HREF).toBe('/gear');
+    expect(HOME_HERO_JOIN_HOTSPOT.top).toBe('66.5%');
+    expect(HOME_HERO_SHOP_HOTSPOT.top).toBe('76%');
+    expect(heroShopHotspotOverlapsJoin()).toBe(false);
+    expect(
+      heroShopHotspotOverlapsJoin(
+        { left: '5.5%', top: '68%', width: '28%', height: '12%' },
+        { left: '5.5%', top: '78%', width: '28%', height: '12%' },
+      ),
+    ).toBe(true);
+    expect(homeHeroHotspotStyle(HOME_HERO_JOIN_HOTSPOT)).toEqual({
+      position: 'absolute',
+      ...HOME_HERO_JOIN_HOTSPOT,
+    });
+    expect(Number.parseFloat(HOME_HERO_SHOP_HOTSPOT.top)).toBeGreaterThanOrEqual(
+      Number.parseFloat(HOME_HERO_JOIN_HOTSPOT.top) + Number.parseFloat(HOME_HERO_JOIN_HOTSPOT.height),
+    );
   });
 });

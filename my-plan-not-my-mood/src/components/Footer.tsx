@@ -25,7 +25,7 @@ export const Footer: React.FC<FooterProps> = ({
   showMemberships = false,
 }) => {
   return (
-    <footer className="bg-earth-sand border-t border-earth-taupe text-earth-muted py-12 text-xs">
+    <footer className="bg-[#F6F0E6] border-t border-earth-taupe text-earth-muted py-12 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-8 pb-8 border-b border-earth-taupe">
           <div>

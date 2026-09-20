@@ -8,6 +8,7 @@ interface DailyAffirmationsWidgetProps {
   hasMembershipAccess?: boolean;
   onOpenJoin?: () => void;
   membershipsVisible?: boolean;
+  layout?: 'banner' | 'inline';
 }
 
 export const DailyAffirmationsWidget: React.FC<DailyAffirmationsWidgetProps> = ({
@@ -15,6 +16,7 @@ export const DailyAffirmationsWidget: React.FC<DailyAffirmationsWidgetProps> = (
   hasMembershipAccess = false,
   onOpenJoin,
   membershipsVisible = false,
+  layout = 'banner',
 }) => {
   const [dailyStatus, setDailyStatus] = useState<DailyCompletionStatus>(() =>
     getDailyCompletionStatus()
@@ -26,24 +28,33 @@ export const DailyAffirmationsWidget: React.FC<DailyAffirmationsWidgetProps> = (
     setDailyStatus(getDailyCompletionStatus());
   }, []);
 
+  const inline = layout === 'inline';
+
   return (
-    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div className="bg-gradient-to-r from-[#1F1917] via-[#2D2623] to-[#1F1917] text-white border-4 border-[#C2410C] rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+    <section
+      className={inline ? 'w-full' : 'max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4'}
+      data-testid="daily-affirmations-widget"
+      data-layout={layout}
+    >
+      <div
+        className={`bg-gradient-to-r from-[#1F1917] via-[#2D2623] to-[#1F1917] text-white border-4 border-[#C2410C] relative overflow-hidden ${
+          inline ? 'rounded-2xl p-4 sm:p-5 shadow-xl' : 'rounded-3xl p-5 sm:p-6 shadow-2xl'
+        }`}
+      >
         {/* Glow accent */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          {/* Left: Headline & Session Overview */}
-          <div className="lg:col-span-7 space-y-3">
+        <div className={`relative z-10 grid grid-cols-1 items-stretch ${inline ? 'gap-4' : 'lg:grid-cols-12 gap-6'}`}>
+          <div className={`${inline ? '' : 'lg:col-span-7'} space-y-3`}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C2410C] text-white text-[10px] sm:text-[11px] font-mono font-black uppercase tracking-wider shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" /> NON-NEGOTIABLE DAILY AFFIRMATIONS
             </div>
 
-            <h3 className="font-serif font-black text-2xl sm:text-3xl text-white tracking-tight uppercase leading-tight">
+            <h3 className={`font-serif font-black text-white tracking-tight uppercase leading-tight ${inline ? 'text-2xl sm:text-3xl' : 'text-2xl sm:text-3xl'}`}>
               Start From Who You Are — <span className="text-[#F59E0B] italic">Not How You Feel</span>
             </h3>
 
-            <p className="text-xs sm:text-sm text-white font-sans leading-relaxed max-w-xl">
+            <p className={`text-white font-sans leading-relaxed max-w-2xl ${inline ? 'text-sm sm:text-base lg:text-lg' : 'text-xs sm:text-sm'}`}>
               Take 20–30 seconds for your daily micro-set. Reset your mindset, establish boundaries, and anchor in your divine truth.
             </p>
 
@@ -73,7 +84,7 @@ export const DailyAffirmationsWidget: React.FC<DailyAffirmationsWidgetProps> = (
           </div>
 
           {/* Right: Quick Launch Card */}
-          <div className="lg:col-span-5 bg-white/10 border border-white/20 rounded-2xl p-5 backdrop-blur-sm space-y-4 text-center lg:text-left">
+          <div className={`${inline ? '' : 'lg:col-span-5'} bg-white/10 border border-white/20 rounded-2xl p-4 sm:p-5 backdrop-blur-sm space-y-3 text-center sm:text-left`}>
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <span className="text-[9px] font-mono text-[#F59E0B] uppercase tracking-widest font-black block">
