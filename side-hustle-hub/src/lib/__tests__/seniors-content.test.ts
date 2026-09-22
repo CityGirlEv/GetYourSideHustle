@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { kidsGuideMinTier } from "../guide-access";
+import { kidsGuideMinTier, seniorGuideMinTier } from "../guide-access";
 import { guidesForAudience } from "../kids-guides";
 import {
   isSeniorGuideFree,
   orderedSeniorGuides,
   SENIOR_GUIDE_TEASERS,
+  SENIOR_OPPORTUNITIES,
+  SENIOR_OPPORTUNITIES_EXPANDED,
+  SENIOR_POD_TOP_MATCH_ANSWERS,
+  scoreSeniorMatch,
 } from "../seniors-content";
+import { hustleById } from "../side-hustle-catalog";
+import { seniorLibraryMinTier } from "../age-library-tiers";
 
 describe("orderedSeniorGuides", () => {
   it("lists Free Membership openers before paid and coming-soon teasers", () => {
@@ -32,5 +38,26 @@ describe("kids and teens guide lists", () => {
       expect(paid.length).toBeGreaterThan(0);
       expect(free.every((g) => kidsGuideMinTier(g.id) === "free")).toBe(true);
     }
+  });
+});
+
+describe("Elite Senior POD wiring", () => {
+  it("keeps POD on the senior Elite lane, wizard pool, and live teaser", () => {
+    expect(hustleById("pod")?.audiences).toContain("senior");
+    expect(hustleById("pod")?.minTier).toBe("elite");
+    expect(seniorLibraryMinTier("pod")).toBe("elite");
+    expect(seniorGuideMinTier("senior-pod", "pod")).toBe("elite");
+    expect(SENIOR_OPPORTUNITIES.some((o) => o.id === "pod")).toBe(true);
+    expect(SENIOR_GUIDE_TEASERS.some((g) => g.launchGuideId === "pod" && g.status === "live")).toBe(
+      true,
+    );
+  });
+
+  it("ranks POD first for the four-screen Elite Senior combo", () => {
+    const ranked = SENIOR_OPPORTUNITIES_EXPANDED
+      .map((o) => ({ id: o.id, score: scoreSeniorMatch(o.id, SENIOR_POD_TOP_MATCH_ANSWERS) }))
+      .sort((a, b) => b.score - a.score);
+    expect(ranked[0]?.id).toBe("pod");
+    expect(ranked[0]!.score).toBeGreaterThan(ranked[1]?.score ?? 0);
   });
 });

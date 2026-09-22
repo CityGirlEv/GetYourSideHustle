@@ -29,6 +29,7 @@ export type AdminMembershipUpdate =
       membershipTier: TierId;
       notify: boolean;
       complimentaryFoundingStarter: boolean;
+      membershipExpiresAt: string;
     }
   | { ok: false; error: string };
 
@@ -116,6 +117,58 @@ export function appendFoundingStarterStamp(notes: string | null | undefined, sta
   return `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
 }
 
+const FOUNDING_STAMP_RE =
+  /FOUNDING-STARTER\s+\d+\s*\/\s*5(?:\s+complimentary\s+Starter\s+granted\s+[0-9-]+(?:\s+by\s+\S+)?)?/i;
+
+/** Keep a first-5 stamp when Edit Save rewrites notes without it. */
+export function mergeNotesPreservingFoundingGrant(
+  draftNotes: string,
+  persistedNotes?: string | null,
+): string {
+  const draft = String(draftNotes || "").trim().slice(0, 1900);
+  if (hasFoundingStarterGrant(draft)) return draft;
+  const persisted = String(persistedNotes || "");
+  const slot = parseFoundingStarterSlot(persisted);
+  if (slot == null) return draft;
+  const stamp = persisted.match(FOUNDING_STAMP_RE)?.[0]?.trim();
+  if (!stamp) return draft;
+  return appendFoundingStarterStamp(draft, stamp);
+}
+
+/** True when the Users Area membership box has unsaved plan / first-5 changes. */
+export function adminMembershipFormIsDirty(opts: {
+  selectedTier: TierId;
+  savedTier: TierId;
+  complimentary: boolean;
+  alreadyFounding: boolean;
+}): boolean {
+  if (opts.selectedTier !== opts.savedTier) return true;
+  return opts.complimentary && !opts.alreadyFounding && opts.selectedTier === "starter";
+}
+
+type AdminUserRowFields = {
+  membershipTier?: string | null;
+  audience?: string | null;
+  notes?: string | null;
+  creditBalance?: number;
+  lastLoginAt?: string | null;
+  canLogin?: boolean;
+};
+
+/** Merge a saveUser payload onto the card so omitted plan/credits do not reset the row. */
+export function mergeSavedAdminUser<T extends AdminUserRowFields>(previous: T, saved: T): T {
+  return {
+    ...previous,
+    ...saved,
+    membershipTier: saved.membershipTier ?? previous.membershipTier,
+    audience: saved.audience ?? previous.audience,
+    notes: saved.notes ?? previous.notes,
+    creditBalance: saved.creditBalance ?? previous.creditBalance,
+    lastLoginAt: saved.lastLoginAt ?? previous.lastLoginAt,
+    canLogin: saved.canLogin ?? previous.canLogin,
+  };
+}
+
 export function parseAdminMembershipUpdate(body: unknown): AdminMembershipUpdate {
   if (body == null || typeof body !== "object" || Array.isArray(body)) {
     return { ok: false, error: "Choose a membership level." };
@@ -134,7 +187,16 @@ export function parseAdminMembershipUpdate(body: unknown): AdminMembershipUpdate
     notifyRaw === undefined
       ? membershipTier !== "free"
       : notifyRaw === true || String(notifyRaw).toLowerCase() === "true";
-  return { ok: true, membershipTier, notify, complimentaryFoundingStarter };
+  const expiresRaw = raw.membershipExpiresAt ?? raw.expiresAt ?? raw.expiration;
+  let membershipExpiresAt = "";
+  if (expiresRaw != null && String(expiresRaw).trim() !== "") {
+    const day = String(expiresRaw).trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      return { ok: false, error: "Expiration must be a calendar date (YYYY-MM-DD)." };
+    }
+    membershipExpiresAt = day;
+  }
+  return { ok: true, membershipTier, notify, complimentaryFoundingStarter, membershipExpiresAt };
 }
 
 export function foundingStarterGrantBlockReason(opts: {

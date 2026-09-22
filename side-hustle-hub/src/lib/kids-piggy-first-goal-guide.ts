@@ -66,7 +66,7 @@ export const KIDS_PIGGY_FIRST_GOAL_PREREQUISITE_EXTRAS: {
     id: "goals",
     label: "Your goal can be",
     detail:
-      "Toy · Game · Book · Sports item · Craft supplies · Gift · Special activity · Something for your hustle · Other (write it down).",
+      "Toy · Game · Book · Sports item · Craft supplies · Gift · Special activity · Something for your side hustle · Other (write it down).",
   },
   {
     id: "parent",
@@ -419,7 +419,7 @@ export const KIDS_PIGGY_FIRST_GOAL_DETAILED_STEPS: { title: string; desc: string
       "☐ Buy the item",
       "☐ Keep saving for something bigger",
       "☐ Save part and spend part",
-      "☐ Put some toward my hustle",
+      "☐ Put some toward my side hustle",
       "☐ Pick my next savings goal",
       "",
       "Write:",

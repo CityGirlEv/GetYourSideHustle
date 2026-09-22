@@ -124,3 +124,29 @@ export function gyshBulkDeleteConfirmMessage(count: number): string {
   }
   return `Are you sure you want to delete ${n} selected users? Accounts will be flagged deleted (kept on file). Those emails can sign up again as new accounts.`;
 }
+
+export function toggleBulkUserId(
+  selected: readonly string[],
+  id: string,
+  on: boolean,
+): string[] {
+  const next = new Set(normalizeBulkUserIds(selected));
+  const key = String(id || "").trim();
+  if (!key) return [...next];
+  if (on) next.add(key);
+  else next.delete(key);
+  return [...next];
+}
+
+export function gyshBulkResultMessage(input: {
+  action: "update" | "delete";
+  changed: number;
+  skipped: number;
+}): string {
+  const verb = input.action === "delete" ? "Deleted" : "Updated";
+  const n = Math.max(0, Math.floor(input.changed));
+  const skipped = Math.max(0, Math.floor(input.skipped));
+  const changed = `${verb} ${n} user${n === 1 ? "" : "s"}`;
+  if (skipped <= 0) return `${changed}.`;
+  return `${changed}. ${skipped} skipped.`;
+}

@@ -76,7 +76,7 @@ test.describe("Lighthouse A11Y / SEO regressions", () => {
     }
   });
 
-  test("hustle card category and income meet 4.5:1 contrast", async ({ page }) => {
+  test("side hustle card category and income meet 4.5:1 contrast", async ({ page }) => {
     await page.goto("/");
     const categories = page.locator(".hustle-grid .hustle-card-category");
     const incomes = page.locator(".hustle-grid .hustle-card-income");

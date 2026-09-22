@@ -115,7 +115,7 @@ export const BOOKKEEPING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help solopreneurs and small businesses stay organized with invoice tracking, basic bookkeeping data entry, QuickBooks basics, expense organization, calendar operations, document organization, and recurring administrative support. Tagline: Clean Books. Clear Calendar. Less Back-Office Chaos. Category: Business Services / Bookkeeping / Administration. Best for Adults and Seniors / Retirees. Beginner to intermediate · Very low to low startup · Flexible / recurring · Remote / local · Hourly / monthly retainer / project · 5 - 15 hrs/week · Elite Membership.",
   },

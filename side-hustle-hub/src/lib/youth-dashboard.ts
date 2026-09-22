@@ -4,7 +4,7 @@
 export function isYouthDashboardUser(user: {
   role?: string;
   roles?: string[];
-  audience?: string;
+  audience?: string | null;
 } | null | undefined): boolean {
   if (!user) return false;
   const roles = user.roles?.length ? user.roles : user.role ? [user.role] : [];
@@ -20,7 +20,7 @@ export function isYouthDashboardUser(user: {
 export function youthAgeBand(user: {
   role?: string;
   roles?: string[];
-  audience?: string;
+  audience?: string | null;
 } | null | undefined): "kids" | "junior" {
   const roles = user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
   const audience = String(user?.audience || "").toLowerCase();

@@ -76,7 +76,7 @@ export const YOUTH_SPORTS_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help youth coaches keep practices organized by setting up cones and equipment, checking players in, organizing water breaks, retrieving balls, resetting drills, and cleaning up. Tagline: You Don't Coach the Team. You Help Practice Run Smoothly. Category: Sports / Youth Services. Best for teens, adults, and seniors / retirees. Beginner · Very low startup · After school / evenings / weekends · Local fields / gyms · Hourly / per practice / recurring.",
   },

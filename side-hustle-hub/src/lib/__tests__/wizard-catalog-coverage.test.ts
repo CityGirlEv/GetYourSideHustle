@@ -13,13 +13,16 @@ import {
 } from "../seniors-content";
 
 describe("wizard ranking covers full catalog", () => {
-  it("paid Adult wizard pool includes every adult-audience hustle", () => {
-    const pool = wizardPoolForMembership("adult", {
-      isLoggedIn: true,
-      membershipTier: "pro",
-    });
+  it("Adult wizard pool includes every adult-audience hustle for Free and paid", () => {
     const adultIds = hustlesForAudience("adult").map((h) => h.id).sort();
-    expect(pool.map((h) => h.id).sort()).toEqual(adultIds);
+    for (const opts of [
+      { isLoggedIn: true, membershipTier: "free" },
+      { isLoggedIn: true, membershipTier: "pro" },
+      { isLoggedIn: false, previewAsGuest: true },
+    ] as const) {
+      const pool = wizardPoolForMembership("adult", opts);
+      expect(pool.map((h) => h.id).sort()).toEqual(adultIds);
+    }
   });
 
   it("scores every adult hustle via profile or tag heuristic (never silent skip)", () => {

@@ -95,7 +95,7 @@ export const APPOINTMENT_SETTER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help coaches, tutors, consultants, beauty professionals, home-service providers, and other busy professionals turn inquiries into scheduled appointments using an approved script and shared calendar. Services can include appointment booking, confirmations, reminders, rescheduling, cancellations, and basic follow-up. Category: Virtual Assistance / Scheduling. Best for teens, adults, seniors / retirees. Beginner · $0–very low startup · Flexible / recurring · Remote · Per project / hourly / recurring · 3–10 hrs/week · Starter Membership.",
   },

@@ -37,6 +37,8 @@ type ApiOptions = {
   method?: string;
   body?: unknown;
   auth?: boolean;
+  /** One-request act-as override (does not change the Profile Switcher). */
+  actAsUserId?: string | null;
   /** Override default abort (e.g. large attachment downloads). */
   timeoutMs?: number;
   /** Internal: count of transient D1 retries already attempted. */
@@ -44,6 +46,15 @@ type ApiOptions = {
   /** Internal: already retried a local Vite→:8788 proxy blip. */
   _proxyRetried?: boolean;
 };
+
+function resolveActAsUserId(opts: ApiOptions): string | null {
+  if (opts.auth === false) return null;
+  if (Object.prototype.hasOwnProperty.call(opts, "actAsUserId")) {
+    const id = String(opts.actAsUserId || "").trim();
+    return id || null;
+  }
+  return currentActAsUserId();
+}
 
 /** Local Pages Functions + D1 can need >20s on first parallel load after restart. */
 const DEFAULT_API_TIMEOUT_MS = 45_000;
@@ -66,7 +77,7 @@ const getInflight = new Map<string, Promise<unknown>>();
  */
 export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   const method = (opts.method || (opts.body !== undefined ? "POST" : "GET")).toUpperCase();
-  const asUser = opts.auth === false ? null : currentActAsUserId();
+  const asUser = resolveActAsUserId(opts);
   const key =
     !(opts._d1Retries ?? 0) && !opts._proxyRetried
       ? apiGetCoalesceKey(path, method, opts.auth === false ? null : getSessionToken(), asUser)
@@ -87,7 +98,7 @@ async function requestApi<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   if (auth) {
     const token = getSessionToken();
     if (token) headers.authorization = `Bearer ${token}`;
-    const asUser = currentActAsUserId();
+    const asUser = resolveActAsUserId(opts);
     if (asUser) headers[ACT_AS_USER_HEADER] = asUser;
   }
 

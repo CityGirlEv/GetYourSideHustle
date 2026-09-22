@@ -116,7 +116,7 @@ Build and test one Google Business Profile Helper offer:
 export const GBP_HELPER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help an eligible local business claim, complete, and organize its Google Business Profile using accurate business details, appropriate categories, service-area or storefront settings, authorized photos, hours, services, and links. The business owner keeps ownership and verification control. Pro Membership. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only, not guarantees. Category: Local Marketing / Business Profile Support. Beginner–Intermediate. Startup $0 – low. Online / local / hybrid. Per project / per location / monthly retainer / approved add-ons. Best for organized Adults and Seniors/Retirees who can verify business facts, follow platform rules, and work carefully with account access; responsible Teens only with parent/guardian approval and adult client ownership.",
   },

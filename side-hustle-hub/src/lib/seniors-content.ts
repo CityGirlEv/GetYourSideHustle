@@ -70,6 +70,14 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
     startup: "Low — supplies + a simple booth or listing",
   },
   {
+    id: "pod",
+    name: "Print-on-Demand (POD)",
+    desc: "Design original or licensed merch and sell shirts, mugs, and other products through Etsy or Shopify — the provider prints as orders come in. Elite Launch Guide.",
+    fit: "Creative makers who want online sales without warehousing inventory",
+    schedule: "Design in batches; light weekly listing and customer-service time",
+    startup: "Low–medium — samples, fees, and tools; not a $0 business",
+  },
+  {
     id: "pet-sitting",
     name: "Pet Sitting & Dog Walking",
     desc: "Care for neighbors’ pets while they travel — walks, drop-ins, or overnight stays. Warm work that stays local.",
@@ -198,6 +206,13 @@ export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
     launchGuideId: "affiliate",
   },
   {
+    id: "senior-pod",
+    title: "Print-on-Demand (POD)",
+    blurb: "Design merch and sell through Etsy or Shopify without warehousing — Elite Launch Guide for a paced second chapter.",
+    status: "live",
+    launchGuideId: "pod",
+  },
+  {
     id: "start-consulting",
     title: "Start a consulting pilot in 7 days",
     blurb: "Define your niche, set a simple rate card, and land your first discovery call.",
@@ -303,6 +318,12 @@ const SENIOR_MATCH_PROFILES: Record<
     lifestyles: ["gentle", "balanced"],
     availability: ["light", "flexible", "steady"],
   },
+  pod: {
+    skills: { creative: 1, tech: 0.7, writing: 0.45 },
+    goals: { income: 0.9, flexible: 1, learn: 0.7, purpose: 0.35 },
+    lifestyles: ["gentle", "balanced"],
+    availability: ["light", "flexible"],
+  },
   "pet-sitting": {
     skills: { hands_on: 0.7, hospitality: 0.55 },
     goals: { income: 0.7, social: 0.55, flexible: 0.85, purpose: 0.4 },
@@ -391,6 +412,14 @@ export function seniorProfileFromCatalog(opportunityId: string): {
 export function resolveSeniorMatchProfile(opportunityId: string) {
   return SENIOR_MATCH_PROFILES[opportunityId] ?? seniorProfileFromCatalog(opportunityId);
 }
+
+/** Four Senior Match Wizard picks that rank Print-on-Demand (POD) first (Elite). */
+export const SENIOR_POD_TOP_MATCH_ANSWERS: SeniorMatchAnswers = {
+  lifestyle: "gentle",
+  skills: ["creative", "tech"],
+  goals: ["income", "flexible", "learn"],
+  availability: "light",
+};
 
 export function scoreSeniorMatch(opportunityId: string, answers: SeniorMatchAnswers): number {
   const profile = resolveSeniorMatchProfile(opportunityId);

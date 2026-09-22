@@ -65,7 +65,7 @@ export const PERSONAL_SHOPPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Shop for groceries, household supplies, gifts, or other requested items using a client's written list, communicate about substitutions, provide receipt photos, and deliver the purchases. Tagline: Their List. Your Shopping Trip. One Less Errand for Them. Category: Errands / Personal Services. Best for adults and seniors / retirees. Beginner · Very low startup · Flexible · Local · Per job / recurring clients.",
   },

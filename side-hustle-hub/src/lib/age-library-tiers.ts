@@ -109,6 +109,7 @@ export const SENIOR_LIBRARY_MIN_TIER: Record<string, GuideMinTier> = {
   "start-gardening-club": "elite",
   "start-book-club": "elite",
   "affiliate": "elite",
+  "pod": "elite",
   "flipping-properties": "elite",
   "lien-tax-sales": "elite",
   "foreclosure-properties": "elite",

@@ -60,7 +60,7 @@ export const BABYSITTING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Offer trusted babysitting for families you know or receive through trusted referrals. Provide dependable care while following the parent's house rules, routines, and emergency instructions. Tagline: Trusted Care. Clear Rules. Happy Parents. Category: Kids / Family Services. Best for juniors / teens and adults. Beginner · Very low startup · After school / evenings / weekends · Client home · Hourly / per job · 4–12 hrs/week.",
   },

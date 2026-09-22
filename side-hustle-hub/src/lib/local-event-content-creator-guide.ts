@@ -6,7 +6,7 @@
 export const LOCAL_EVENT_CONTENT_REALITY_CHECK = {
   title: "YOU DO NOT NEED TO BE A PROFESSIONAL VIDEOGRAPHER",
   body: [
-    "This hustle is about useful, fast smartphone content — not producing a wedding film or cinematic commercial.",
+    "This side-hustle is about useful, fast smartphone content — not producing a wedding film or cinematic commercial.",
     "",
     "Clients may need: short vertical clips, event photos, behind-the-scenes footage, vendor or booth clips, crowd/atmosphere shots, simple recap reels, or social-media-ready content.",
     "",
@@ -125,7 +125,7 @@ export const LOCAL_EVENT_CONTENT_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Use your smartphone to capture short video clips, photos, and simple event recap content for school events, markets, community gatherings, small businesses, nonprofits, clubs, and other local organizations. Tagline: Capture the Moment. Create the Recap. Get Paid. Category: Content Creation / Local Services. Best for teens, adults, seniors / retirees. Beginner · Very low startup · Flexible / events / weekends · Local / on-site · Per project / recurring · 3–10 hrs/week · Elite Membership · $15–$50 / project (examples).",
   },
@@ -561,7 +561,7 @@ export const LOCAL_EVENT_CONTENT_DETAILED_STEPS: { title: string; desc: string }
       "",
       "Do not try everything at once. Pick only 2 or 3 this month.",
       "",
-      "Good channels for this hustle:",
+      "Good channels for this side-hustle:",
       "☐ Facebook",
       "☐ Instagram",
       "☐ TikTok",

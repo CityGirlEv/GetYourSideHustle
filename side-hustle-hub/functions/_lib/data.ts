@@ -66,6 +66,16 @@ import {
   parseAdminMembershipUpdate,
   parseFoundingStarterSlot,
 } from "../../src/lib/admin-membership";
+import { foundingComplimentaryExpiresOn, addMembershipTerm } from "../../src/lib/membership-expiry";
+import {
+  DEFAULT_WORKSHOPS,
+  WORKSHOP_DUPLICATE_EMAIL_MESSAGE,
+  workshopDateJustLocked,
+  workshopForRegistrationLookup,
+  workshopRowIsRegistrationOpen,
+  type Workshop,
+} from "../../src/lib/workshops";
+import { ensureMembershipBillingColumns } from "./membership-lifecycle";
 import { ensureUsersStatusAllowsDeleted } from "./ensure-users-status-deleted";
 import { defaultsForNewTest } from "./new-test-defaults";
 import {
@@ -418,6 +428,11 @@ const LIST_USERS_NOT_DELETED = `LOWER(COALESCE(status, '')) != 'deleted'`;
 
 export async function listUsers(env: Env): Promise<Response> {
   await ensurePartnerAdmins(env);
+  try {
+    await ensureMembershipBillingColumns(env);
+  } catch {
+    /* replica may not allow ALTER */
+  }
   const mapUsers = (
     rows: Array<(DbUser | DbUserWithLogin) & { credit_balance?: number | null }>,
     withCredits: boolean,
@@ -436,6 +451,8 @@ export async function listUsers(env: Env): Promise<Response> {
     const { results } = await env.DB.prepare(
       `SELECT users.id, users.name, users.email, users.role, users.roles, users.status, users.joined_at,
               users.notes, users.password_hash, users.password_salt, users.membership_tier, users.audience,
+              COALESCE(users.membership_expires_at, '') AS membership_expires_at,
+              COALESCE(users.membership_last_paid_at, '') AS membership_last_paid_at,
               COALESCE(w.balance, 0) AS credit_balance,
               ${LAST_LOGIN_SUBQUERY}
        FROM users
@@ -591,26 +608,9 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
     }
   }
 
-  let user =
-    (await env.DB.prepare(
-      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt FROM users WHERE id = ?`,
-    )
-      .bind(id)
-      .first<DbUser>()) ?? null;
-
-  let membershipTier = "free";
-  let audience = "adult";
-  try {
-    const extra = await env.DB.prepare(
-      `SELECT membership_tier, audience FROM users WHERE id = ?`,
-    )
-      .bind(id)
-      .first<{ membership_tier: string | null; audience: string | null }>();
-    if (extra?.membership_tier) membershipTier = extra.membership_tier;
-    if (extra?.audience) audience = extra.audience;
-  } catch {
-    /* older schema */
-  }
+  const user = await getUserById(env.DB, id);
+  const membershipTier = String(user?.membership_tier || "free").toLowerCase();
+  const audience = String(user?.audience || "adult").toLowerCase();
 
   let welcomeEmailSent = false;
   if (becameActive && user) {
@@ -908,7 +908,7 @@ export async function clearUserMembership(
 
   try {
     await env.DB.prepare(
-      `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
+      `UPDATE users SET membership_tier = ?, notes = ?, membership_expires_at = '', membership_renewal_reminded_for = '', updated_at = ? WHERE id = ?`,
     )
       .bind("free", notes, now, targetId)
       .run();
@@ -1011,11 +1011,22 @@ export async function updateUserMembership(
     notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
   }
 
+  await ensureMembershipBillingColumns(env);
+  let expiresAt = parsed.membershipExpiresAt;
+  if (parsed.membershipTier === "free") {
+    expiresAt = "";
+  } else if (!expiresAt && parsed.complimentaryFoundingStarter) {
+    expiresAt = foundingComplimentaryExpiresOn(notes, now.slice(0, 10)) || "";
+  } else if (!expiresAt) {
+    expiresAt = String(existing.membership_expires_at || "").slice(0, 10);
+    if (!expiresAt) expiresAt = addMembershipTerm(now.slice(0, 10), "month");
+  }
+
   try {
     await env.DB.prepare(
-      `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
+      `UPDATE users SET membership_tier = ?, notes = ?, membership_expires_at = ?, updated_at = ? WHERE id = ?`,
     )
-      .bind(parsed.membershipTier, notes, now, targetId)
+      .bind(parsed.membershipTier, notes, expiresAt, now, targetId)
       .run();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -3156,6 +3167,11 @@ function parseJsonArray(raw: string): string[] {
   }
 }
 
+function workshopRowCapacity(id: string, raw: unknown): number {
+  if (id === "ai-scene-production-packs") return 10;
+  return Number(raw ?? 25) || 0;
+}
+
 function mapSpeaker(row: SpeakerRow) {
   return {
     id: row.id,
@@ -3179,7 +3195,7 @@ function mapWorkshop(row: WorkshopRow) {
     audience: row.audience,
     status: row.status,
     registrationOpen: Number(row.registration_open ?? 0) === 1,
-    capacity: Number(row.capacity ?? 25) || 0,
+    capacity: workshopRowCapacity(row.id, row.capacity),
     registrationNote:
       row.registration_note ||
       "Registration is not open yet. Check back after the schedule is confirmed.",
@@ -3221,6 +3237,50 @@ async function ensureWorkshopRegistrationSchema(env: Env): Promise<void> {
       FOREIGN KEY (workshop_id) REFERENCES workshops(id) ON DELETE CASCADE
     )`,
   ).run();
+  try {
+    await env.DB.prepare(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_workshop_registrations_workshop_email
+       ON workshop_registrations (workshop_id, email)
+       WHERE status = 'registered'`,
+    ).run();
+  } catch {
+    /* skip if duplicate emails already exist */
+  }
+  await ensureCatalogWorkshops(env);
+}
+
+async function insertCatalogWorkshop(env: Env, w: Workshop, sortOrder: number, now: string): Promise<void> {
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO workshops (id, title, blurb, date, time, format, audience, status, registration_open, capacity, registration_note, speaker_ids_json, tags_json, sort_order, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      w.id,
+      w.title,
+      w.blurb,
+      w.date || "TBD",
+      w.time || "TBD",
+      w.format || "Live Zoom",
+      w.audience || "all",
+      w.status || "upcoming",
+      w.registrationOpen === true ? 1 : 0,
+      Math.max(0, Number(w.capacity ?? 25) || 0),
+      w.registrationNote || "Registration is not open yet. Check back after the schedule is confirmed.",
+      JSON.stringify(Array.isArray(w.speakerIds) ? w.speakerIds : []),
+      JSON.stringify(Array.isArray(w.tags) ? w.tags : []),
+      sortOrder,
+      now,
+    )
+    .run();
+}
+
+/** Catalog rows live in code; D1 is empty until admin save. Seed missing ids so Pre-Register can write. */
+async function ensureCatalogWorkshops(env: Env): Promise<void> {
+  const now = new Date().toISOString();
+  let order = 0;
+  for (const w of DEFAULT_WORKSHOPS) {
+    await insertCatalogWorkshop(env, w, order++, now);
+  }
 }
 
 export async function listWorkshops(env: Env): Promise<Response> {
@@ -3237,7 +3297,11 @@ export async function listWorkshops(env: Env): Promise<Response> {
   });
 }
 
-export async function saveWorkshops(env: Env, request: Request): Promise<Response> {
+export async function saveWorkshops(
+  env: Env,
+  request: Request,
+  waitUntil?: (promise: Promise<unknown>) => void,
+): Promise<Response> {
   await ensureWorkshopRegistrationSchema(env);
   let body: { workshops?: unknown[]; speakers?: unknown[] };
   try {
@@ -3248,6 +3312,12 @@ export async function saveWorkshops(env: Env, request: Request): Promise<Respons
   if (!Array.isArray(body.workshops) || !Array.isArray(body.speakers)) {
     return error("workshops and speakers arrays required.");
   }
+
+  const prior = await env.DB.prepare(`SELECT id, date FROM workshops`).all<{
+    id: string;
+    date: string | null;
+  }>();
+  const priorDates = new Map((prior.results ?? []).map((row) => [row.id, row.date]));
 
   const now = new Date().toISOString();
   await env.DB.prepare(`DELETE FROM workshops`).run();
@@ -3299,6 +3369,37 @@ export async function saveWorkshops(env: Env, request: Request): Promise<Respons
       .run();
   }
 
+  const newlyLocked = (body.workshops as Array<Record<string, unknown>>).filter((w) =>
+    workshopDateJustLocked(priorDates.get(String(w.id || "")), String(w.date ?? "")),
+  );
+  if (newlyLocked.length > 0) {
+    const job = (async () => {
+      const { notifyWorkshopDateConfirmed } = await import("./email");
+      for (const w of newlyLocked) {
+        const workshopId = String(w.id || "");
+        if (!workshopId) continue;
+        const people = await env.DB.prepare(
+          `SELECT name, email FROM workshop_registrations
+           WHERE workshop_id = ? AND status = 'registered'`,
+        )
+          .bind(workshopId)
+          .all<{ name: string; email: string }>();
+        await notifyWorkshopDateConfirmed(env, {
+          workshopId,
+          title: String(w.title || ""),
+          date: String(w.date || ""),
+          time: String(w.time || ""),
+          format: String(w.format || "Live Zoom"),
+          registrationNote: String(w.registrationNote || ""),
+          registrationOpen: w.registrationOpen === true,
+          registrants: people.results ?? [],
+        });
+      }
+    })();
+    if (typeof waitUntil === "function") waitUntil(job);
+    else await job;
+  }
+
   return listWorkshops(env);
 }
 
@@ -3311,7 +3412,8 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
     return error("Invalid JSON body.");
   }
 
-  const workshopId = String(body.workshopId || "").trim();
+  const rawWorkshopId = String(body.workshopId || "").trim();
+  const { id: workshopId, seed } = workshopForRegistrationLookup(rawWorkshopId);
   const name = String(body.name || "").trim();
   const email = canonicalizeEmail(String(body.email || ""));
   const phone = String(body.phone || "").trim();
@@ -3322,22 +3424,45 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
   if (!name) return error("Name is required.");
   if (!email || !email.includes("@")) return error("Valid email is required.");
 
+  if (seed) {
+    await insertCatalogWorkshop(env, seed, 0, new Date().toISOString());
+  }
+
   const workshop = await env.DB.prepare(
-    `SELECT id, title, registration_open, capacity FROM workshops WHERE id = ?`,
+    `SELECT id, title, registration_open, capacity, date, time, format, registration_note FROM workshops WHERE id = ?`,
   )
     .bind(workshopId)
-    .first<{ id: string; title: string; registration_open: number; capacity: number }>();
+    .first<{
+      id: string;
+      title: string;
+      registration_open: number;
+      capacity: number;
+      date: string;
+      time: string;
+      format: string;
+      registration_note: string;
+    }>();
   if (!workshop) return error("Workshop not found.", 404);
-  if (Number(workshop.registration_open ?? 0) !== 1) {
+  const dbOpen = Number(workshop.registration_open ?? 0) === 1;
+  if (!workshopRowIsRegistrationOpen(seed, dbOpen)) {
     return error("Registration is not open for this workshop yet.", 403);
   }
+
+  const already = await env.DB.prepare(
+    `SELECT id FROM workshop_registrations
+     WHERE workshop_id = ? AND lower(trim(email)) = ? AND status = 'registered'
+     LIMIT 1`,
+  )
+    .bind(workshopId, email)
+    .first<{ id: string }>();
+  if (already) return error(WORKSHOP_DUPLICATE_EMAIL_MESSAGE, 409);
 
   const current = await env.DB.prepare(
     `SELECT COALESCE(SUM(attendee_count), 0) AS taken FROM workshop_registrations WHERE workshop_id = ? AND status = 'registered'`,
   )
     .bind(workshopId)
     .first<{ taken: number }>();
-  const capacity = Number(workshop.capacity ?? 0) || 0;
+  const capacity = workshopRowCapacity(workshopId, workshop.capacity);
   const taken = Number(current?.taken ?? 0) || 0;
   if (capacity > 0 && taken + attendeeCount > capacity) {
     return error("This workshop is full. Please check back for the waitlist.", 409);
@@ -3351,8 +3476,19 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
     .run();
 
   try {
-    const { sendAdminFormNotify } = await import("./email");
+    const { sendWorkshopRegistrationConfirmation, sendAdminFormNotify } = await import("./email");
     const { escapeHtml: esc } = await import("./email-brand");
+    await sendWorkshopRegistrationConfirmation(env, {
+      name,
+      email,
+      workshopId,
+      title: workshop.title,
+      date: workshop.date,
+      time: workshop.time,
+      format: workshop.format,
+      registrationNote: workshop.registration_note,
+      registrationOpen: Number(workshop.registration_open ?? 0) === 1,
+    });
     await sendAdminFormNotify(env, {
       formName: "Workshop registration",
       summary: `${name} registered for ${workshop.title}`,
@@ -3369,7 +3505,10 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
     /* non-fatal */
   }
 
-  return json({ ok: true, message: `You're registered for ${workshop.title}.` });
+  return json({
+    ok: true,
+    message: `You're registered for ${workshop.title}. Check your email for confirmation.`,
+  });
 }
 
 /* ————————————————————————————————————————————————————————————

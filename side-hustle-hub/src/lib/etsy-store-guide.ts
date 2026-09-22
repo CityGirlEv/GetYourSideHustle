@@ -173,7 +173,7 @@ export const ETSY_STORE_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Launch an Etsy shop for eligible handmade, designed, vintage/handpicked, or qualifying sourced goods. Build the shop foundation, photograph products, create accurate listings, set pricing and shipping, and develop a simple weekly listing-and-improvement habit. Tagline: Build the Shop. List the Products. Learn What Sells. Category: E-Commerce / Online Selling. Best for Teens where Etsy eligibility rules are satisfied, Adults, Seniors / Retirees. Beginner to intermediate · Low startup · Flexible · Online / home · Product sales · 5 - 12 hrs/week · Elite Membership.",
   },

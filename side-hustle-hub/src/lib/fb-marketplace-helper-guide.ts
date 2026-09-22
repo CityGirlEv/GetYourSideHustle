@@ -117,7 +117,7 @@ export const FB_MARKETPLACE_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Photograph, organize, research, write, and help neighbors post clear Facebook Marketplace listings. The owner keeps the account, sale decisions, payments, and buyer arrangements. Tagline: Turn Clutter Into Clear Listings. Category: Local Services / Online Selling Assistance. Beginner · 3 - 10 hrs/week · Displayed $15 – $50 / project (examples only).",
   },

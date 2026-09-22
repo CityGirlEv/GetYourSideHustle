@@ -122,7 +122,7 @@ Build and test one Resume & LinkedIn Helper offer:
 export const RESUME_LINKEDIN_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help clients turn truthful work, education, volunteer, military, caregiving, project, and skill experience into a clear résumé and polished LinkedIn headline/About section. Professional Services / Career Documents. Pro Membership. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only, not guarantees. Beginner–Intermediate. Startup $0 – low. Online. Per document, package, hourly, and follow-up add-on. Best for strong writers and careful interviewers; adults and seniors/retirees; responsible teens with parent/guardian approval for age-appropriate clients.",
   },

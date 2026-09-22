@@ -52,6 +52,8 @@ import {
   handleTaskAttachments,
   handlePlanAttachments,
   upsertUser,
+  bulkDeleteUsers,
+  bulkUpdateUsers,
 } from "../_lib/data";
 import { closeSprint, listClosedSprints, reopenSprint } from "../_lib/closed-sprints";
 import { getMemberCredits, handleAdminGrantInternalCredits } from "../_lib/member-credits";
@@ -98,6 +100,7 @@ import {
   createPendingBlueprint,
   getBlueprint,
   getPendingBlueprint,
+  listBlueprintCountsByUser,
   listBlueprints,
   saveBlueprint,
   saveBlueprintFavorite,
@@ -265,6 +268,10 @@ export async function onRequest(context: {
     }
     if (route === "auth/membership-plan" && method === "POST") {
       return withCors(request, await handleUpdateMembershipPlan(env, request, user));
+    }
+    if (route === "auth/profile" && method === "POST") {
+      const { handleUpdateMemberProfile } = await import("../_lib/member-profile");
+      return withCors(request, await handleUpdateMemberProfile(env, request, user));
     }
     if (route === "auth/merch" && method === "POST") {
       return withCors(request, await handleSaveMemberMerch(env, request, user));
@@ -434,6 +441,10 @@ export async function onRequest(context: {
       return withCors(request, await handleAdminGrantInternalCredits(env, request, adminUser));
     }
 
+    if (route === "admin/blueprint-counts" && method === "GET") {
+      return withCors(request, await listBlueprintCountsByUser(env));
+    }
+
     if (route === "audit" && method === "GET") {
       return withCors(request, await listAudit(env, request));
     }
@@ -443,6 +454,12 @@ export async function onRequest(context: {
     }
     if (route === "users" && (method === "POST" || method === "PUT")) {
       return withCors(request, await upsertUser(env, request, user));
+    }
+    if (route === "users/bulk-update" && method === "POST") {
+      return withCors(request, await bulkUpdateUsers(env, request, adminUser));
+    }
+    if (route === "users/bulk-delete" && method === "POST") {
+      return withCors(request, await bulkDeleteUsers(env, request, adminUser));
     }
     if (parts[0] === "users" && parts[1] && parts[2] === "membership" && method === "PUT") {
       return withCors(request, await updateUserMembership(env, request, parts[1], user));
@@ -478,7 +495,7 @@ export async function onRequest(context: {
       return withCors(request, await handleSoftLaunchAttachments(env, request, user));
     }
     if (route === "workshops" && method === "PUT") {
-      return withCors(request, await saveWorkshops(env, request));
+      return withCors(request, await saveWorkshops(env, request, waitUntil));
     }
     if (route === "junior-signups" && method === "GET") {
       return withCors(request, await listJuniorSignups(env));

@@ -64,7 +64,7 @@ Notes: ________
 export const CAR_INTERIOR_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Vacuum crumbs, wipe surfaces, and bag trash from family cars (no chemicals kids shouldn’t use). 2 - 8 hrs/week. Displayed $10 – $40 / job is examples only. Tagline: Bag It. Vacuum It. Hand It Back Clean.",
   },

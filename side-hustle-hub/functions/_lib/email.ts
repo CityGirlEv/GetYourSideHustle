@@ -26,6 +26,7 @@ import { STRIPE_CATALOG } from "./stripe-catalog.generated";
 import { formatPurchasePaymentDetail } from "../../src/lib/purchase-payment";
 import { merchItemCount } from "../../src/lib/membership";
 import { merchEmailVars } from "../../src/lib/membership-email-copy";
+import { workshopRegistrationConfirmVars } from "../../src/lib/workshops";
 
 export { ROOT_DOMAIN, SITE_NAME, EMAIL_SENDER_DOMAIN, ADMIN_EMAIL } from "./email-brand";
 export { SITE_URL };
@@ -38,6 +39,8 @@ export type EmailAttachment = {
 
 export type SendEmailInput = {
   to: string | string[];
+  /** Visible copy of member-facing mail (workshop/membership confirmation). */
+  cc?: string | string[];
   subject: string;
   html: string;
   text?: string;
@@ -148,20 +151,31 @@ async function logEmailToAll(
   await Promise.all(targets.map((toEmail) => logEmail(env, { ...row, toEmail })));
 }
 
+function normalizeEmailList(raw: string | string[] | undefined): string[] {
+  return [
+    ...new Set(
+      (Array.isArray(raw) ? raw : raw ? [raw] : [])
+        .map((e) => String(e || "").trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+}
+
 export async function sendResendEmail(
   env: Env,
   payload: SendEmailInput,
 ): Promise<{ id: string | null }> {
   const apiKey = env.RESEND_API_KEY?.trim();
-  const toList = (Array.isArray(payload.to) ? payload.to : [payload.to])
-    .map((e) => String(e || "").trim().toLowerCase())
-    .filter(Boolean);
-  const bccList = outgoingAdminCopy(toList, env);
+  const toList = normalizeEmailList(payload.to);
+  const ccList = normalizeEmailList(payload.cc).filter((e) => !toList.includes(e));
+  const bccList = outgoingAdminCopy([...toList, ...ccList], env);
 
   const withLegal = ensureEmailLegalDisclaimer({
     html: payload.html,
     text: payload.text,
   });
+
+  const copyMeta = { ...payload.meta, adminCc: ccList, adminBcc: bccList };
 
   if (!apiKey || !apiKey.startsWith("re_")) {
     await logEmailToAll(env, toList, {
@@ -170,7 +184,7 @@ export async function sendResendEmail(
       subject: payload.subject,
       status: "skipped",
       error: "RESEND_API_KEY is not configured",
-      meta: { ...payload.meta, adminBcc: bccList },
+      meta: copyMeta,
     });
     throw new EmailSendError("RESEND_API_KEY is not configured", 500);
   }
@@ -185,6 +199,7 @@ export async function sendResendEmail(
       body: JSON.stringify({
         from: payload.from || defaultFromAddress(env),
         to: toList,
+        ...(ccList.length ? { cc: ccList } : {}),
         ...(bccList.length ? { bcc: bccList } : {}),
         subject: payload.subject,
         html: withLegal.html,
@@ -219,7 +234,7 @@ export async function sendResendEmail(
         subject: payload.subject,
         status: "failed",
         error: message,
-        meta: { ...payload.meta, adminBcc: bccList },
+        meta: copyMeta,
       });
       throw new EmailSendError(message, res.status);
     }
@@ -231,7 +246,7 @@ export async function sendResendEmail(
       subject: payload.subject,
       status: "sent",
       providerId,
-      meta: { ...payload.meta, adminBcc: bccList },
+      meta: copyMeta,
     });
     return { id: providerId };
   } catch (e) {
@@ -243,7 +258,7 @@ export async function sendResendEmail(
       subject: payload.subject,
       status: "failed",
       error: message,
-      meta: { ...payload.meta, adminBcc: bccList },
+      meta: copyMeta,
     });
     throw new EmailSendError(message, 500);
   }
@@ -342,14 +357,12 @@ export function adminRecipients(env: Env): string[] {
   return [...new Set([primary, ...partners, ...cc].filter(Boolean))];
 }
 
-/** BCC on every member-facing send so admin sees outgoing mail (skip addresses already in To). */
+/** BCC on every member-facing send so admin sees outgoing mail (skip addresses already in To/CC). */
 export function outgoingAdminCopy(
   to: string | string[],
   env?: { CONTACT_TO?: string },
 ): string[] {
-  const toSet = new Set(
-    (Array.isArray(to) ? to : [to]).map((e) => String(e || "").trim().toLowerCase()).filter(Boolean),
-  );
+  const toSet = new Set(normalizeEmailList(to));
   const copies = [
     (env?.CONTACT_TO?.trim() || ADMIN_EMAIL).toLowerCase(),
     ADMIN_EMAIL.toLowerCase(),
@@ -357,6 +370,12 @@ export function outgoingAdminCopy(
     ...ADMIN_NOTIFY_CC.map((e) => e.trim().toLowerCase()),
   ];
   return [...new Set(copies)].filter((e) => e && !toSet.has(e));
+}
+
+/** Visible CC list for registration confirmations (partner admins + ops inbox). */
+export function adminCopyRecipients(env: Env, exclude: string | string[] = []): string[] {
+  const skip = new Set(normalizeEmailList(exclude));
+  return adminRecipients(env).filter((e) => !skip.has(e));
 }
 
 function audiencePretty(raw: string | null | undefined): string {
@@ -494,6 +513,7 @@ export async function sendRegistrationConfirmation(
   if (!rendered) return false;
   await sendResendEmail(env, {
     to: user.email,
+    cc: adminCopyRecipients(env, user.email),
     subject: rendered.subject,
     html: rendered.html,
     text: rendered.text,
@@ -527,6 +547,140 @@ export async function sendRegistrationConfirmation(
     /* non-fatal */
   }
   return true;
+}
+
+/** Confirmation to the attendee after a public workshop registration. */
+export async function sendWorkshopRegistrationConfirmation(
+  env: Env,
+  input: {
+    name: string;
+    email: string;
+    workshopId: string;
+    title: string;
+    date?: string;
+    time?: string;
+    format?: string;
+    registrationNote?: string;
+    registrationOpen?: boolean;
+  },
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const vars = workshopRegistrationConfirmVars(input);
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "workshop_registration_confirmation", vars);
+  if (!rendered) return false;
+  await sendResendEmail(env, {
+    to: input.email,
+    cc: adminCopyRecipients(env, input.email),
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: "workshop_registration_confirmation",
+    meta: { workshopId: input.workshopId, email: input.email },
+  });
+  return true;
+}
+
+/**
+ * Date-locked email for registrants. Resend accepts PDF attachments as base64
+ * (`attachments[].content` + `content_type`); cap is 40MB per email — our generated guide is far smaller.
+ *
+ * `prebuiltAttachment`: pass a shared PDF when emailing many registrants. `undefined` generates
+ * one; `null` skips the file (email still sends).
+ */
+export async function sendWorkshopDateConfirmedEmail(
+  env: Env,
+  input: {
+    name: string;
+    email: string;
+    workshopId: string;
+    title: string;
+    date?: string;
+    time?: string;
+    format?: string;
+    registrationNote?: string;
+    registrationOpen?: boolean;
+    prebuiltAttachment?: EmailAttachment | null;
+  },
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const vars = workshopRegistrationConfirmVars(input);
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "workshop_date_confirmed", vars);
+  if (!rendered) return false;
+  let attachment = input.prebuiltAttachment;
+  if (attachment === undefined) {
+    try {
+      const { workshopGuidePdfAttachment } = await import("../../src/lib/workshop-sneak-peek-pdf");
+      attachment = await workshopGuidePdfAttachment(input.workshopId);
+    } catch {
+      attachment = null;
+    }
+  }
+  await sendResendEmail(env, {
+    to: input.email,
+    cc: adminCopyRecipients(env, input.email),
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: "workshop_date_confirmed",
+    attachments: attachment ? [attachment] : [],
+    meta: {
+      workshopId: input.workshopId,
+      email: input.email,
+      guideAttached: Boolean(attachment),
+    },
+  });
+  return true;
+}
+
+export type WorkshopDateLockedNotice = {
+  workshopId: string;
+  title: string;
+  date?: string;
+  time?: string;
+  format?: string;
+  registrationNote?: string;
+  registrationOpen?: boolean;
+  registrants: Array<{ name: string; email: string }>;
+};
+
+/** Email every registrant when the class date is first set, attaching the guide once. */
+export async function notifyWorkshopDateConfirmed(
+  env: Env,
+  notice: WorkshopDateLockedNotice,
+): Promise<number> {
+  if (!emailConfigured(env) || notice.registrants.length === 0) return 0;
+  let prebuiltAttachment: EmailAttachment | null = null;
+  try {
+    const { workshopGuidePdfAttachment } = await import("../../src/lib/workshop-sneak-peek-pdf");
+    prebuiltAttachment = await workshopGuidePdfAttachment(notice.workshopId);
+  } catch {
+    prebuiltAttachment = null;
+  }
+  let sent = 0;
+  for (const person of notice.registrants) {
+    const email = String(person.email || "").trim();
+    if (!email) continue;
+    try {
+      const ok = await sendWorkshopDateConfirmedEmail(env, {
+        name: person.name,
+        email,
+        workshopId: notice.workshopId,
+        title: notice.title,
+        date: notice.date,
+        time: notice.time,
+        format: notice.format,
+        registrationNote: notice.registrationNote,
+        registrationOpen: notice.registrationOpen,
+        prebuiltAttachment,
+      });
+      if (ok) sent += 1;
+    } catch {
+      /* one failure should not abort the rest of the class list */
+    }
+  }
+  return sent;
 }
 
 /** True when Adult/Senior paid plans finish email after Stripe (not on profile-only save). */
@@ -1157,7 +1311,7 @@ export async function sendScheduleReminderEmail(
     const wrapped = wrapBrandedEmail({
       preheader: `${cadenceLabel} schedule reminder for ${input.plan.hustleLabel}`,
       eyebrow: `Schedule Suite · ${cadenceLabel}`,
-      headline: `Your ${cadenceLabel.toLowerCase()} hustle plan`,
+      headline: `Your ${cadenceLabel.toLowerCase()} side hustle plan`,
       subhead: `Hi ${input.memberName || "there"}.`,
       bodyHtml: `<p style="margin:0 0 12px;">Here's your Schedule Suite for ${input.periodKey}.</p>${digestBodyHtml}`,
       ctaLabel: "Open Schedule Suite",

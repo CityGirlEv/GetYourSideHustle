@@ -89,7 +89,7 @@ export const PLANT_WATERING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Water indoor or outdoor plants on an agreed schedule for neighbors who are traveling or busy, and offer recurring plant-watering visits to local businesses with lobby, reception, or office plants. Tagline: Keep Their Plants Happy While They're Away. Category: Home & Local Services / Plant Care. Best for Juniors/Teens with appropriate adult involvement, Adults, Seniors / Retirees. Beginner · Very low startup · Flexible / recurring · Client home / local business · Per visit / vacation package / recurring route · Free Guide · 2 - 8 hrs/week. Displayed pricing: $10 – $40 / job (examples).",
   },

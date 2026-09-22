@@ -93,7 +93,7 @@ export const CUSTOM_BOOKMARK_CREATOR_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Design and make original cardstock or laminated bookmarks with art, patterns, names, or short original messages. Category: Creative Products / Paper Crafts. Best for Kids and Teens who enjoy art, lettering, design, and small-batch making with parent/guardian supervision. Beginner · Low startup · Flexible / Batch-Friendly / Fair and Gift Seasons · Home Craft Space / School or Community Fairs / Parent-Managed Online Shop · Per Bookmark / Sets / Personalization / Bulk Orders · 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only. Tagline: Original Designs. Neat Finishes. Book-Loving Gifts.",
   },

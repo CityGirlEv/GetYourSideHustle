@@ -93,7 +93,7 @@ export const AI_SOCIAL_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Use AI to help brainstorm, outline, and draft captions, hashtags, and simple content calendars for local businesses or creators. Tagline: Draft Faster. Sound Human. Publish With Approval. Category: AI / Marketing. Best for organized writers who can learn a client's voice, verify facts, and treat AI output as a draft—not an automatic publishing system. Beginner–Intermediate · $0 startup · Project-Based / Weekly Content Batches · Online · Content Calendar / Caption Pack / Monthly Drafting Package · 3 - 10 hrs/week · Elite Membership. Displayed $15 – $50 / project is examples only.",
   },

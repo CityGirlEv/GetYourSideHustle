@@ -67,7 +67,7 @@ Notes: ________
 export const CANVA_FLYER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Design simple flyers, yard-sale signs, and event graphics in Canva for neighbors and small groups. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only, not a guarantee. Tagline: Design It. Proof It. Deliver the Files.",
   },

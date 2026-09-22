@@ -5,7 +5,7 @@
 
 export const LEAD_FOLLOWUP_REALITY_CHECK = {
   title: "YOU ARE NOT COLD CALLING",
-  body: "This hustle focuses on people who have already shown interest in the client's business. Your job is to provide organized, polite follow-up so warm leads do not get forgotten.",
+  body: "This side-hustle focuses on people who have already shown interest in the client's business. Your job is to provide organized, polite follow-up so warm leads do not get forgotten.",
 };
 
 /** Client planner shown above freeform Notes for this guide. */
@@ -77,7 +77,7 @@ export const LEAD_FOLLOWUP_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help busy local professionals stop losing warm leads by sending polite, timely follow-up texts and emails, tracking responses, and letting the business owner know when someone is ready for personal attention. Tagline: They Find the Leads. You Make Sure Nobody Drops the Ball. Category: Virtual Assistance / Sales Support. Best for adults and seniors / retirees. Beginner · Very low startup · Flexible / recurring · Remote · Service-based / recurring income.",
   },

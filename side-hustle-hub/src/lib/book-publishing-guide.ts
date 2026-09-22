@@ -113,7 +113,7 @@ export const BOOK_PUBLISHING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Take a book from manuscript through editing, formatting, cover, metadata, print/ebook publishing, distribution, optional audiobook, marketing, and sales review using KDP/IngramSpark as appropriate. Tagline: Write It. Publish It. Put It in Readers’ Hands. Category: Digital / Publishing. Best for Adults, Seniors / Retirees; experienced Teens only with guardian-approved accounts/business arrangements. Beginner–Intermediate · Low–Moderate startup · Online/Home · Royalties / Direct Sales / Author Business · Pro Membership · 4 - 12 weeks · Displayed earnings: $200 - $8,000 / month (examples).",
   },

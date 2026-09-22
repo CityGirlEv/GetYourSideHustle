@@ -40,7 +40,7 @@ Notes: ________
 `;
 
 export const HOLIDAY_DECORATING_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Help hang indoor decorations and pack them away after the season — ladders only with adults. 2 - 8 hrs/week. Displayed $10 – $40 / job is examples only." },
+  { id: "overview", label: "What this side-hustle is", detail: "Help hang indoor decorations and pack them away after the season — ladders only with adults. 2 - 8 hrs/week. Displayed $10 – $40 / job is examples only." },
   { id: "care", label: "Care with fragile property", detail: "Follow customer instructions. Handle sentimental ornaments slowly. Indoor / light work only." },
   { id: "ladder", label: "Ladders only with adults", detail: "Kids and younger teens do not climb extension ladders. Adults handle ladder-dependent tasks." },
 ];

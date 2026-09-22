@@ -10,8 +10,8 @@ import {
   PDF_MARGIN,
   applyPdfPageBranding,
   drawPdfPageChrome,
-  loadPdfLogoDataUrl,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 
 export type ProgressExportFormat = "pdf" | "excel" | "word";
 

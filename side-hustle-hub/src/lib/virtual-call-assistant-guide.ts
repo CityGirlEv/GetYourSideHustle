@@ -100,7 +100,7 @@ export const VIRTUAL_CALL_ASSISTANT_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Build a paid service that answers and screens inbound calls, captures qualified messages, and books appointments for local professionals who miss the phone. Productize the work with one niche, separate client numbers and scripts, defined coverage and overflow, least-privilege system access, measured quality, and a documented backup/offboarding plan. Tagline: One Niche. One Playbook. Calls Handled Reliably. Category: Professional / Call-Handling Service Business. Best for adults and seniors who can build a reliable multi-client call operation. Intermediate–Advanced · $0 – $50 to test · Reserved Coverage / Recurring Retainers · Online / Quiet Remote Workspace · Hourly Coverage / Call Package / Monthly Retainer · Elite · 8 - 20 hrs/week · Displayed $20 – $40 / hour or retainer (examples, not guarantees). Distinct from Virtual Receptionist (#115).",
   },

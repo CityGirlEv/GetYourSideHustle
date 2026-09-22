@@ -67,7 +67,7 @@ export const ESTATE_SALE_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Estate sale reselling is a buy-low, sell-higher side hustle. Find vintage, antique, collectible, and desirable secondhand items at estate sales and other sources, buy them below likely resale value, then resell them online or locally for profit. Tagline: Buy Smart. Research First. Resell for Profit.",
   },

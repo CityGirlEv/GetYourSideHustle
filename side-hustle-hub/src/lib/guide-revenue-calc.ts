@@ -202,7 +202,7 @@ export function guideCalcModeForId(guideId: string): GuideCalcMode {
 
 export function guideCalcProfileForId(guideId: string, guideName?: string): GuideCalcProfile {
   const mode = guideCalcModeForId(guideId);
-  const name = (guideName || guideId || "this hustle").trim();
+  const name = (guideName || guideId || "this side-hustle").trim();
   const id = String(guideId || "").trim();
 
   if (mode === "kindness") {
@@ -2279,7 +2279,7 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
       title: `${name} — Drink Stand Profit Calculator`,
       blurb:
         "Servings sold × price per drink = gross sales. Subtract ingredients, ice, cups, other direct costs, fees, and other. Price per drink — not a job fee. Parent-supplied ingredients are not free.",
-      disclaimerExtra: "Price primarily per drink (~$1–$3). $10–$40 / job does not fit this hustle. Examples only.",
+      disclaimerExtra: "Price primarily per drink (~$1–$3). $10–$40 / job does not fit this side-hustle. Examples only.",
       defaults: {
         lemonadeServingsSold: 0,
         averageSellingPrice: 0,

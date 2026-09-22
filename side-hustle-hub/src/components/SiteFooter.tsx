@@ -64,7 +64,7 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
 
         <nav className="site-footer-nav" aria-label="Footer">
           <button type="button" className="site-footer-link" onClick={() => onNavigate("about")}>
-            About
+            About Us
           </button>
           <button
             type="button"

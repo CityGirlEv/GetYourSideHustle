@@ -101,7 +101,7 @@ export const LEAF_RAKING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Clear driveways, walks, and lawns with a leaf-blowing package neighbors can book by the job. Free Guide. 2 - 8 hrs/week. $15 – $50 / job figures are examples only. " +
       LEAF_BLOWING_DRAWING,

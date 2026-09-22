@@ -5,7 +5,7 @@
 
 export const FOOD_DELIVERY_REALITY_CHECK = {
   title: "Know Your Real Profit",
-  body: "Seeing $200 in your delivery app doesn’t necessarily mean you made $200 in profit. Delivery drivers have expenses such as fuel, maintenance, insurance, and vehicle wear. Track earnings, hours, AND miles so you know whether the hustle is actually profitable.",
+  body: "Seeing $200 in your delivery app doesn’t necessarily mean you made $200 in profit. Delivery drivers have expenses such as fuel, maintenance, insurance, and vehicle wear. Track earnings, hours, AND miles so you know whether the side hustle is actually profitable.",
 };
 
 /** Strategy worksheet shown above freeform Notes for this guide. */
@@ -51,7 +51,7 @@ export const FOOD_DELIVERY_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Food delivery through DoorDash or Uber Eats is one of the easier side hustles to start because you don’t need to find your own customers or create a product. You use the delivery app to accept offers, pick up food or other eligible items, and deliver them to customers.",
   },

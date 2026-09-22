@@ -103,7 +103,7 @@ export const AI_PROMPT_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Learn how to use ChatGPT for writing, planning, brainstorming, organizing information, and everyday tasks. Practice reusable prompts, improve weak answers, verify important information, and build simple AI workflows. Tagline: Ask Better. Refine Smarter. Get More Done. Category: AI Skills / Digital Skills. Best for Teens where appropriate, Adults, Seniors / Retirees. Beginner · Very low startup · Flexible · Online / home / workshop · Skill building / optional tutoring or project support · 3 - 10 hrs/week · Elite Membership. You do NOT need to be a programmer.",
   },

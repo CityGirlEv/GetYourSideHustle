@@ -132,7 +132,7 @@ WRITTEN SCOPE + REPEATABLE STEPS + CLEAN SCREENSHOT + CLEAR PRIORITY + SAFE RETE
 export const WEBSITE_TESTER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Authorized small-business website click-throughs with a prioritized bug-and-clarity checklist. Starter Membership. 10 hrs/week. Displayed $15 – $50 / project is examples only. Safest beginner work: public pages, mobile usability, content clarity, forms, links, and approved customer journeys — not security testing.",
   },

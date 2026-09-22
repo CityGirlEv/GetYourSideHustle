@@ -117,7 +117,7 @@ export const SCHEDULE_REMINDER_CADENCE_OPTIONS: {
 ];
 
 export type ScheduleBlueprintGoals = {
-  /** Marketing plan for this hustle / blueprint week. */
+  /** Marketing plan for this side-hustle / blueprint week. */
   marketingPlan: string;
   /** Target sales for the current week (USD). */
   targetSalesUsd: number;
@@ -751,7 +751,7 @@ export function promoteBlocksFromDueDate(
   return { ...promoted, dueDate: dueYmd };
 }
 
-export function emptyBlueprintGoals(hustleLabel = "this hustle"): ScheduleBlueprintGoals {
+export function emptyBlueprintGoals(hustleLabel = "this side-hustle"): ScheduleBlueprintGoals {
   return {
     marketingPlan: [
       `Audience: who buys ${hustleLabel}?`,
@@ -1071,7 +1071,7 @@ export function celebrationFromMark(mark: ScheduleGradeMark): ScheduleGradeCeleb
 const PEP_TALKS: Record<ScheduleGradeMark, string[]> = {
   "A+": [
     "A+?! Did you invent a side hustle AND a time machine? Absolute legend energy.",
-    "Chef’s kiss. The hustle gods just high-fived you. Don’t trip on your cape.",
+    "Chef’s kiss. The side hustle gods just high-fived you. Don’t trip on your cape.",
     "A+: you’re not grinding — you’re gliding. Keep that magic illegal-in-most-states.",
   ],
   A: [
@@ -1086,7 +1086,7 @@ const PEP_TALKS: Record<ScheduleGradeMark, string[]> = {
   ],
   B: [
     "B for Boss-in-progress. One more push and you’re stealing A’s lunch money.",
-    "Respectable B. Your hustle didn’t ghost you — it just left on read a little.",
+    "Respectable B. Your side hustle didn’t ghost you — it just left on read a little.",
     "B means Building. Rome wasn’t side-hustled in a day either.",
   ],
   "C+": [
@@ -1097,7 +1097,7 @@ const PEP_TALKS: Record<ScheduleGradeMark, string[]> = {
   C: [
     "C for Could-be. Plot a comeback arc; villains hate a second-act glow-up.",
     "Average? Nah — this is your “training montage starts now” soundtrack cue.",
-    "C means Continue. The hustle isn’t mad — it’s just waiting for you to text back.",
+    "C means Continue. The side hustle isn’t mad — it’s just waiting for you to text back.",
   ],
   D: [
     "D for Drama… and also Do-better. Shake it off; Monday doesn’t know your secrets.",
@@ -1235,7 +1235,7 @@ export function createSchedulePlan(input: {
    */
   distinct?: boolean;
   /**
-   * Launch Guide steps to place on Plan tracker. Omit to load the hustle’s playbook.
+   * Launch Guide steps to place on Plan tracker. Omit to load the side hustle’s playbook.
    * Pass `[]` to keep the legacy 7-day weekly template.
    */
   guideSteps?: ScheduleGuideStep[];

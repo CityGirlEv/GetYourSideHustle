@@ -1,6 +1,6 @@
 /**
  * GYSH membership tiers, credit economy (Kids/Teens), and a-la-carte price list.
- * Pro & Above unlocks proposed hustle schedules, trackers, progress reports, and email alerts.
+ * Pro & Above unlocks proposed side hustle schedules, trackers, progress reports, and email alerts.
  */
 
 export type AudienceGroup = "kids" | "junior" | "adult" | "senior";
@@ -622,7 +622,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Training videos for kids",
-        detail: "Short, parent-friendly lessons on safe hustles and confidence.",
+        detail: "Short, parent-friendly lessons on safe side hustles and confidence.",
       },
       {
         title: "Kevina Glow Getter extras + story seats",
@@ -997,7 +997,7 @@ export const CREDIT_EARN_ACTIONS: CreditEarnAction[] = [
   },
   {
     id: "parent_plan",
-    label: "Parent approves your hustle plan",
+    label: "Parent approves your side hustle plan",
     credits: 5,
     audiences: ["kids", "junior"],
     category: "habit",
@@ -1176,7 +1176,7 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
     detail:
       "A downloadable scorecard of hustle progress, wins, and next steps. Pro and Elite include it; this is a one-off extra copy.",
     explain:
-      "The Progress report PDF is a one-page scorecard of how the hustle is going — what’s working, what’s stuck, and the next recommended steps. Pro and Elite include it automatically. This listing is a one-off extra copy for $12 or 12 credits.",
+      "The Progress report PDF is a one-page scorecard of how the side hustle is going — what’s working, what’s stuck, and the next recommended steps. Pro and Elite include it automatically. This listing is a one-off extra copy for $12 or 12 credits.",
     includedIn: ["pro", "elite"],
   },
   {

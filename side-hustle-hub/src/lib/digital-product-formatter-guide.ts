@@ -79,7 +79,7 @@ export const DIGITAL_PRODUCT_FORMATTER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Turn a client’s completed rough draft into a clean, consistent PDF, worksheet, workbook, checklist, lead magnet, or slide deck. Tagline: Rough Draft In. Polished, Usable File Out. Category: Digital Services / Document Design. Best for Teens and Adults who are detail-oriented and comfortable with document, design, and presentation software. Beginner to Intermediate · Very Low startup · Flexible / Deadline-Based · Remote / Home Office · Per Page / Per Project / Template Packages / Rush Fees · 3 - 10 hrs/week · Starter Membership. Displayed $15 – $50 / project is examples only.",
   },

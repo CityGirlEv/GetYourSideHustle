@@ -9,15 +9,17 @@ import {
 
 describe("email template review cases", () => {
   it("covers every catalog template once, assigned to Candace", () => {
-    expect(EMAIL_TEMPLATE_REVIEW_CATALOG.length).toBe(23);
-    expect(EMAIL_TEMPLATE_REVIEW_CASES).toHaveLength(23);
+    expect(EMAIL_TEMPLATE_REVIEW_CATALOG.length).toBe(26);
+    expect(EMAIL_TEMPLATE_REVIEW_CASES).toHaveLength(26);
     const ids = new Set(EMAIL_TEMPLATE_REVIEW_CASES.map((c) => c.id));
-    expect(ids.size).toBe(23);
+    expect(ids.size).toBe(26);
     expect(ids.has("EMAIL-TPL-membership_subscribed")).toBe(true);
     expect(ids.has("EMAIL-TPL-membership_upgraded")).toBe(true);
     expect(ids.has("EMAIL-TPL-membership_merch_ready")).toBe(true);
     expect(ids.has("EMAIL-TPL-alacarte_purchased")).toBe(true);
     expect(ids.has("EMAIL-TPL-credit_pack_purchased")).toBe(true);
+    expect(ids.has("EMAIL-TPL-workshop_registration_confirmation")).toBe(true);
+    expect(ids.has("EMAIL-TPL-workshop_date_confirmed")).toBe(true);
     expect(EMAIL_TEMPLATE_REVIEW_CATALOG.map((t) => t.slug)).toEqual(
       EMAIL_TEMPLATE_CATALOG.map((t) => t.slug),
     );
@@ -29,7 +31,7 @@ describe("email template review cases", () => {
       expect(c!.title).toContain(tpl.name);
       expect(c!.path).toBe(`/admin?tab=email&template=${tpl.slug}`);
       expect(c!.steps[0]).toContain(`](/admin?tab=email&template=${tpl.slug})`);
-      expect(c!.steps.join(" ")).toMatch(/Your hustle, your results/i);
+      expect(c!.steps.join(" ")).toMatch(/Your side hustle, your results/i);
     }
   });
 

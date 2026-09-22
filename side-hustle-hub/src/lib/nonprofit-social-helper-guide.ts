@@ -132,7 +132,7 @@ export const NONPROFIT_SOCIAL_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help churches and nonprofits keep their social pages active with approved event reminders, volunteer spotlights, program updates, community announcements, and simple recurring content. Tagline: Keep the Mission Visible. Keep the Community Informed. Category: Social Media / Community Support. Best for Teens where appropriate, Adults, Seniors / Retirees. Beginner to intermediate · Very low startup · Flexible / recurring · Remote / local · Per project / recurring monthly support · 3 - 10 hrs/week · Pro Membership.",
   },

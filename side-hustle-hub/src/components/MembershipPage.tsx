@@ -63,6 +63,10 @@ import {
   membershipPlanChooseLabel,
 } from "../lib/membership-signup-labels";
 import {
+  membershipAdvanceBillingNoteCopy,
+  membershipQuarterlyUsd,
+} from "../lib/membership-commitment-billing";
+import {
   addAlaCarteToCart,
   alacarteCartItemCount,
   alacarteCartTotalUsd,
@@ -555,6 +559,10 @@ export function MembershipPage({
                 </span>
               </li>
               <li>
+                <strong>Stripe bills every 3 months</strong>
+                <span>{membershipAdvanceBillingNoteCopy()}</span>
+              </li>
+              <li>
                 <strong>Pay yearly — save ~17%</strong>
                 <span>That’s 2 months free · billed in advance</span>
               </li>
@@ -652,7 +660,7 @@ export function MembershipPage({
             </li>
             <li>
               <LayoutDashboard size={16} aria-hidden />
-              <span>Member Dashboard keeps your hustle, credits, and checklist in one place</span>
+              <span>Member Dashboard keeps your side hustle, credits, and checklist in one place</span>
             </li>
             <li>
               <Link2 size={16} aria-hidden />
@@ -1011,6 +1019,14 @@ export function MembershipPage({
               (tier.priceMonthlyUsd ?? 0) > monthly ? (
                 <p className="membership-tier-or membership-tier-yearly-note">
                   {`Adult ${formatUsd(tier.priceMonthlyUsd ?? 0)}/mo or ${formatUsd(tier.priceYearlyUsd ?? listYearly)}/yr`}
+                </p>
+              ) : null}
+              {!usesCredits && tier.id !== "free" && !yearlyOn ? (
+                <p
+                  className="membership-tier-or membership-tier-yearly-note"
+                  data-testid={`membership-quarterly-note-${tier.id}`}
+                >
+                  {`Billed ${formatUsd(membershipQuarterlyUsd(monthly))} every 3 months`}
                 </p>
               ) : null}
             </div>

@@ -163,9 +163,9 @@ export function guideReviewManualSteps(opts: {
   return [
     `Open ${openLink} in the Side Hustle Library (Guides Library Admin / focused guide) — ${audience} (id: ${guideId}${numLabel ? `, ${numLabel}` : ""}, min tier: ${minTier}). Cross-link: [Testing Portal](${testDeepLink})`,
     `Review all ${GUIDE_PREP_REVIEW_TAB_LABELS.length} prep tabs in order: ${GUIDE_PREP_REVIEW_TABS_PHRASE} — open each dedicated tab (do not rely on Show All alone); Suggested Pricing and Supply List must appear on their own tabs; content complete, accurate, and usable (calculator loads and runs)`,
-    "Confirm Prerequisites and Tools are separate, named sections; every named outside tool/source has an exact https link (e.g. AirDNA → https://www.airdna.co/)",
+    "Confirm About and Tools are separate, named sections; every named outside tool/source has an exact https link (e.g. AirDNA → https://www.airdna.co/)",
     "Confirm steps are precise (no vague “gather tools” — list ChatGPT, Gemini, Antigravity, Scratch, etc. where relevant); AI guides are Pro or Elite only — never Free or Starter",
-    "As QA (same powers as Admin on these tabs): add, edit, re-order, delete, and Save Prerequisites / Tools / Steps / Supply List / Suggested Pricing (and Notes if needed). After Save, re-check Show All plus each dedicated tab. Save all updates before leaving the guide",
+    "As QA (same powers as Admin on these tabs): add, edit, re-order, delete, and Save About / Tools / Steps / Supply List / Suggested Pricing (and Notes if needed). After Save, re-check Show All plus each dedicated tab. Save all updates before leaving the guide",
     "In Guides Library Admin for this guide: check Active (if needed) and Reviewed — Fixed/Re-Review is only for the Pending fix queue, not for pass. Confirm Active and Reviewed stay checked",
     "Mark this test Pass when the guide is review-ready (Fail with a note if content still needs work). Pass auto-sets Active + Reviewed (Reviewed by QA / No Changes; guide stays live). Fail sets the guide Inactive. Save is already done — move to the next GUIDE-REV test",
   ];

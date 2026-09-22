@@ -75,7 +75,7 @@ Effective profit per hour: $____
 export const TRAVEL_RESEARCH_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Compare flights, lodging, and itinerary ideas into a one-page travel brief. Research only — the client books and pays providers. 10 hrs/week. Displayed $15 – $50 / project is examples only.",
   },

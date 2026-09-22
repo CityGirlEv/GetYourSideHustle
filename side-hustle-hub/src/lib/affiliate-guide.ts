@@ -116,7 +116,7 @@ export const AFFILIATE_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Earn commissions by recommending products or services through unique affiliate links. Build a focused audience, join appropriate programs, create useful content, disclose affiliate relationships, track clicks/conversions, and improve what actually produces profitable commissions. Tagline: Recommend Honestly. Create Value. Earn on Qualified Sales. Category: Digital Marketing / Content / Online Business. Best for Adults, Seniors/Retirees; Teens only with parent/guardian-managed accounts where required. Beginner–Intermediate · $0 – Low startup · Online · Affiliate Commissions · 3 - 6 weeks to build and test a basic affiliate system · Elite Membership.",
   },

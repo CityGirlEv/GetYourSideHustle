@@ -677,6 +677,18 @@ export async function sendTestEmail(
   const preview = await renderCatalogEmail(env, slug, previewSampleVarsForSlug(slug));
   if (!preview) return error("Unknown template.", 404);
 
+  let attachments: Array<{ filename: string; content: string; contentType: string }> | undefined;
+  if (slug === "workshop_date_confirmed") {
+    try {
+      const { workshopGuidePdfAttachment } = await import("../../src/lib/workshop-sneak-peek-pdf");
+      const { AI_SCENE_PACKS_WORKSHOP_ID } = await import("../../src/lib/workshop-playbooks");
+      const attachment = await workshopGuidePdfAttachment(AI_SCENE_PACKS_WORKSHOP_ID);
+      if (attachment) attachments = [attachment];
+    } catch {
+      /* test send still goes out without the PDF */
+    }
+  }
+
   try {
     const result = await sendResendEmail(env, {
       to,
@@ -685,7 +697,8 @@ export async function sendTestEmail(
       text: preview.text,
       templateSlug: slug,
       userId: actor.id,
-      meta: { test: true, slug, sentBy: actor.email },
+      meta: { test: true, slug, sentBy: actor.email, guideAttached: Boolean(attachments?.length) },
+      attachments,
     });
     return json({
       ok: true,

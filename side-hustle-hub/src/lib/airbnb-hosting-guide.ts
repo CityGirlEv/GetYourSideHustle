@@ -111,7 +111,7 @@ export const AIRBNB_HOSTING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Host guests on Airbnb — own the space, or pair with Arbitrage Hosting / Co-Host if you want to host without owning. 2 - 4 weeks to launch. $1,500 - $8,000 / month is examples only, not a guarantee.",
   },

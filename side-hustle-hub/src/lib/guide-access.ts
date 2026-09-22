@@ -10,6 +10,7 @@ import {
   hustleById,
   isFreeWizardHustle,
 } from "./side-hustle-catalog";
+import { cachedComplimentaryGuideIds } from "./wizard-comp-guide";
 
 export const JOIN_TO_UNLOCK_LABEL = "Join to Unlock";
 /** Small line under the Join button — Free Membership unlocks Free-plan guides. */
@@ -248,6 +249,7 @@ export const SENIOR_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   "safe-cohost": "pro",
   "senior-handyman": "free",
   "senior-affiliate": "elite",
+  "senior-pod": "elite",
   "start-consulting": "starter",
   "pricing-crafts": "pro",
   "neighborhood-errands": "starter",
@@ -343,9 +345,21 @@ export type GuideAccessResult = {
 export function resolveGuideAccess(input: GuideAccessInput): GuideAccessResult {
   const minTier = input.minTier;
   const guideId = input.guideId?.trim();
+  const complimentaryIds = input.complimentaryGuideIds ?? cachedComplimentaryGuideIds();
   const complimentary =
-    Boolean(guideId) &&
-    (input.complimentaryGuideIds ?? []).some((id) => id.trim() === guideId);
+    Boolean(guideId) && complimentaryIds.some((id) => id.trim() === guideId);
+
+  if (complimentary) {
+    const userTier = input.isMember ? normalizeGuideTier(input.membershipTier) : "free";
+    return {
+      unlocked: true,
+      needsJoin: false,
+      needsUpgrade: false,
+      userTier,
+      minTier,
+      adminViewOnly: false,
+    };
+  }
 
   if (input.isAdmin) {
     const userTier = input.isMember ? normalizeGuideTier(input.membershipTier) : "free";
@@ -387,7 +401,7 @@ export function resolveGuideAccess(input: GuideAccessInput): GuideAccessResult {
 /** Short badge on guide cards when unlocked / catalog. */
 export function guideTierBadgeLabel(minTier: GuideMinTier): string {
   if (minTier === "free") return "Free Guide";
-  return `${tierDisplayName(minTier)} Membership`;
+  return `${tierDisplayName(minTier)} Members`;
 }
 
 /** CSS tone class for membership bubbles / matching filter tabs (`glow-badge` + this). */
@@ -474,6 +488,33 @@ export function guideTierMembershipNote(minTier: GuideMinTier): string {
     return FREE_GUIDE_SIGNUP_NOTE;
   }
   return `Included with ${tierAndAboveLabel(minTier)}`;
+}
+
+/** True when this guide is the account’s one Match Wizard extra (100% match gift). */
+export function isComplimentaryExtraUnlock(guideId: string | null | undefined): boolean {
+  const id = String(guideId || "").trim();
+  return Boolean(id) && cachedComplimentaryGuideIds().some((x) => x.trim() === id);
+}
+
+/**
+ * Gift copy for the one complimentary Match Wizard extra the member checked.
+ * Paid floors name the usual plan; Unique Unique Free stays a Free-library guide.
+ */
+export function complimentaryExtraGiftNote(minTier: GuideMinTier): string {
+  if (minTier === "free") {
+    return "This guide is on Unique Unique Free, and it is also your 1 complimentary Match Wizard gift, no matter the level.";
+  }
+  return `This guide is only available to ${tierAndAbovePlans(minTier)} members, but as a special gift, we are letting you have 1 complimentary guide (the one you checked), no matter the level, as a free gift.`;
+}
+
+/** Badge on the complimentary extra match — names that guide’s membership floor. */
+export function complimentaryExtraUnlockBadge(minTier: GuideMinTier): string {
+  return `Your 1 free ${guideTierShortLabel(minTier)} unlock`;
+}
+
+/** Complimentary unlock is for paid floors. Unique Unique Free is already included on Free. */
+export function complimentaryUnlockAppliesToGuide(minTier: GuideMinTier): boolean {
+  return normalizeGuideTier(minTier) !== "free";
 }
 
 /** All tier ids in ladder order (for filters / docs). */

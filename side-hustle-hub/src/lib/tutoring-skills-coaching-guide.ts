@@ -45,7 +45,7 @@ Notes: ________
 `;
 
 export const TUTORING_SKILLS_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Math, reading, languages, music, or professional skills — in person or video. 3 - 12 hrs/week. Displayed $20 – $60 / hour is examples only." },
+  { id: "overview", label: "What this side-hustle is", detail: "Math, reading, languages, music, or professional skills — in person or video. 3 - 12 hrs/week. Displayed $20 – $60 / hour is examples only." },
   { id: "knowledge", label: "Strong subject or skill knowledge", detail: "You must be able to explain clearly at the learner’s level. Do not teach past your competence." },
   { id: "setup", label: "Reliable schedule and session setup", detail: "Calendar, quiet space or video link, and parent/guardian contact when minors are involved." },
 ];

@@ -58,7 +58,7 @@ Maintenance visit: ________  Testimonial: ☐  Referral: ☐
 `;
 
 export const TOY_ORGANIZER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Sort playrooms into labeled bins so kids can find toys and parents can breathe. 2 - 8 hrs/week. Price by space, not a generic job guess." },
+  { id: "overview", label: "What this side-hustle is", detail: "Sort playrooms into labeled bins so kids can find toys and parents can breathe. 2 - 8 hrs/week. Price by space, not a generic job guess." },
   { id: "consent", label: "Parent approval on keep / donate / trash", detail: "You never decide to throw away sentimental or valuable items. Storage products are usually a client expense." },
 ];
 

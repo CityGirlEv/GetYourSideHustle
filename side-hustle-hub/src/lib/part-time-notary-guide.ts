@@ -100,7 +100,7 @@ Build and test one Part-Time Notary service:
 export const PART_TIME_NOTARY_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Become a properly commissioned notary and perform authorized notarial acts by appointment for individuals and local businesses. Pro Membership. 3 - 12 hrs/week. Displayed $15 – $75 / appointment is examples only, not guarantees. Category: Professional Services / Notarial Services. Intermediate / Commission Required. Startup $100 – $300. By appointment / mobile / evenings & weekends / remote only where authorized. Income: statutory notarial fee, appointment, lawful travel or convenience fee, and signing-service fee where qualified.",
   },

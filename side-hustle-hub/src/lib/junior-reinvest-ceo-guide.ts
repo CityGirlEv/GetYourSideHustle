@@ -12,9 +12,9 @@ export const JUNIOR_REINVEST_CEO_REALITY_CHECK = {
     "Three buckets:",
     "SAVE — money for future goals",
     "ENJOY — money you can spend",
-    "GROW — money put back into your hustle",
+    "GROW — money put back into your side hustle",
     "",
-    "Reinvesting = using some hustle earnings to help the hustle operate better, replace supplies, or grow.",
+    "Reinvesting = using some side hustle earnings to help the side hustle operate better, replace supplies, or grow.",
     "",
     "Tagline: Earn It. Split It. Grow It Like a CEO.",
   ].join("\n"),
@@ -59,12 +59,12 @@ NEXT MONEY GOAL:
 ____________________
 
 GYSH PRO TIP — DON'T CONFUSE “I WANT IT” WITH “MY HUSTLE NEEDS IT.”
-A CEO asks: “What will this purchase DO for my hustle?”
+A CEO asks: “What will this purchase DO for my side hustle?”
 Sometimes the smartest CEO decision is buying something useful.
 Sometimes it's keeping the money in the GROW bucket until there's a better reason to spend it.
 
 CEO CHALLENGE:
-Track every hustle dollar for one full week.
+Track every side hustle dollar for one full week.
 At the end, account for where every dollar went.`;
 
 export const JUNIOR_REINVEST_CEO_PREREQUISITE_EXTRAS: {
@@ -76,19 +76,19 @@ export const JUNIOR_REINVEST_CEO_PREREQUISITE_EXTRAS: {
     id: "overview",
     label: "What this guide is",
     detail:
-      "Don't spend every dollar you earn. Learn to divide hustle earnings into Save, Enjoy, and Grow buckets and make smart decisions about putting money back into your hustle. Tagline: Earn It. Split It. Grow It Like a CEO. Category: Junior / Money Skills. Best for juniors / teens. Beginner · $0 startup · Timeline: 1–2 weeks · Income type: Money Management / Reinvestment.",
+      "Don't spend every dollar you earn. Learn to divide side hustle earnings into Save, Enjoy, and Grow buckets and make smart decisions about putting money back into your side hustle. Tagline: Earn It. Split It. Grow It Like a CEO. Category: Junior / Money Skills. Best for juniors / teens. Beginner · $0 startup · Timeline: 1–2 weeks · Income type: Money Management / Reinvestment.",
   },
   {
     id: "need",
     label: "What you need",
     detail:
-      "A hustle earning some money · Parent/guardian guidance where appropriate · Calculator · Simple earnings/expense tracker · 3 money categories (Save / Enjoy / Grow).",
+      "A side hustle earning some money · Parent/guardian guidance where appropriate · Calculator · Simple earnings/expense tracker · 3 money categories (Save / Enjoy / Grow).",
   },
   {
     id: "not-need",
     label: "You do NOT need",
     detail:
-      "A formal business name · Competitor research · A business plan. This is a money-habit system, not a hustle-launch guide.",
+      "A formal business name · Competitor research · A business plan. This is a money-habit system, not a side-hustle-launch guide.",
   },
   {
     id: "numbers",
@@ -100,7 +100,7 @@ export const JUNIOR_REINVEST_CEO_PREREQUISITE_EXTRAS: {
     id: "pro-tip",
     label: "GYSH Pro Tip — Want vs need",
     detail:
-      "Don't confuse “I want it” with “my hustle needs it.” A CEO asks what the purchase will DO for the hustle. Sometimes the smart move is keeping Grow money until there's a better reason to spend.",
+      "Don't confuse “I want it” with “my side hustle needs it.” A CEO asks what the purchase will DO for the side hustle. Sometimes the smart move is keeping Grow money until there's a better reason to spend.",
   },
 ];
 
@@ -366,7 +366,7 @@ export const JUNIOR_REINVEST_CEO_DETAILED_STEPS: { title: string; desc: string }
       "",
       "SAVE — money for future goals",
       "ENJOY — money you can spend",
-      "GROW — money put back into your hustle",
+      "GROW — money put back into your side hustle",
       "",
       "Use envelopes, jars, spreadsheet categories, or another parent-approved method.",
     ].join("\n"),
@@ -403,7 +403,7 @@ export const JUNIOR_REINVEST_CEO_DETAILED_STEPS: { title: string; desc: string }
   {
     title: "Create a Grow List",
     desc: [
-      "List things that could actually help your hustle.",
+      "List things that could actually help your side hustle.",
       "",
       "Item | Cost | How It Helps",
       "",
@@ -420,7 +420,7 @@ export const JUNIOR_REINVEST_CEO_DETAILED_STEPS: { title: string; desc: string }
     desc: [
       "Before spending GROW money ask:",
       "",
-      "☐ Does my hustle actually need this?",
+      "☐ Does my side hustle actually need this?",
       "☐ Will I use it?",
       "☐ Could it help me make/sell more?",
       "☐ Could it save time?",
@@ -484,7 +484,7 @@ export const JUNIOR_REINVEST_CEO_DETAILED_STEPS: { title: string; desc: string }
       "What did I waste money on?",
       "____________________",
       "",
-      "What does my hustle need next?",
+      "What does my side hustle need next?",
       "____________________",
       "",
       "Should I change my split?",

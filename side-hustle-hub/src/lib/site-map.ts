@@ -163,7 +163,7 @@ function buildPublicMap(): SiteMapNode {
           { id: "join-signin", label: "Log in", kind: "submenu" },
         ],
       },
-      { id: "nav-about", label: "About", kind: "menu" },
+      { id: "nav-about", label: "About Us", kind: "menu" },
       { id: "nav-contact", label: "Contact Us", kind: "menu" },
       {
         id: "nav-meta",

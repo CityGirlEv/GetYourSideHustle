@@ -19,6 +19,7 @@ import {
   type PaymentRowPatchInput,
 } from "../../src/lib/gysh-payments";
 import { formatAlaCartePurchaseLabel, formatCreditPackPurchaseLabel } from "../../src/lib/credit-pack-purchase";
+import { membershipBillingCadenceLabel } from "../../src/lib/membership-commitment-billing";
 
 export type GyshPaymentRow = {
   id: string;
@@ -227,7 +228,7 @@ function labelForPayment(input: {
   if (input.kind === "membership") {
     const tier = input.tier ? input.tier[0]!.toUpperCase() + input.tier.slice(1) : "Membership";
     const lane = input.audience || "adult";
-    const every = input.interval === "year" ? "yearly" : "monthly";
+    const every = membershipBillingCadenceLabel(input.interval);
     return `${tier} · ${lane} · ${every}`;
   }
   if (input.kind === "alacarte") {

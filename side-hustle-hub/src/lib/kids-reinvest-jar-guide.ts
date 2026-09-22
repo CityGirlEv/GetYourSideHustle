@@ -12,7 +12,7 @@ export const KIDS_REINVEST_JAR_REALITY_CHECK = {
     "Three jars:",
     "FUN — money you can enjoy now",
     "SAVE — money for a future goal",
-    "GROW — money you put back into your hustle",
+    "GROW — money you put back into your side hustle",
     "",
     "Putting some earnings back helps you earn again — more supplies, better tools, or the next batch of what you sell.",
     "",
@@ -76,13 +76,13 @@ export const KIDS_REINVEST_JAR_PREREQUISITE_EXTRAS: {
     id: "overview",
     label: "What this guide is",
     detail:
-      "When you earn, split what's left into Fun, Save, and Grow jars so you can enjoy some money now, save some, and put some back into your hustle. Tagline: Earn It. Split It. Grow Your Hustle. Category: Kids / Money Skills. Best for kids. Beginner · $0 startup. No competitors or business name needed.",
+      "When you earn, split what's left into Fun, Save, and Grow jars so you can enjoy some money now, save some, and put some back into your side hustle. Tagline: Earn It. Split It. Grow Your Hustle. Category: Kids / Money Skills. Best for kids. Beginner · $0 startup. No competitors or business name needed.",
   },
   {
     id: "need",
     label: "What you need",
     detail:
-      "A hustle that earns money (chores, lemonade, crafts, helping) · Parent/guardian help · Three jars or envelopes labeled Fun, Save, Grow · A calculator or pencil · A simple tracker.",
+      "A side hustle that earns money (chores, lemonade, crafts, helping) · Parent/guardian help · Three jars or envelopes labeled Fun, Save, Grow · A calculator or pencil · A simple tracker.",
   },
   {
     id: "before-split",
@@ -98,7 +98,7 @@ export const KIDS_REINVEST_JAR_PREREQUISITE_EXTRAS: {
   },
   {
     id: "pro-tip",
-    label: "GYSH Pro Tip — Don't confuse “I want it” with “my hustle needs it.”",
+    label: "GYSH Pro Tip — Don't confuse “I want it” with “my side hustle needs it.”",
     detail:
       "Grow-jar money is for things that help you earn again — more cups, stickers, clay, or paper. If it is just a toy, that belongs in Fun, not Grow.",
   },
@@ -296,7 +296,7 @@ export const KIDS_REINVEST_JAR_DETAILED_STEPS: { title: string; desc: string }[]
   {
     title: "Track What You Earn",
     desc: [
-      "Write down every amount your hustle earns. Don't guess.",
+      "Write down every amount your side hustle earns. Don't guess.",
       "",
       "Date: __________",
       "What I Did: __________",
@@ -336,7 +336,7 @@ export const KIDS_REINVEST_JAR_DETAILED_STEPS: { title: string; desc: string }[]
       "",
       "FUN — money you can enjoy now",
       "SAVE — money for a Piggy Bank goal",
-      "GROW — money you put back into your hustle",
+      "GROW — money you put back into your side hustle",
       "",
       "Decorate them — crafts count! No business name needed. This is your money-habit setup.",
     ].join("\n"),
@@ -387,7 +387,7 @@ export const KIDS_REINVEST_JAR_DETAILED_STEPS: { title: string; desc: string }[]
     desc: [
       "Before spending GROW money, ask a parent and ask yourself:",
       "",
-      "☐ Do I need it for my hustle?",
+      "☐ Do I need it for my side hustle?",
       "☐ Will I use it?",
       "☐ Could it help me earn again?",
       "☐ Can my Grow jar afford it?",
@@ -407,7 +407,7 @@ export const KIDS_REINVEST_JAR_DETAILED_STEPS: { title: string; desc: string }[]
       "Grow Money Before: $____",
       "Grow Money Left: $____",
       "",
-      "Why it helps my hustle:",
+      "Why it helps my side hustle:",
       "____________________",
     ].join("\n"),
   },

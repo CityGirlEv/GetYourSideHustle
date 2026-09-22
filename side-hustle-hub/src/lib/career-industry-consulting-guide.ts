@@ -158,7 +158,7 @@ Build and test one Career & Industry Consulting offer:
 export const CAREER_CONSULTING_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Turn real-world experience into focused advice for a defined career or industry decision. Pro Membership. 12 hrs/week. Displayed $50 – $200 / hour is examples only. Category: Professional Services / Career & Industry Consulting. Advanced / expertise-based. Startup $0–low. Remote / client site / hybrid. Hourly / session / project / workshop / retainer. Audiences: Adults and Seniors/Retirees only — not a Junior or teen offer.",
   },

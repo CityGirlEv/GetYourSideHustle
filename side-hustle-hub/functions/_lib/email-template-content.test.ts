@@ -38,7 +38,7 @@ describe("email-template-content", () => {
     expect(rendered.subject).toMatch(/password/i);
     expect(rendered.html).toContain("Reset your password");
     expect(rendered.html).toContain("https://example.com/reset");
-    expect(rendered.html).toMatch(/Your hustle, your results/i);
+    expect(rendered.html).toMatch(/Your side hustle, your results/i);
     expect(rendered.text).toMatch(/licensed professionals/i);
     expect(rendered.text.length).toBeGreaterThan(20);
   });
@@ -58,6 +58,7 @@ describe("email-template-content", () => {
       expect(content?.headline, slug).not.toMatch(/hustle family/i);
     }
     expect(isLegacyHustleFamilyHeadline("Welcome to the hustle family!")).toBe(true);
+    expect(isLegacyHustleFamilyHeadline("Welcome to the side hustle family!")).toBe(true);
     expect(isLegacyHustleFamilyHeadline("Welcome to the GYSH family!")).toBe(false);
   });
 
@@ -66,6 +67,47 @@ describe("email-template-content", () => {
     expect(content?.headline).toBe("{{name}}, Welcome to the GYSH family!");
     expect(isLegacyLowercaseGyshWelcomeHeadline("{{name}}, welcome to the GYSH family!")).toBe(true);
     expect(isLegacyLowercaseGyshWelcomeHeadline(content!.headline)).toBe(false);
+  });
+
+  it("sends workshop registration confirmation to the attendee", () => {
+    const content = defaultContentForSlug("workshop_registration_confirmation");
+    expect(content?.subject).toMatch(/you're registered for \{\{workshopTitle\}\}/i);
+    expect(content?.bodyHtml).toContain("{{workshopWhen}}");
+    expect(content?.bodyHtml).toContain("{{workshopNextLine}}");
+    const rendered = renderContent(content!, {
+      name: "Evelyn",
+      workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
+      workshopWhen: "Date & time TBD",
+      workshopFormat: "Live Zoom",
+      workshopKind: "pre-registration",
+      workshopNextLine: "We'll email you again when the date and time are locked.",
+      ctaUrl: "https://getyoursidehustle.com/workshops?workshop=ai-marketing-video",
+    });
+    expect(rendered.subject).toMatch(/90-Minute AI Marketing Video/i);
+    expect(rendered.html).toMatch(/pre-registration/i);
+    expect(rendered.html).toContain("Date & time TBD");
+    expect(rendered.html).toContain("https://getyoursidehustle.com/workshops?workshop=ai-marketing-video");
+  });
+
+  it("sends the date-locked email with the complete guide attached", () => {
+    const catalog = EMAIL_TEMPLATE_CATALOG.find((t) => t.slug === "workshop_date_confirmed");
+    expect(catalog?.name).toMatch(/date/i);
+    expect(catalog?.description).toMatch(/PDF/i);
+    const content = defaultContentForSlug("workshop_date_confirmed");
+    expect(content?.bodyHtml).toMatch(/attached as a PDF/i);
+    expect(content?.ctaUrl).toBe("{{ctaUrl}}");
+    const rendered = renderContent(content!, {
+      name: "Evelyn",
+      workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
+      workshopWhen: "Saturday, October 11 at 10:00 AM CT",
+      workshopFormat: "Live Zoom",
+      workshopKind: "registration",
+      workshopNextLine: "The complete workshop guide is attached as a PDF.",
+      ctaUrl: "https://getyoursidehustle.com/workshops?workshop=ai-marketing-video",
+    });
+    expect(rendered.subject).toMatch(/date is locked/i);
+    expect(rendered.html).toContain("Saturday, October 11");
+    expect(rendered.html).toMatch(/attached as a PDF/i);
   });
 
   it("points membership merch at SnatchVault with GYSHFamily", () => {

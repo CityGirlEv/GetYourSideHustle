@@ -125,7 +125,7 @@ NAME + NUMBER + REASON + URGENCY + NEXT ACTION + CORRECT PERSON = A USEFUL HANDO
 export const VIRTUAL_RECEPTIONIST_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Answer inbound business calls during reserved coverage windows, identify the caller’s purpose, follow an approved greeting and decision tree, schedule only within authorized rules, and send accurate messages to the right person. Category: Customer Service / Remote Call Handling. Best for calm, clear communicators who can follow scripts, capture details accurately, protect caller privacy, and escalate without improvising. Beginner–Intermediate; regulated industries require client-approved training and systems. Startup $0 – low. Schedule: reserved coverage blocks / after-hours / overflow. Quiet remote workspace. Income type: coverage block / hourly / call package / monthly retainer. Pro Membership. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only, not guarantees.",
   },

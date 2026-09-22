@@ -79,7 +79,7 @@ export const START_GARDENING_CLUB_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Launch a neighborhood or community-center gardening club with seasonal meetups, gardening education, plant and seed swaps, shared projects, and optional paid workshops or starter kits. Tagline: Grow Plants. Grow Skills. Grow Community. Category: Community / Gardening / Clubs. Best for Adults, Seniors/Retirees; family/community participation where appropriate. Beginner · $0–Low startup · Flexible / Seasonal / Recurring · Neighborhood / Community Center / Garden · Optional dues / workshops / starter kits / events · 3 - 8 hrs/week · Elite Membership.",
   },

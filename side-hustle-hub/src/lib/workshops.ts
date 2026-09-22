@@ -1,6 +1,10 @@
 /** GYSH Workshops & Guest Speakers — defaults + D1 API. */
 
 import { api } from "./api";
+import { siteUrl } from "./site-config";
+import { AI_SCENE_PACKS_WORKSHOP_ID } from "./workshop-playbooks";
+
+export { AI_SCENE_PACKS_WORKSHOP_ID } from "./workshop-playbooks";
 
 export type WorkshopAudience = "adult" | "kids" | "family" | "all";
 export type WorkshopStatus = "upcoming" | "past" | "waitlist";
@@ -71,15 +75,6 @@ export const DEFAULT_SPEAKERS: GuestSpeaker[] = [
     initials: "KS",
   },
   {
-    id: "guest-str",
-    name: "Marcus Hale",
-    title: "STR Operations Consultant",
-    bio: "Guest speaker on furnishing budgets, dynamic pricing, and guest messaging systems for short-term rental side hustles.",
-    topics: ["Airbnb", "Pricing", "Ops"],
-    accent: "#5c4033",
-    initials: "MH",
-  },
-  {
     id: "guest-ecom",
     name: "Priya Nandakumar",
     title: "E-Commerce Creative Director",
@@ -103,20 +98,20 @@ export const DEFAULT_SPEAKERS: GuestSpeaker[] = [
 export const DEFAULT_WORKSHOPS: Workshop[] = [
   {
     id: "ai-scene-production-packs",
-    title: "Creating AI Videos using Scene Production Packs",
+    title: "90-Minute AI Marketing Video Hands-On Workshop",
     blurb:
-      "Learn how to plan scenes, assemble Scene Production Packs, and produce AI videos you can use for hustles, ads, and client work.",
+      "90-minute hands-on AI marketing video lab with ChatGPT, Hedra, and CapCut. Turn one idea into a 3-scene marketing video you can reuse as a Scene Production Pack.",
     date: "TBD",
     time: "TBD",
     format: "Live Zoom",
     audience: "adult",
     status: "upcoming",
     registrationOpen: true,
-    capacity: 25,
+    capacity: 10,
     registrationNote:
-      "Pre-registration is open — date and time are TBD. We'll email you when the schedule is confirmed.",
-    speakerIds: ["evelyn"],
-    tags: ["AI Video", "Scene Production Packs", "Content"],
+      "Pre-registration is open — date and time are TBD. We'll email you when the schedule is confirmed. This class is limited to 10 participants max.",
+    speakerIds: ["tina", "evelyn"],
+    tags: ["AI Video"],
   },
   {
     id: "glow-getter-launch",
@@ -145,7 +140,7 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     registrationOpen: false,
     capacity: 25,
     registrationNote: "Registration is closed. Check back after the schedule is confirmed.",
-    speakerIds: ["evelyn", "guest-str"],
+    speakerIds: ["evelyn"],
     tags: ["Airbnb", "Real Estate"],
   },
   {
@@ -211,8 +206,198 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
 ];
 
 /** True when the workshop is accepting pre-registration before a date is set. */
-export function workshopIsPreRegistration(w: Workshop): boolean {
+export function workshopIsPreRegistration(
+  w: Pick<Workshop, "registrationOpen" | "registrationNote">,
+): boolean {
   return w.registrationOpen && /pre-?registration/i.test(w.registrationNote || "");
+}
+
+/** True when an admin has saved a real class date (not TBD / empty). */
+export function workshopFieldIsSet(raw?: string | null): boolean {
+  const v = String(raw || "").trim();
+  return Boolean(v) && !/\btbd\b/i.test(v);
+}
+
+/** Complete workshop guide PDF: admins always; everyone else after the date is set. */
+export function workshopCompleteGuideUnlocked(input: {
+  isAdmin?: boolean;
+  date?: string | null;
+}): boolean {
+  if (input.isAdmin) return true;
+  return workshopFieldIsSet(input.date);
+}
+
+/** True when the schedule first leaves TBD — the moment to email the guide. */
+export function workshopDateJustLocked(
+  previousDate?: string | null,
+  nextDate?: string | null,
+): boolean {
+  return !workshopFieldIsSet(previousDate) && workshopFieldIsSet(nextDate);
+}
+
+/** Public schedule line for cards, registration, and confirmation email. */
+export function workshopScheduleLabel(w: Pick<Workshop, "date" | "time">): string {
+  const date = (w.date || "TBD").trim() || "TBD";
+  const time = (w.time || "TBD").trim() || "TBD";
+  if (/^tbd$/i.test(date) && /^tbd$/i.test(time)) return "Date & time TBD";
+  if (/^tbd$/i.test(time)) return date;
+  if (/^tbd$/i.test(date)) return time;
+  return `${date} · ${time}`;
+}
+
+export const WORKSHOP_DUPLICATE_EMAIL_MESSAGE =
+  "This email is already registered for this workshop. One registration per email.";
+
+/** Same workshop + same email (case-insensitive) counts as already registered. */
+export function workshopRegistrationEmailTaken(
+  existingEmails: Array<string | null | undefined>,
+  email: string,
+): boolean {
+  const needle = String(email || "").trim().toLowerCase();
+  if (!needle) return false;
+  return existingEmails.some((e) => String(e || "").trim().toLowerCase() === needle);
+}
+
+/** Catalog vars for the attendee workshop confirmation email. */
+export function workshopRegistrationConfirmVars(input: {
+  name: string;
+  workshopId: string;
+  title: string;
+  date?: string;
+  time?: string;
+  format?: string;
+  registrationNote?: string;
+  registrationOpen?: boolean;
+}): Record<string, string> {
+  const isPre = workshopIsPreRegistration({
+    registrationOpen: input.registrationOpen !== false,
+    registrationNote: input.registrationNote || "",
+  });
+  return {
+    name: String(input.name || "Side Hustler").trim() || "Side Hustler",
+    workshopTitle: input.title,
+    workshopWhen: workshopScheduleLabel({
+      date: input.date || "TBD",
+      time: input.time || "TBD",
+    }),
+    workshopFormat: input.format || "Live Zoom",
+    workshopKind: isPre ? "pre-registration" : "registration",
+    workshopNextLine: isPre
+      ? "We'll email you again when the date and time are locked. One seat is held for this email."
+      : "Save this confirmation for class. One seat is held for this email.",
+    ctaUrl: workshopCardUrl(input.workshopId),
+  };
+}
+
+/** Shareable slug → catalog id (keeps the D1/playbook id stable). */
+const WORKSHOP_SLUG_ALIASES: Record<string, string> = {
+  "ai-marketing-video": AI_SCENE_PACKS_WORKSHOP_ID,
+  "ai-scene-production-packs": AI_SCENE_PACKS_WORKSHOP_ID,
+};
+
+export function resolveWorkshopId(raw: string): string {
+  const id = String(raw || "").trim();
+  if (!id) return "";
+  return WORKSHOP_SLUG_ALIASES[id.toLowerCase()] || id;
+}
+
+/** Public query value used in share links. */
+export function workshopPublicSlug(workshopId: string): string {
+  const id = resolveWorkshopId(workshopId);
+  if (id === AI_SCENE_PACKS_WORKSHOP_ID) return "ai-marketing-video";
+  return id;
+}
+
+/** Path + query that opens a workshop’s registration / pre-register form. */
+export function workshopRegistrationPath(workshopId: string): string {
+  const slug = workshopPublicSlug(workshopId);
+  if (!slug) return "/workshops";
+  return `/workshops?register=${encodeURIComponent(slug)}`;
+}
+
+export function parseWorkshopRegisterParam(
+  search: string = typeof window !== "undefined" ? window.location.search : "",
+): string | null {
+  const raw = String(search || "");
+  const qs = raw.startsWith("?") ? raw.slice(1) : raw;
+  const id = resolveWorkshopId(new URLSearchParams(qs).get("register")?.trim() || "");
+  return id || null;
+}
+
+/** DOM id used to scroll/highlight a workshop card from a share link. */
+export function workshopCardAnchorId(workshopId: string): string {
+  const id = resolveWorkshopId(workshopId);
+  return id ? `workshop-card-${id}` : "";
+}
+
+/** Path + query that lands on Workshops and highlights a card for pre-register. */
+export function workshopCardPath(workshopId: string): string {
+  const slug = workshopPublicSlug(workshopId);
+  if (!slug) return "/workshops";
+  return `/workshops?workshop=${encodeURIComponent(slug)}`;
+}
+
+export function parseWorkshopCardParam(
+  search: string = typeof window !== "undefined" ? window.location.search : "",
+): string | null {
+  const raw = String(search || "");
+  const qs = raw.startsWith("?") ? raw.slice(1) : raw;
+  const id = resolveWorkshopId(new URLSearchParams(qs).get("workshop")?.trim() || "");
+  return id || null;
+}
+
+/** Absolute shareable URL that highlights a workshop card. */
+export function workshopCardUrl(workshopId: string, origin?: string): string {
+  const base = (origin ?? siteUrl()).replace(/\/$/, "");
+  return `${base}${workshopCardPath(workshopId)}`;
+}
+
+export function workshopCapacityLabel(w: Pick<Workshop, "capacity">): string | null {
+  const n = Math.max(0, Number(w.capacity) || 0);
+  if (!n) return null;
+  return `${n} participants max`;
+}
+
+/** Absolute shareable registration URL. */
+export function workshopRegistrationUrl(
+  workshopId: string,
+  origin?: string,
+): string {
+  const base = (origin ?? siteUrl()).replace(/\/$/, "");
+  return `${base}${workshopRegistrationPath(workshopId)}`;
+}
+
+export function findWorkshopById(
+  workshopId: string,
+  list: Workshop[] = DEFAULT_WORKSHOPS,
+): Workshop | undefined {
+  const id = resolveWorkshopId(workshopId);
+  if (!id) return undefined;
+  return list.find((w) => w.id === id);
+}
+
+/** Canonical id + catalog seed for registration writes (D1 may not have the row yet). */
+export function workshopForRegistrationLookup(rawId: string): {
+  id: string;
+  seed: Workshop | undefined;
+} {
+  const id = resolveWorkshopId(rawId);
+  if (!id) return { id: "", seed: undefined };
+  return { id, seed: findWorkshopById(id) };
+}
+
+/** Seed catalog wins so Pre-Register stays open even if D1 still has registration_open = 0. */
+export function workshopRowIsRegistrationOpen(
+  seed: Pick<Workshop, "registrationOpen"> | undefined,
+  dbOpen: boolean,
+): boolean {
+  return seed ? seed.registrationOpen === true : dbOpen;
+}
+
+const HIDDEN_SPEAKER_IDS = new Set(["guest-str"]);
+
+function visibleSpeakerIds(ids: string[] | undefined): string[] {
+  return (ids || []).filter((id) => !HIDDEN_SPEAKER_IDS.has(id));
 }
 
 /**
@@ -233,20 +418,26 @@ export function mergeWorkshops(fromDb: Workshop[] | undefined | null): Workshop[
       byId.set(row.id, {
         ...seed,
         ...row,
-        // Seed schedule + registration policy wins until an admin sets a real date.
-        date: "TBD",
-        time: "TBD",
+        // Keep an admin-set date/time; otherwise stay TBD until the schedule is confirmed.
+        date: workshopFieldIsSet(row.date) ? row.date : "TBD",
+        time: workshopFieldIsSet(row.time) ? row.time : "TBD",
         registrationOpen: seed.registrationOpen,
         registrationNote: seed.registrationNote,
         status: seed.status,
         title: seed.title,
         blurb: seed.blurb,
+        capacity: seed.id === AI_SCENE_PACKS_WORKSHOP_ID ? seed.capacity : row.capacity ?? seed.capacity,
+        tags: seed.id === AI_SCENE_PACKS_WORKSHOP_ID ? seed.tags : row.tags?.length ? row.tags : seed.tags,
+        speakerIds: visibleSpeakerIds(
+          seed.id === AI_SCENE_PACKS_WORKSHOP_ID ? seed.speakerIds : row.speakerIds?.length ? row.speakerIds : seed.speakerIds,
+        ),
       });
     } else {
       byId.set(row.id, {
         ...row,
-        date: "TBD",
-        time: "TBD",
+        date: workshopFieldIsSet(row.date) ? row.date : "TBD",
+        time: workshopFieldIsSet(row.time) ? row.time : "TBD",
+        speakerIds: visibleSpeakerIds(row.speakerIds),
       });
     }
   }
@@ -312,7 +503,7 @@ export function filterWorkshops(
 /** Merge DB speakers with defaults so newly seeded guests (e.g. Lyriq) still appear. */
 export function mergeGuestSpeakers(fromDb: GuestSpeaker[] | undefined | null): GuestSpeaker[] {
   if (!fromDb?.length) return [...DEFAULT_SPEAKERS];
-  const byId = new Map(fromDb.map((s) => [s.id, s]));
+  const byId = new Map(fromDb.filter((s) => !HIDDEN_SPEAKER_IDS.has(s.id)).map((s) => [s.id, s]));
   for (const d of DEFAULT_SPEAKERS) {
     if (!byId.has(d.id)) byId.set(d.id, d);
   }
@@ -322,6 +513,7 @@ export function mergeGuestSpeakers(fromDb: GuestSpeaker[] | undefined | null): G
     if (s) ordered.push(s);
   }
   for (const s of fromDb) {
+    if (HIDDEN_SPEAKER_IDS.has(s.id)) continue;
     if (!DEFAULT_SPEAKERS.some((d) => d.id === s.id)) ordered.push(s);
   }
   return ordered;
@@ -359,7 +551,6 @@ export async function submitWorkshopRegistration(
 ): Promise<{ ok: boolean; message: string }> {
   return api("workshop-registrations", {
     method: "POST",
-    auth: false,
     body: input,
   });
 }

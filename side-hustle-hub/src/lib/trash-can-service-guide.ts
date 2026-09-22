@@ -47,7 +47,7 @@ Visits: ____  Revenue: $____  Expenses: $____  Profit: $____  Hours: ____  Profi
 `;
 
 export const TRASH_CAN_SERVICE_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Move bins out on pickup day and back after pickup. 2 - 6 hrs/week. $5 – $20 / job display is examples only — recurring visits fit better." },
+  { id: "overview", label: "What this side-hustle is", detail: "Move bins out on pickup day and back after pickup. 2 - 6 hrs/week. $5 – $20 / job display is examples only — recurring visits fit better." },
   { id: "schedule", label: "Each client’s pickup day and bin location", detail: "Missed set-out is a missed pickup. Confirm access, gates, and where bins belong." },
 ];
 

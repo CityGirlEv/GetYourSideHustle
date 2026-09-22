@@ -12,7 +12,7 @@ type LegalDisclaimerFooterProps = {
 };
 
 /**
- * Canonical “Your hustle, your results.” disclaimer for guides, printables, and the site footer.
+ * Canonical “Your side hustle, your results.” disclaimer for guides, printables, and the site footer.
  * Outbound email + PDF generators use the same copy from `legal-disclaimer.ts`.
  */
 export function LegalDisclaimerFooter({

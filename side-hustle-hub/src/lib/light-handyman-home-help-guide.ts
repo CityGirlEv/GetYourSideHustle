@@ -45,7 +45,7 @@ Notes: ________
 `;
 
 export const LIGHT_HANDYMAN_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Small fixes, furniture assembly, declutter coaching, or seasonal yard touch-ups — skip heavy demolition. 5 - 15 hrs/week. Displayed $40 – $80 / hour is examples only." },
+  { id: "overview", label: "What this side-hustle is", detail: "Small fixes, furniture assembly, declutter coaching, or seasonal yard touch-ups — skip heavy demolition. 5 - 15 hrs/week. Displayed $40 – $80 / hour is examples only." },
   { id: "tools", label: "Basic safe tool use", detail: "Physical ability for accepted tasks only. Screen jobs you cannot do safely." },
   { id: "travel", label: "Reliable transportation if needed", detail: "Account for travel time and vehicle cost in the quote." },
   { id: "rules", label: "Licensing, permits, and insurance awareness", detail: "Check what applies locally. Do not invent requirements or skip them." },

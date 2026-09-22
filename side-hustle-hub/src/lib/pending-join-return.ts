@@ -12,6 +12,8 @@ export type PendingJoinReturn = {
   seniorsTab?: "match" | "opportunities" | "guides" | "join";
   kidsMode?: "kids" | "junior";
   kidsTab?: string;
+  /** Resume `/workshops?register=` after Free signup or sign-in. */
+  workshopRegisterId?: string;
   savedAt: string;
 };
 
@@ -31,6 +33,7 @@ export function savePendingJoinReturn(
     seniorsTab: input.seniorsTab,
     kidsMode: input.kidsMode,
     kidsTab: input.kidsTab,
+    workshopRegisterId: input.workshopRegisterId,
     savedAt: input.savedAt ?? new Date().toISOString(),
   };
   getLocalStore().setItem(PENDING_JOIN_RETURN_KEY, JSON.stringify(payload));
@@ -73,7 +76,14 @@ export function resolvePostFreeSignupDestination(input: {
   seniorsTab?: "match" | "opportunities" | "guides" | "join";
   kidsMode?: "kids" | "junior";
   kidsTab?: string;
+  workshopRegisterId?: string;
 } {
+  const join = input.joinReturn;
+  const workshopRegisterId = String(join?.workshopRegisterId || "").trim();
+  if (join?.view === "workshops" && workshopRegisterId) {
+    return { view: "workshops", workshopRegisterId };
+  }
+
   const bpView = input.blueprintReturnView;
   if (bpView === "quiz") {
     return { view: "quiz", findMineMode: "adult" };
@@ -95,7 +105,6 @@ export function resolvePostFreeSignupDestination(input: {
     return { view: "seniors", seniorsTab };
   }
 
-  const join = input.joinReturn;
   if (join?.view) {
     return {
       view: join.view,
@@ -103,8 +112,19 @@ export function resolvePostFreeSignupDestination(input: {
       seniorsTab: join.seniorsTab,
       kidsMode: join.kidsMode,
       kidsTab: join.kidsTab,
+      workshopRegisterId: join.workshopRegisterId,
     };
   }
 
   return { view: "guides" };
+}
+
+/** Take Free signup / sign-in back to the workshop Register form, if that is why they left. */
+export function consumeWorkshopJoinReturn(): string | null {
+  const pending = readPendingJoinReturn();
+  const dest = resolvePostFreeSignupDestination({ joinReturn: pending });
+  const id = String(dest.workshopRegisterId || "").trim();
+  if (dest.view !== "workshops" || !id) return null;
+  clearPendingJoinReturn();
+  return id;
 }

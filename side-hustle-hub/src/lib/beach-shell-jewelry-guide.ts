@@ -102,7 +102,7 @@ export const BEACH_SHELL_JEWELRY_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Collect shells at the beach (where allowed) and turn them into earrings, bracelets, and necklaces to sell. Tagline: Find It. Clean It. Create It. Sell It. Category: Crafts / Jewelry / Product Sales. Beginner handmade product / craft sales · Low startup · 3 - 10 hrs/week · $8 – $35 / piece (examples only). For younger makers, a parent/guardian supervises collecting, tools, online selling, payments, meetups, and shipping.",
   },

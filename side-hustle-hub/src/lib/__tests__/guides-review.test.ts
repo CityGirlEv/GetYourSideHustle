@@ -400,7 +400,7 @@ describe("guides review — Sprint 6 Testing Portal cases", () => {
       expect(c.steps[1]).toMatch(/all 7 prep tabs/i);
       expect(c.steps[1]).toContain(GUIDE_PREP_REVIEW_TABS_PHRASE);
       expect(c.steps[1]).toMatch(/Show All/);
-      expect(c.steps[1]).toMatch(/Prerequisites/);
+      expect(c.steps[1]).toMatch(/About/);
       expect(c.steps[1]).toMatch(/Suggested Pricing/);
       expect(c.steps[1]).toMatch(/Supply List/);
       expect(c.steps[1]).toMatch(/Tools/);

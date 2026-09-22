@@ -120,7 +120,7 @@ export const STR_COHOST_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Operate a short-term rental without owning the property by leasing or master-leasing a unit, furnishing it, and hosting guests only when the property owner, lease, building/HOA rules, insurance requirements, platform rules, and applicable local laws allow it. Tagline: Get Permission. Run the Numbers. Build the Stay. Host Professionally. Category: Short-Term Rentals / Hospitality / Real Estate Business. Best for Adults, Seniors/Retirees. Intermediate–Advanced · Moderate–High startup · 10 - 25 hrs/week · Property-based / local + online · Elite Membership.",
   },

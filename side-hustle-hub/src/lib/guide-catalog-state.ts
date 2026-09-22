@@ -20,6 +20,7 @@ import type { GuideSupplyList } from "./guide-supplies";
 import { guideMarkedPendingAfterPrepBackfill } from "./guide-marketing-plan";
 import type { TierId } from "./membership";
 import { isFreeWizardHustle, SIDE_HUSTLES } from "./side-hustle-catalog";
+import { isUnpresentableGuideTitle, presentableGuideTitle } from "./guide-title";
 import { isHumanQaTesterId, normalizeQaAssigneeId } from "./gysh-roles";
 
 /** Public-facing when Active, Reviewed by QA, or Reviewed by Dev. */
@@ -453,7 +454,9 @@ export function sanitizeGuideCatalogPatch(raw: unknown): GuideCatalogPatch | nul
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const body = raw as Record<string, unknown>;
   const patch: GuideCatalogPatch = {};
-  if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim();
+  if (typeof body.name === "string" && body.name.trim() && !isUnpresentableGuideTitle(body.name)) {
+    patch.name = body.name.trim();
+  }
   if (typeof body.description === "string") patch.description = body.description.trim();
   if (typeof body.peek === "string") patch.peek = body.peek.trim();
   if (typeof body.category === "string" && body.category.trim()) {
@@ -621,7 +624,9 @@ export function applyGuideCatalogPatch<T extends Record<string, unknown>>(
 ): T {
   if (!patch || Object.keys(patch).length === 0) return base;
   const next = { ...base };
-  if (patch.name) (next as Record<string, unknown>).name = patch.name;
+  if (patch.name && !isUnpresentableGuideTitle(patch.name, String(base.id ?? ""))) {
+    (next as Record<string, unknown>).name = patch.name;
+  }
   if (patch.description !== undefined) {
     (next as Record<string, unknown>).description = patch.description;
   }
@@ -659,7 +664,7 @@ export function mergeGuideListItem(
   return {
     ...patched,
     id: base.id,
-    name: String(patched.name || base.name),
+    name: presentableGuideTitle(base.id, String(patched.name || base.name)),
     source: normalized.custom ? "custom" : base.source ?? "catalog",
     status: normalized.status,
     published: normalized.published,

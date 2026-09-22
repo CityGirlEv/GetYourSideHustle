@@ -40,9 +40,6 @@ import {
 } from "../../src/lib/membership";
 import {
   MEMBERSHIP_COMMITMENT_MONTHS,
-  membershipCommitmentLineItemName,
-  membershipDueNowUsd,
-  membershipRecurringTrialEndUnix,
 } from "../../src/lib/membership-commitment-billing";
 
 export type CheckoutKind = "membership" | "alacarte" | "credit_pack";
@@ -286,13 +283,6 @@ export async function handleStripeCheckoutCreate(
   let catalogLineItems: Array<{ priceId: string; quantity: number }>;
   let cartMeta = "";
   let mixedLines: MixedCartLine[] = [];
-  /** Monthly membership: prepaid commitment + delayed recurring. */
-  let membershipCommitment: {
-    recurringPriceId: string;
-    monthlyUsd: number;
-    dueNowUsd: number;
-    trialEndUnix: number;
-  } | null = null;
 
   if (kind === "alacarte") {
     const cart = resolveAlaCarteCheckoutLines(body.items, body.itemId);
@@ -316,21 +306,8 @@ export async function handleStripeCheckoutCreate(
     if (!resolved.ok) return error(resolved.error, 400);
     mode = resolved.mode;
     label = resolved.label;
-    const interval = body.interval === "year" ? "year" : "month";
-    if (kind === "membership" && mode === "subscription" && interval === "month") {
-      const dueNowUsd = membershipDueNowUsd("month", resolved.amountUsd);
-      membershipCommitment = {
-        recurringPriceId: resolved.priceId,
-        monthlyUsd: resolved.amountUsd,
-        dueNowUsd,
-        trialEndUnix: membershipRecurringTrialEndUnix(),
-      };
-      amountUsd = dueNowUsd;
-      catalogLineItems = [{ priceId: resolved.priceId, quantity: 1 }];
-    } else {
-      amountUsd = resolved.amountUsd;
-      catalogLineItems = [{ priceId: resolved.priceId, quantity: 1 }];
-    }
+    amountUsd = resolved.amountUsd;
+    catalogLineItems = [{ priceId: resolved.priceId, quantity: 1 }];
     cartMeta = String(body.itemId || body.packId || "");
     if (kind === "credit_pack") {
       mixedLines = mixedLinesFromCartSku([
@@ -632,30 +609,6 @@ export async function handleStripeCheckoutCreate(
       },
     ]);
     amountUsd = quote.cashDueUsd;
-  } else if (membershipCommitment) {
-    // Recurring monthly (first bill after trial / month 4) + prepaid 3-month commitment.
-    writeStripeLineItems(form, [
-      { priceId: membershipCommitment.recurringPriceId, quantity: 1 },
-      {
-        quantity: 1,
-        unitAmountCents: usdToCents(membershipCommitment.dueNowUsd),
-        name: membershipCommitmentLineItemName(label),
-      },
-    ]);
-    form["subscription_data[trial_end]"] = membershipCommitment.trialEndUnix;
-    form["subscription_data[metadata][gysh_commitment_months]"] = String(
-      MEMBERSHIP_COMMITMENT_MONTHS,
-    );
-    form["metadata[gysh_commitment_months]"] = String(MEMBERSHIP_COMMITMENT_MONTHS);
-    if (quote.creditsApplied > 0 && quote.creditValueUsd > 0) {
-      const coupon = await createStripeOnceCoupon(secret, {
-        amountOffCents: usdToCents(quote.creditValueUsd),
-        name: `${quote.creditsApplied} Kid Credits`,
-      });
-      if (!coupon.ok) return error(coupon.error, 502);
-      form["discounts[0][coupon]"] = coupon.id;
-    }
-    amountUsd = quote.creditsApplied > 0 ? quote.cashDueUsd : membershipCommitment.dueNowUsd;
   } else {
     writeStripeLineItems(form, catalogLineItems);
     if (mode === "subscription" && quote.creditsApplied > 0 && quote.creditValueUsd > 0) {
@@ -675,6 +628,11 @@ export async function handleStripeCheckoutCreate(
     form["subscription_data[metadata][gysh_audience]"] = metadata.gysh_audience;
     form["subscription_data[metadata][gysh_credits_applied]"] = metadata.gysh_credits_applied;
     form["subscription_data[metadata][gysh_merch]"] = metadata.gysh_merch;
+    form["subscription_data[metadata][gysh_interval]"] = metadata.gysh_interval;
+    form["subscription_data[metadata][gysh_commitment_months]"] = String(
+      MEMBERSHIP_COMMITMENT_MONTHS,
+    );
+    form["metadata[gysh_commitment_months]"] = String(MEMBERSHIP_COMMITMENT_MONTHS);
   }
 
   const created = await createStripeCheckoutSession(secret, form);
@@ -784,6 +742,16 @@ export async function handleStripeCheckoutConfirm(
         await env.DB.prepare(`UPDATE users SET notes = ?, updated_at = ? WHERE id = ?`)
           .bind(notes, now, user.id)
           .run();
+      }
+
+      if (kind === "membership" && nextTier) {
+        const interval = String(session.metadata?.gysh_interval || "month") === "year" ? "year" : "month";
+        try {
+          const { stampPaidMembershipTerm } = await import("./membership-lifecycle");
+          await stampPaidMembershipTerm(env, user.id, { interval, paidAt: now });
+        } catch {
+          /* billing columns optional */
+        }
       }
 
       const subscriptionId = stripeSubscriptionIdFromSession(session);

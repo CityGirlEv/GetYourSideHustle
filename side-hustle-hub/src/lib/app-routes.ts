@@ -199,6 +199,26 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
   return view === "dashboard" ? `${label} — Learn, Calculate, and Connect` : `${label} | Get Your Side Hustle`;
 }
 
+/** Dashboard tab hashes stay on /my-dashboard only — leaving that page drops them. */
+export function hashForSyncedView(view: AppRouteView, currentHash: string): string {
+  if (view !== "user_portal") return "";
+  return currentHash || "";
+}
+
+/** Workshop card/register query is listing-page-only — never carry it to Home or other views. */
+export function stripWorkshopDeepLinkParams(params: URLSearchParams): void {
+  params.delete("register");
+  params.delete("workshop");
+}
+
+/** Community → Workshops always opens the catalog, not a leftover pre-register form. */
+export function workshopsListingPath(search: string = ""): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  stripWorkshopDeepLinkParams(params);
+  const qs = params.toString();
+  return qs ? `/workshops?${qs}` : "/workshops";
+}
+
 /**
  * Update the browser URL to match the active view without a full reload.
  * Preserves reset/consent/ref query params; drops legacy next=join once routed.
@@ -211,6 +231,8 @@ export function syncUrlToView(
     guidesHustleId?: string | null;
     /** Filter Side Hustle Library by age via ?age= */
     guidesAge?: "kids" | "junior" | "adult" | "senior" | null;
+    /** Community → Workshops: drop ?register= / ?workshop= so the catalog shows. */
+    workshopListing?: boolean;
     replace?: boolean;
   },
 ): void {
@@ -235,8 +257,11 @@ export function syncUrlToView(
     params.delete("hustle");
     params.delete("age");
   }
+  if (view !== "workshops" || opts?.workshopListing) {
+    stripWorkshopDeepLinkParams(params);
+  }
   const qs = params.toString();
-  const hash = window.location.hash || "";
+  const hash = hashForSyncedView(view, window.location.hash || "");
   const nextUrl = `${desiredPath}${qs ? `?${qs}` : ""}${hash}`;
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   if (current === nextUrl) return;

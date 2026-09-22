@@ -8,6 +8,8 @@ import {
   Link2,
   Receipt,
   Sparkles,
+  Unlock,
+  UserCircle,
   Users,
 } from "lucide-react";
 import { WaitIndicator } from "./WaitFeedback";
@@ -65,15 +67,19 @@ import {
 } from "../lib/member-purchases";
 import { buildReferralUrl, getOrCreateReferralCode } from "../lib/referral";
 import {
-  DASHBOARD_PORTAL_TAB_IDS,
+  DASHBOARD_PORTAL_CHIP_IDS,
+  MATCH_WIZARD_HREF,
   type DashboardPortalTabId,
 } from "../lib/member-dashboard";
+import { MEMBER_PROFILE_NAME_MAX, PROFILE_DASHBOARD_HREF, parseMemberProfileUpdate, profileSaveAuthError } from "../lib/member-profile";
 import { inviteFriendCredits, inviteFriendSteps } from "../lib/invite-friend";
 import {
   assignSavedBlueprint,
+  friendlyBlueprintsLoadError,
   listSavedBlueprints,
   type SavedBlueprint,
 } from "../lib/blueprints-api";
+import { updateMemberProfile, type AuthUser } from "../lib/auth";
 import {
   formatCreditPackPurchaseLabel,
   formatLedgerReason,
@@ -95,7 +101,16 @@ import type { ProgressReportCadence } from "../lib/family-logic";
 import { HustleScheduleSuite } from "./HustleScheduleSuite";
 import { PageCollapse } from "./PageCollapse";
 import { MembershipMerchClaim } from "./MembershipMerchClaim";
-import type { AuthUser } from "../lib/auth";
+import { libraryMinTierForAge } from "../lib/guide-library-pool";
+import { complimentaryExtraUnlockBadge, complimentaryUnlockAppliesToGuide } from "../lib/guide-access";
+import { GuideMembershipBadges } from "./GuideMembershipBadges";
+import {
+  canOfferComplimentaryPick,
+  claimSelectedComplimentaryGuide,
+  complimentaryPickNotice,
+  explicitComplimentaryGuideId,
+  loadComplimentaryGuides,
+} from "../lib/wizard-comp-guide";
 
 type PortalBlueprint = {
   id: string;
@@ -110,6 +125,8 @@ type PortalBlueprint = {
 
 type UserPortalProps = {
   memberName?: string | null;
+  memberEmail?: string | null;
+  memberPhone?: string | null;
   membershipTier?: string | null;
   memberNotes?: string | null;
   isAdmin?: boolean;
@@ -123,10 +140,14 @@ type UserPortalProps = {
   onMembershipChanged?: (tier: string) => void;
   /** After complimentary merch is saved. */
   onMerchSaved?: (user: AuthUser) => void;
+  /** After name / email / phone are saved. */
+  onProfileSaved?: (user: AuthUser) => void;
   /** After account soft-delete — sign out in the shell. */
   onAccountDeactivated?: () => void;
   /** Open the Launch Guide / Corner guides for a Blueprint match. */
   onOpenGuide?: (ageGroup: BlueprintAgeGroup, hustleId: string) => void;
+  /** After the member unlocks their 1 complimentary extra. */
+  onComplimentaryClaimed?: (guideId: string) => void;
   /** Open that kid’s dedicated Kids / Teens dashboard. */
   onOpenKidDashboard?: (kid: {
     id: string;
@@ -201,20 +222,56 @@ function MatchRow({
   match,
   ageGroup,
   onOpenGuide,
+  claimedExtraId,
+  offerComplimentaryPick,
+  unlockBusy,
+  unlockingGuideId,
+  onUnlockComplimentary,
 }: {
   match: { id: string; rank: number; label: string; pct?: number };
   ageGroup: BlueprintAgeGroup;
   onOpenGuide?: (ageGroup: BlueprintAgeGroup, hustleId: string) => void;
+  claimedExtraId?: string | null;
+  offerComplimentaryPick?: boolean;
+  unlockBusy?: boolean;
+  unlockingGuideId?: string | null;
+  onUnlockComplimentary?: (guideId: string) => void;
 }) {
   const canOpenGuide = Boolean(onOpenGuide);
+  const minTier = libraryMinTierForAge(match.id, ageGroup);
+  const isClaimedExtra = Boolean(claimedExtraId && claimedExtraId === match.id);
+  const thisUnlockBusy = Boolean(unlockBusy && unlockingGuideId === match.id);
+  const showComplimentaryUnlock =
+    Boolean(offerComplimentaryPick) && complimentaryUnlockAppliesToGuide(minTier);
 
   return (
-    <li>
+    <li className={showComplimentaryUnlock ? "has-comp-pick" : undefined}>
       <span className="user-portal-blueprint-rank">{match.rank}</span>
       <span className="user-portal-blueprint-match-body">
         <strong>{match.label}</strong>
         {typeof match.pct === "number" && <em>{match.pct}% match</em>}
+        <GuideMembershipBadges
+          minTier={minTier}
+          data-testid={`user-portal-guide-membership-${match.id}`}
+        />
+        {isClaimedExtra ? (
+          <span className="glow-badge emerald" data-testid={`user-portal-extra-unlock-${match.id}`}>
+            {complimentaryExtraUnlockBadge(minTier)}
+          </span>
+        ) : null}
       </span>
+      {showComplimentaryUnlock ? (
+        <button
+          type="button"
+          className="btn btn-primary user-portal-comp-unlock-btn"
+          data-testid={`user-portal-comp-unlock-${match.id}`}
+          disabled={unlockBusy}
+          onClick={() => onUnlockComplimentary?.(match.id)}
+        >
+          <Unlock size={14} aria-hidden />
+          {thisUnlockBusy ? "Unlocking…" : "Unlock this complimentary guide"}
+        </button>
+      ) : null}
       {canOpenGuide && (
         <button
           type="button"
@@ -233,6 +290,7 @@ export type PortalTab = DashboardPortalTabId;
 
 const PORTAL_TAB_LABELS: Record<PortalTab, string> = {
   blueprint: "Blueprint",
+  profile: "Profile",
   schedule: "Schedule Suite",
   family: "Family",
   credits: "Credits",
@@ -243,6 +301,7 @@ const PORTAL_TAB_LABELS: Record<PortalTab, string> = {
 
 const PORTAL_TAB_ICONS: Record<PortalTab, React.ReactNode> = {
   blueprint: <Compass size={15} aria-hidden />,
+  profile: <UserCircle size={15} aria-hidden />,
   schedule: <CalendarDays size={15} aria-hidden />,
   family: <Users size={15} aria-hidden />,
   credits: <Coins size={15} aria-hidden />,
@@ -252,7 +311,7 @@ const PORTAL_TAB_ICONS: Record<PortalTab, React.ReactNode> = {
 };
 
 const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ReactNode }[] =
-  DASHBOARD_PORTAL_TAB_IDS.map((id) => ({
+  DASHBOARD_PORTAL_CHIP_IDS.map((id) => ({
     id,
     label: PORTAL_TAB_LABELS[id],
     icon: PORTAL_TAB_ICONS[id],
@@ -260,6 +319,8 @@ const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ReactNode }[] =
 
 export const UserPortal: React.FC<UserPortalProps> = ({
   memberName,
+  memberEmail,
+  memberPhone,
   membershipTier: membershipTierProp,
   memberNotes,
   isAdmin = false,
@@ -270,9 +331,11 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   onOpenJoin,
   onMembershipChanged,
   onMerchSaved,
+  onProfileSaved,
   onAccountDeactivated,
   onOpenGuide,
   onOpenKidDashboard,
+  onComplimentaryClaimed,
 }) => {
   const [portalTab, setPortalTab] = useState<PortalTab>(initialPortalTab ?? "blueprint");
   const [referralCode, setReferralCode] = useState("");
@@ -314,6 +377,17 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const [pendingAssignBlueprintId, setPendingAssignBlueprintId] = useState<string | null>(null);
   const [reportCadence, setReportCadence] = useState<ProgressReportCadence>("none");
   const [assignBusyId, setAssignBusyId] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState(() => String(memberName || "").trim());
+  const [profileEmail, setProfileEmail] = useState(() => String(memberEmail || "").trim());
+  const [profilePhone, setProfilePhone] = useState(() => String(memberPhone || "").trim());
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileMsg, setProfileMsg] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [claimedExtraId, setClaimedExtraId] = useState<string | null>(null);
+  const [unlockingGuideId, setUnlockingGuideId] = useState<string | null>(null);
+  const [compPickBusy, setCompPickBusy] = useState(false);
+  const [compPickError, setCompPickError] = useState("");
+  const [compPickMsg, setCompPickMsg] = useState("");
 
   useEffect(() => {
     if (initialPortalTab) setPortalTab(initialPortalTab);
@@ -322,6 +396,12 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   useEffect(() => {
     setLocalMembershipTier(String(membershipTierProp || "free"));
   }, [membershipTierProp]);
+
+  useEffect(() => {
+    setProfileName(String(memberName || "").trim());
+    setProfileEmail(String(memberEmail || "").trim());
+    setProfilePhone(String(memberPhone || "").trim());
+  }, [memberName, memberEmail, memberPhone]);
 
   const effectiveMembershipTier = localMembershipTier;
   const downgradeOptions = useMemo(
@@ -340,6 +420,48 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     () => familyChildren.filter((c) => Boolean(c.hasLogin)).length,
     [familyChildren],
   );
+  const selfBlueprintResultIds = useMemo(
+    () =>
+      blueprints
+        .filter((bp) => !bp.childProfileId)
+        .flatMap((bp) => bp.resultIds.map((id) => id.trim()).filter(Boolean)),
+    [blueprints],
+  );
+  const offerComplimentaryPick = canOfferComplimentaryPick({
+    isLoggedIn: true,
+    membershipTier: effectiveMembershipTier,
+    claimedId: claimedExtraId,
+  });
+
+  const handleUnlockComplimentary = async (guideId: string) => {
+    setCompPickBusy(true);
+    setUnlockingGuideId(guideId);
+    setCompPickError("");
+    setCompPickMsg("");
+    try {
+      const result = await claimSelectedComplimentaryGuide({
+        isLoggedIn: true,
+        membershipTier: effectiveMembershipTier,
+        guideId,
+        resultIds: selfBlueprintResultIds,
+      });
+      if (result.error) {
+        setCompPickError(result.error);
+        if (result.claimedId) setClaimedExtraId(result.claimedId);
+        return;
+      }
+      if (result.claimedId) {
+        setClaimedExtraId(result.claimedId);
+        setCompPickMsg("Unlocked. That complimentary guide is yours.");
+        onComplimentaryClaimed?.(result.claimedId);
+      }
+    } catch (err: unknown) {
+      setCompPickError(err instanceof Error ? err.message : "Could not unlock that guide.");
+    } finally {
+      setCompPickBusy(false);
+      setUnlockingGuideId(null);
+    }
+  };
 
   const runPlanAction = async (action: "cancel_to_free" | "deactivate_account") => {
     setPlanActionBusy(true);
@@ -494,11 +616,22 @@ export const UserPortal: React.FC<UserPortalProps> = ({
           return;
         }
         setBlueprints([]);
-        setBlueprintsError(err instanceof Error ? err.message : "Could not load your Blueprint.");
+        setBlueprintsError(friendlyBlueprintsLoadError(err));
       } finally {
         if (!cancelled) setBlueprintsLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadComplimentaryGuides(true).then((map) => {
+      if (cancelled) return;
+      setClaimedExtraId(explicitComplimentaryGuideId(map));
+    });
     return () => {
       cancelled = true;
     };
@@ -693,13 +826,60 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     }
   };
 
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError("");
+    setProfileMsg("");
+    const parsed = parseMemberProfileUpdate({
+      name: profileName,
+      email: profileEmail,
+      phone: profilePhone,
+    });
+    if (!parsed.ok) {
+      setProfileError(parsed.error);
+      return;
+    }
+    setProfileBusy(true);
+    try {
+      const result = await updateMemberProfile({
+        name: parsed.profile.name,
+        email: parsed.profile.email,
+        phone: parsed.profile.phone,
+      });
+      if (!result.ok || !result.user) {
+        setProfileError(profileSaveAuthError(result.error || "Could not save your profile."));
+        return;
+      }
+      setProfileName(result.user.name);
+      setProfileEmail(result.user.email);
+      setProfilePhone(result.user.phone || "");
+      setProfileMsg(result.message || "Your profile is saved.");
+      onProfileSaved?.(result.user);
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
   return (
     <div className="user-portal" data-testid="user-portal">
       <div className="user-portal-main">
         <div className="glass user-portal-welcome">
           <div className="user-portal-welcome-row">
             <div>
-              <h2>Welcome back, {displayName}!</h2>
+              <h2 className="user-portal-welcome-heading">
+                <span>Welcome back, {displayName}!</span>
+                <a
+                  href={PROFILE_DASHBOARD_HREF}
+                  className="user-portal-welcome-profile-link"
+                  data-testid="user-portal-open-profile"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPortalTab("profile");
+                  }}
+                >
+                  Profile
+                </a>
+              </h2>
               <p>
                 Your Side Hustle Blueprint, family coach tools, and credits live here — use the tabs
                 below to review matches, register kids, share your referral link, and earn more credits.
@@ -786,9 +966,17 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                   <Compass size={20} aria-hidden /> Your Side Hustle Blueprint
                 </h3>
                 {onOpenMatchWizard && (
-                  <button type="button" className="btn btn-outline" onClick={onOpenMatchWizard}>
+                  <a
+                    href={MATCH_WIZARD_HREF}
+                    className="btn btn-outline"
+                    data-testid="user-portal-retake-match-wizard"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onOpenMatchWizard();
+                    }}
+                  >
                     Retake Match Wizard
-                  </button>
+                  </a>
                 )}
               </div>
 
@@ -805,16 +993,46 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                   {blueprintsError}
                 </p>
               )}
+              {!blueprintsLoading &&
+                !blueprintsError &&
+                (offerComplimentaryPick || claimedExtraId || compPickMsg) &&
+                blueprints.some((bp) => !bp.childProfileId && bp.resultIds.length > 0) && (
+                  <div className="user-portal-comp-pick-banner" data-testid="user-portal-comp-pick">
+                    {offerComplimentaryPick ? (
+                      <>
+                        <p>{complimentaryPickNotice()}</p>
+                        {compPickError ? (
+                          <p className="user-portal-credits-error" data-testid="user-portal-comp-pick-error">
+                            {compPickError}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p data-testid="user-portal-comp-pick-done">
+                        {compPickMsg ||
+                          "You already used your 1 complimentary guide unlock. Unique Unique Free guides stay available on Free."}
+                      </p>
+                    )}
+                  </div>
+                )}
               {!blueprintsLoading && !blueprintsError && blueprints.length === 0 && (
                 <div className="user-portal-blueprint-empty" data-testid="user-portal-blueprint-empty">
                   <p>
                     No Blueprint saved yet. Take the GYSH Match Wizard to unlock personalized Side
-                    Hustle matches.
+                    Side Hustle matches.
                   </p>
                   {onOpenMatchWizard && (
-                    <button type="button" className="btn btn-primary" onClick={onOpenMatchWizard}>
+                    <a
+                      href={MATCH_WIZARD_HREF}
+                      className="btn btn-primary"
+                      data-testid="user-portal-start-match-wizard"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onOpenMatchWizard();
+                      }}
+                    >
                       <Compass size={16} aria-hidden /> Start Match Wizard
-                    </button>
+                    </a>
                   )}
                 </div>
               )}
@@ -911,6 +1129,13 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                             match={m}
                             ageGroup={bp.ageGroup}
                             onOpenGuide={onOpenGuide}
+                            claimedExtraId={claimedExtraId}
+                            offerComplimentaryPick={
+                              offerComplimentaryPick && !bp.childProfileId
+                            }
+                            unlockBusy={compPickBusy}
+                            unlockingGuideId={unlockingGuideId}
+                            onUnlockComplimentary={(id) => void handleUnlockComplimentary(id)}
                           />
                         ))}
                       </ol>
@@ -938,6 +1163,13 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                                 match={m}
                                 ageGroup={bp.ageGroup}
                                 onOpenGuide={onOpenGuide}
+                                claimedExtraId={claimedExtraId}
+                                offerComplimentaryPick={
+                                  offerComplimentaryPick && !bp.childProfileId
+                                }
+                                unlockBusy={compPickBusy}
+                                unlockingGuideId={unlockingGuideId}
+                                onUnlockComplimentary={(id) => void handleUnlockComplimentary(id)}
                               />
                             ))}
                           </ol>
@@ -946,6 +1178,94 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                     </div>
                   );
                 })}
+            </section>
+          )}
+
+          {portalTab === "profile" && (
+            <section
+              id="user-portal-panel-profile"
+              role="tabpanel"
+              aria-labelledby="user-portal-profile-heading"
+              className="user-portal-profile"
+              data-testid="user-portal-profile"
+            >
+              <h3 id="user-portal-profile-heading">
+                <UserCircle size={20} aria-hidden /> Profile
+              </h3>
+              <p className="user-portal-panel-lead">
+                Update your name, email, and phone. This is the contact info on your membership
+                account.
+              </p>
+              <form className="user-portal-profile-form" onSubmit={(e) => void handleSaveProfile(e)}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="member-profile-name">
+                    Name
+                  </label>
+                  <input
+                    id="member-profile-name"
+                    className="text-input"
+                    name="name"
+                    autoComplete="name"
+                    required
+                    maxLength={MEMBER_PROFILE_NAME_MAX}
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    data-testid="member-profile-name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="member-profile-email">
+                    Email
+                  </label>
+                  <input
+                    id="member-profile-email"
+                    className="text-input"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    aria-invalid={/email/i.test(profileError) ? true : undefined}
+                    data-testid="member-profile-email"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="member-profile-phone">
+                    Phone number
+                  </label>
+                  <input
+                    id="member-profile-phone"
+                    className="text-input"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    placeholder="Optional"
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    data-testid="member-profile-phone"
+                  />
+                </div>
+                {profileError ? (
+                  <p className="user-portal-profile-error" role="alert" data-testid="member-profile-error">
+                    {profileError}
+                  </p>
+                ) : null}
+                {profileMsg ? (
+                  <p className="user-portal-plan-msg" data-testid="member-profile-saved">
+                    {profileMsg}
+                  </p>
+                ) : null}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={profileBusy}
+                  data-testid="member-profile-save"
+                >
+                  {profileBusy ? "Saving…" : "Save profile"}
+                </button>
+              </form>
             </section>
           )}
 
@@ -1248,6 +1568,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                                             match={m}
                                             ageGroup={bp.ageGroup}
                                             onOpenGuide={onOpenGuide}
+                                            claimedExtraId={claimedExtraId}
                                           />
                                         ))}
                                       </ol>

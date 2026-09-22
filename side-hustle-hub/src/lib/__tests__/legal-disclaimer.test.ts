@@ -24,10 +24,10 @@ describe("legal disclaimer", () => {
   });
 
   it("does not duplicate when the branded footer already includes it", () => {
-    const html = `<html><body><p>Your hustle, your results. Already here.</p></body></html>`;
+    const html = `<html><body><p>Your side hustle, your results. Already here.</p></body></html>`;
     expect(appendLegalDisclaimerToEmailHtml(html)).toBe(html);
-    expect(appendLegalDisclaimerToEmailText("Your hustle, your results. Already here.")).toBe(
-      "Your hustle, your results. Already here.",
+    expect(appendLegalDisclaimerToEmailText("Your side hustle, your results. Already here.")).toBe(
+      "Your side hustle, your results. Already here.",
     );
   });
 
@@ -38,7 +38,7 @@ describe("legal disclaimer", () => {
     expect(emailHasLegalDisclaimer(out.text)).toBe(true);
     expect(out.html).toContain("</body>");
     expect(out.html).toMatch(/Welcome aboard/);
-    expect((out.html.match(/Your hustle, your results/g) || []).length).toBe(1);
+    expect((out.html.match(/Your side hustle, your results/g) || []).length).toBe(1);
   });
 });
 
@@ -67,7 +67,7 @@ describe("branded email footer", () => {
     const rendered = renderContent(content!, { name: "Evelyn", tier: "Free" });
     expect(rendered.html).toContain(LEGAL_DISCLAIMER_HEADLINE);
     expect(rendered.html).toMatch(/not guarantees/i);
-    expect(rendered.text).toMatch(/Your hustle, your results/i);
+    expect(rendered.text).toMatch(/Your side hustle, your results/i);
     expect(rendered.text).toMatch(/licensed professionals/i);
     expect(rendered.html).toMatch(/not responsible or liable/i);
     expect(rendered.text).toMatch(/business losses/i);

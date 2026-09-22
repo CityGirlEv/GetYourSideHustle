@@ -58,7 +58,7 @@ Testimonial: ☐  Referral: ☐
 `;
 
 export const FAMILY_PHOTO_SLIDESHOW_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Turn family photos into a simple slideshow video for reunions and celebrations. 3 - 10 hrs/week. $15 – $50 / project is examples only — price by photo count and editing." },
+  { id: "overview", label: "What this side-hustle is", detail: "Turn family photos into a simple slideshow video for reunions and celebrations. 3 - 10 hrs/week. $15 – $50 / project is examples only — price by photo count and editing." },
   { id: "rights", label: "Privacy and music rights", detail: "Client photos only for the agreed project. Licensed or client-approved audio. No public posts without permission." },
 ];
 

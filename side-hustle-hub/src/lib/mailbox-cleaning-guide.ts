@@ -87,7 +87,7 @@ export const MAILBOX_CLEANING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Wipe, wash, dry, and lightly polish the exterior of owner-authorized residential mailboxes. Category: Neighborhood & Outdoor Services. Best for Kids and Teens working with parent/guardian approval and roadside supervision. Beginner · Low startup · Daylight / Weather-Dependent / Route-Based · Owner-Authorized Residential Mailboxes · Per Mailbox / Route Bundles / Recurring Touch-Ups · 2 - 8 hrs/week · Starter Membership. Displayed $10 – $40 / job is examples only. Tagline: Cleaner Curb Appeal. Clear Permission. Safe Routes.",
   },

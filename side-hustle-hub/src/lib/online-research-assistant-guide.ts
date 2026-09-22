@@ -88,7 +88,7 @@ export const ONLINE_RESEARCH_ASSISTANT_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Research specific questions online and turn the results into clear, organized briefs for clients. Projects may include vendor research, travel options, product comparisons, local resources, pricing research, or other fact-finding assignments. Category: Virtual Services / Research. Best for teens, adults, seniors / retirees. Beginner · $0–very low startup · Flexible · Remote / home · Per project / recurring · 3–10 hrs/week · Starter Membership.",
   },

@@ -91,7 +91,7 @@ export const LIEN_TAX_SALES_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Learn how to research and bid on properties sold through court lien and tax sales — using official calendars, title and tax research, occupancy review, redemption rules, and hard pass/fail gates before ever raising a paddle. Tagline: Research the Rights. Price the Risk. Bid Only With a Plan. Category: Real Estate. Best for adults and seniors/retirees with available risk capital and patience for legal research. Advanced · Over $1,000 startup · Seasonal / Sale-Date Driven · Local / County or State Specific · Deal-Dependent / Interest or Property Exit · 8 - 20 hrs/week (seasonal around sale dates) · Elite Membership. Displayed pricing is deal-dependent (examples only — not guarantees).",
   },

@@ -15,8 +15,8 @@ import {
   PDF_MARGIN as MARGIN,
   applyPdfPageBranding,
   drawPdfPageChrome,
-  loadPdfLogoDataUrl,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 import { openPdfInBrowser, reservePdfTab } from "./open-pdf";
 
 /** Partner meeting length used for timed agenda slots (default 90 — room for report reviews). */

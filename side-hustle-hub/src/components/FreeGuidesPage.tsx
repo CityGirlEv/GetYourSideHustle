@@ -48,6 +48,7 @@ import {
   libraryMinTierForAge,
   uniqueGuideLibraryCount,
 } from "../lib/guide-library-pool";
+import { presentableGuideTitle } from "../lib/guide-title";
 import {
   applyLiveGuideLibraryCountsFromStates,
   freeMembershipGuidesTag,
@@ -60,6 +61,7 @@ import { JoinToUnlockCta } from "./JoinToUnlockCta";
 import { OpenGuideButton } from "./OpenGuideButton";
 import { GuideMembershipBadges } from "./GuideMembershipBadges";
 import { AdminViewOnlyBadge } from "./AdminViewOnlyBadge";
+import { ComplimentaryGiftNote } from "./ComplimentaryGiftNote";
 import { guideLibraryPromoCallout } from "../lib/guide-library-promo";
 import {
   filterGuidesByExactMembershipTier,
@@ -71,6 +73,8 @@ import {
   sortGuidesFreeFirstThenAlphabetical,
   sortGuidesForMembershipTab,
   clampMembershipFiltersForAges,
+  DEFAULT_LIBRARY_MEMBERSHIP_FILTERS,
+  DEFAULT_LIBRARY_TIER_GROUPS_OPEN,
 } from "../lib/guide-list-expand";
 import {
   filterGuidesForViewer,
@@ -216,7 +220,7 @@ function TierGroupedGuideList<T>({
     pro: true,
     elite: true,
   }));
-  const [internalTab, setInternalTab] = useState<TierNavTab>("free");
+  const [internalTab, setInternalTab] = useState<TierNavTab>("all");
   const activeTab = membershipTab ?? internalTab;
   const setActiveTab = (tab: TierNavTab) => {
     onMembershipTabChange?.(tab);
@@ -424,7 +428,7 @@ function FreeGuideCardTitle({
         ) : null}
       </div>
       <h3 className="free-guide-card-title">
-        <span className="free-guide-card-title-text">{title}</span>
+        <span className="free-guide-card-title-text">{presentableGuideTitle(guideId, title)}</span>
         {numberParen ? (
           <span className="free-guide-number" data-testid={`guide-number-${guideId}`}>
             {" "}
@@ -466,7 +470,13 @@ function FreeKidsGuideCard({
     (guide.audience === "junior"
       ? libraryMinTierForAge(guide.id, "junior")
       : libraryMinTierForAge(guide.id, "kids"));
-  const access = resolveGuideAccess({ isMember, membershipTier, minTier, isAdmin });
+  const access = resolveGuideAccess({
+    isMember,
+    membershipTier,
+    minTier,
+    isAdmin,
+    guideId: guide.id,
+  });
   const isFreePlan = minTier === "free";
   const showStatus = staffCatalog || isAdmin;
 
@@ -488,6 +498,7 @@ function FreeKidsGuideCard({
             </div>
           ) : null}
           <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+          {access.unlocked ? <ComplimentaryGiftNote guideId={guide.id} minTier={minTier} /> : null}
         </div>
         {access.unlocked ? (
           <Unlock size={18} style={{ color: "var(--accent-emerald)", flexShrink: 0 }} />
@@ -532,14 +543,19 @@ export function FreeGuidesPage({
   /** Live D1 catalog (membership + age patches) — same cache Admin Update writes. */
   const catalogStates = liveGuideCounts.states;
   const [ageFilters, setAgeFilters] = useState<GuideFilter[]>(["all"]);
-  const [membershipFilters, setMembershipFilters] = useState<DemoTierTab[]>(["free"]);
+  const [membershipFilters, setMembershipFilters] = useState<DemoTierTab[]>(() => [
+    ...DEFAULT_LIBRARY_MEMBERSHIP_FILTERS,
+  ]);
   const [statusFilters, setStatusFilters] = useState<StatusFilterTab[]>(() =>
     defaultLibraryStatusFilters(isAdmin || canReviewGuides),
   );
   const [libraryLayout, setLibraryLayout] = useState<LibraryLayout>(() =>
     defaultGuideLibraryLayout(readNarrowViewport()),
   );
-  const [listExpand, setListExpand] = useState<ListExpandSignal>({ open: false, nonce: 0 });
+  const [listExpand, setListExpand] = useState<ListExpandSignal>({
+    open: DEFAULT_LIBRARY_TIER_GROUPS_OPEN,
+    nonce: 0,
+  });
   const [librarySearch, setLibrarySearch] = useState("");
   /** Admin or QA — status filters + unpublished guides in the library. */
   const staffCatalog = isAdmin || canReviewGuides;
@@ -595,7 +611,6 @@ export function FreeGuidesPage({
       return ages;
     });
     setLibraryLayout("list");
-    setListExpand((prev) => ({ open: false, nonce: prev.nonce + 1 }));
   };
 
   const toggleMembershipFilter = (next: DemoTierTab) => {
@@ -604,7 +619,6 @@ export function FreeGuidesPage({
       return clampMembershipFiltersForAges(nextMem, ageFilters);
     });
     setLibraryLayout("list");
-    setListExpand((prev) => ({ open: false, nonce: prev.nonce + 1 }));
   };
 
   const toggleStatusFilter = (next: StatusFilterTab) => {
@@ -625,11 +639,13 @@ export function FreeGuidesPage({
   const seniorAll = orderedSeniorGuides(SENIOR_GUIDE_TEASERS);
 
   const guideDisplayName = (id: string) =>
-    catalogStates[id]?.patch?.name?.trim() ||
-    libraryGuideDisplayName(id) ||
-    hustleById(id)?.name ||
-    LAUNCH_GUIDES.find((g) => g.id === id)?.name ||
-    id;
+    presentableGuideTitle(
+      id,
+      catalogStates[id]?.patch?.name?.trim() ||
+        libraryGuideDisplayName(id) ||
+        hustleById(id)?.name ||
+        LAUNCH_GUIDES.find((g) => g.id === id)?.name,
+    );
 
   const guidePeek = (id: string) =>
     guideSideHustleDescription(id) ||
@@ -1383,6 +1399,7 @@ export function FreeGuidesPage({
                           membershipTier: effectiveTier,
                           minTier,
                           isAdmin: comingSoon ? false : isAdmin,
+                          guideId: g.launchGuideId || g.id,
                         });
                         const isFreePlan = minTier === "free";
                         return (
@@ -1403,6 +1420,12 @@ export function FreeGuidesPage({
                                 {!comingSoon && (
                                   <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
                                 )}
+                                {!comingSoon && access.unlocked ? (
+                                  <ComplimentaryGiftNote
+                                    guideId={g.launchGuideId || g.id}
+                                    minTier={minTier}
+                                  />
+                                ) : null}
                               </div>
                               {comingSoon ? (
                                 <Clock
@@ -1464,6 +1487,7 @@ export function FreeGuidesPage({
                         membershipTier: effectiveTier,
                         minTier,
                         isAdmin,
+                        guideId: g.id,
                       });
                       const isFreePlan = minTier === "free";
                       return (
@@ -1477,6 +1501,9 @@ export function FreeGuidesPage({
                             <div>
                               <FreeGuideCardTitle guideId={g.id} title={g.name} minTier={minTier} />
                               <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+                              {access.unlocked ? (
+                                <ComplimentaryGiftNote guideId={g.id} minTier={minTier} />
+                              ) : null}
                             </div>
                             {access.unlocked ? (
                               <Unlock size={18} style={{ color: "var(--accent-emerald)", flexShrink: 0 }} />
@@ -1533,6 +1560,7 @@ export function FreeGuidesPage({
                         membershipTier: effectiveTier,
                         minTier,
                         isAdmin,
+                        guideId: g.id,
                       });
                       const isFreePlan = minTier === "free";
                       return (
@@ -1546,6 +1574,9 @@ export function FreeGuidesPage({
                             <div>
                               <FreeGuideCardTitle guideId={g.id} title={g.name} minTier={minTier} />
                               <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+                              {access.unlocked ? (
+                                <ComplimentaryGiftNote guideId={g.id} minTier={minTier} />
+                              ) : null}
                             </div>
                             {access.unlocked ? (
                               <Unlock size={18} style={{ color: "var(--accent-emerald)", flexShrink: 0 }} />
@@ -1603,6 +1634,7 @@ export function FreeGuidesPage({
                         membershipTier: effectiveTier,
                         minTier,
                         isAdmin: comingSoon ? false : isAdmin,
+                        guideId: g.launchGuideId || g.id,
                       });
                       const isFreePlan = minTier === "free";
                       return (
@@ -1623,6 +1655,12 @@ export function FreeGuidesPage({
                               {!comingSoon && (
                                 <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
                               )}
+                              {!comingSoon && access.unlocked ? (
+                                <ComplimentaryGiftNote
+                                  guideId={g.launchGuideId || g.id}
+                                  minTier={minTier}
+                                />
+                              ) : null}
                             </div>
                             {comingSoon ? (
                               <Clock

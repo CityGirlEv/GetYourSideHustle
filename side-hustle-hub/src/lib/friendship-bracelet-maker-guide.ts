@@ -97,7 +97,7 @@ export const FRIENDSHIP_BRACELET_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Weave friendship bracelets to sell at school events or gift as kindness bonuses. Free Guide. 3 - 10 hrs/week. $15 – $50 / project figures are examples only, not guarantees. Tagline: Knot It. Price It. Sell With Permission.",
   },

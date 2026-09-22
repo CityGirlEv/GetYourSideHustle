@@ -108,7 +108,7 @@ export const HOMEWORK_ORGANIZER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help classmates create simple systems for keeping track of homework — folders, planners, subject organization, due-date lists, and weekly homework checklists — with teacher/parent approval where appropriate. Tagline: Organize the Work. See the Deadlines. Get It Done. Category: Student Services / Organization. Best for Juniors / Teens. Beginner · Very low startup · After school / flexible · School-approved / home / remote · Per project / recurring check-in · 3 - 10 hrs/week · Starter Membership.",
   },

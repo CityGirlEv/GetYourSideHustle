@@ -8,6 +8,9 @@ import {
   foundingStarterSlots,
   foundingStarterSlotsRemaining,
   hasFoundingStarterGrant,
+  adminMembershipFormIsDirty,
+  mergeNotesPreservingFoundingGrant,
+  mergeSavedAdminUser,
   nextFoundingStarterSlot,
   parseAdminMembershipUpdate,
   parseFoundingStarterSlot,
@@ -27,6 +30,7 @@ describe("admin membership + first-5 complimentary Starter", () => {
       membershipTier: "starter",
       notify: true,
       complimentaryFoundingStarter: false,
+      membershipExpiresAt: "",
     });
     expect(
       parseAdminMembershipUpdate({
@@ -39,7 +43,14 @@ describe("admin membership + first-5 complimentary Starter", () => {
       membershipTier: "free",
       notify: true,
       complimentaryFoundingStarter: true,
+      membershipExpiresAt: "",
     });
+    expect(
+      parseAdminMembershipUpdate({
+        membershipTier: "starter",
+        membershipExpiresAt: "2026-12-21",
+      }),
+    ).toMatchObject({ ok: true, membershipExpiresAt: "2026-12-21" });
   });
 
   it("rejects missing or invalid tiers", () => {
@@ -118,5 +129,50 @@ describe("admin membership + first-5 complimentary Starter", () => {
     );
     expect(appendFoundingStarterStamp("Joined today", stamp)).toContain(stamp);
     expect(appendFoundingStarterStamp(lynne.notes, stamp)).toBe(lynne.notes);
+  });
+
+  it("treats checking first-5 on an existing Starter as unsaved work", () => {
+    expect(
+      adminMembershipFormIsDirty({
+        selectedTier: "starter",
+        savedTier: "starter",
+        complimentary: true,
+        alreadyFounding: false,
+      }),
+    ).toBe(true);
+    expect(
+      adminMembershipFormIsDirty({
+        selectedTier: "starter",
+        savedTier: "starter",
+        complimentary: false,
+        alreadyFounding: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps a founding stamp when edit notes omit it", () => {
+    expect(mergeNotesPreservingFoundingGrant("Parent of two", lynne.notes)).toContain(
+      "FOUNDING-STARTER 1/5",
+    );
+    expect(mergeNotesPreservingFoundingGrant(lynne.notes, "older notes")).toBe(lynne.notes);
+  });
+
+  it("keeps plan and credits when a profile save omits them", () => {
+    const previous = {
+      membershipTier: "starter",
+      audience: "adult",
+      notes: lynne.notes,
+      creditBalance: 40,
+      lastLoginAt: "2026-09-20T12:00:00.000Z",
+      canLogin: true,
+    };
+    const saved = {
+      membershipTier: "starter",
+      audience: "adult",
+      notes: lynne.notes,
+      canLogin: true,
+    };
+    expect(mergeSavedAdminUser(previous, saved).creditBalance).toBe(40);
+    expect(mergeSavedAdminUser(previous, saved).lastLoginAt).toBe(previous.lastLoginAt);
   });
 });

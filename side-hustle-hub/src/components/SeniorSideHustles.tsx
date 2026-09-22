@@ -36,6 +36,7 @@ import {
 import type { TierId } from "../lib/membership";
 import { guideNumberParenthetical } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
+import { ComplimentaryGiftNote } from "./ComplimentaryGiftNote";
 import { GuideMembershipBadges } from "./GuideMembershipBadges";
 import { OpenGuideButton } from "./OpenGuideButton";
 import { trackGyshEvent } from "../lib/gysh-analytics";
@@ -46,10 +47,12 @@ import {
   savePendingBlueprintAsync,
 } from "../lib/pending-blueprint";
 import { saveBlueprintToAccount } from "../lib/blueprints-api";
+import { ensureComplimentaryClaim } from "../lib/wizard-comp-guide";
 import { SideHustleBlueprintResults } from "./SideHustleBlueprintResults";
 import { WizardStartHereBanner } from "./WizardStartHereBanner";
 import { filterGuidesForWizardResults } from "../lib/guide-catalog-state";
 import { libraryMinTierForAge } from "../lib/guide-library-pool";
+import { presentableGuideTitle } from "../lib/guide-title";
 import { useLiveGuideLibraryCounts } from "../lib/guide-library-live-counts";
 import {
   relativeMatchPct,
@@ -81,6 +84,7 @@ function SeniorGuideCard({
     isMember: comingSoon ? false : isMember,
     membershipTier,
     minTier,
+    guideId: guide.launchGuideId || guide.id,
   });
   const canOpen =
     !comingSoon &&
@@ -121,7 +125,12 @@ function SeniorGuideCard({
       {comingSoon ? (
         <p className="seniors-guide-tier-note">{COMING_SOON_NOT_UNLOCKED_NOTE}</p>
       ) : (
-        <p className="seniors-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+        <>
+          <p className="seniors-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+          {canOpen ? (
+            <ComplimentaryGiftNote guideId={guide.launchGuideId || guide.id} minTier={minTier} />
+          ) : null}
+        </>
       )}
       <p>{guide.blurb}</p>
       {comingSoon ? null : canOpen ? (
@@ -171,10 +180,14 @@ type SeniorSideHustlesProps = {
   /** Account plan for guide gates. */
   membershipTier?: string | null;
   onGoToJoin?: (focusTier?: TierId) => void;
+  /** Free membership signup after Match Wizard unlock (full account fields). */
+  onUnlockBlueprint?: () => void;
   /** Open the main GYSH Guides library. */
   onOpenGuides?: () => void;
   /** Open a member adult Launch Guide from a senior card (only when unlocked). */
   onOpenLaunchGuide?: (launchGuideId: string) => void;
+  /** Open My Dashboard from wizard results. */
+  onOpenDashboard?: () => void;
   /** Deep-link from checklist Launch Guide peeks. */
   entryTab?: SeniorTab | null;
 };
@@ -213,11 +226,15 @@ function SeniorMatchFinder({
   isLoggedIn = false,
   previewAsGuest = false,
   onUnlockBlueprint,
+  onOpenLaunchGuide,
+  onOpenDashboard,
 }: {
   onBrowseOpportunities: () => void;
   isLoggedIn?: boolean;
   previewAsGuest?: boolean;
   onUnlockBlueprint?: () => void;
+  onOpenLaunchGuide?: (launchGuideId: string) => void;
+  onOpenDashboard?: () => void;
 }) {
   const unlocked = hasBlueprintAccess({
     isLoggedIn,
@@ -329,7 +346,7 @@ function SeniorMatchFinder({
       key: "availability" as const,
       mode: "single" as const,
       title: "How much time can you comfortably give?",
-      subtitle: "Be honest — the best hustle fits the calendar you already have.",
+      subtitle: "Be honest — the best side hustle fits the calendar you already have.",
       icon: <Clock size={24} style={{ color: "#6b4f3a" }} />,
       options: [
         { label: "A few hours per week", value: "light" },
@@ -414,6 +431,12 @@ function SeniorMatchFinder({
       returnView: "seniors",
       returnTab: "match",
     });
+    void ensureComplimentaryClaim({
+      isLoggedIn: unlocked,
+      previewAsGuest,
+      resultIds: results.map((r) => r.hustle.id),
+      resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+    });
     trackGyshEvent("find_side_hustle_completed", {
       age_group: "senior",
       match_count: results.length,
@@ -432,6 +455,13 @@ function SeniorMatchFinder({
         answers: answers as unknown as Record<string, unknown>,
         resultIds: results.map((r) => r.hustle.id),
         resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+      }).then((saved) => {
+        if (!saved) return;
+        void ensureComplimentaryClaim({
+          isLoggedIn: true,
+          resultIds: results.map((r) => r.hustle.id),
+          resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+        });
       });
       clearPendingBlueprint();
     }
@@ -653,7 +683,7 @@ function SeniorMatchFinder({
               ageGroup="senior"
               matches={rankedResults.map((row) => ({
                 id: row.hustle.id,
-                title: row.hustle.name,
+                title: presentableGuideTitle(row.hustle.id, row.hustle.name),
                 description: row.hustle.desc,
                 pct: row.pct,
                 tier: row.tier,
@@ -669,6 +699,10 @@ function SeniorMatchFinder({
               unlocked={unlocked}
               onUnlock={handleUnlock}
               onRetake={resetQuiz}
+              onSelectGuide={
+                onOpenLaunchGuide ? (id) => onOpenLaunchGuide(id) : undefined
+              }
+              onOpenDashboard={onOpenDashboard}
               extraActions={
                 unlocked ? (
                   <button
@@ -723,8 +757,10 @@ export function SeniorSideHustles({
   previewAsGuest = false,
   membershipTier = null,
   onGoToJoin,
+  onUnlockBlueprint,
   onOpenGuides,
   onOpenLaunchGuide,
+  onOpenDashboard,
   entryTab = null,
 }: SeniorSideHustlesProps) {
   const [tab, setTab] = useState<SeniorTab>("match");
@@ -810,7 +846,9 @@ export function SeniorSideHustles({
             onBrowseOpportunities={() => setTab("opportunities")}
             isLoggedIn={isLoggedIn}
             previewAsGuest={previewAsGuest}
-            onUnlockBlueprint={onGoToJoin}
+            onUnlockBlueprint={onUnlockBlueprint ?? onGoToJoin}
+            onOpenLaunchGuide={onOpenLaunchGuide}
+            onOpenDashboard={onOpenDashboard}
           />
         </div>
       )}

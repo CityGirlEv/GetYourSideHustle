@@ -6,6 +6,7 @@ import {
   postPendingBlueprint,
   saveBlueprintToAccount,
 } from "./blueprints-api";
+import { ensureComplimentaryClaim } from "./wizard-comp-guide";
 
 export const PENDING_BLUEPRINT_KEY = "gysh_pending_blueprint_v1";
 export const PENDING_BLUEPRINT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -129,6 +130,11 @@ export async function attachPendingWizardToAccount(
           JSON.stringify(bp.resultIds) === JSON.stringify(pending.resultIds),
       );
       if (already) {
+        await ensureComplimentaryClaim({
+          isLoggedIn: true,
+          resultIds: pending.resultIds,
+          resultPcts: pending.resultPcts,
+        });
         clearPendingBlueprint();
         return true;
       }
@@ -138,6 +144,11 @@ export async function attachPendingWizardToAccount(
     if (pending.claimToken) {
       try {
         await claimBlueprint(pending.claimToken, childProfileId ?? null);
+        await ensureComplimentaryClaim({
+          isLoggedIn: true,
+          resultIds: pending.resultIds,
+          resultPcts: pending.resultPcts,
+        });
         clearPendingBlueprint();
         return true;
       } catch {
@@ -153,6 +164,11 @@ export async function attachPendingWizardToAccount(
       claimToken: pending.claimToken,
     });
     if (saved) {
+      await ensureComplimentaryClaim({
+        isLoggedIn: true,
+        resultIds: pending.resultIds,
+        resultPcts: pending.resultPcts,
+      });
       clearPendingBlueprint();
       return true;
     }
@@ -160,4 +176,36 @@ export async function attachPendingWizardToAccount(
     return false;
   }
   return false;
+}
+
+/**
+ * Load any explicit complimentary pick already on the account.
+ * Does not auto-claim a match — the member must check 1 result after Free signup.
+ */
+export async function recoverComplimentaryFromWizard(isLoggedIn: boolean): Promise<string | null> {
+  const pending = readPendingBlueprint();
+  if (pending?.resultIds?.length) {
+    const { claimedId } = await ensureComplimentaryClaim({
+      isLoggedIn,
+      resultIds: pending.resultIds,
+      resultPcts: pending.resultPcts,
+    });
+    return claimedId;
+  }
+  if (!isLoggedIn) return null;
+  try {
+    const rows = await listSavedBlueprints();
+    const bp = rows.find((row) => row.resultIds?.length);
+    if (bp?.resultIds?.length) {
+      const { claimedId } = await ensureComplimentaryClaim({
+        isLoggedIn: true,
+        resultIds: bp.resultIds,
+        resultPcts: bp.resultPcts,
+      });
+      return claimedId;
+    }
+  } catch {
+    /* no session yet */
+  }
+  return null;
 }

@@ -113,7 +113,7 @@ export const START_BOOK_CLUB_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Start a welcoming book club for peers with monthly reads, cozy guided discussions, member voting, themed gatherings, and optional paid author talks, reading kits, or special events. Tagline: Read Together. Talk Together. Build Community. Category: Community / Books / Clubs. Best for Adults, Seniors / Retirees; community groups. Beginner · $0–Low startup · Monthly / Flexible / Recurring · Home / Library / Community Center / Cafe / Online · Optional dues / author events / reading kits / workshops · 2 - 6 hrs/week · Elite Membership.",
   },

@@ -231,7 +231,7 @@ export function GuideNotesTab({
   return (
     <div className="guide-notes-tab" data-testid="launch-guide-notes">
       <p className="gysh-section-panel__lede">
-        Capture ideas, follow-ups, and files for this hustle. Your notes show your name and date/time.
+        Capture ideas, follow-ups, and files for this side-hustle. Your notes show your name and date/time.
         {isAdmin ? " As admin, you can edit or delete anyone’s notes." : " You can edit or delete your own notes."}{" "}
         Attachments up to {guideNoteAttachmentMaxMbLabel()}MB.
       </p>

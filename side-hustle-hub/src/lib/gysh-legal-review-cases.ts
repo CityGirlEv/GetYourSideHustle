@@ -57,7 +57,7 @@ export const LEGAL_REVIEW_CASES: TestCase[] = [
     assignees: ["candace"],
     suite: "manual",
     steps: [
-      "Open [Home](/) and scroll to the footer legal disclaimer (“Your hustle, your results.”)",
+      "Open [Home](/) and scroll to the footer legal disclaimer (“Your side hustle, your results.”)",
       "Confirm the same disclaimer appears on Join, Guides, and at least one other public page",
       "Read the full text: income examples are educational only, not guarantees; GYSH does not provide financial, legal, tax, or investment advice; consult licensed professionals; GYSH is not responsible or liable for business losses, damages, or legal issues while building a side hustle",
       "Confirm the same disclaimer appears in outbound email footers (Admin → Email templates → Preview any template)",
@@ -102,7 +102,7 @@ export const LEGAL_REVIEW_CASES: TestCase[] = [
       "Confirm the on-site success / pending-activation message",
       "Check that mailbox for the Registration confirmation email from Get Your Side Hustle",
       "Open the email and confirm subject, greeting, and next-step copy (admin still activates the account)",
-      "Confirm the footer includes the legal disclaimer (“Your hustle, your results.”) — same wording as the site footer",
+      "Confirm the footer includes the legal disclaimer (“Your side hustle, your results.”) — same wording as the site footer",
       "Optional: open [Users Area](/admin?tab=users) — confirm the new signup row is pending",
       "Note inbox result (received / missing / spam) in the Testing Portal, then set Pass / Conditional / Fail",
     ],

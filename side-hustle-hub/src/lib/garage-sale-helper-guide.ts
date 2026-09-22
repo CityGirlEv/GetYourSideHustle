@@ -78,7 +78,7 @@ export const GARAGE_SALE_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help an owner sort, group, price, display, promote, and sell approved household items at a garage sale — or manage the sales table while the owner restocks. Tagline: Price It. Display It. Track It. Clear It Out. Category: Local Sales & Event Support. Best for Kids, Teens, Adults, and Seniors who are organized, friendly, accurate with money, and comfortable working with a responsible owner. Beginner · Very Low startup · Weekends / Seasonal / Event-Based · Owner’s Driveway, Garage, Yard, or Approved Sale Location · Hourly / Setup Package / Sale-Day Package / Agreed Commission · 2 - 8 hrs/week · Pro Membership. Displayed $10 – $40 / job is examples only.",
   },

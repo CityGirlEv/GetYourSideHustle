@@ -93,7 +93,7 @@ export const CLOSET_ORGANIZER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help clients sort clothing and closet contents into keep, donate, sell, relocate, recycle, and discard categories; then create a simple layout the client can maintain. Tagline: Less Clutter. Clear Decisions. A Closet That Works. Category: Home Organization & Local Services. Best for teens, adults, and seniors who are patient, nonjudgmental, organized, and respectful of privacy. Beginner · Very Low startup · Flexible / Appointment-Based · Client Homes / Bedrooms / Entry Closets / Storage Areas · Per Session / Hourly / Project Packages / Add-Ons · 2 - 8 hrs/week · Starter Membership. Displayed $10 – $40 / job is examples only.",
   },

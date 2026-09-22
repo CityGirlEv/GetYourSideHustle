@@ -90,7 +90,7 @@ export const KIDS_CRAFT_HUSTLE_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Make a tiny set of original stickers, charms, kindness cards, or another simple craft; price it with a parent; sell only through parent-approved channels; and include a Kevina-inspired kindness extra that helps someone feel seen and encouraged. Tagline: Make Something Bright. Sell It Safely. Share a Little Kindness. Category: Kids / Creative Crafts / Give-Back. Best for Kids who enjoy making small crafts with a parent/guardian managing safety, sales, accounts, money, and customer communication. Beginner · Low startup · Short Parent-Supervised Sessions / School Fairs / Family Events · Home Craft Space / Parent-Approved Fairs / Parent-Managed Online Shop · Per Item / Small Sets / Parent-Managed Sales · Starter Membership. Top-card time and earnings: NEEDS EVELYN CONFIRMATION.",
   },

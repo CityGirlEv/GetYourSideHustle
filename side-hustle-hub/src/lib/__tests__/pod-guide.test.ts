@@ -37,6 +37,8 @@ describe("Guide #095 Print-on-Demand (POD)", () => {
     expect(h.potentialIncome).toMatch(/\$3,000/);
     expect(h.potentialIncome).toMatch(/examples only/i);
     expect(h.minTier).toBe("elite");
+    expect(h.audiences).toContain("senior");
+    expect(h.audiences).toContain("adult");
     expect(FREE_WIZARD_HUSTLE_IDS).not.toContain(GUIDE_ID);
     expect(countFreeGuideLibrary()).toBe(20);
     expect(guideMarkedPendingAfterPrepBackfill(GUIDE_ID)).toBe(false);

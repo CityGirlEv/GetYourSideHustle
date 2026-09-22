@@ -22,7 +22,7 @@ describe("stripe checkout resolution", () => {
     if (monthly.ok) {
       expect(monthly.mode).toBe("subscription");
       expect(monthly.priceId).toMatch(/^price_/);
-      expect(monthly.amountUsd).toBe(39);
+      expect(monthly.amountUsd).toBe(117);
     }
 
     const seniorYear = resolveCheckoutPrice({

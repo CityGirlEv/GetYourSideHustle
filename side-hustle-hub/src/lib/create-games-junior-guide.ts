@@ -93,7 +93,7 @@ export const CREATE_GAMES_JUNIOR_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Use AI for game concepts, sprite and dialogue ideas, testing prompts, and simple web or mobile prototypes — then publish school projects or itch.io demos only with guardian approval. Tagline: Scope the Game. Build the Loop. Ship a Playable Demo. Category: AI / Creative. Best for Teens / Juniors building a first original digital game with guardian approval. Beginner to Intermediate · $0 – $50 startup · Flexible / Project-Based · Online / Home · Tips / School Credit / Digital Sales / Commissions · 5 - 15 hrs/week · Elite Membership. Displayed pricing: Tips · school credit · itch.io / commissions ($0 – $200+).",
   },

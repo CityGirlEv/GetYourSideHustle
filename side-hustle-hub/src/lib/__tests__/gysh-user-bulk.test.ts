@@ -4,10 +4,12 @@ import {
   gyshBulkDeleteConfirmMessage,
   gyshBulkDeleteEligibleIds,
   gyshBulkUpdateBlockReason,
+  gyshBulkResultMessage,
   normalizeBulkUserIds,
   parseBulkRoles,
   parseBulkRolesMode,
   parseBulkUserStatus,
+  toggleBulkUserId,
 } from "../gysh-user-bulk";
 
 describe("gysh-user-bulk", () => {
@@ -54,5 +56,16 @@ describe("gysh-user-bulk", () => {
   it("describes bulk delete confirmation", () => {
     expect(gyshBulkDeleteConfirmMessage(1)).toContain("1 selected user");
     expect(gyshBulkDeleteConfirmMessage(3)).toContain("3 selected users");
+  });
+
+  it("toggles selected ids and summarizes bulk results", () => {
+    expect(toggleBulkUserId(["u-1"], "u-2", true)).toEqual(["u-1", "u-2"]);
+    expect(toggleBulkUserId(["u-1", "u-2"], "u-1", false)).toEqual(["u-2"]);
+    expect(gyshBulkResultMessage({ action: "delete", changed: 3, skipped: 1 })).toBe(
+      "Deleted 3 users. 1 skipped.",
+    );
+    expect(gyshBulkResultMessage({ action: "update", changed: 1, skipped: 0 })).toBe(
+      "Updated 1 user.",
+    );
   });
 });

@@ -97,7 +97,7 @@ export const WEB_LEADS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Find local businesses with weak or missing websites, then pitch evidence-based audits, modern rebuilds, or done-for-you sites. Category: Local Services. Best for Adults, Seniors / Retirees with web, audit, sales, and client-communication skills. Intermediate · $100 - $500 startup · Flexible / Client Deadline-Based · Local / Online · Audit / Website Project / Monthly Hosting and Maintenance · 10 - 20 hrs/week · Elite Membership. Displayed $800 - $6,000/mo is examples only. Tagline: Find the Friction. Show the Fix. Build the Result.",
   },

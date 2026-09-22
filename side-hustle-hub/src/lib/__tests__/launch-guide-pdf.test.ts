@@ -5,7 +5,11 @@ import { guideKitForId } from "../guide-tools";
 describe("launch-guide-pdf model", () => {
   it("builds a checklist model with qty supplies and no basic_supplies tool dupe", () => {
     const model = buildLaunchGuidePdfModel("car-interior-cleanup");
-    expect(model.title.length).toBeGreaterThan(3);
+    expect(model.title).toBe("Car Interior Cleanup Helper");
+    expect(model.title).not.toMatch(/car-interior-cleanup/);
+    expect(
+      buildLaunchGuidePdfModel("car-interior-cleanup", { name: "car-interior-cleanup" }).title,
+    ).toBe("Car Interior Cleanup Helper");
     expect(model.supplies.length).toBeGreaterThanOrEqual(3);
     expect(model.supplies.every((s) => s.qty.trim().length > 0)).toBe(true);
     expect(model.supplies.every((s) => s.estCost.trim().length > 0)).toBe(true);

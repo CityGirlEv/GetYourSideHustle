@@ -84,7 +84,7 @@ export const AIRBNB_TURNOVER_CHECKER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Walk through short-term rental turnover checklists after cleaning and before the next guest arrives. Check towels, trash, basic supplies, visible cleanliness, property setup, and obvious issues, then report problems to the host. Tagline: Check It. Document It. Help Make It Guest-Ready. Category: Short-Term Rental / Property Support. Best for teens where appropriate, adults, seniors / retirees. Beginner · Very low startup · 2–8 hrs/week · $10–$40 / job (examples) · Starter Membership.",
   },

@@ -40,7 +40,14 @@ describe("membership subscription emails", () => {
     expect(up?.subhead).toContain("{{previousTier}}");
   });
 
-  it("sends complimentary Starter members to the live GYSH Gear shop", () => {
+  it("has a week-before renewal reminder template", () => {
+    const reminder = defaultContentForSlug("membership_renewal_reminder");
+    expect(reminder?.subject).toMatch(/renews soon/i);
+    expect(reminder?.bodyHtml).toContain("{{chargeLine}}");
+    expect(reminder?.bodyHtml).toContain("{{expiresOn}}");
+  });
+
+  it("has editable defaults for merch-ready template", () => {
     const merch = defaultContentForSlug("membership_merch_ready");
     expect(merch?.subject).toMatch(/hat or tee/i);
     expect(merch?.preheader).toMatch(/GYSHFamily/);
@@ -92,7 +99,7 @@ describe("membership subscription emails", () => {
     });
     expect(rendered.html).toContain("/admin?tab=users");
     expect(rendered.html).not.toMatch(/href="mailto:member@example.com"/);
-    expect(rendered.html).toMatch(/Your hustle, your results/i);
+    expect(rendered.html).toMatch(/Your side hustle, your results/i);
     expect(rendered.text).toMatch(/licensed professionals/i);
   });
 });
@@ -120,7 +127,7 @@ describe("join cart purchase emails", () => {
     });
     expect(rendered.subject).toMatch(/confirmed/i);
     expect(rendered.html).toContain("30-minute consult");
-    expect(rendered.html).toMatch(/Your hustle, your results/i);
+    expect(rendered.html).toMatch(/Your side hustle, your results/i);
     expect(rendered.text).toMatch(/licensed professionals/i);
   });
 

@@ -27,7 +27,7 @@ export const HOME_CTA_EXPECTATION =
 
 /** Contrast / differentiator line vs generic idea lists. */
 export const HOME_DIFFERENTIATOR =
-  `Unlike generic idea lists, ${SITE_NAME} pairs every hustle with calculators and community guidance through ${GYSH_METHOD_NAME} — so you evaluate before you spend.`;
+  `Unlike generic idea lists, ${SITE_NAME} pairs every side hustle with calculators and community guidance through ${GYSH_METHOD_NAME} — so you evaluate before you spend.`;
 
 /**
  * Home spotlight for the Side Hustle Library.
@@ -59,7 +59,7 @@ export const HOME_ICP = [
   {
     id: "kids",
     label: "Kids (4–12) & parents",
-    problem: "Need safe first hustles with a GYSH Coach nearby — not random online gigs.",
+    problem: "Need safe first side hustles with a GYSH Coach nearby — not random online gigs.",
   },
   {
     id: "teens",

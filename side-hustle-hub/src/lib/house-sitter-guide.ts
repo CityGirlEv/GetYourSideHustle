@@ -116,7 +116,7 @@ export const HOUSE_SITTER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Watch a trusted family’s or client’s home while they travel by completing agreed check-ins such as collecting mail, rotating lights, watering plants, checking doors/windows, bringing packages inside, and reporting anything unusual. Tagline: Check the House. Follow the List. Give Them Peace of Mind. Category: Home Services / Property Check-In. Best for responsible Teens with parent/guardian approval, Adults, Seniors / Retirees. Beginner · Very low startup · Flexible / travel dates · Client home · Per job / per visit / recurring · 2 - 8 hrs/week · Starter Membership.",
   },

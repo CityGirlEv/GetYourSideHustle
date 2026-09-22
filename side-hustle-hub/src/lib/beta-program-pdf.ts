@@ -14,10 +14,10 @@ import {
   PDF_CONTENT_TOP,
   PDF_CONTENT_BOTTOM,
   PDF_BRAND_COLORS,
-  loadPdfLogoDataUrl,
   drawPdfPageChrome,
   applyPdfPageBranding,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 import { SITE_NAME } from "./site-config";
 
 const COLORS = PDF_BRAND_COLORS;

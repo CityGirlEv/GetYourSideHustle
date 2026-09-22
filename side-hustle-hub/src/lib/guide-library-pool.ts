@@ -17,7 +17,7 @@ import {
   type GuideCatalogStateMap,
 } from "./guide-catalog-state";
 import { effectiveGuideAudiences } from "./guide-library-update";
-import { guidesForAudience, kidsGuideById } from "./kids-guides";
+import { guidesForAudience } from "./kids-guides";
 import { LAUNCH_GUIDES } from "./launch-guides";
 import type { AudienceGroup, TierId } from "./membership";
 import { orderedSeniorGuides, SENIOR_GUIDE_TEASERS } from "./seniors-content";
@@ -26,6 +26,7 @@ import {
   SIDE_HUSTLES,
   type HustleAgeGroup,
 } from "./side-hustle-catalog";
+import { presentableGuideTitle, isUnpresentableGuideTitle } from "./guide-title";
 
 
 export type GuideLibraryEntry = {
@@ -170,15 +171,7 @@ export function libraryMinTierForGuideId(
 }
 
 function guideDisplayNameFallback(guideId: string): string {
-  const id = String(guideId || "").trim();
-  if (!id) return "";
-  const catalogName = hustleById(id)?.name?.trim();
-  if (catalogName) return catalogName;
-  const launchName = LAUNCH_GUIDES.find((g) => g.id === id)?.name?.trim();
-  if (launchName) return launchName;
-  const kidsTitle = kidsGuideById(id)?.title?.trim();
-  if (kidsTitle) return kidsTitle;
-  return id;
+  return presentableGuideTitle(guideId);
 }
 
 /**
@@ -207,9 +200,9 @@ export function uniqueGuideLibraryEntries(
   const take = (id: string, name: string, tier: GuideMinTier) => {
     const prev = byId.get(id);
     if (!prev || guideTierSortRank(tier) < guideTierSortRank(prev.minTier)) {
-      byId.set(id, { id, name: name || prev?.name || id, minTier: tier });
-    } else if (prev && name && (!prev.name || prev.name === prev.id)) {
-      byId.set(id, { ...prev, name });
+      byId.set(id, { id, name: presentableGuideTitle(id, name || prev?.name), minTier: tier });
+    } else if (prev && name && isUnpresentableGuideTitle(prev.name, id)) {
+      byId.set(id, { ...prev, name: presentableGuideTitle(id, name) });
     }
   };
 
@@ -355,11 +348,7 @@ export function countActiveGuidesForMembershipAudience(
   return n;
 }
 
-/** Display name for a library guide id (catalog / kids-teen title / pool), or the id itself. */
+/** Display name for a library guide id — never the raw kebab id. */
 export function libraryGuideDisplayName(guideId: string): string {
-  const id = String(guideId || "").trim();
-  if (!id) return "";
-  const hit = uniqueGuideLibraryEntries().find((e) => e.id === id);
-  if (hit?.name && hit.name !== id) return hit.name;
-  return guideDisplayNameFallback(id);
+  return presentableGuideTitle(guideId, uniqueGuideLibraryEntries().find((e) => e.id === guideId)?.name);
 }

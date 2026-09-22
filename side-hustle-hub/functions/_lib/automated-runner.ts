@@ -250,7 +250,7 @@ async function runLighthousePortal(baseUrl: string): Promise<{
     ok: contrastOk,
     note: contrastOk
       ? "Hustle card category/income classes present (portal structural; full WCAG needs npm run test:e2e)"
-      : "Missing hustle card contrast-related classes in source",
+      : "Missing side hustle card contrast-related classes in source",
   };
 
   const preloadOk = /rel=["']preload["'][^>]*as=["']image["'][^>]*gysh-home-hero/i.test(site.html);

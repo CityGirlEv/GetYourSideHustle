@@ -167,7 +167,7 @@ describe("gysh-test-plan", () => {
     const tplCases = TEST_CASES.filter(
       (t) => (t.suite ?? "manual") === "manual" && t.id.startsWith("EMAIL-TPL-"),
     );
-    expect(tplCases.length).toBe(23);
+    expect(tplCases.length).toBe(26);
     for (const t of tplCases) {
       expect(t.assignees).toEqual(["candace"]);
       expect(t.area).toBe("Email");

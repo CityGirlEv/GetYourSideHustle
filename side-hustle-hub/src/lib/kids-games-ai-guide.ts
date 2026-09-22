@@ -99,7 +99,7 @@ export const KIDS_GAMES_AI_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Invent and build a tiny maze, quiz, choice-based story, or other simple game with kid-friendly AI help. A parent or guardian stays involved with account setup, privacy, publishing, purchases, messages, and any money-related activity. Tagline: Imagine It. Build It. Play It. Improve It. Category: Kids Corner / AI / Games / Creative Technology. Best for Kids with a parent/guardian nearby. Beginner · $0–Low startup · A few days · Home / Online with adult supervision · Learning first / optional parent-managed earnings · Elite Membership · Member Guide.",
   },

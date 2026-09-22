@@ -26,7 +26,7 @@ export const SIDE_HUSTLE_FUN_FACTS = [
   "Validate demand with a pre-sale or waitlist before building the full product.",
   "Niche down until it feels slightly uncomfortable — then market there first.",
   "Templates and checklists sell well because busy people pay to skip reinventing the wheel.",
-  "Tracking time for one week often reveals where your hustle hours actually go.",
+  "Tracking time for one week often reveals where your side hustle hours actually go.",
   "A clear CTA on every page outperforms pretty design with a buried next step.",
   "Reinvest early profits into the bottleneck: ads, tools, or hiring help — not more features.",
   "Feedback from three real buyers beats a month of guessing alone.",

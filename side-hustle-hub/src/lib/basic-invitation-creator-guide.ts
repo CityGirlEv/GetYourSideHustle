@@ -123,7 +123,7 @@ export const BASIC_INVITATION_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Design party or event invitations in Canva and export print/share files. Simple customized invitations for birthdays, showers, graduations, anniversaries, reunions, and celebrations — then deliver finished digital files. Tagline: Design It. Proof It. Deliver the Files. Category: Digital Design / Invitations. Beginner · 3 - 10 hrs/week · $15 – $50 / project (examples only).",
   },

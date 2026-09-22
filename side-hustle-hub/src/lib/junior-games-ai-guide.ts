@@ -138,7 +138,7 @@ export const JUNIOR_GAMES_AI_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Use AI to help brainstorm a game concept, characters, art direction, dialogue, rules, levels, and testing ideas, then use guardian-approved tools to build a small playable web or mobile prototype. Tagline: Dream It. Prompt It. Build It. Play It. Category: Junior / AI / Game Development. Best for Teens / Junior Side Hustle Team Members. Beginner to intermediate · Very low to low startup · Project-based · Online / home · Skill building / prototype projects · Elite Membership. Displayed timing: 1 - 2 weeks. Displayed earnings: Member guide.",
   },

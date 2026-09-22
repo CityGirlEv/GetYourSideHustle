@@ -1,4 +1,5 @@
 import type { BlueprintAgeGroup } from "./gysh-analytics";
+import { presentableGuideTitle } from "./guide-title";
 import { LAUNCH_GUIDES } from "./launch-guides";
 import { SENIOR_OPPORTUNITIES } from "./seniors-content";
 
@@ -25,11 +26,13 @@ export function blueprintAgeGroupTitle(ageGroup: BlueprintAgeGroup): string {
 }
 
 export function blueprintMatchLabel(ageGroup: BlueprintAgeGroup, id: string): string {
+  let raw = id;
   if (ageGroup === "kids" || ageGroup === "junior") {
-    return KIDS_JUNIOR_LABELS[id] ?? id;
+    raw = KIDS_JUNIOR_LABELS[id] ?? id;
+  } else if (ageGroup === "senior") {
+    raw = SENIOR_LABELS[id] ?? id;
+  } else {
+    raw = ADULT_LABELS[id] ?? id;
   }
-  if (ageGroup === "senior") {
-    return SENIOR_LABELS[id] ?? id;
-  }
-  return ADULT_LABELS[id] ?? id;
+  return presentableGuideTitle(id, raw);
 }

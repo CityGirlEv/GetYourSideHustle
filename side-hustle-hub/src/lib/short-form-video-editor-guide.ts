@@ -99,7 +99,7 @@ Build and test one Short-Form Video Editor offer:
 export const SHORT_FORM_VIDEO_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Turn client-owned or properly licensed footage into concise vertical videos for Reels, TikTok, Shorts, or other approved placements. Starter Membership. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only, not guarantees. Category: Creative Services / Short-Form Video Editing. Best for detail-oriented visual storytellers, Adults, and responsible Teens with parent/guardian approval and age-appropriate clients/content. Beginner–Intermediate. Startup $0 – Low. Online. Per clip / per batch / monthly package / usage or rush add-on. Tagline: Cut the Clutter. Keep the Moment.",
   },

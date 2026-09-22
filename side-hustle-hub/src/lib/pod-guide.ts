@@ -121,7 +121,7 @@ export const POD_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Design custom shirts, mugs, and merchandise, and sell them via Etsy or Shopify without warehousing finished inventory. POD is not a zero-cost business. Tagline: Design Original. Price for Profit. Test Before You Scale. Category: Ecommerce / Print-on-Demand. Beginner–Intermediate · 1 - 2 weeks to first listings · Elite Membership · $200 – $3,000 / month displayed figures are examples only, not guarantees.",
   },

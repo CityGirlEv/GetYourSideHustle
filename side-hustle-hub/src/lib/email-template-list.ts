@@ -32,7 +32,7 @@ export function shouldHydrateEmailTemplateDraft(
 /** Email log slug → catalog name (test_ prefix kept as a TEST label). */
 export function emailTemplateLogLabel(
   slug: string,
-  catalog: Array<{ slug: string; name: string }>,
+  catalog: ReadonlyArray<{ slug: string; name: string }>,
 ): string {
   const raw = String(slug || "").trim();
   if (!raw) return "Unknown template";

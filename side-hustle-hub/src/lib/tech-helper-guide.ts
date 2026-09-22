@@ -116,7 +116,7 @@ export const TECH_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help older adults, grandparents, neighbors, and other beginners become more comfortable with smartphones and everyday technology. Teach practical skills such as sending pictures, making video calls, organizing contacts, adjusting accessibility settings, using common apps, and playing simple online games. Tagline: Less Tech Stress. More Confidence. One Tap at a Time. Category: Tech Help / Personal Tutoring. Best for Teens, Adults, Seniors / Retirees. Beginner to intermediate · Very low startup · Flexible / recurring · Client home / community / remote when appropriate · Per session / package / recurring · 2 - 8 hrs/week · Elite Membership. Displayed pricing: $10 – $25 / hour (examples).",
   },

@@ -10,6 +10,19 @@ import {
 } from "../guide-list-expand";
 
 describe("guide list expand/collapse all", () => {
+  it("defaults the Guide library to Show All with every membership group expanded", async () => {
+    const { DEFAULT_LIBRARY_MEMBERSHIP_FILTERS, DEFAULT_LIBRARY_TIER_GROUPS_OPEN } =
+      await import("../guide-list-expand");
+    expect(DEFAULT_LIBRARY_MEMBERSHIP_FILTERS).toEqual(["all"]);
+    expect(DEFAULT_LIBRARY_TIER_GROUPS_OPEN).toBe(true);
+    expect(tierGroupOpenState(DEFAULT_LIBRARY_TIER_GROUPS_OPEN)).toEqual({
+      free: true,
+      starter: true,
+      pro: true,
+      elite: true,
+    });
+  });
+
   it("opens every membership tier group", () => {
     expect(tierGroupOpenState(true)).toEqual({
       free: true,
@@ -149,6 +162,7 @@ describe("clampMembershipFiltersForAges", () => {
     expect(clampMembershipFiltersForAges(["starter"], ["kids"])).toEqual(["free"]);
     expect(clampMembershipFiltersForAges(["pro"], ["junior", "kids"])).toEqual(["free"]);
     expect(clampMembershipFiltersForAges(["all"], ["kids"])).toEqual(["all"]);
+    expect(clampMembershipFiltersForAges([], ["all"])).toEqual(["all"]);
   });
 });
 

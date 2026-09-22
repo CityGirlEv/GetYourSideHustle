@@ -109,7 +109,7 @@ export const GIFT_WRAPPING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Wrap gifts neatly for holidays and birthdays with bows and simple tags. Local gift-wrapping service: per gift, by size and complexity, with optional add-ons and pickup/delivery. Tagline: Wrap It. Label It. Hand It Off. Category: Local Services / Gift Wrapping. Beginner · 2 - 8 hrs/week · $10 – $40 / job (examples only). For younger helpers, a parent/guardian supervises tools, payments, transportation, and customer meetups.",
   },

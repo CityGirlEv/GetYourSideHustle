@@ -28,7 +28,7 @@ describe("legal review cases for Candace", () => {
     expect(nda?.steps.join(" ")).toMatch(/five \(5\) year/);
     expect(signup?.title).toMatch(/confirmation email/i);
     expect(signup?.steps.join(" ")).toMatch(/Registration confirmation/i);
-    expect(signup?.steps.join(" ")).toMatch(/Your hustle, your results/i);
+    expect(signup?.steps.join(" ")).toMatch(/Your side hustle, your results/i);
   });
 
   it("is on the current sprint with a today due date", () => {

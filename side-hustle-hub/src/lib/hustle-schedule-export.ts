@@ -14,8 +14,8 @@ import {
   PDF_MARGIN as MARGIN,
   applyPdfPageBranding,
   drawPdfPageChrome,
-  loadPdfLogoDataUrl,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 
 const SITE_HOST = ROOT_DOMAIN;
 

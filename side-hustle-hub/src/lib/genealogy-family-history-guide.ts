@@ -82,7 +82,7 @@ export const GENEALOGY_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help clients research family history, organize records, build family trees, locate historical documents, and create easy-to-understand family history reports. Tagline: Turn Family Stories Into Organized History.",
   },

@@ -124,7 +124,7 @@ export const AI_PROMO_VIDEO_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Create short promotional videos for local businesses, events, products, services, and special offers by combining AI-assisted scripts with client-provided, licensed stock, or properly permitted AI-generated visuals, then editing everything into polished social-ready videos. Tagline: Turn an Offer Into a Scroll-Stopping Video. Category: AI Services / Video / Local Business Marketing. Best for Teens with appropriate adult involvement, Adults, Seniors/Retirees. Beginner–Intermediate · $0 – Low startup · Flexible / Project-Based / Recurring · Remote / Local · Per Video / Video Package / Monthly Content Package · 3 - 10 hrs/week · Elite Membership.",
   },

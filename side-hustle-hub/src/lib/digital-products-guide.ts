@@ -64,7 +64,7 @@ export const DIGITAL_PRODUCTS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Create and sell digital products people can download or access online, including ebooks, printables, planners, templates, guides, workbooks, digital art, and mini-courses. Book publishing is another classic digital-product path. Tagline: Create It Once. Sell It Again and Again. Category: Digital / Online Business. Best for teens, adults, seniors / retirees. Beginner · Very low startup · 2–6 weeks · Product sales / scalable · Elite Membership.",
   },

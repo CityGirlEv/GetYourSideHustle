@@ -21,8 +21,14 @@ import {
   adultGuideMinTier,
   kidsGuideMinTier,
   seniorGuideMinTier,
+  complimentaryExtraGiftNote,
+  complimentaryExtraUnlockBadge,
+  complimentaryUnlockAppliesToGuide,
+  guideTierBadgeLabel,
+  isComplimentaryExtraUnlock,
   type GuideMinTier,
 } from "../guide-access";
+import { setCachedComplimentaryGuideIds } from "../wizard-comp-guide";
 import { canAccessPnl, canAccessScheduleSuite } from "../hustle-schedule";
 import { tierHasFeature } from "../membership";
 
@@ -98,6 +104,77 @@ describe("guide access gatekeeping", () => {
       minTier: "starter",
     });
     expect(starterOnStarterGuide.unlocked).toBe(true);
+  });
+
+  it("lets guests and Free members open one complimentary extra; other paid guides stay locked", () => {
+    const guest = resolveGuideAccess({
+      isMember: false,
+      membershipTier: null,
+      minTier: "elite",
+      guideId: "airbnb",
+      complimentaryGuideIds: ["airbnb"],
+    });
+    expect(guest.unlocked).toBe(true);
+    expect(guest.needsJoin).toBe(false);
+
+    const guestOther = resolveGuideAccess({
+      isMember: false,
+      membershipTier: null,
+      minTier: "pro",
+      guideId: "tutoring",
+      complimentaryGuideIds: ["airbnb"],
+    });
+    expect(guestOther.unlocked).toBe(false);
+    expect(guestOther.needsJoin).toBe(true);
+
+    const freeExtra = resolveGuideAccess({
+      isMember: true,
+      membershipTier: "free",
+      minTier: "elite",
+      guideId: "airbnb",
+      complimentaryGuideIds: ["airbnb"],
+    });
+    expect(freeExtra.unlocked).toBe(true);
+    expect(freeExtra.needsUpgrade).toBe(false);
+
+    const otherPaid = resolveGuideAccess({
+      isMember: true,
+      membershipTier: "free",
+      minTier: "pro",
+      guideId: "tutoring",
+      complimentaryGuideIds: ["airbnb"],
+    });
+    expect(otherPaid.unlocked).toBe(false);
+    expect(otherPaid.needsUpgrade).toBe(true);
+  });
+
+  it("explains the complimentary extra as a free gift above the usual plan", () => {
+    expect(complimentaryExtraGiftNote("elite")).toMatch(/only available to Elite members/i);
+    expect(complimentaryExtraGiftNote("elite")).toMatch(/special gift/i);
+    expect(complimentaryExtraGiftNote("elite")).toMatch(/complimentary guide/i);
+    expect(complimentaryExtraGiftNote("starter")).toMatch(/Starter, Pro, or Elite members/);
+    expect(complimentaryExtraGiftNote("pro")).toMatch(/Pro or Elite members/);
+    expect(complimentaryExtraGiftNote("free")).toMatch(/Unique Unique Free/i);
+
+    setCachedComplimentaryGuideIds(["airbnb"]);
+    expect(isComplimentaryExtraUnlock("airbnb")).toBe(true);
+    expect(isComplimentaryExtraUnlock("tutoring")).toBe(false);
+    setCachedComplimentaryGuideIds([]);
+    expect(isComplimentaryExtraUnlock("airbnb")).toBe(false);
+  });
+
+  it("names the complimentary extra badge after the guide membership floor", () => {
+    expect(complimentaryExtraUnlockBadge("free")).toBe("Your 1 free Free unlock");
+    expect(complimentaryExtraUnlockBadge("starter")).toBe("Your 1 free Starter unlock");
+    expect(complimentaryExtraUnlockBadge("pro")).toBe("Your 1 free Pro unlock");
+    expect(complimentaryExtraUnlockBadge("elite")).toBe("Your 1 free Elite unlock");
+  });
+
+  it("does not offer the complimentary unlock on Unique Unique Free guides", () => {
+    expect(complimentaryUnlockAppliesToGuide("free")).toBe(false);
+    expect(complimentaryUnlockAppliesToGuide("starter")).toBe(true);
+    expect(complimentaryUnlockAppliesToGuide("pro")).toBe(true);
+    expect(complimentaryUnlockAppliesToGuide("elite")).toBe(true);
   });
 
   it("unlocks every guide for Admin (including Elite-only)", () => {
@@ -210,6 +287,13 @@ describe("guide access gatekeeping", () => {
     expect(openGuideFreeBadgeLabel("elite")).toBeNull();
   });
 
+  it("labels guide header bubbles as Members, not Membership", () => {
+    expect(guideTierBadgeLabel("free")).toBe("Free Guide");
+    expect(guideTierBadgeLabel("starter")).toBe("Starter Members");
+    expect(guideTierBadgeLabel("pro")).toBe("Pro Members");
+    expect(guideTierBadgeLabel("elite")).toBe("Elite Members");
+  });
+
   it("omits membership bubbles on Free guides; paid guides show plans that include them", async () => {
     const { membershipsIncludedForMinTier, guideTierBadgeClass } = await import("../guide-access");
     expect(membershipsIncludedForMinTier("free")).toEqual(["free"]);
@@ -236,6 +320,7 @@ describe("guide access gatekeeping", () => {
   it("gates AI guides — coffee chat Elite; other AI + Digital Cookbook Elite", () => {
     expect(adultGuideMinTier("ai-peers")).toBe("elite");
     expect(seniorGuideMinTier("ai-peer-class")).toBe("elite");
+    expect(seniorGuideMinTier("senior-pod", "pod")).toBe("elite");
     expect(adultGuideMinTier("amazon")).toBe("elite");
     expect(adultGuideMinTier("ai-social-helper")).toBe("elite");
     expect(adultGuideMinTier("ai-prompt-helper")).toBe("elite");

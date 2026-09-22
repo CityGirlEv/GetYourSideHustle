@@ -699,7 +699,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     number: "12",
     title: "End-user site",
     intro:
-      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Sign-Up · About · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
+      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Sign-Up · About Us · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
     subsections: [
       {
         id: "eu-home",
@@ -712,7 +712,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "eu-h2",
-            text: "Open Profit Estimator or a launch guide from a hustle card when available.",
+            text: "Open Profit Estimator or a launch guide from a side hustle card when available.",
           },
         ],
       },

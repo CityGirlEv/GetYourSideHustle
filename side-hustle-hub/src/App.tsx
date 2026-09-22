@@ -28,6 +28,7 @@ import {
   ShoppingBag,
   Crown,
   BookOpen,
+  LayoutDashboard,
   Users,
 } from "lucide-react";
 import { FacebookIcon } from "./components/FacebookIcon";
@@ -60,6 +61,7 @@ import { isReferralDashboardHash } from "./lib/referral";
 import { isCreditsDashboardHash } from "./lib/member-credits";
 import { isBillingDashboardHash } from "./lib/member-purchases";
 import { isBlueprintDashboardHash } from "./lib/member-dashboard";
+import { isProfileDashboardHash } from "./lib/member-profile";
 import { userHasAdminRole, canSetGuideReviewedByDev } from "./lib/gysh-assignment";
 import {
   ADMIN_MENU_GROUPS,
@@ -113,6 +115,7 @@ import {
   readSavedJoinAudience,
   saveJoinAudience,
 } from "./lib/join-audience";
+import { wizardUnlockSignupTarget } from "./lib/wizard-unlock-signup";
 import {
   clearPendingMembershipCheckout,
   readPendingMembershipCheckout,
@@ -140,7 +143,10 @@ import {
   syncUrlToView,
   titleForView,
   viewRequiresMemberLogin,
+  workshopsListingPath,
 } from "./lib/app-routes";
+import { workshopRegistrationPath } from "./lib/workshops";
+import { consumeWorkshopJoinReturn } from "./lib/pending-join-return";
 import { readAdminDeepLink } from "./lib/admin-deep-links";
 import {
   confirmPasswordReset,
@@ -161,10 +167,11 @@ import {
   actAsLabel,
   clearActAsTarget,
   readActAsTarget,
+  toActAsUserTarget,
   writeActAsTarget,
   type ActAsTarget,
 } from "./lib/admin-act-as";
-import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser } from "./lib/gysh-roles";
+import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser, type GyshUser } from "./lib/gysh-roles";
 import type { BetaNdaReceipt } from "./lib/beta-tester-dashboard";
 import { adminLandingTabAfterLogin } from "./lib/admin-login-landing";
 import {
@@ -172,7 +179,12 @@ import {
   mustPickAgendaTimes,
 } from "./lib/gysh-partner-agenda";
 import { attachPendingWizardToAccount, readPendingBlueprint } from "./lib/pending-blueprint";
+import { useComplimentaryGuideIds } from "./lib/use-complimentary-guides";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
+import {
+  isPendingFreePlaceholderUser,
+  portalSessionUnlocksBlueprint,
+} from "./lib/free-member-session";
 import { isYouthDashboardUser, youthAgeBand } from "./lib/youth-dashboard";
 import { authReadySafetyMs } from "./lib/first-load";
 import { isLocalDevHost } from "./lib/d1-errors";
@@ -233,6 +245,9 @@ function App() {
   /** Skip pushState when the URL change came from back/forward. */
   const skipNextUrlSync = useRef(false);
   const urlSyncReady = useRef(false);
+  /** Community → Workshops should show the catalog, not a leftover ?register= form. */
+  const workshopsListingNav = useRef(false);
+  const [workshopsHubEpoch, setWorkshopsHubEpoch] = useState(0);
   /** Guest hit /my-dashboard — after session restore, put them back on the portal. */
   const resumeDashboardAfterAuth = useRef(viewRequiresMemberLogin(bootRoute.view));
   const [selectedHustleId, setSelectedHustleId] = useState<string>("");
@@ -277,12 +292,13 @@ function App() {
     useState<BetaPhaseNoticeCopy>(BETA_PHASE_NOTICE);
   const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
   const [portalInitialTab, setPortalInitialTab] = useState<
-    "blueprint" | "schedule" | "referral" | "purchases" | "credits" | null
+    "blueprint" | "profile" | "schedule" | "referral" | "purchases" | "credits" | null
   >(() => {
     if (isScheduleSuiteDashboardHash(window.location.hash)) return "schedule";
     if (isReferralDashboardHash(window.location.hash)) return "referral";
     if (isCreditsDashboardHash(window.location.hash)) return "credits";
     if (isBillingDashboardHash(window.location.hash)) return "purchases";
+    if (isProfileDashboardHash(window.location.hash)) return "profile";
     if (isBlueprintDashboardHash(window.location.hash)) return "blueprint";
     return null;
   });
@@ -340,8 +356,10 @@ function App() {
   const [memberAccessTick, setMemberAccessTick] = useState(0);
   void memberAccessTick;
   const previewingAsGuest = actAsTarget.type === "guest";
-  /** Real portal login only — localStorage “free session” and team join do not count. */
-  const effectivePortalLogin = previewingAsGuest ? false : isLoggedIn;
+  /** Real portal login only — localStorage Free-signup marker is not a session. */
+  const effectivePortalLogin =
+    previewingAsGuest || isPendingFreePlaceholderUser(authUser) ? false : isLoggedIn;
+  useComplimentaryGuideIds(effectivePortalLogin, memberAccessTick);
   const [pageZoom, setPageZoom] = useState(() => {
     try {
       const raw = Number(localStorage.getItem("gysh-page-zoom"));
@@ -431,9 +449,12 @@ function App() {
       skipNextUrlSync.current = false;
       return;
     }
+    const listing = workshopsListingNav.current;
+    workshopsListingNav.current = false;
     syncUrlToView(activeView, {
       guidesManualId,
       guidesHustleId: activeView === "guides" && !guidesManualId ? guidesDetailId : null,
+      workshopListing: listing && activeView === "workshops",
       replace: !urlSyncReady.current,
     });
     urlSyncReady.current = true;
@@ -506,6 +527,9 @@ function App() {
       if (parsed.view === "user_portal" && isBillingDashboardHash(window.location.hash)) {
         setPortalInitialTab("purchases");
       }
+      if (parsed.view === "user_portal" && isProfileDashboardHash(window.location.hash)) {
+        setPortalInitialTab("profile");
+      }
       if (parsed.view === "user_portal" && isBlueprintDashboardHash(window.location.hash)) {
         setPortalInitialTab("blueprint");
       }
@@ -539,17 +563,18 @@ function App() {
   const qaOnlyPortal = isLoggedIn && isQaOnlyPortalUser(authUser);
   /** Profile Switcher is previewing a member audience (hide Admin chrome). */
   const previewingAsMember = actAsTarget.type !== "self";
-  const actAsAudienceNow = actAsAudience(actAsTarget);
+  const actAsMember = actAsTarget.type === "user" ? actAsTarget : null;
+  const dashboardPreviewUser = actAsMember ?? authUser;
   /**
-   * Kids/Teens member guides + wizard unlock for a real GYSH login (or act-as kids/teens).
-   * Lightweight team join and a localStorage free-session marker are not membership.
-   * Staff browsing as themselves stay gated.
+   * Kids/Teens/Senior member chrome + ranked wizard Blueprint.
+   * Any signed-in GYSH account (Free+) counts — including Admin and QA.
+   * Guest preview (Profile Switcher → Unlogged in User) stays locked.
+   * Individual Launch Guides still follow membershipTier + the 1 extra unlock.
    */
-  const kidsCornerMemberAccess =
-    !previewingAsGuest &&
-    (actAsAudienceNow === "kids" ||
-      actAsAudienceNow === "junior" ||
-      (effectivePortalLogin && !canUseAdminPortal && !canUseTestingPortal));
+  const ageHubMemberAccess = portalSessionUnlocksBlueprint({
+    isLoggedIn,
+    previewAsGuest: previewingAsGuest,
+  });
 
   // Restore session: localhost persists across tabs/restarts/HMR; production is tab-scoped.
   // Local Dev: hydrate from cached user immediately so Vite remounts don't bounce to Login
@@ -573,12 +598,12 @@ function App() {
       .then((user) => {
         if (cancelled) return;
         if (user) applyUser(user);
-        else if (!localDev) {
-          setIsLoggedIn(false);
-          setAuthUser(null);
-        } else if (!readSessionToken()) {
-          setIsLoggedIn(false);
-          setAuthUser(null);
+        else {
+          // Local Free-signup marker is not a login — profile save and Blueprint need a session.
+          if (!localDev || !readSessionToken()) {
+            setIsLoggedIn(false);
+            setAuthUser(null);
+          }
         }
       })
       .finally(() => {
@@ -705,11 +730,25 @@ function App() {
       scroll?: boolean;
       /** Open a specific adult Launch Guide on /guides (clears marketing manuals). */
       launchGuideId?: string | null;
+      /** Resume the workshop Register form instead of the catalog listing. */
+      workshopRegisterId?: string;
     },
   ) => {
     if (meetingGateLocked && view !== "admin") return;
     const dest: AppView =
       viewRequiresMemberLogin(view) && !effectivePortalLogin ? "login" : view;
+    if (dest === "workshops") {
+      const registerId = String(opts?.workshopRegisterId || "").trim();
+      workshopsListingNav.current = !registerId;
+      setWorkshopsHubEpoch((n) => n + 1);
+      const nextPath = registerId
+        ? workshopRegistrationPath(registerId)
+        : workshopsListingPath(window.location.search);
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (current !== nextPath) {
+        window.history.pushState({ view: dest }, "", nextPath);
+      }
+    }
     setActiveView(dest);
     // Kid dashboard is opened in-place (no goTo); any nav clears the parent coach preview.
     setParentKidDashboard(null);
@@ -803,7 +842,7 @@ function App() {
               "Tell us your startup budget and how many hours you can commit each week.",
               "Rank your strengths — what you’re naturally good at (pick up to two).",
               "Rank your goals — passive income, local gigs, and more.",
-              "See hustles ranked for adults — best match first from your answers.",
+              "See side hustles ranked for adults — best match first from your answers.",
             ],
           };
         }
@@ -833,7 +872,7 @@ function App() {
             "Choose a pace that fits your life — gentle, balanced, or active.",
             "Rank your strengths — teaching, crafts, hosting, tech, and more.",
             "Share how much time you can give and what you want most.",
-            "Get hustles ranked for 50+ / flexible schedules — best match first.",
+            "Get side hustles ranked for 50+ / flexible schedules — best match first.",
           ],
         };
       case "guides":
@@ -852,7 +891,7 @@ function App() {
           title: "How GYSH Workshops work",
           steps: [
             "Browse live and replay sessions from Tina, Evelyn, and guest experts.",
-            "Pick a track that fits — adult hustles, AI agents, or family-friendly Kids Glow.",
+            "Pick a track that fits — adult side hustles, AI agents, or family-friendly Kids Glow.",
             "Join or waitlist when a date is announced.",
             "Use the takeaways with Guides and the GYSH Match Wizard afterward.",
           ],
@@ -881,7 +920,7 @@ function App() {
         return {
           title: "How the GYSH Bi-Weekly Newsletter works",
           steps: [
-            "Starter or higher members get two issues a month — kids glow + adult hustle tip.",
+            "Starter or higher members get two issues a month — kids glow + adult side hustle tip.",
             "Read the archive on this page; the same issue lands in your inbox.",
             "Content Factory drafts appear here after they are marked Published.",
             "Free accounts can browse titles, then upgrade to unlock the full issue.",
@@ -892,7 +931,7 @@ function App() {
           title: "About GYSH",
           steps: [
             "Tina dreamed Get Your Side Hustle; Evelyn helped build the platform.",
-            "Kids Glow, Teen hustles, adult pilots, and senior paths share one mission.",
+            "Kids Glow, Teen side hustles, adult pilots, and senior paths share one mission.",
             "Explore the GYSH Match Wizard, Guides, Workshops, and Join to get started.",
             "Questions? Use Contact Us anytime.",
           ],
@@ -901,7 +940,7 @@ function App() {
         return {
           title: "How GYSH Contact works",
           steps: [
-            "Send questions about hustles, partnerships, or workshops.",
+            "Send questions about side hustles, partnerships, or workshops.",
             "Include your age group if you want Kids, Teens, Adult, or Senior help.",
             "We read messages through the GYSH inbox.",
             "For account help, try Login or Join first.",
@@ -961,7 +1000,7 @@ function App() {
         return {
           title: "How GYSH Profit Estimator works",
           steps: [
-            "Pick a hustle calculator that matches what you’re exploring.",
+            "Pick a side hustle calculator that matches what you’re exploring.",
             "Enter realistic costs, prices, and hours.",
             "Review the estimate — it’s educational, not a guarantee.",
             "Open the matching guide when you want step-by-step next actions.",
@@ -981,7 +1020,7 @@ function App() {
         return {
           title: "How Get Your Side Hustle works",
           steps: [
-            "Open the GYSH Match Wizard to match a hustle to your stage of life.",
+            "Open the GYSH Match Wizard to match a side hustle to your stage of life.",
             "Use Guides, Workshops, and calculators to learn the next steps.",
             "Join when you’re ready for member tools and support.",
             "Kids, Teens, Adults, and Seniors each get paths that fit.",
@@ -1162,6 +1201,21 @@ function App() {
     goTo("dashboard");
   };
 
+  const beginActAsMember = (user: GyshUser) => {
+    const target = toActAsUserTarget(user);
+    writeActAsTarget(target);
+    setActAsTarget(target);
+    setActAsMenuOpen(false);
+    setAdminMenuOpen(false);
+    setMobileMenuOpen(false);
+  };
+
+  const openMemberDashboard = (user: GyshUser) => {
+    beginActAsMember(user);
+    setPortalInitialTab("blueprint");
+    goTo("user_portal");
+  };
+
   /** After free unlock / login claim — land on My Dashboard (Blueprint + credits). */
   const restoreBlueprintAfterUnlock = (_ageGroup: BlueprintAgeGroup) => {
     setActiveView("user_portal");
@@ -1325,7 +1379,12 @@ function App() {
               resumeCheckout: pendingMembership.resumeCheckout,
             });
           } else {
-            restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
+            const workshopReturn = consumeWorkshopJoinReturn();
+            if (workshopReturn) {
+              goTo("workshops", { workshopRegisterId: workshopReturn });
+            } else {
+              restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
+            }
           }
         }
       } else if (outcome === "unavailable") {
@@ -1553,8 +1612,8 @@ function App() {
       case "membership_signup": return "GYSH Membership Sign-up";
       case "login": return "GYSH Sign In";
       case "user_portal":
-        return isYouthDashboardUser(authUser)
-          ? youthAgeBand(authUser) === "junior"
+        return isYouthDashboardUser(dashboardPreviewUser)
+          ? youthAgeBand(dashboardPreviewUser) === "junior"
             ? "GYSH Teens Dashboard"
             : "GYSH Kids Dashboard"
           : "GYSH My Dashboard";
@@ -1578,7 +1637,7 @@ function App() {
       case "checklist": return "Practical launch steps — preview is open; the full list unlocks when you sign in.";
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
-      case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult hustle tip.";
+      case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult side hustle tip.";
       case "shop": return "GYSH tees, caps, and Gang merch — Ideas. Action. Income. Freedom.";
       case "kids": return "Stories, GYSH Match Wizard, ideas, savings, and guides for Kids and Teens — parents coach the journey.";
       case "seniors": return "GYSH Match Wizard and flexible Side Hustles for 50+, retirees, and second careers.";
@@ -1592,7 +1651,7 @@ function App() {
       case "join": return "Create an account, explore teams, and compare Free through Elite plans.";
       case "login": return "Sign in to open My Dashboard — Blueprint, credits, and launch tools.";
       case "user_portal":
-        return isYouthDashboardUser(authUser)
+        return isYouthDashboardUser(dashboardPreviewUser)
           ? "Your Blueprint, credits, and shortcuts into Kids & Teens Corner."
           : "Your Blueprint, Schedule Suite, credits, family, and billing.";
       case "admin": return "Manage content calendars, growth guides, and monetization models.";
@@ -1644,7 +1703,7 @@ function App() {
             </span>
             <span className="home-step-bubble__body">
               <strong>Families</strong>
-              <span>Safe hustles, stories, and parents as GYSH Coaches.</span>
+              <span>Safe side hustles, stories, and parents as GYSH Coaches.</span>
             </span>
             <Star size={16} className="home-step-bubble__icon" aria-hidden="true" />
           </button>
@@ -1656,7 +1715,7 @@ function App() {
             </span>
             <span className="home-step-bubble__body">
               <strong>Seniors</strong>
-              <span>Flexible hustles for 50+, retirees, and second careers.</span>
+              <span>Flexible side hustles for 50+, retirees, and second careers.</span>
             </span>
             <Heart size={16} className="home-step-bubble__icon" aria-hidden="true" />
           </button>
@@ -1665,7 +1724,7 @@ function App() {
           <button
             type="button"
             className="home-step-bubble"
-            onClick={() => setActiveView("workshops")}
+            onClick={() => goTo("workshops")}
           >
             <span className="home-step-bubble__num" aria-hidden="true">
               4
@@ -1748,7 +1807,7 @@ function App() {
             <span className="home-match-family__band">9–12</span>
           </span>
           <span className="home-match-family__desc">
-            Confidence, kindness, and parent-guided first hustles.
+            Confidence, kindness, and parent-guided first side hustles.
           </span>
         </li>
         <li className="home-match-family__card home-match-family__card--teens">
@@ -2017,7 +2076,7 @@ function App() {
                       data-testid="nav-about"
                     >
                       <Info size={16} className="nav-icon nav-icon--about" aria-hidden />
-                      About
+                      About Us
                     </button>
                   </li>
                   <li>
@@ -2437,27 +2496,47 @@ function App() {
                     </Suspense>
                   )}
                   {!(activeView === "admin" && adminTab === "daily-progress") && (
-                    <button
-                      type="button"
-                      className="match-finder-adult-how-toggle page-how-toggle"
-                      onClick={() => setHowOpen((o) => !o)}
-                      aria-expanded={howOpen}
-                      data-testid="page-how-it-works"
-                    >
-                      {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                      How it works
-                    </button>
+                    <div className="header-title-end">
+                      {effectivePortalLogin && activeView === "membership_signup" ? (
+                        <button
+                          type="button"
+                          className="btn btn-primary header-open-dashboard"
+                          onClick={() => {
+                            setPortalInitialTab("blueprint");
+                            goTo("user_portal");
+                          }}
+                          data-testid="header-open-dashboard"
+                        >
+                          <LayoutDashboard size={16} aria-hidden />
+                          Open Dashboard
+                        </button>
+                      ) : null}
+                      <div className="header-title-end__tools">
+                        <button
+                          type="button"
+                          className="match-finder-adult-how-toggle page-how-toggle"
+                          onClick={() => setHowOpen((o) => !o)}
+                          aria-expanded={howOpen}
+                          data-testid="page-how-it-works"
+                        >
+                          {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          How it works
+                        </button>
+                        {effectivePortalLogin ? (
+                          <>
+                            <HeaderReferralBadge />
+                            {activeView !== "membership_signup" ? (
+                              <HeaderDashboardBadge
+                                membershipTier={authUser?.membershipTier}
+                                isActive={activeView === "user_portal"}
+                                onClick={() => goTo("user_portal")}
+                              />
+                            ) : null}
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
                   )}
-                  {effectivePortalLogin ? (
-                    <>
-                      <HeaderReferralBadge />
-                      <HeaderDashboardBadge
-                        membershipTier={authUser?.membershipTier}
-                        isActive={activeView === "user_portal"}
-                        onClick={() => goTo("user_portal")}
-                      />
-                    </>
-                  ) : null}
                 </div>
                 {getHeaderDesc() ? (
                   <p className="header-title-desc">{getHeaderDesc()}</p>
@@ -2757,9 +2836,20 @@ function App() {
                 hustles={quizHustles}
                 catalogStates={liveGuideCounts.states}
                 onSelectAction={handleSelectHustleAction}
-                isLoggedIn={effectivePortalLogin}
+                isLoggedIn={ageHubMemberAccess}
                 previewAsGuest={previewingAsGuest}
-                onUnlockBlueprint={() => openJoin("adult")}
+                membershipTier={
+                  authUser?.membershipTier ?? (ageHubMemberAccess ? "free" : null)
+                }
+                isAdmin={canUseAdminPortal && !previewingAsMember}
+                onUnlockBlueprint={() => {
+                  const target = wizardUnlockSignupTarget("adult");
+                  openMembershipSignup(target.tier, target.audience);
+                }}
+                onOpenDashboard={() => {
+                  setPortalInitialTab("blueprint");
+                  goTo("user_portal");
+                }}
               />
             )}
           </>
@@ -2874,6 +2964,13 @@ function App() {
 
         {activeView === "workshops" && (
           <WorkshopsHub
+            key={workshopsHubEpoch}
+            isLoggedIn={effectivePortalLogin}
+            memberName={authUser?.name || ""}
+            memberEmail={authUser?.email || ""}
+            isAdmin={canUseAdminPortal && !previewingAsMember}
+            onGoToJoin={() => openMembershipSignup("free", "adult")}
+            onGoToLogin={() => goTo("login")}
             onAddWorkshopSeat={() => {
               addAlaCarteToCart("workshop-general");
               if (!effectivePortalLogin) goTo("login");
@@ -2920,18 +3017,28 @@ function App() {
 
         {activeView === "kids" && (
           <KidsCorner
-            isLoggedIn={kidsCornerMemberAccess}
-            hasAccountLogin={kidsCornerMemberAccess}
+            isLoggedIn={ageHubMemberAccess}
+            hasAccountLogin={ageHubMemberAccess}
             previewAsGuest={previewingAsGuest}
             membershipTier={
-              authUser?.membershipTier ?? (kidsCornerMemberAccess ? "free" : null)
+              authUser?.membershipTier ?? (ageHubMemberAccess ? "free" : null)
             }
             onGoToJoin={(audience: AudienceGroup, focusTier?: TierId) =>
               openJoin(audience, joinUnlockNavOpts(focusTier))
             }
+            onUnlockBlueprint={(audience: "kids" | "junior") => {
+              const target = wizardUnlockSignupTarget(audience);
+              openMembershipSignup(target.tier, target.audience);
+            }}
             onOpenDashboard={
-              isLoggedIn && !previewingAsGuest ? () => goTo("user_portal") : undefined
+              isLoggedIn && !previewingAsGuest
+                ? () => {
+                    setPortalInitialTab("blueprint");
+                    goTo("user_portal");
+                  }
+                : undefined
             }
+            onOpenGuide={(hustleId: string) => goTo("guides", { launchGuideId: hustleId })}
             onOpenGuidesLibrary={openGuidesLibrary}
             onOpenSeniors={() => openSeniors("guides")}
             entryFocus={kidsEntryFocus}
@@ -2940,25 +3047,24 @@ function App() {
 
         {activeView === "seniors" && (
           <SeniorSideHustles
-            isLoggedIn={
-              !previewingAsGuest &&
-              (actAsAudienceNow === "senior" ||
-                (effectivePortalLogin && !canUseAdminPortal))
-            }
+            isLoggedIn={ageHubMemberAccess}
             previewAsGuest={previewingAsGuest}
             membershipTier={
-              authUser?.membershipTier ??
-              (!previewingAsGuest &&
-              (actAsAudienceNow === "senior" ||
-                (effectivePortalLogin && !canUseAdminPortal))
-                ? "free"
-                : null)
+              authUser?.membershipTier ?? (ageHubMemberAccess ? "free" : null)
             }
             onGoToJoin={(focusTier?: TierId) =>
               openJoin("senior", joinUnlockNavOpts(focusTier))
             }
+            onUnlockBlueprint={() => {
+              const target = wizardUnlockSignupTarget("senior");
+              openMembershipSignup(target.tier, target.audience);
+            }}
             onOpenGuides={openGuidesLibrary}
             onOpenLaunchGuide={(launchGuideId: string) => goTo("guides", { launchGuideId })}
+            onOpenDashboard={() => {
+              setPortalInitialTab("blueprint");
+              goTo("user_portal");
+            }}
             entryTab={seniorsEntryTab}
           />
         )}
@@ -3311,6 +3417,12 @@ function App() {
               setMemberAccessTick((n) => n + 1);
             }}
             onShowDashboardTip={() => setDashboardNavTipOpen(true)}
+            onContinueAfterSignup={() => {
+              const workshopReturn = consumeWorkshopJoinReturn();
+              if (!workshopReturn) return false;
+              goTo("workshops", { workshopRegisterId: workshopReturn });
+              return true;
+            }}
             onBackToPlans={() => {
               setSignupResumeCheckout(false);
               openJoin(joinAudience);
@@ -3319,6 +3431,14 @@ function App() {
             onOpenFreeGuides={() => {
               setGuidesDetailId(null);
               goTo("guides");
+            }}
+            onOpenDashboard={() => {
+              setPortalInitialTab("blueprint");
+              goTo("user_portal");
+            }}
+            onOpenMatchWizard={() => {
+              setFindMineMode("select");
+              goTo("quiz");
             }}
             onOpenBetaNda={() => goTo("beta_nda")}
             onBetaTesterRegistered={() => {
@@ -3346,19 +3466,19 @@ function App() {
 
         {activeView === "user_portal" &&
           effectivePortalLogin &&
-          (isYouthDashboardUser(authUser) ? (
+          (isYouthDashboardUser(dashboardPreviewUser) ? (
             <KidDashboard
-              memberName={authUser?.name}
-              ageBand={youthAgeBand(authUser)}
+              memberName={dashboardPreviewUser?.name}
+              ageBand={youthAgeBand(dashboardPreviewUser)}
               onOpenMatchWizard={() =>
                 openKidsCorner({
-                  mode: youthAgeBand(authUser),
+                  mode: youthAgeBand(dashboardPreviewUser),
                   tab: "wizard",
                 })
               }
               onOpenCorner={(tab?: "wizard" | "piggy" | "guides" | "jobs") =>
                 openKidsCorner({
-                  mode: youthAgeBand(authUser),
+                  mode: youthAgeBand(dashboardPreviewUser),
                   tab: tab ?? "wizard",
                 })
               }
@@ -3406,10 +3526,12 @@ function App() {
             />
           ) : (
             <UserPortal
-              memberName={authUser?.name}
-              membershipTier={authUser?.membershipTier}
+              memberName={actAsMember?.name ?? authUser?.name}
+              memberEmail={actAsMember?.email ?? authUser?.email}
+              memberPhone={authUser?.phone}
+              membershipTier={actAsMember?.membershipTier ?? authUser?.membershipTier}
               memberNotes={authUser?.notes}
-              isAdmin={userHasAdminRole(authUser)}
+              isAdmin={userHasAdminRole(authUser) && !actAsMember}
               initialPortalTab={portalInitialTab ?? undefined}
               focusScheduleId={focusScheduleId}
               onFocusScheduleConsumed={() => {
@@ -3426,6 +3548,16 @@ function App() {
               }}
               onMerchSaved={(user: AuthUser) => {
                 setAuthUser((prev) => (prev ? { ...prev, notes: user.notes } : prev));
+              }}
+              onProfileSaved={(user: AuthUser) => {
+                setAuthUser((prev) =>
+                  prev
+                    ? { ...prev, name: user.name, email: user.email, phone: user.phone }
+                    : prev,
+                );
+              }}
+              onComplimentaryClaimed={() => {
+                setMemberAccessTick((n) => n + 1);
               }}
               onAccountDeactivated={() => {
                 handleLogout();
@@ -3473,6 +3605,7 @@ function App() {
               userGuide={adminUserGuide}
               onUserGuideChange={setAdminUserGuide}
               onSiteMapNavigate={navigateFromSiteMap}
+              onViewMemberDashboard={openMemberDashboard}
             />
           </Suspense>
         )}

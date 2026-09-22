@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   browseGuidesButtonLabel,
+  freeMemberSignupNextStepsCopy,
+  isFreeMemberSignupNextStepsVisible,
   memberGuidesButtonLabel,
   membershipPlanBubbles,
   membershipPlanChooseLabel,
@@ -147,6 +149,58 @@ describe("membershipPlanChooseLabel", () => {
       "Upgrade to Pro",
       "Upgrade to Elite",
     ]);
+  });
+});
+
+describe("free member signup next steps", () => {
+  it("shows after a logged-in Free member lands on signup", () => {
+    expect(
+      isFreeMemberSignupNextStepsVisible({
+        isLoggedIn: true,
+        currentTier: "free",
+        initialTier: "free",
+      }),
+    ).toBe(true);
+    expect(
+      isFreeMemberSignupNextStepsVisible({
+        isLoggedIn: true,
+        currentTier: "free",
+        initialTier: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("hides for guests, paid members, and Free members opening a paid plan", () => {
+    expect(
+      isFreeMemberSignupNextStepsVisible({
+        isLoggedIn: false,
+        currentTier: "free",
+        initialTier: "free",
+      }),
+    ).toBe(false);
+    expect(
+      isFreeMemberSignupNextStepsVisible({
+        isLoggedIn: true,
+        currentTier: "starter",
+        initialTier: "free",
+      }),
+    ).toBe(false);
+    expect(
+      isFreeMemberSignupNextStepsVisible({
+        isLoggedIn: true,
+        currentTier: "free",
+        initialTier: "pro",
+      }),
+    ).toBe(false);
+  });
+
+  it("points new Free members to Dashboard, guides, and Match Wizard", () => {
+    const copy = freeMemberSignupNextStepsCopy();
+    expect(copy.heading).toMatch(/next steps/i);
+    expect(copy.dashboardLabel).toMatch(/Open Dashboard/i);
+    expect(copy.guidesLabel).toMatch(/guides/i);
+    expect(copy.wizardLabel).toMatch(/Match Wizard/i);
+    expect(copy.upgradeHint).toMatch(/Upgrade/i);
   });
 });
 

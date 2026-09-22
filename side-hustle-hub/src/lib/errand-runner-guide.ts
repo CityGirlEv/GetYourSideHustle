@@ -99,7 +99,7 @@ export const ERRAND_RUNNER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Run short local errands for busy neighbors and clients — store pickups, returns, basic shopping, package drop-offs, and permitted pharmacy pickups — then provide clear receipts and completion updates. Tagline: Save Them the Trip. Get Paid for the Run. Category: Local Services / Errands. Best for Adults, Seniors / Retirees; responsible Teens only for age-appropriate errands with parent/guardian approval. Beginner · Very low startup · Flexible · Local / On-Site · Per job / recurring · 2 - 8 hrs/week · Free Guide.",
   },

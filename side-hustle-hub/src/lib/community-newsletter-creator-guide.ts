@@ -144,7 +144,7 @@ DEFINED AUDIENCE + APPROVED CONTENT + VERIFIED DETAILS + READABLE DESIGN + CONTR
 export const COMMUNITY_NEWSLETTER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Turn community updates into one useful read for a neighborhood, club, association, school-support group, faith community, senior community, nonprofit, or local organization. Pro Membership. 10 hrs/week. Displayed $15 – $50 / project is examples only, not guarantees. Beginner–Intermediate. Startup $0 – low. Online / local / hybrid. Per issue, setup project, weekly or monthly retainer, and approved add-ons.",
   },

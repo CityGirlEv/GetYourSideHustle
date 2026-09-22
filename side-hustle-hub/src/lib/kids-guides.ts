@@ -37,7 +37,7 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     steps: [
       {
         title: "Pick Your Goal",
-        body: "Write or draw what you want to save for — a toy, game, book, gift, or something for your hustle.",
+        body: "Write or draw what you want to save for — a toy, game, book, gift, or something for your side hustle.",
       },
       {
         title: "Find the Price",

@@ -138,3 +138,46 @@ export function isActAsUserTarget(target: ActAsTarget): target is ActAsUserTarge
 export function actAsUserId(target: ActAsTarget): string | null {
   return target.type === "user" ? target.id : null;
 }
+
+export type MemberPreviewAudience = Exclude<ActAsAudience, "admin" | "guest">;
+
+/** Primary member lane for admin dashboard / wizard links. */
+export function memberPreviewAudience(
+  user: Pick<GyshUser, "audience" | "role" | "roles">,
+): MemberPreviewAudience {
+  const a = String(user.audience || "").toLowerCase();
+  if (a === "kids" || a === "junior" || a === "adult" || a === "senior") return a;
+  if (a === "teens" || a === "teen") return "junior";
+  const fromRoles = audienceFromRoles(userRoles(user));
+  if (fromRoles === "admin" || fromRoles === "guest") return "adult";
+  return fromRoles;
+}
+
+export function memberDashboardPath(): string {
+  return "/my-dashboard";
+}
+
+export function memberWizardPath(audience: MemberPreviewAudience): string {
+  if (audience === "kids") return "/kids?tab=wizard&mode=kids";
+  if (audience === "junior") return "/kids?tab=wizard&mode=junior";
+  if (audience === "senior") return "/seniors?tab=match";
+  return "/match";
+}
+
+export function memberWizardLinkLabel(audience: MemberPreviewAudience): string {
+  if (audience === "kids") return "Kids Match Wizard";
+  if (audience === "junior") return "Teens Match Wizard";
+  if (audience === "senior") return "Seniors Match Wizard";
+  return "Match Wizard";
+}
+
+export function memberPreviewLinks(user: Pick<GyshUser, "audience" | "role" | "roles">) {
+  const audience = memberPreviewAudience(user);
+  return {
+    audience,
+    dashboardHref: memberDashboardPath(),
+    dashboardLabel: "Dashboard",
+    wizardHref: memberWizardPath(audience),
+    wizardLabel: memberWizardLinkLabel(audience),
+  };
+}

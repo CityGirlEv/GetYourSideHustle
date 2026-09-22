@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, CreditCard, UserPlus } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, CreditCard, LayoutDashboard, Sparkles, UserPlus } from "lucide-react";
 import { BusyOverlay, WaitLabel } from "./WaitFeedback";
 import { PasswordField } from "./PasswordField";
 import { registerFreeMember, updateMembershipPlan, fetchMe, type AuthUser } from "../lib/auth";
 import { passwordPolicyError } from "../lib/password-policy";
 import { grantFreeMemberSession } from "../lib/free-member-session";
 import { pendingWizardRegisterPayload, readPendingBlueprint } from "../lib/pending-blueprint";
+import { ensureComplimentaryClaim } from "../lib/wizard-comp-guide";
 import {
   AUDIENCE_LABELS,
   MEMBERSHIP_TIERS,
@@ -39,8 +40,10 @@ import {
   quoteMixedUsdPayment,
 } from "../lib/credit-checkout";
 import {
+  membershipAdvanceBillingNoteCopy,
   membershipCheckoutDueLabel,
-  membershipDueNowUsd,
+  membershipJoinDueUsd,
+  membershipJoinIntervalRadioLabel,
 } from "../lib/membership-commitment-billing";
 import { CreditApplyControls } from "./CreditApplyControls";
 import {
@@ -51,10 +54,13 @@ import {
 } from "../lib/pending-membership-checkout";
 import {
   browseGuidesButtonLabel,
+  freeMemberSignupNextStepsCopy,
+  isFreeMemberSignupNextStepsVisible,
   membershipSignupDropdownTier,
   membershipSignupSubmitLabel,
   membershipUpgradeActionBubbles,
 } from "../lib/membership-signup-labels";
+import { VIEW_PATH } from "../lib/app-routes";
 import {
   adminSimulatePaymentHint,
   adminSimulatePaymentLabel,
@@ -91,12 +97,18 @@ type MembershipSignupPageProps = {
   onBackToPlans: () => void;
   onGoToLogin: () => void;
   onOpenFreeGuides?: () => void;
+  /** Open My Dashboard after Free signup. */
+  onOpenDashboard?: () => void;
+  /** Open Match Wizard after Free signup. */
+  onOpenMatchWizard?: () => void;
   onOpenBetaNda?: () => void;
   /** Fired after a successful signup that applied as a Beta Tester (pending activation). */
   onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
   /** Point new members to My Dashboard next to How it works. */
   onShowDashboardTip?: () => void;
+  /** Return true to skip the done page (e.g. resume workshop registration). */
+  onContinueAfterSignup?: () => boolean;
 };
 
 const AUDIENCE_OPTIONS: AudienceGroup[] = ["kids", "junior", "adult", "senior"];
@@ -138,10 +150,13 @@ export function MembershipSignupPage({
   onBackToPlans,
   onGoToLogin,
   onOpenFreeGuides,
+  onOpenDashboard,
+  onOpenMatchWizard,
   onOpenBetaNda,
   onBetaTesterRegistered,
   onBetaTestingUnlocked,
   onShowDashboardTip,
+  onContinueAfterSignup,
 }: MembershipSignupPageProps) {
   const startingAudience = initialAudience ?? "adult";
   const startingTier = membershipSignupDropdownTier({
@@ -213,6 +228,12 @@ export function MembershipSignupPage({
   const isPaid = tier.id !== "free";
   const stripeReady = supportsMembershipStripeCheckout(tier.id, audience);
   const includedMerchCount = merchItemCount(tier.id);
+  const showFreeNextSteps = isFreeMemberSignupNextStepsVisible({
+    isLoggedIn,
+    currentTier,
+    initialTier,
+  });
+  const nextStepsCopy = freeMemberSignupNextStepsCopy();
 
   useEffect(() => {
     setMerchChoices((prev) => {
@@ -345,12 +366,10 @@ export function MembershipSignupPage({
     return `${formatUsd(mo)} / mo · ${formatUsd(yr)} / yr (save ${formatUsd(save)})`;
   };
 
-  /** Must match server: monthly plans charge 3 months upfront; yearly is the year amount. */
+  /** Must match Stripe: non-yearly plans invoice every 3 months; yearly is the year amount. */
   const billingForDue: MembershipBillingInterval =
     billingInterval === "year" && yearly != null ? "year" : "month";
-  const catalogUsdForDue =
-    billingForDue === "year" && yearly != null ? yearly : monthly;
-  const chargeUsd = membershipDueNowUsd(billingForDue, catalogUsdForDue);
+  const chargeUsd = membershipJoinDueUsd(billingForDue, monthly, yearly ?? null);
   const mixedQuote = quoteMixedUsdPayment({
     amountUsd: chargeUsd,
     balance: isLoggedIn ? creditBalance : 0,
@@ -554,6 +573,14 @@ export function MembershipSignupPage({
         isParentAccount: isKids || undefined,
       });
       saveJoinAudience(audience);
+      // Register issues a session for Free; keep the local wizard marker for restore.
+      if (wizard.pendingBlueprint?.resultIds?.length) {
+        await ensureComplimentaryClaim({
+          isLoggedIn: true,
+          resultIds: wizard.pendingBlueprint.resultIds,
+          resultPcts: wizard.pendingBlueprint.resultPcts,
+        });
+      }
       if (result.user) onProfileUpdated?.(result.user);
 
       if (applyBetaTester) {
@@ -567,6 +594,7 @@ export function MembershipSignupPage({
         setStep("checkout");
       } else {
         onShowDashboardTip?.();
+        if (onContinueAfterSignup?.()) return;
         setStep("done");
       }
     } catch {
@@ -641,15 +669,21 @@ export function MembershipSignupPage({
                 : "Creating account…"
         }
       />
-      <button type="button" className="btn btn-outline membership-signup-back" onClick={onBackToPlans}>
-        <ArrowLeft size={16} aria-hidden /> Back to membership plans
-      </button>
+      <div className="membership-signup-toolbar">
+        <button type="button" className="btn btn-outline membership-signup-back" onClick={onBackToPlans}>
+          <ArrowLeft size={16} aria-hidden /> Back to membership plans
+        </button>
+      </div>
 
       <section className="glass membership-signup-card" aria-labelledby="membership-signup-heading">
         <header className="membership-signup-header">
           <span className="glow-badge free">
             <UserPlus size={13} aria-hidden />{" "}
-            {isLoggedIn ? "Membership upgrade" : "Membership sign-up"}
+            {isLoggedIn
+              ? showFreeNextSteps && step === "profile"
+                ? "You're a member"
+                : "Membership upgrade"
+              : "Membership sign-up"}
           </span>
           <h2 id="membership-signup-heading">
             {step === "checkout"
@@ -659,7 +693,9 @@ export function MembershipSignupPage({
                   ? "Membership updated"
                   : "You're almost in"
                 : step === "profile"
-                  ? "Upgrade your GYSH Membership"
+                  ? showFreeNextSteps
+                    ? nextStepsCopy.heading
+                    : "Upgrade your GYSH Membership"
                   : "Create your GYSH Membership"}
           </h2>
           <p>
@@ -668,7 +704,9 @@ export function MembershipSignupPage({
                 ? "Enter your details to join. Paid Adult and Senior plans continue to secure Stripe Checkout."
                 : "Enter your details to join. Free plans need no payment; Kids/Teens paid plans use credits and activate after admin review.")}
             {step === "profile" &&
-              (isPaid && stripeReady
+              (showFreeNextSteps
+                ? nextStepsCopy.body
+                : isPaid && stripeReady
                 ? `You're signed in${loggedInEmail ? ` as ${loggedInEmail}` : ""}. Confirm the plan below — apply credits toward the amount due (1 credit = $1), or finish any remainder on Stripe.`
                 : `You're signed in${loggedInEmail ? ` as ${loggedInEmail}` : ""}. Choose a plan to add or upgrade on your profile${
                     currentTier ? ` (currently ${MEMBERSHIP_TIERS.find((t) => t.id === currentTier)?.name ?? currentTier})` : ""
@@ -905,6 +943,54 @@ export function MembershipSignupPage({
             noValidate
             data-testid="membership-upgrade-form"
           >
+            {showFreeNextSteps ? (
+              <div
+                className="membership-signup-next-steps"
+                data-testid="membership-signup-next-steps"
+              >
+                <div className="membership-signup-actions membership-signup-next-steps__actions">
+                  {onOpenFreeGuides ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={onOpenFreeGuides}
+                      data-testid="membership-signup-next-guides"
+                    >
+                      <BookOpen size={16} aria-hidden />
+                      {nextStepsCopy.guidesLabel}
+                    </button>
+                  ) : null}
+                  {onOpenMatchWizard ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={onOpenMatchWizard}
+                      data-testid="membership-signup-next-wizard"
+                    >
+                      <Sparkles size={16} aria-hidden />
+                      {nextStepsCopy.wizardLabel}
+                    </button>
+                  ) : (
+                    <a
+                      className="btn btn-outline"
+                      href={VIEW_PATH.quiz}
+                      data-testid="membership-signup-next-wizard"
+                    >
+                      <Sparkles size={16} aria-hidden />
+                      {nextStepsCopy.wizardLabel}
+                    </a>
+                  )}
+                </div>
+                <p
+                  className="membership-signup-dashboard-tip"
+                  data-testid="membership-signup-next-steps-tip"
+                  role="note"
+                >
+                  {myDashboardLocationTip()}
+                </p>
+                <p className="membership-signup-plan-note">{nextStepsCopy.upgradeHint}</p>
+              </div>
+            ) : null}
             <div className="membership-signup-summary">
               <label htmlFor="membership-upgrade-audience">Audience</label>
               <select
@@ -1025,7 +1111,12 @@ export function MembershipSignupPage({
                     checked={billingInterval === "month"}
                     onChange={() => setBillingInterval("month")}
                   />{" "}
-                  Monthly — {formatUsd(monthly)} / mo
+                  {membershipJoinIntervalRadioLabel({
+                    interval: "month",
+                    monthlyUsd: monthly,
+                    yearlyUsd: yearly,
+                    formatUsd,
+                  })}
                 </label>
                 <label>
                   <input
@@ -1034,11 +1125,17 @@ export function MembershipSignupPage({
                     checked={billingInterval === "year"}
                     onChange={() => setBillingInterval("year")}
                   />{" "}
-                  Yearly — {formatUsd(yearly)} / yr
-                  {yearlySave > 0 ? ` (save ${formatUsd(yearlySave)})` : ""}
+                  {membershipJoinIntervalRadioLabel({
+                    interval: "year",
+                    monthlyUsd: monthly,
+                    yearlyUsd: yearly,
+                    yearlySaveUsd: yearlySave,
+                    formatUsd,
+                  })}
                 </label>
               </fieldset>
             )}
+            <p className="membership-signup-plan-note">{membershipAdvanceBillingNoteCopy()}</p>
 
             <CreditApplyControls
               quote={mixedQuote}
@@ -1130,10 +1227,21 @@ export function MembershipSignupPage({
               </p>
             ) : null}
             <div className="membership-signup-actions">
-              {onOpenFreeGuides && (
+              {isLoggedIn && onOpenDashboard ? (
                 <button
                   type="button"
                   className="btn btn-primary"
+                  onClick={onOpenDashboard}
+                  data-testid="membership-signup-go-dashboard"
+                >
+                  <LayoutDashboard size={16} aria-hidden />
+                  {nextStepsCopy.dashboardLabel}
+                </button>
+              ) : null}
+              {onOpenFreeGuides && (
+                <button
+                  type="button"
+                  className={isLoggedIn && onOpenDashboard ? "btn btn-outline" : "btn btn-primary"}
                   onClick={onOpenFreeGuides}
                   data-testid="membership-signup-browse-guides"
                 >

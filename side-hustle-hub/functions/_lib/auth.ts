@@ -36,6 +36,7 @@ import {
   type TierId,
 } from "../../src/lib/membership";
 import { heardAboutFromNotes, mergeHeardAboutNote, parseHeardAboutInput } from "../../src/lib/heard-about";
+import { pendingFreeAccountMaySignIn, registerUserStatus } from "../../src/lib/register-activation";
 
 export type Env = {
   DB: D1Database;
@@ -55,6 +56,7 @@ export type DbUser = {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   role: string;
   /** JSON array of roles, e.g. `["admin","qa"]`. Null = derive from `role`. */
   roles?: string | null;
@@ -66,14 +68,20 @@ export type DbUser = {
   membership_tier?: string | null;
   audience?: string | null;
   parent_user_id?: string | null;
+  membership_expires_at?: string | null;
+  membership_last_paid_at?: string | null;
+  membership_renewal_reminded_for?: string | null;
 };
 
 const USER_SELECT =
-  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id`;
+  `id, name, email, phone, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id`;
+
+const USER_SELECT_NO_PHONE =
+  `id, name, email, '' AS phone, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id`;
 
 /** Legacy select for DBs where migration 0004 (roles column) has not run yet. */
 const USER_SELECT_LEGACY =
-  `id, name, email, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt, NULL AS membership_tier, NULL AS audience, NULL AS parent_user_id`;
+  `id, name, email, '' AS phone, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt, NULL AS membership_tier, NULL AS audience, NULL AS parent_user_id`;
 
 function isMissingRolesColumn(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
@@ -88,8 +96,13 @@ function isMissingMembershipColumns(e: unknown): boolean {
   );
 }
 
+function isMissingPhoneColumn(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.includes("no such column") && msg.includes("phone");
+}
+
 const USER_SELECT_NO_MEMBERSHIP =
-  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, NULL AS parent_user_id`;
+  `id, name, email, '' AS phone, role, roles, status, joined_at, notes, password_hash, password_salt, NULL AS parent_user_id`;
 
 const SESSION_DAYS = 14;
 import { MIN_PASSWORD_LENGTH, passwordPolicyError } from "./password-policy";
@@ -112,6 +125,7 @@ export function publicUser(u: DbUser & { last_login_at?: string | null }) {
     id: u.id,
     name: u.name,
     email: u.email,
+    phone: String(u.phone || "").trim(),
     role: roles[0] ?? u.role,
     roles,
     status: u.status,
@@ -122,6 +136,8 @@ export function publicUser(u: DbUser & { last_login_at?: string | null }) {
     audience: (u.audience || "adult").toLowerCase(),
     heardAbout: heardAboutFromNotes(u.notes),
     lastLoginAt: lastLoginAt || null,
+    membershipExpiresAt: String(u.membership_expires_at || "").trim().slice(0, 10),
+    membershipLastPaidAt: String(u.membership_last_paid_at || "").trim(),
   };
 }
 
@@ -144,6 +160,14 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<DbU
         .first<DbUser>()) ?? null,
     );
   } catch (e) {
+    if (isMissingPhoneColumn(e)) {
+      return rejectIfSoftDeletedUser(
+        (await db
+          .prepare(`SELECT ${USER_SELECT_NO_PHONE} FROM users WHERE email = ?`)
+          .bind(primary)
+          .first<DbUser>()) ?? null,
+      );
+    }
     if (isMissingMembershipColumns(e)) {
       return rejectIfSoftDeletedUser(
         (await db
@@ -171,6 +195,14 @@ export async function getUserById(db: D1Database, id: string): Promise<DbUser | 
         .first<DbUser>()) ?? null
     );
   } catch (e) {
+    if (isMissingPhoneColumn(e)) {
+      return (
+        (await db
+          .prepare(`SELECT ${USER_SELECT_NO_PHONE} FROM users WHERE id = ?`)
+          .bind(id)
+          .first<DbUser>()) ?? null
+      );
+    }
     if (isMissingMembershipColumns(e)) {
       return (
         (await db
@@ -382,23 +414,43 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
   }
 
   try {
-    const user = await withD1Retry(() => getUserByEmail(env.DB, email), LOGIN_D1_ATTEMPTS);
+    let user = await withD1Retry(() => getUserByEmail(env.DB, email), LOGIN_D1_ATTEMPTS);
     if (!user || !user.password_hash || !user.password_salt) {
       await safeAppendAudit(env.DB, "login_failed", email, "unknown account");
       return error("Invalid email or password.", 401);
     }
     if (user.status !== "active") {
-      await safeAppendAudit(env.DB, "login_failed", email, `inactive account · ${user.status}`);
-      if (user.status === "pending") {
-        return error(
-          "Your account is awaiting admin activation. Check your email for confirmation — you'll get a welcome message when you're cleared to sign in.",
-          403,
-        );
+      if (
+        pendingFreeAccountMaySignIn({
+          status: user.status,
+          membershipTier: user.membership_tier,
+        })
+      ) {
+        const activatedAt = new Date().toISOString();
+        try {
+          await env.DB.prepare(`UPDATE users SET status = 'active', updated_at = ? WHERE id = ?`)
+            .bind(activatedAt, user.id)
+            .run();
+          user = { ...user, status: "active" };
+        } catch {
+          return error(
+            "Your Free account is almost ready. Try signing in again in a moment.",
+            503,
+          );
+        }
+      } else {
+        await safeAppendAudit(env.DB, "login_failed", email, `inactive account · ${user.status}`);
+        if (user.status === "pending") {
+          return error(
+            "Your account is awaiting admin activation. Check your email for confirmation — you'll get a welcome message when you're cleared to sign in.",
+            403,
+          );
+        }
+        if (user.status === "disabled") {
+          return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
+        }
+        return error("Invalid email or password.", 401);
       }
-      if (user.status === "disabled") {
-        return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
-      }
-      return error("Invalid email or password.", 401);
     }
 
     const ok = await verifyPassword(password, user.password_salt, user.password_hash);
@@ -490,6 +542,7 @@ export async function handleRegister(
       resultIds?: string[];
       resultPcts?: Record<string, number>;
     };
+    claimedExtraGuideId?: string;
     membershipTier?: string;
     merchChoices?: unknown;
     merchTshirtSizes?: unknown;
@@ -582,12 +635,13 @@ export async function handleRegister(
     heardAbout.stamp,
   );
 
-  // New members start pending — admins must activate before login.
-  // Paid Adult/Senior plans continue to Stripe Checkout; activation still needs admin review.
+  // Free members are active immediately so they can sign in and save profile.
+  // Paid Adult/Senior plans stay pending until Stripe / staff activation.
+  const accountStatus = registerUserStatus(membershipTier);
   try {
     await env.DB.prepare(
       `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(
         userId,
@@ -595,6 +649,7 @@ export async function handleRegister(
         email,
         assignedPrimary,
         rolesJson,
+        accountStatus,
         now.slice(0, 10),
         notes,
         hash,
@@ -610,7 +665,7 @@ export async function handleRegister(
     if (msg.includes("no such column")) {
       await env.DB.prepare(
         `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           userId,
@@ -618,6 +673,7 @@ export async function handleRegister(
           email,
           assignedPrimary,
           rolesJson,
+          accountStatus,
           now.slice(0, 10),
           notes,
           hash,
@@ -732,7 +788,8 @@ export async function handleRegister(
   // Attach the Match Wizard they just finished — keep on the critical path so the UI can deep-link.
   let claimedBlueprintId: string | null = null;
   try {
-    const { claimPendingBlueprintForUser, saveWizardBlueprintForNewUser } = await import("./blueprints");
+    const { claimPendingBlueprintForUser, saveWizardBlueprintForNewUser, grantComplimentaryWizardExtra } =
+      await import("./blueprints");
     if (claimToken) {
       const claimed = await claimPendingBlueprintForUser(env, userId, claimToken, {
         childProfileId,
@@ -745,6 +802,19 @@ export async function handleRegister(
         claimToken: claimToken || null,
       });
       claimedBlueprintId = saved?.id ?? null;
+    }
+    const claimedExtraGuideId = String(body.claimedExtraGuideId || "").trim() || null;
+    if (
+      claimedBlueprintId ||
+      (Array.isArray(pendingBlueprint?.resultIds) && pendingBlueprint.resultIds.length) ||
+      claimedExtraGuideId
+    ) {
+      await grantComplimentaryWizardExtra(env, userId, {
+        resultIds: pendingBlueprint?.resultIds,
+        resultPcts: pendingBlueprint?.resultPcts,
+        blueprintId: claimedBlueprintId,
+        claimedGuideId: claimedExtraGuideId,
+      });
     }
   } catch {
     /* client can retry after activation / login */
@@ -796,28 +866,39 @@ export async function handleRegister(
       ? ` Child account for ${childDisplayName} was created and linked to your parent account.`
       : "";
 
+  let token: string | null = null;
+  const extraHeaders: Record<string, string> = {};
+  if (accountStatus === "active") {
+    const session = await createSession(env.DB, userId, {
+      secureCookie: requestWantsSecureCookie(request),
+    });
+    token = session.token;
+    extraHeaders["set-cookie"] = session.cookie;
+  }
+
   return json(
     {
       ok: true,
-      pendingActivation: true,
+      pendingActivation: accountStatus !== "active",
       emailSent: true,
       emailQueued: true,
       membershipTier,
-      user: publicUser(user),
+      user: publicUser({ ...user, status: accountStatus }),
       betaNda: betaNdaReceipt,
       testingUnlocked: Boolean(betaNdaReceipt),
-      token: null,
+      token,
       isAdmin: false,
       childProfileId,
       kidUserId,
       kidLoginEmail,
       claimedBlueprintId,
       message:
-        membershipTier === "free"
-          ? `Account created and awaiting admin activation.${kidsLinkedMsg} Check your email for confirmation — we'll send a welcome with your perks once you're activated.`
+        accountStatus === "active"
+          ? `Your Free account is ready.${kidsLinkedMsg} You can save your profile and open My Dashboard now.`
           : `Account created for the ${membershipTier} plan and awaiting admin activation.${kidsLinkedMsg} Adult/Senior paid plans continue to Stripe Checkout.`,
     },
     201,
+    extraHeaders,
   );
 }
 

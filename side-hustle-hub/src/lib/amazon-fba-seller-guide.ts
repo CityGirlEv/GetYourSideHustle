@@ -98,7 +98,7 @@ export const AMAZON_FBA_SELLER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Build and sell a physical-product brand through Amazon, using Fulfillment by Amazon when its economics and requirements fit. The seller selects and sources the product, owns the inventory risk, confirms product and intellectual-property compliance, creates truthful listings, sends prepared stock to Amazon, manages advertising and account health, and tracks profit after every fee and return—not just top-line sales. Tagline: Know the Product. Know Every Cost. Protect the Account. Category: E-Commerce / Physical Products. Best for adults prepared to research products, fund inventory, manage compliance, analyze unit economics, and accept inventory risk. Advanced Beginner–Advanced · Over $1,000 startup · Ongoing Inventory / Listing / Advertising / Compliance · Online + Suppliers · Product Sales · Elite · 15 - 30 hrs/week · Displayed $1,000 - $50,000/mo gross sales examples — not profit and not guarantees.",
   },

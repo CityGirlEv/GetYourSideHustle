@@ -5,7 +5,7 @@
 
 import { SITE_NAME } from "./site-config";
 
-export const LEGAL_DISCLAIMER_HEADLINE = "Your hustle, your results.";
+export const LEGAL_DISCLAIMER_HEADLINE = "Your side hustle, your results.";
 
 export const LEGAL_DISCLAIMER_BODY = `Income examples, calculators, and workshop takeaways are educational illustrations only — not guarantees. Outcomes depend on your effort, skills, market, and consistency. ${SITE_NAME} does not provide financial, legal, tax, or investment advice. Consult licensed professionals before making business or money decisions.`;
 
@@ -19,7 +19,7 @@ export function legalCopyrightNotice(year: number = new Date().getFullYear()): s
   return `© ${year} ${SITE_NAME}. All rights reserved. ${LEGAL_COPYRIGHT_LICENSE}`;
 }
 
-const DISCLAIMER_MARKER = /your hustle,\s*your results/i;
+const DISCLAIMER_MARKER = /your (side[- ]?)?hustle,\s*your results/i;
 
 export function legalDisclaimerPlainText(): string {
   return `${LEGAL_DISCLAIMER_HEADLINE} ${LEGAL_DISCLAIMER_BODY} ${LEGAL_DISCLAIMER_LIABILITY}`;

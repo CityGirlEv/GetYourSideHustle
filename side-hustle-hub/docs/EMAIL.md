@@ -54,7 +54,7 @@ Use a **separate** Resend account/key from Munties (free plans are one domain pe
 
 Forgot-password UI: Login → Forgot / Reset password? → enter account email → Resend link → open link → choose new password.
 
-Every Resend send (`sendResendEmail`) includes the site legal disclaimer (“Your hustle, your results.”) in the branded footer (HTML + plain text). Catalog templates inherit it from `wrapBrandedEmail`.
+Every Resend send (`sendResendEmail`) includes the site legal disclaimer (“Your side hustle, your results.”) in the branded footer (HTML + plain text). Catalog templates inherit it from `wrapBrandedEmail`.
 
 ## 4b. Daily Admin/QA digest (America/Chicago)
 

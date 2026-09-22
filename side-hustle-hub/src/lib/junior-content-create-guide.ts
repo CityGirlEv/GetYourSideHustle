@@ -101,7 +101,7 @@ export const JUNIOR_CONTENT_CREATE_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Practice wholesome content for school, a portfolio, or a family brand — privacy-first, parent-approved, and without stranger direct messages. Tagline: Create Something Helpful. Share It Safely. Category: AI / Creative. Best for Teens / Juniors working with a parent or guardian. Beginner · $0 – $35 startup · Flexible · Online / Home · Per Content Piece / Package · 1 - 2 weeks · Elite Membership. Displayed $10 – $30 / content piece; $25 – $60 / 3-post pack are examples only.",
   },

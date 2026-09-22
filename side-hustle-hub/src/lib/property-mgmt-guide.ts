@@ -140,7 +140,7 @@ export const PROPERTY_MGMT_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Manage rentals or short-term stays for owners who want hands-off operations — leasing coordination, guest turns, vendors, maintenance communication, calendars, and owner reporting. Tagline: Their Property. Your Systems. Smoother Operations. Category: Real Estate / Property Services. Best for adults, seniors / retirees. Beginner to Intermediate · Low to moderate startup · Timeline: 3–6 weeks · Recurring / per property · Free Guide · $1,000–$8,000 / month (example business revenue, not guaranteed beginner income).",
   },

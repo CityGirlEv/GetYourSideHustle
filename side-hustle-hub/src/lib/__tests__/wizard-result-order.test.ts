@@ -23,15 +23,19 @@ describe("wizard-result-order", () => {
     expect(relativeMatchPct(80, 80)).toBe(100);
   });
 
-  it("labels the first free result as a top free start", () => {
-    expect(wizardMatchTierLabel(0, 70, "dog-walk")).toBe("Top free start");
+  it("labels the highest-ranked result as the best match", () => {
+    expect(wizardMatchTierLabel(0, 70, "dog-walk")).toBe("Best match");
     expect(wizardMatchTierLabel(0, 100, "airbnb")).toBe("Best match");
   });
 
-  it("explains free-first vs highest match in the disclaimer", () => {
-    const note = wizardRankingDisclaimer().toLowerCase();
-    expect(note).toMatch(/free/);
-    expect(note).toMatch(/match %/);
+  it("explains ranking and the one extra Free-account guide", () => {
+    const guest = wizardRankingDisclaimer().toLowerCase();
+    expect(guest).toMatch(/free account/);
+    expect(guest).toMatch(/highest %/);
+    expect(guest).toMatch(/one extra/);
+    const member = wizardRankingDisclaimer({ isLoggedIn: true }).toLowerCase();
+    expect(member).toMatch(/already unlocks/);
+    expect(member).not.toMatch(/create a free account/);
     expect(compareWizardRank({ id: "dog-walk", score: 1 }, { id: "airbnb", score: 99 })).toBeLessThan(0);
   });
 });

@@ -66,7 +66,7 @@ Notes: ________
 export const NEIGHBORHOOD_DOG_WALKER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help busy neighbors by taking their friendly dogs for outdoor walks around the neighborhood. Free Guide. 2 - 8 hrs/week. Displayed $10 – $20 / walk is examples only. Tagline: Meet First. Leash On. Walk Safe.",
   },

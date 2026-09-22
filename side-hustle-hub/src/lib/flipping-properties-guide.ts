@@ -74,7 +74,7 @@ export const FLIPPING_PROPERTIES_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Find, renovate, and resell residential properties using disciplined deal sourcing, conservative ARV, a complete rehab budget, legal compliance, contractor coordination, and a written exit strategy. Tagline: Buy With Margin. Renovate With Control. Exit With Evidence. Category: Real Estate. Best for Adults, Seniors / Retirees with project-management skill, risk capital, and a qualified local team. Advanced · Over $1,000 startup · Project-Based / Deadline-Driven · Local / On-Site · Deal-Dependent / Resale or Lawful Assignment · 15 - 30 hrs/week (project-based) · Elite Membership. Displayed pricing is deal-dependent (examples only — not guarantees).",
   },

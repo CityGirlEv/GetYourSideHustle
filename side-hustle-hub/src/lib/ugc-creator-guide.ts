@@ -115,7 +115,7 @@ Build and test one UGC Creator offer:
 export const UGC_CREATOR_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Create natural-looking product demonstrations, testimonials, unboxings, tutorials, voiceovers, or lifestyle clips that brands can publish on their own channels or use in advertising under a written license. Starter Membership. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only, not guarantees. Category: Creative Services / User-Generated-Style Content. Best for comfortable on-camera or product-focused storytellers, Adults, and responsible Teens with parent/guardian-managed contracts and age-appropriate products. Beginner–Intermediate. Startup $0 – Low. Home studio / local / online delivery. Per video / content package / usage-rights fee / raw-footage or rush add-on. Tagline: Authentic Content. Clear Rights. Honest Claims.",
   },

@@ -97,7 +97,7 @@ export const CREATE_GAMES_KIDS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Invent simple game ideas with a parent nearby — use kid-friendly, parent-approved AI tools for stories, characters, rules, and level ideas, then build and test a small original game. Tagline: Imagine It. Build It. Let Someone Play It. Category: AI / Creative. Best for Kids creating with a parent or guardian nearby. Beginner · $0 startup · Flexible · Online / Home / School-Friendly · Creative Project / Optional Parent-Managed Fair Sales or Tips · 2 - 8 hrs/week · Elite Membership. Displayed pricing: School fair / family tips · or just for fun.",
   },

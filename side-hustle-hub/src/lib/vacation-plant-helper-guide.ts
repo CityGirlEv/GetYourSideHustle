@@ -53,7 +53,7 @@ Notes: ________
 `;
 
 export const VACATION_PLANT_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Water plants on a schedule for trusted neighbors while they travel — plants only, never mail or packages. 2 - 8 hrs/week. Displayed $10 – $40 / job is examples only." },
+  { id: "overview", label: "What this side-hustle is", detail: "Water plants on a schedule for trusted neighbors while they travel — plants only, never mail or packages. 2 - 8 hrs/week. Displayed $10 – $40 / job is examples only." },
   { id: "follow", label: "Follow owner instructions exactly", detail: "Owner shows every plant. If watering is unclear, do not guess — ask before the trip starts." },
   { id: "access", label: "Trusted access only", detail: "Phone and emergency contact. Guardian involvement for minors. Never enter an unfamiliar home independently as a child." },
 ];

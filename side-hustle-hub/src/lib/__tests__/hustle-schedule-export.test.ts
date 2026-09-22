@@ -9,11 +9,14 @@ vi.mock("../open-pdf", () => ({
   reservePdfTab: vi.fn(() => null),
 }));
 
+vi.mock("../pdf-logo", () => ({
+  loadPdfLogoDataUrl: vi.fn(async () => undefined),
+}));
+
 vi.mock("../pdf-branding", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../pdf-branding")>();
   return {
     ...actual,
-    loadPdfLogoDataUrl: vi.fn(async () => undefined),
     applyPdfPageBranding: vi.fn((doc: unknown, label: string) => {
       actual.applyPdfPageBranding(doc as never, label, undefined);
     }),

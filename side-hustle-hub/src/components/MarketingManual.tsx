@@ -34,7 +34,7 @@ const IMAGE_CAPTIONS: Record<ImageKey, string> = {
   secondary: "Product snapshot — the GYSH experience for this audience.",
   membership: "Membership ladder — Free through Elite with clear consulting time.",
   community: "Community & Workshops — momentum after the first match.",
-  guides: "Launch Guides library — real steps, costs, and next actions for every hustle.",
+  guides: "Launch Guides library — real steps, costs, and next actions for every side hustle.",
 };
 
 function resolveImage(guideId: MarketingGuideId, key?: ImageKey): string | undefined {

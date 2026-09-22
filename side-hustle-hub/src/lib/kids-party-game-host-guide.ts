@@ -81,7 +81,7 @@ export const KIDS_PARTY_GAME_HOST_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Get paid to lead fun, age-appropriate games and activities at children's birthday parties, family celebrations, reunions, and community events. Tagline: You Bring the Fun. Parents Enjoy the Party. Category: Events / Kids Services. Best for teens and adults. Beginner-friendly · Low startup cost · Weekends / flexible · Client location / local · Service-based income.",
   },

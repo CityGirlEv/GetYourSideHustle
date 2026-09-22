@@ -96,7 +96,7 @@ export const CRAFTS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Make and sell simple handmade products such as stickers, clay charms, jewelry, cards, keychains, bookmarks, or other crafts to friends and family, at approved school/community fairs and local markets, or through age-appropriate online shops such as Etsy. Tagline: Make It. Price It. Show It. Sell It. Category: Crafts / Product Sales. Beginner · Low startup · Flexible / market weekends · Home / local markets / online · Per item · 4 - 12 hrs/week · Free Guide.",
   },

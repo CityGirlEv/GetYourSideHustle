@@ -956,7 +956,9 @@ export {
 export type { GuidePricingItem, GuideSuggestedPricing } from "./guide-suggested-pricing";
 export {
   formatPricingLine,
+  organizeSuggestedPricingCopy,
   pricingDisclaimer,
+  pricingItemLabel,
   suggestedPricingForGuide,
 } from "./guide-suggested-pricing";
 
@@ -2521,7 +2523,7 @@ export function guideToolsDisclaimer(): string {
 
 /** Tools blurb for delivery-driver guides — apps are standard for drivers (no free-plan pitch). */
 export function deliveryDriverToolsDisclaimer(): string {
-  return "Driver apps and navigation are standard for this hustle. Your real costs are vehicle/bike use, fuel, and any gear you buy — check the Supply List for purchase items.";
+  return "Driver apps and navigation are standard for this side-hustle. Your real costs are vehicle/bike use, fuel, and any gear you buy — check the Supply List for purchase items.";
 }
 
 export {

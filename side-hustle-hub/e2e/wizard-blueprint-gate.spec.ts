@@ -43,6 +43,9 @@ test.describe("Wizard Blueprint membership gate", () => {
     await expect(blueprint).toHaveAttribute("data-age-group", "junior");
     await expect(page.getByTestId("blueprint-unlock-gate")).toBeVisible();
     await expect(page.getByTestId("blueprint-top-match")).toHaveCount(0);
+    await expect(page.getByTestId("blueprint-dashboard-link")).toHaveCount(0);
+    await expect(page.getByTestId("blueprint-open-dashboard")).toHaveCount(0);
+    await expect(page.getByText("Open guide")).toHaveCount(0);
     await expect(page.getByText("Your matches are locked")).toBeVisible();
 
     for (const name of TEEN_MATCH_NAMES) {
@@ -72,6 +75,21 @@ test.describe("Wizard Blueprint membership gate", () => {
     await expect(blueprint).toHaveAttribute("data-unlocked", "false");
     await expect(page.getByTestId("blueprint-unlock-gate")).toBeVisible();
     await expect(page.getByTestId("blueprint-top-match")).toHaveCount(0);
+    await expect(page.getByTestId("blueprint-dashboard-link")).toHaveCount(0);
     await expect(page.getByText("Neighborhood Dog Walker")).toHaveCount(0);
+  });
+
+  test("Unlock Blueprint opens Free signup with email, password, confirm, and how you heard about us", async ({
+    page,
+  }) => {
+    await openTeensWizardOnPhone(page);
+    await completeTeensWizard(page);
+    await page.getByTestId("blueprint-unlock-btn").click();
+    await expect(page.getByTestId("membership-signup-page")).toBeVisible();
+    await expect(page.getByTestId("membership-signup-email")).toBeVisible();
+    await expect(page.getByTestId("membership-signup-password")).toBeVisible();
+    await expect(page.getByTestId("membership-signup-password-confirm")).toBeVisible();
+    await expect(page.getByTestId("membership-signup-heard-about")).toBeVisible();
+    await expect(page.getByTestId("membership-signup-name")).toBeVisible();
   });
 });

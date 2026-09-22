@@ -42,7 +42,7 @@ import { MembershipsPage } from "./admin/MembershipsPage";
 import { AdminHustleSchedulesPage } from "./admin/AdminHustleSchedulesPage";
 import { VideoSceneProductionWizardPage } from "./admin/VideoSceneProductionWizardPage";
 import type { AuthUser } from "../lib/auth";
-import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser } from "../lib/gysh-roles";
+import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser, type GyshUser } from "../lib/gysh-roles";
 import {
   ADMIN_MENU_GROUPS,
   ADMIN_TABS,
@@ -82,6 +82,7 @@ type Props = {
   onSiteMapNavigate?: (href: SiteMapHref) => void;
   /** Notify App so site-wide nav can lock until Tina/Lyriq submit meeting times. */
   onMeetingGateChange?: (locked: boolean) => void;
+  onViewMemberDashboard?: (user: GyshUser) => void;
 };
 
 export const AdminPortal: React.FC<Props> = ({
@@ -92,6 +93,7 @@ export const AdminPortal: React.FC<Props> = ({
   onUserGuideChange,
   onSiteMapNavigate,
   onMeetingGateChange,
+  onViewMemberDashboard,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"calendar" | "monetize" | "growth">("calendar");
   const [localGuide, setLocalGuide] = useState<UserGuideId>(userGuide);
@@ -444,7 +446,10 @@ export const AdminPortal: React.FC<Props> = ({
       )}
       {activeTab === "users" && <UsersArea currentUserId={authUser?.id ?? null} />}
       {activeTab === "memberships" && (
-        <MembershipsPage currentUserId={authUser?.id ?? null} />
+        <MembershipsPage
+          currentUserId={authUser?.id ?? null}
+          onViewMemberDashboard={onViewMemberDashboard}
+        />
       )}
       {activeTab === "hustle-schedules" && <AdminHustleSchedulesPage />}
       {activeTab === "certificates" && <CertificatesAdmin />}

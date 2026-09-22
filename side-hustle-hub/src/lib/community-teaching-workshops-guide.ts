@@ -98,7 +98,7 @@ ONE LEARNER + ONE RESULT + ONE TESTED ACTIVITY + ONE CLEAR NEXT STEP = STRONG FI
 export const COMMUNITY_TEACHING_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Teach one useful skill in a focused class for a library, senior center, faith community, club, nonprofit, business, or online audience. Pro Membership. 3 - 10 hrs/week. Displayed $50 – $200 / session is examples only, not guarantees. Intermediate / skill-based. Startup $0 – $100. One session, short series, or recurring workshop. Per session, per participant, series, venue contract, and digital-handout add-on.",
   },

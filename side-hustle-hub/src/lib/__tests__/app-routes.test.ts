@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   parseAppRoute,
   pathForView,
+  stripWorkshopDeepLinkParams,
   viewRequiresMemberLogin,
+  workshopsListingPath,
 } from "../app-routes";
 
 describe("viewRequiresMemberLogin", () => {
@@ -33,5 +35,15 @@ describe("viewRequiresMemberLogin", () => {
 
   it("does not gate Guides library — browse is public; unlock still needs Free+ registration", () => {
     expect(viewRequiresMemberLogin("guides")).toBe(false);
+  });
+
+  it("opens the Workshops catalog without a leftover pre-register query", () => {
+    expect(workshopsListingPath("?register=ai-marketing-video")).toBe("/workshops");
+    expect(workshopsListingPath("?workshop=ai-marketing-video&ref=fb")).toBe("/workshops?ref=fb");
+    expect(workshopsListingPath("")).toBe("/workshops");
+    const params = new URLSearchParams("register=ai-marketing-video&reset=abc");
+    stripWorkshopDeepLinkParams(params);
+    expect(params.get("register")).toBeNull();
+    expect(params.get("reset")).toBe("abc");
   });
 });

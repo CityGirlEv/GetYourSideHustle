@@ -100,7 +100,7 @@ Start with trusted neighbors close together and charge for return trips caused b
 export const PORCH_PACKAGE_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help trusted neighbors who miss deliveries by moving delivered packages from a porch or approved delivery area to a safer, weather-protected location and sending a private completion update. 8 hrs/week. Displayed $10 – $40 / job is examples only.",
   },

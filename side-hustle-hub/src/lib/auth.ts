@@ -22,6 +22,7 @@ import {
   writeCachedAuthUser,
   writeTabAlive,
 } from "./session-storage";
+import { clearLocalComplimentaryClaim } from "./wizard-comp-guide";
 
 /** Button label whenever GYSH requires an existing member to authenticate. */
 export const LOGIN_BUTTON_LABEL = "Log in";
@@ -79,6 +80,7 @@ export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: string;
   roles?: string[];
   status: string;
@@ -152,6 +154,8 @@ export async function registerFreeMember(input: {
     resultIds: string[];
     resultPcts?: Record<string, number>;
   };
+  /** Sticky lifetime extra already claimed in the browser (first wizard wins). */
+  claimedExtraGuideId?: string | null;
   /** Requested membership plan (free / starter / pro / elite). Paid plans still need activation. */
   membershipTier?: "free" | "starter" | "pro" | "elite";
   /** Complimentary GYSH merch (hat / T-shirt) chosen at signup. */
@@ -225,6 +229,7 @@ export async function registerFreeMember(input: {
     setSessionToken(data.token ?? null);
     markTabAlive();
     writeCachedAuthUser(data.user);
+    clearLocalComplimentaryClaim();
     return {
       ok: true,
       user: data.user,
@@ -332,6 +337,27 @@ export async function fetchMe(): Promise<AuthUser | null> {
     return null;
   } catch {
     return null;
+  }
+}
+
+/** Update name, email, and phone on the logged-in member's profile. */
+export async function updateMemberProfile(input: {
+  name: string;
+  email: string;
+  phone: string;
+}): Promise<{ ok: boolean; user?: AuthUser; error?: string; message?: string }> {
+  try {
+    const data = await api<{ ok: boolean; user: AuthUser; message?: string }>("auth/profile", {
+      method: "POST",
+      body: input,
+    });
+    if (data.user) writeCachedAuthUser(data.user);
+    return { ok: true, user: data.user, message: data.message };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof ApiError ? e.message : "Could not save your profile.",
+    };
   }
 }
 

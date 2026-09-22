@@ -95,7 +95,7 @@ export const NEIGHBORHOOD_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Offer a short, clearly defined menu of small chores, notes, and check-ins for nearby households. Tagline: Small Tasks. Clear Boundaries. Trusted Neighbor Help. Category: Neighborhood & Local Services. Best for Kids, Teens, Adults, and Seniors who are reliable and comfortable doing small local tasks. Beginner · Very Low startup · Flexible / One-Time or Recurring · Nearby Homes / Porches / Yards · Per Task / Visit Bundles / Recurring Routes · 2 - 8 hrs/week · Free Guide. Displayed $10 – $40 / job is examples only.",
   },

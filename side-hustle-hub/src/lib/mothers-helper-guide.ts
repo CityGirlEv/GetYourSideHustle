@@ -117,7 +117,7 @@ export const MOTHERS_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help a parent or guardian while THEY ARE STILL HOME by playing with children, organizing toys, preparing simple parent-approved snacks, reading, doing crafts, or helping with kid-related cleanup. This is NOT solo babysitting. Tagline: An Extra Set of Hands for Busy Parents. Category: Kids / Family Services. Best for juniors / teens. Beginner · $0–very low · Flexible / after school / weekends · Client's home · Per job · 2–8 hrs/week · Free Membership.",
   },

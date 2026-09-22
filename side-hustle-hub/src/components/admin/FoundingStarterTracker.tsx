@@ -5,7 +5,13 @@ import {
 } from "../../lib/admin-membership";
 import type { GyshUser } from "../../lib/gysh-roles";
 
-export function FoundingStarterTracker({ users }: { users: GyshUser[] }) {
+export function FoundingStarterTracker({
+  users,
+  onJumpToMember,
+}: {
+  users: GyshUser[];
+  onJumpToMember?: (userId: string) => void;
+}) {
   const slots = foundingStarterSlots(users);
   const remaining = foundingStarterSlotsRemaining(users);
   const used = FOUNDING_STARTER_LIMIT - remaining;
@@ -33,10 +39,8 @@ export function FoundingStarterTracker({ users }: { users: GyshUser[] }) {
         </span>
       </h3>
       <p style={{ color: "var(--text-primary)", margin: "8px 0 14px", fontSize: "0.95rem" }}>
-        We promised the first five members a free upgrade to Starter. Track the slots here.
-        Process: activate the account if it is still pending, open Users Area, set membership to
-        Starter, keep “Count toward first 5” and “Notify member” checked, then confirm the slot
-        fills.
+        We promised the first five members a free upgrade to Starter for 3 months. After that they
+        return to Free unless they subscribe. Jump to each member in the list below.
       </p>
       <ol className="founding-starter-tracker__slots">
         {slots.map(({ slot, grant }) => (
@@ -47,10 +51,17 @@ export function FoundingStarterTracker({ users }: { users: GyshUser[] }) {
           >
             <strong>Slot {slot}</strong>
             {grant ? (
-              <span>
-                {grant.name}
-                {grant.email ? ` · ${grant.email}` : ""}
-              </span>
+              <>
+                <span className="founding-starter-tracker__name">{grant.name}</span>
+                <button
+                  type="button"
+                  className="founding-starter-tracker__jump"
+                  data-testid={`founding-starter-jump-${grant.userId}`}
+                  onClick={() => onJumpToMember?.(grant.userId)}
+                >
+                  View in list
+                </button>
+              </>
             ) : (
               <span className="founding-starter-tracker__open">Open</span>
             )}

@@ -9,6 +9,7 @@ import {
   requireDb,
 } from "./auth";
 import { error, json, randomToken } from "./crypto";
+import { claimedExtraGuideId } from "../../src/lib/wizard-comp-pick";
 
 export type BlueprintAgeGroup = "kids" | "junior" | "adult" | "senior";
 
@@ -251,6 +252,89 @@ export async function saveWizardBlueprintForNewUser(
     )
     .run();
   return { id };
+}
+
+/** Explicit complimentary pick only — never auto-grant the highest % match. */
+export async function grantComplimentaryWizardExtra(
+  env: Env,
+  userId: string,
+  input: {
+    resultIds?: unknown;
+    resultPcts?: unknown;
+    blueprintId?: string | null;
+    claimedGuideId?: string | null;
+  },
+): Promise<string | null> {
+  let resultIds = Array.isArray(input.resultIds) ? input.resultIds.map(String).filter(Boolean) : [];
+  let resultPcts: Record<string, number> = {};
+  if (input.resultPcts && typeof input.resultPcts === "object" && !Array.isArray(input.resultPcts)) {
+    for (const [key, value] of Object.entries(input.resultPcts as Record<string, unknown>)) {
+      const n = Number(value);
+      if (Number.isFinite(n)) resultPcts[key] = n;
+    }
+  }
+  if (!resultIds.length && input.blueprintId) {
+    const row = await env.DB.prepare(
+      `SELECT result_ids_json, result_pcts_json FROM side_hustle_blueprints WHERE id = ? AND user_id = ? LIMIT 1`,
+    )
+      .bind(input.blueprintId, userId)
+      .first<{ result_ids_json: string; result_pcts_json: string }>();
+    if (row) {
+      try {
+        const ids = JSON.parse(row.result_ids_json) as unknown;
+        if (Array.isArray(ids)) resultIds = ids.map(String).filter(Boolean);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const pcts = JSON.parse(row.result_pcts_json) as unknown;
+        if (pcts && typeof pcts === "object" && !Array.isArray(pcts)) {
+          resultPcts = {};
+          for (const [key, value] of Object.entries(pcts as Record<string, unknown>)) {
+            const n = Number(value);
+            if (Number.isFinite(n)) resultPcts[key] = n;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  const extra = String(input.claimedGuideId || "").trim();
+  if (!extra) return null;
+  if (resultIds.length && !resultIds.includes(extra)) return null;
+
+  const existing = await env.DB.prepare(
+    `SELECT payload FROM member_progress WHERE user_id = ? AND kind = 'wizard_comp_guides' LIMIT 1`,
+  )
+    .bind(userId)
+    .first<{ payload: string }>();
+  if (existing?.payload) {
+    try {
+      const parsed = JSON.parse(existing.payload) as Record<string, string>;
+      const prior = claimedExtraGuideId(parsed);
+      if (prior) return prior;
+    } catch {
+      /* overwrite empty/invalid */
+    }
+  }
+  const now = new Date().toISOString();
+  const payload = JSON.stringify({ extra });
+  await env.DB.prepare(
+    `INSERT INTO member_progress (user_id, kind, payload, updated_at)
+     VALUES (?, 'wizard_comp_guides', ?, ?)
+     ON CONFLICT(user_id, kind) DO UPDATE SET
+       payload = CASE
+         WHEN json_extract(member_progress.payload, '$.extra') IS NOT NULL
+          AND trim(COALESCE(json_extract(member_progress.payload, '$.extra'), '')) != ''
+         THEN member_progress.payload
+         ELSE excluded.payload
+       END,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(userId, payload, now)
+    .run();
+  return extra;
 }
 
 /** Public: store logged-out wizard completion; returns opaque claim token (no PII in URL). */
@@ -612,6 +696,49 @@ export async function listBlueprints(env: Env, user: DbUser): Promise<Response> 
     blueprints: [...byId.values()].map(publicBlueprint),
     user: publicUser(user),
   });
+}
+
+function blueprintCountsFromRows(
+  rows: Array<{ userId?: unknown; user_id?: unknown; n?: unknown }> | null | undefined,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const row of rows ?? []) {
+    const id = String(row.userId ?? row.user_id ?? "").trim();
+    const n = typeof row.n === "number" ? row.n : Number(row.n);
+    if (!id || !Number.isFinite(n) || n < 0) continue;
+    counts[id] = Math.floor(n);
+  }
+  return counts;
+}
+
+/** Admin Memberships: Blueprint counts per member without N act-as GETs. */
+export async function listBlueprintCountsByUser(env: Env): Promise<Response> {
+  const dbFail = requireDb(env);
+  if (dbFail) return dbFail;
+  await ensureBlueprintTables(env);
+
+  let rows: Array<{ userId: string; n: number | string }> | null = null;
+  try {
+    const q = await env.DB.prepare(
+      `SELECT uid AS userId, COUNT(DISTINCT bid) AS n FROM (
+         SELECT user_id AS uid, id AS bid FROM side_hustle_blueprints
+         UNION
+         SELECT c.linked_user_id AS uid, b.id AS bid
+         FROM side_hustle_blueprints b
+         INNER JOIN child_profiles c ON c.id = b.child_profile_id
+         WHERE c.linked_user_id IS NOT NULL AND trim(c.linked_user_id) != ''
+       )
+       GROUP BY uid`,
+    ).all<{ userId: string; n: number | string }>();
+    rows = q.results ?? [];
+  } catch {
+    const q = await env.DB.prepare(
+      `SELECT user_id AS userId, COUNT(*) AS n FROM side_hustle_blueprints GROUP BY user_id`,
+    ).all<{ userId: string; n: number | string }>();
+    rows = q.results ?? [];
+  }
+
+  return json({ ok: true, counts: blueprintCountsFromRows(rows) });
 }
 
 export async function getBlueprint(env: Env, user: DbUser, id: string): Promise<Response> {

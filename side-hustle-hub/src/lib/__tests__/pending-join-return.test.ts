@@ -3,6 +3,7 @@ import { getLocalStore } from "../browser-storage";
 import {
   PENDING_JOIN_RETURN_KEY,
   clearPendingJoinReturn,
+  consumeWorkshopJoinReturn,
   readPendingJoinReturn,
   resolvePostFreeSignupDestination,
   savePendingJoinReturn,
@@ -52,5 +53,24 @@ describe("pending join return", () => {
 
   it("falls back to guides", () => {
     expect(resolvePostFreeSignupDestination({})).toEqual({ view: "guides" });
+  });
+
+  it("returns to workshop registration after Free signup", () => {
+    savePendingJoinReturn({
+      view: "workshops",
+      workshopRegisterId: "ai-scene-production-packs",
+    });
+    expect(
+      resolvePostFreeSignupDestination({
+        blueprintReturnView: "quiz",
+        joinReturn: readPendingJoinReturn(),
+      }),
+    ).toEqual({
+      view: "workshops",
+      workshopRegisterId: "ai-scene-production-packs",
+    });
+    expect(consumeWorkshopJoinReturn()).toBe("ai-scene-production-packs");
+    expect(readPendingJoinReturn()).toBeNull();
+    expect(consumeWorkshopJoinReturn()).toBeNull();
   });
 });

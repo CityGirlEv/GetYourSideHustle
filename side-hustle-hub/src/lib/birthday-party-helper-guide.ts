@@ -93,7 +93,7 @@ export const BIRTHDAY_PARTY_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Assist a parent or event host with setup, guest arrival, simple games, food-table support, present organization, cleanup, and other clearly assigned party tasks while the responsible adult remains in charge of the children and event. Tagline: Calmer Hosts. Smoother Parties. Happier Cleanup. Category: Events & Family Services. Best for teens and adults who are organized, upbeat, and comfortable assisting a host around children. Beginner · Low startup · Weekends / Evenings / Event-Based · Client Homes / Community Rooms / Approved Venues · Per Party / Hourly Add-Ons / Repeat Referrals · 2 - 8 hrs/week · Starter Membership. Displayed $10 – $40 / job is examples only.",
   },

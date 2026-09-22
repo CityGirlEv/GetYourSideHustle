@@ -117,7 +117,7 @@ export const GROUP_SETUP_HELPER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help a client set up the basic structure for a new TikTok presence, Facebook Page, or Facebook Group/community — profile basics, channels or sections where applicable, rules, welcome content, starter posts, and a simple launch plan. Tagline: Set It Up. Welcome People In. Give Them Something to Follow. Category: Social Media / Community Setup. Best for Teens where platform rules permit, Adults, Seniors / Retirees. Beginner · Very low startup · Flexible · Remote / Local · Per project / optional ongoing support · 3 - 10 hrs/week · Starter Membership.",
   },

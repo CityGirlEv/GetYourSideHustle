@@ -77,7 +77,7 @@ export const DIGITAL_PHOTO_ORGANIZER_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help clients inventory, back up, sort, rename, date, group, and organize years of digital photos. Tagline: Protect the Originals. Organize the Memories. Find Photos Faster. Category: Digital Organization / Personal Technology. Best for Teens, Adults, and Seniors who are patient, systematic, privacy-conscious, and comfortable with files and photo apps. Beginner to Intermediate · Very Low startup · Flexible / Project-Based · Remote or Client-Supervised Device Session · Per Project / Per Hour / Photo-Count Packages / Maintenance Plans · 3 - 10 hrs/week · Starter Membership. Displayed $15 – $50 / project is examples only.",
   },

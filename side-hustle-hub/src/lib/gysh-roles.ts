@@ -484,6 +484,10 @@ export type GyshUser = {
   creditBalance?: number;
   /** ISO timestamp of last successful login (`login_ok`), if known. */
   lastLoginAt?: string | null;
+  /** YYYY-MM-DD membership expiration / next renewal. */
+  membershipExpiresAt?: string | null;
+  /** ISO timestamp of last recorded membership charge. */
+  membershipLastPaidAt?: string | null;
 };
 
 export async function fetchUsers(): Promise<GyshUser[]> {
@@ -527,6 +531,58 @@ export async function deleteUser(id: string): Promise<void> {
   await api(`users/${encodeURIComponent(userId)}`, { method: "DELETE" });
 }
 
+export type GyshBulkOpFailure = { id: string; reason: string };
+
+export type GyshBulkUpdateResult = {
+  ok: boolean;
+  updated: number;
+  skipped: number;
+  failures: GyshBulkOpFailure[];
+};
+
+export type GyshBulkDeleteResult = {
+  ok: boolean;
+  deleted: number;
+  skipped: number;
+  failures: GyshBulkOpFailure[];
+};
+
+export async function bulkUpdateUsers(input: {
+  ids: string[];
+  status?: GyshUser["status"] | "";
+  roles?: GyshRole[];
+  rolesMode?: "set" | "add" | "remove";
+}): Promise<GyshBulkUpdateResult> {
+  const data = await api<GyshBulkUpdateResult>("users/bulk-update", {
+    method: "POST",
+    body: {
+      ids: input.ids,
+      status: input.status || undefined,
+      roles: input.roles,
+      rolesMode: input.rolesMode,
+    },
+  });
+  return {
+    ok: data.ok === true,
+    updated: Number(data.updated) || 0,
+    skipped: Number(data.skipped) || 0,
+    failures: Array.isArray(data.failures) ? data.failures : [],
+  };
+}
+
+export async function bulkDeleteUsers(ids: string[]): Promise<GyshBulkDeleteResult> {
+  const data = await api<GyshBulkDeleteResult>("users/bulk-delete", {
+    method: "POST",
+    body: { ids },
+  });
+  return {
+    ok: data.ok === true,
+    deleted: Number(data.deleted) || 0,
+    skipped: Number(data.skipped) || 0,
+    failures: Array.isArray(data.failures) ? data.failures : [],
+  };
+}
+
 /** Admin: drop a paid plan back to Free. Does not delete the member account. */
 export async function clearUserMembership(id: string): Promise<GyshUser> {
   const userId = String(id || "").trim();
@@ -544,6 +600,7 @@ export async function updateUserMembership(
     membershipTier: string;
     notify?: boolean;
     complimentaryFoundingStarter?: boolean;
+    membershipExpiresAt?: string;
   },
 ): Promise<{ user: GyshUser; emailSent: boolean; foundingSlot: number | null }> {
   const userId = String(id || "").trim();

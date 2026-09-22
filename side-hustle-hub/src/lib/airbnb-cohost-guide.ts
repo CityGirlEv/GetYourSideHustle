@@ -98,7 +98,7 @@ export const AIRBNB_COHOST_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Operate agreed parts of another person’s Airbnb listing—such as guest messaging, calendar coordination, pricing changes, turnover checks, cleaner/vendor coordination, issue escalation, and owner reporting. The listing owner keeps ownership and grants only the Airbnb permissions and contractual authority needed for the work. Tagline: Their Property. Defined Authority. Reliable Guest Operations. Category: Real Estate / Hospitality Operations. Best for organized adults who can manage guest communication, calendars, cleaners, turnovers, vendors, and urgent issues without owning or leasing the property. Intermediate–Advanced · Less than $100 startup · Reservation-Driven / On-Call Windows · Local + Online · Percentage of Booking Revenue / Monthly Retainer / Setup Fee · Elite · 6 - 20 hrs/week · Displayed % of booking revenue (examples only — not guarantees).",
   },

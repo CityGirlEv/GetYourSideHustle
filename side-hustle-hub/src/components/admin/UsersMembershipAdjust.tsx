@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { BadgeCheck, Mail } from "lucide-react";
 import { WaitLabel } from "../WaitFeedback";
 import { ApiError } from "../../lib/api";
 import {
+  adminMembershipFormIsDirty,
   adminMembershipTierLabel,
   FOUNDING_STARTER_LIMIT,
   hasFoundingStarterGrant,
@@ -16,21 +17,30 @@ function asTier(raw: string | undefined | null): TierId {
   return "free";
 }
 
-export function UsersMembershipAdjust({
-  user,
-  foundingSlotsRemaining,
-  onUpdated,
-}: {
-  user: GyshUser;
-  foundingSlotsRemaining: number;
-  onUpdated?: (next: GyshUser, message: string) => void;
-}) {
+export type MembershipAdjustResult =
+  | { ok: true; skipped?: boolean; user?: GyshUser; message?: string }
+  | { ok: false; error: string };
+
+export type UsersMembershipAdjustHandle = {
+  submit: (opts?: { force?: boolean }) => Promise<MembershipAdjustResult>;
+  isDirty: () => boolean;
+  isBusy: () => boolean;
+};
+
+export const UsersMembershipAdjust = forwardRef<
+  UsersMembershipAdjustHandle,
+  {
+    user: GyshUser;
+    foundingSlotsRemaining: number;
+    onUpdated?: (next: GyshUser, message: string) => void;
+  }
+>(function UsersMembershipAdjust({ user, foundingSlotsRemaining, onUpdated }, ref) {
   const currentTier = asTier(user.membershipTier);
   const alreadyFounding = hasFoundingStarterGrant(user.notes);
   const [tier, setTier] = useState<TierId>(currentTier);
   const [notify, setNotify] = useState(currentTier === "free");
   const [complimentary, setComplimentary] = useState(
-    currentTier === "free" && foundingSlotsRemaining > 0,
+    currentTier === "free" && foundingSlotsRemaining > 0 && !alreadyFounding,
   );
   const [busy, setBusy] = useState(false);
   const [merchBusy, setMerchBusy] = useState(false);
@@ -38,18 +48,34 @@ export function UsersMembershipAdjust({
   const [ok, setOk] = useState("");
 
   useEffect(() => {
-    setTier(currentTier);
-    setNotify(currentTier === "free");
-    setComplimentary(currentTier === "free" && foundingSlotsRemaining > 0 && !alreadyFounding);
+    setTier(asTier(user.membershipTier));
+    setNotify(asTier(user.membershipTier) === "free");
+    setComplimentary(
+      asTier(user.membershipTier) === "free" &&
+        foundingSlotsRemaining > 0 &&
+        !hasFoundingStarterGrant(user.notes),
+    );
     setError("");
     setOk("");
-  }, [user.id, currentTier, foundingSlotsRemaining, alreadyFounding]);
+    // Preserve an in-progress first-5 checkbox when other cards refresh slot counts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when switching members
+  }, [user.id]);
 
   const canCountFounding = tier === "starter" && (alreadyFounding || foundingSlotsRemaining > 0);
-  const dirty = tier !== currentTier || (complimentary && !alreadyFounding && tier === "starter");
+  const dirty = adminMembershipFormIsDirty({
+    selectedTier: tier,
+    savedTier: currentTier,
+    complimentary,
+    alreadyFounding,
+  });
 
-  const submit = async () => {
-    if (busy) return;
+  const submit = async (opts?: { force?: boolean }): Promise<MembershipAdjustResult> => {
+    if (busy) return { ok: false, error: "Saving…" };
+    const grantFounding = complimentary && tier === "starter" && !alreadyFounding;
+    const needsWrite = Boolean(opts?.force) || dirty || (notify && tier !== "free");
+    if (!needsWrite) {
+      return { ok: true, skipped: true, message: "No membership changes to save." };
+    }
     setError("");
     setOk("");
     setBusy(true);
@@ -57,23 +83,45 @@ export function UsersMembershipAdjust({
       const result = await updateUserMembership(user.id, {
         membershipTier: tier,
         notify,
-        complimentaryFoundingStarter: complimentary && tier === "starter" && !alreadyFounding,
+        complimentaryFoundingStarter: grantFounding,
       });
       const plan = adminMembershipTierLabel(result.user.membershipTier);
       const parts = [`${user.name} is now on ${plan}.`];
       if (result.foundingSlot) {
         parts.push(`First-5 complimentary slot ${result.foundingSlot}/${FOUNDING_STARTER_LIMIT}.`);
       }
-      parts.push(result.emailSent ? "Upgrade email sent." : notify && tier !== "free" ? "Email was not sent." : "No email sent.");
+      parts.push(
+        result.emailSent
+          ? "Upgrade email sent."
+          : notify && tier !== "free"
+            ? "Email was not sent."
+            : "No email sent.",
+      );
       const message = parts.join(" ");
       setOk(message);
       onUpdated?.(result.user, message);
+      return { ok: true, user: result.user, message };
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not update membership.");
+      const message = err instanceof ApiError ? err.message : "Could not update membership.";
+      setError(message);
+      return { ok: false, error: message };
     } finally {
       setBusy(false);
     }
   };
+
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+
+  useImperativeHandle(ref, () => ({
+    submit: (opts) => submitRef.current(opts),
+    isDirty: () => dirtyRef.current,
+    isBusy: () => busyRef.current,
+  }));
 
   const needsMerch = memberNeedsMerchChoice(currentTier, user.notes);
   const sendMerch = async () => {
@@ -97,7 +145,7 @@ export function UsersMembershipAdjust({
       data-testid={`users-membership-${user.id}`}
       onSubmit={(e) => {
         e.preventDefault();
-        void submit();
+        void submit({ force: true });
       }}
     >
       <div className="users-credit-adjust-label">
@@ -139,7 +187,7 @@ export function UsersMembershipAdjust({
           disabled={busy || (!dirty && !notify)}
           data-testid={`users-membership-save-${user.id}`}
         >
-          {busy ? <WaitLabel>Saving…</WaitLabel> : "Update membership"}
+          {busy ? <WaitLabel>Saving…</WaitLabel> : "Save membership"}
         </button>
       </div>
       <label className="users-membership-check">
@@ -193,4 +241,4 @@ export function UsersMembershipAdjust({
       ) : null}
     </form>
   );
-}
+});

@@ -35,7 +35,7 @@ describe("Guide #042 Build an Etsy Store callout", () => {
 
   it("keeps official Creativity and Minors links on the kit", () => {
     const kit = guideKitForId("etsy-store");
-    expect(kit.prerequisites.some((p) => /what this hustle is/i.test(p.label))).toBe(true);
+    expect(kit.prerequisites.some((p) => /what this side-hustle is/i.test(p.label))).toBe(true);
     expect(ETSY_STORE_EXTERNAL_LINKS.some((l) => l.url === ETSY_CREATIVITY_POLICY_URL)).toBe(true);
     expect(ETSY_STORE_EXTERNAL_LINKS.some((l) => l.url === ETSY_MINORS_POLICY_URL)).toBe(true);
   });

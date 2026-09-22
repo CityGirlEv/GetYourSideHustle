@@ -591,13 +591,13 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Primary nav: click Home, GYSH Match Wizard, Kids & Teens, Seniors, Community (Blog / Workshops / Newsletter / GEAR), Side Hustle Guides, Memberships, Gear, Join Free, About, Contact Us; logged-in members also see My Dashboard in that row, colored by plan",
+      "Primary nav: click Home, GYSH Match Wizard, Kids & Teens, Seniors, Community (Blog / Workshops / Newsletter / GEAR), Side Hustle Guides, Memberships, Gear, Join Free, About Us, Contact Us; logged-in members also see My Dashboard in that row, colored by plan",
       "Secondary/meta nav: Login when logged out",
       "Confirm each view title updates (Kids & Teens → GYSH Kids & Teens Corner; Match Wizard selector uses the family Match Wizard headline until an adult wizard starts)",
       "Confirm Guides is a dropdown (Guides Library + audience guides), not a Some Free banner",
-      "Confirm header order Memberships → Gear → Join Free → About → Contact Us",
+      "Confirm header order Memberships → Gear → Join Free → About Us → Contact Us",
     ],
-    expected: "Every listed nav item opens the correct page; Home is first; Community holds Blog, Workshops, Newsletter, and GEAR; primary row ends Memberships, Gear, Join Free, About, Contact Us; My Dashboard appears in the top row only when logged in",
+    expected: "Every listed nav item opens the correct page; Home is first; Community holds Blog, Workshops, Newsletter, and GEAR; primary row ends Memberships, Gear, Join Free, About Us, Contact Us; My Dashboard appears in the top row only when logged in",
     path: "dashboard",
   },
   {
@@ -611,7 +611,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     steps: [
       "Open Join from top nav",
       "Confirm membership plans/hero appear first; footer CTAs include Create account / Join, Sign in, Browse GYSH Community, Kids / Teens Corner (no Kids/Teens team cards above plans)",
-      "Confirm Free / Starter / Pro / Elite cards, then Parent-funded Kid Credit packs and a la carte price lists, then the hustle schedule suite callout (links to My Dashboard → Schedule Suite)",
+      "Confirm Free / Starter / Pro / Elite cards, then Parent-funded Kid Credit packs and a la carte price lists, then the side hustle schedule suite callout (links to My Dashboard → Schedule Suite)",
       "On Adults/Seniors: confirm note that all membership amounts are collected in advance; check Yearly on a paid card and confirm both equivalent monthly rate and yearly amount show",
       "Military & Veterans callout is deferred (hidden) until Sprint 6 / Task T-MEM-MILITARY (Military Membership discount) — do not expect it on Adults/Seniors yet",
       "Switch audience tabs: Kids (4–12), Teens (13–17), Adults (18–49), Seniors (50+)",
@@ -1345,7 +1345,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
       "Confirm readable contrast (ink tokens; WCAG AA 4.5:1)",
       "Optional: npx playwright test e2e/lighthouse-a11y.spec.ts -g contrast",
     ],
-    expected: "color-contrast passes for hustle card accents",
+    expected: "color-contrast passes for side hustle card accents",
   },
   {
     id: "LH-005",

@@ -102,7 +102,7 @@ export const FORECLOSURE_PROPERTIES_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Source and evaluate foreclosure, auction, and bank-owned (REO) opportunities using disciplined due diligence, repair estimates, title/legal review, financing preparation, offer strategy, and clear walk-away rules. Tagline: Find the Deal. Verify the Numbers. Protect the Downside. Category: Real Estate / Investing. Best for Adults / Experienced Investors / Seniors-Retirees with appropriate professional support. Intermediate–Advanced · High / Deal-dependent startup · 10 - 25 hrs/week during active deal cycles · Local / Regional · Investment profit / rental cash flow / equity · Elite Membership. This is educational, not individualized legal, tax, lending, title, or investment advice.",
   },

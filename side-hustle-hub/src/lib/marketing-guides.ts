@@ -690,7 +690,7 @@ function buildMasterGuide(): MarketingGuideDoc {
         "Kids/Teens Corner — stories, ideas, banks, guides, join team.",
         "Seniors Corner — flexible opportunities and senior pricing.",
         "Guides — launch playbooks + these downloadable audience guides.",
-        "Workshops · Community · Sign-Up · About · Contact.",
+        "Workshops · Community · Sign-Up · About Us · Contact.",
         "Admin Studio (partners) — schedule, tasks, QA, users, content, financials.",
       ]),
     },

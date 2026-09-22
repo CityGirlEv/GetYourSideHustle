@@ -12,11 +12,11 @@ import {
   PDF_CONTENT_TOP,
   PDF_CONTENT_BOTTOM,
   PDF_BRAND_COLORS,
-  loadPdfLogoDataUrl,
   drawPdfPageChrome,
   applyPdfPageBranding,
   drawPdfLinkedWrappedText,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 import {
   LAUNCH_GUIDE_PDF_FONT as FONT,
   PDF_SECTION_BAR_H,
@@ -42,6 +42,8 @@ import { applyGuideCatalogPatch, type GuideCatalogPatch } from "./guide-catalog-
 import { resolveGuideKit } from "./guide-kit-overrides";
 import { fetchGuideCatalogStates } from "./guide-catalog-client";
 import { parseGuideStepDesc } from "./guide-step-checklist";
+import { presentableGuideTitle } from "./guide-title";
+import { expandStandaloneHustleCopy } from "./side-hustle-copy";
 
 const COLORS = {
   ...PDF_BRAND_COLORS,
@@ -118,11 +120,11 @@ function supplyQty(item: { qty?: string; name: string }): string {
 }
 
 function guideTitleForId(guideId: string): string {
-  return (
+  return presentableGuideTitle(
+    guideId,
     hustleById(guideId)?.name ??
-    LAUNCH_GUIDES.find((g) => g.id === guideId)?.name ??
-    kidsGuideById(guideId)?.title ??
-    guideId
+      LAUNCH_GUIDES.find((g) => g.id === guideId)?.name ??
+      kidsGuideById(guideId)?.title,
   );
 }
 
@@ -162,8 +164,11 @@ export function buildLaunchGuidePdfModel(
 ): LaunchGuidePdfModel {
   const kit = resolveGuideKit(guideId, patch);
   const baseTitle = guideTitleForId(guideId);
-  const title = String(
-    applyGuideCatalogPatch({ name: baseTitle }, patch).name || baseTitle,
+  const title = presentableGuideTitle(
+    guideId,
+    String(
+      applyGuideCatalogPatch({ id: guideId, name: baseTitle }, patch).name || baseTitle,
+    ),
   );
   const lede = String(
     applyGuideCatalogPatch({ peek: guideSideHustleDescription(guideId) }, patch).peek ||
@@ -171,7 +176,9 @@ export function buildLaunchGuidePdfModel(
       "",
   ).trim();
 
-  const prerequisites = kit.prerequisites.map((p) => `${p.label}: ${p.detail}`);
+  const prerequisites = kit.prerequisites.map(
+    (p) => `${expandStandaloneHustleCopy(p.label)}: ${expandStandaloneHustleCopy(p.detail)}`,
+  );
 
   const pricingIntro = kit.suggestedPricing?.intro?.trim() || undefined;
   const pricingRaiseTip = kit.suggestedPricing?.raiseTip?.trim() || undefined;

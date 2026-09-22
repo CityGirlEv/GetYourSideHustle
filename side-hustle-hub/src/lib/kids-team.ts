@@ -31,7 +31,7 @@ export const KIDS_TEAM_JOIN: TeamJoinCopy = {
   teamName: "Kids Corner GYSH Team",
   headline: "Join the Kids Corner GYSH Team",
   lead:
-    "Become a Glow Getter side-hustle kid! With a parent nearby, you’ll unlock fun training, safe hustle ideas, and challenges that teach kindness, saving, and growing your little business.",
+    "Become a Glow Getter side-hustle kid! With a parent nearby, you’ll unlock fun training, safe side hustle ideas, and challenges that teach kindness, saving, and growing your little business.",
   valuesTitle: "What every Kids Corner teammate learns",
   values: [
     {
@@ -45,7 +45,7 @@ export const KIDS_TEAM_JOIN: TeamJoinCopy = {
         "Use Piggy Bank challenges to name a goal, count your earnings, and celebrate small wins.",
     },
     {
-      title: "Investing back in your hustle",
+      title: "Investing back in your side hustle",
       detail:
         "When you earn a little, put some back — new stickers, better supplies, or time to make your next craft even cooler.",
     },
@@ -53,7 +53,7 @@ export const KIDS_TEAM_JOIN: TeamJoinCopy = {
   perks: [
     {
       title: "Training videos just for kids",
-      detail: "Short, parent-friendly lessons on safe hustles and Glow Getter confidence.",
+      detail: "Short, parent-friendly lessons on safe side hustles and Glow Getter confidence.",
     },
     {
       title: "How to make games with AI",
@@ -104,7 +104,7 @@ export const JUNIOR_TEAM_JOIN: TeamJoinCopy = {
     {
       title: "Investing back into the business",
       detail:
-        "Reinvest a portion of earnings into tools, marketing, or learning — age-appropriate CEO habits that grow the hustle.",
+        "Reinvest a portion of earnings into tools, marketing, or learning — age-appropriate CEO habits that grow the side hustle.",
     },
   ],
   perks: [

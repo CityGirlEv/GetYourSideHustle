@@ -42,7 +42,7 @@ Notes: ________
 `;
 
 export const GREETING_CARD_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Make handmade or Canva greeting cards for birthdays, thanks, and holidays. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only. Tagline: Design It. Spell-Check It. Deliver It." },
+  { id: "overview", label: "What this side-hustle is", detail: "Make handmade or Canva greeting cards for birthdays, thanks, and holidays. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only. Tagline: Design It. Spell-Check It. Deliver It." },
   { id: "craft", label: "Crafting and design basics", detail: "Attention to spelling, folds, and readable type. Device and internet for digital/printable work." },
   { id: "license", label: "Permission and licensing", detail: "Do not use copyrighted characters, celebrity images, logos, or another seller’s design. Verify Canva commercial-use terms." },
   { id: "youth", label: "Parent / guardian for minors", detail: "Adult help for scissors, payments, shipping, and public posts." },

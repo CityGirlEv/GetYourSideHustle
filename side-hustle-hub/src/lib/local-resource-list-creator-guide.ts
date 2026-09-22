@@ -60,7 +60,7 @@ Testimonial: ☐  Referral: ☐  New niche: ________
 `;
 
 export const LOCAL_RESOURCE_LIST_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Compile neighborhood resources into a shareable list people will pay a small fee for. 3 - 10 hrs/week. $15 – $50 / project is examples only." },
+  { id: "overview", label: "What this side-hustle is", detail: "Compile neighborhood resources into a shareable list people will pay a small fee for. 3 - 10 hrs/week. $15 – $50 / project is examples only." },
   { id: "verify", label: "Research and verification", detail: "Multiple sources, official sites for critical facts, last-checked dates, original summaries. A listing is not an endorsement." },
 ];
 

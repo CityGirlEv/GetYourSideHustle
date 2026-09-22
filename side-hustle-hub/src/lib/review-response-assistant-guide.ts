@@ -93,7 +93,7 @@ Build and test one Customer Review Response Assistant offer:
 export const REVIEW_RESPONSE_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Draft short, professional, on-brand replies to Google, Yelp, and other public customer reviews for local businesses. Pro Membership. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only. Category: Marketing / Reputation Support. Beginner–Intermediate. Startup $0–low. Online. Per project / per response batch / hourly / monthly retainer. Best for careful writers, customer-service professionals, Adults and Seniors/Retirees; responsible Teens only with parent/guardian approval and no access to sensitive complaints.",
   },

@@ -5490,6 +5490,7 @@ export const SENIOR_AUDIENCE_HUSTLE_IDS = [
   "ai-agents",
   "ai-promo-video",
   "ai-timing",
+  "pod",
   // Local / paced / neighborly
   "food-delivery",
   "cleaning-service",
@@ -5789,31 +5790,26 @@ export function freeWizardPool(age: HustleAgeGroup): SideHustleRecord[] {
 
 export function wizardPoolForTier(
   age: HustleAgeGroup,
-  opts: { isMember: boolean; tier?: TierId | null },
+  _opts?: { isMember: boolean; tier?: TierId | null },
 ): SideHustleRecord[] {
-  const full = hustlesForAudience(age);
-  if (!opts.isMember) return freeWizardPool(age);
-  const tier = (opts.tier || "free").toLowerCase() as TierId;
-  if (tier === "free") return freeWizardPool(age);
-  return full;
+  void _opts;
+  return hustlesForAudience(age);
 }
 
-/** App / wizard bridge — Free & guests get freeWizardEligible pool only. */
+/**
+ * Match Wizard scoring pool — every side hustle for that audience.
+ * Unique Unique Free is an unlock set, not a ranking filter.
+ */
 export function wizardPoolForMembership(
   age: HustleAgeGroup,
-  opts: {
+  _opts?: {
     isLoggedIn: boolean;
     membershipTier?: string | null;
     previewAsGuest?: boolean;
   },
 ): SideHustleRecord[] {
-  if (opts.previewAsGuest || !opts.isLoggedIn) {
-    return freeWizardPool(age);
-  }
-  return wizardPoolForTier(age, {
-    isMember: true,
-    tier: (opts.membershipTier || "free") as TierId,
-  });
+  void _opts;
+  return hustlesForAudience(age);
 }
 
 export type SideHustleFilterOpts = {

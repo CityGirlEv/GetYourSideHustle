@@ -19,7 +19,7 @@ export const AI_TIMING_REALITY_CHECK = {
     "",
     "Use AI to organize PUBLIC information and driver-supplied observations, then test recommendations in the real world.",
     "",
-    "This hustle has two income paths: use the playbook yourself, or sell clearly labeled local timing research. Do not sell projected driver earnings as guaranteed results.",
+    "This side-hustle has two income paths: use the playbook yourself, or sell clearly labeled local timing research. Do not sell projected driver earnings as guaranteed results.",
     "",
     "Do not present yourself as affiliated with Uber, Lyft, DoorDash, or another platform unless actually authorized.",
     "",
@@ -121,7 +121,7 @@ export const AI_TIMING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Use AI plus ZIP-code-level local research and a driver’s own observations to identify promising rideshare and delivery time windows, demand zones, events, commute patterns, airport activity, restaurant clusters, and other local demand signals. Use the research yourself or package it into clearly labeled, regularly updated local timing playbooks. Tagline: Study the Market. Test the Windows. Drive Smarter. Category: AI Services / Rideshare & Delivery / Local Data. Best for Adults, Seniors/Retirees; licensed drivers who meet applicable platform requirements. Beginner–Intermediate · $0 – Low startup · 1 - 2 weeks to build and test a local timing playbook · Local + Online Research · Personal Driving Optimization / Digital Playbooks / Custom Local Research · Elite Membership.",
   },
@@ -197,7 +197,7 @@ export const AI_TIMING_PRICING = {
     "",
     "Displayed earning potential: $300 – $3,000+ / month — examples only, NOT guarantees.",
     "",
-    "This hustle has TWO income paths.",
+    "This side-hustle has TWO income paths.",
     "",
     "A. USE THE PLAYBOOK YOURSELF",
     "Value is measured by improved decision-making and NET driving profit — not by charging yourself a price.",

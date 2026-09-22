@@ -54,7 +54,7 @@ Visits: ____  Revenue: $____  Expenses: $____  Profit: $____  Hours: ____  Profi
 `;
 
 export const RECYCLING_HELPER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Sort recyclables and walk bins out on the right day. 2 - 8 hrs/week. $10 – $40 / job display is examples only — recurring visits fit better." },
+  { id: "overview", label: "What this side-hustle is", detail: "Sort recyclables and walk bins out on the right day. 2 - 8 hrs/week. $10 – $40 / job display is examples only — recurring visits fit better." },
   { id: "rules", label: "Local pickup day and accepted materials", detail: "Learn each client's pickup day and current municipal rules. Do not invent what is recyclable." },
 ];
 

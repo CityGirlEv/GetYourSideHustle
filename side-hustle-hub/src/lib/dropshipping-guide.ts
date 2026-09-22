@@ -113,7 +113,7 @@ export const DROPSHIPPING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Build an online storefront and sell products that are fulfilled directly by approved suppliers. Learn product selection, supplier vetting, pricing, store setup, customer service, marketing, refunds, and real profit tracking before scaling. Tagline: Pick Smart. Price for Profit. Test Before You Scale. Category: Ecommerce / Online Business. Best for Adults, Seniors/Retirees; experienced Teens only with parent/guardian-managed accounts and business activity. Beginner–Intermediate · Low–Moderate startup · Online · Product Margin / Store Profit · 2 - 3 weeks to launch a basic test store · Elite Membership.",
   },

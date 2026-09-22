@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Users, Plus, Pencil, Check, X, ChevronDown, ScrollText, Trash2, Search } from "lucide-react";
+import { Users, Plus, Pencil, Check, X, ScrollText, Trash2, Search } from "lucide-react";
 import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { PasswordField } from "../PasswordField";
 import {
@@ -13,25 +13,43 @@ import {
   fetchUsers,
   saveUser,
   deleteUser,
+  bulkDeleteUsers,
+  bulkUpdateUsers,
   userHasRole,
   userRoles,
   type GyshRole,
   type GyshUser,
 } from "../../lib/gysh-roles";
 import {
-  auditEventsForEmail,
   formatLastLoginLabel,
   formatUserAuditAt,
   userAuditActionLabel,
   type UserAuditEvent,
 } from "../../lib/gysh-user-audit";
 import { gyshUserDeleteBlockReason } from "../../lib/gysh-user-delete";
+import {
+  gyshBulkDeleteConfirmMessage,
+  gyshBulkDeleteEligibleIds,
+  gyshBulkResultMessage,
+  gyshBulkUpdateBlockReason,
+  toggleBulkUserId,
+  type GyshBulkRolesMode,
+} from "../../lib/gysh-user-bulk";
 import { ApiError } from "../../lib/api";
 import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
+import { UserAuditTrail } from "./UserAuditTrail";
 import { UsersCreditAdjust } from "./UsersCreditAdjust";
-import { UsersMembershipAdjust } from "./UsersMembershipAdjust";
+import {
+  UsersMembershipAdjust,
+  type UsersMembershipAdjustHandle,
+} from "./UsersMembershipAdjust";
 import { userMatchesAdminSearch, usersAreaSearchEmptyCopy } from "../../lib/users-area-search";
-import { foundingStarterSlotsRemaining, adminMembershipTierLabel } from "../../lib/admin-membership";
+import {
+  foundingStarterSlotsRemaining,
+  adminMembershipTierLabel,
+  mergeNotesPreservingFoundingGrant,
+  mergeSavedAdminUser,
+} from "../../lib/admin-membership";
 import { heardAboutFromNotes } from "../../lib/heard-about";
 
 type UsersAreaTab = "users" | "audit";
@@ -287,89 +305,6 @@ function RoleBubbles({
   );
 }
 
-function UserAuditTrail({
-  email,
-  events,
-  open,
-  onToggle,
-  testId,
-}: {
-  email: string;
-  events: UserAuditEvent[];
-  open: boolean;
-  onToggle: () => void;
-  testId?: string;
-}) {
-  const mine = auditEventsForEmail(events, email);
-  return (
-    <div style={{ marginTop: 6 }}>
-      <button
-        type="button"
-        className="btn btn-outline"
-        onClick={onToggle}
-        aria-expanded={open}
-        data-testid={testId}
-        style={{
-          padding: "6px 10px",
-          fontSize: "0.875rem",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <ChevronDown
-          size={14}
-          style={{
-            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-            transition: "transform 0.15s ease",
-          }}
-          aria-hidden
-        />
-        Audit log ({mine.length})
-      </button>
-      {open && (
-        <ul
-          data-testid={testId ? `${testId}-list` : undefined}
-          style={{
-            listStyle: "none",
-            margin: "8px 0 0",
-            padding: 0,
-            maxHeight: 220,
-            overflowY: "auto",
-            border: "1px solid var(--border-color)",
-            borderRadius: 10,
-            background: "#fff",
-          }}
-        >
-          {mine.length === 0 ? (
-            <li style={{ padding: "10px 12px", fontSize: "0.9rem", color: "var(--text-primary)" }}>
-              No audit events for this user yet.
-            </li>
-          ) : (
-            mine.map((ev, i) => (
-              <li
-                key={`${ev.at}-${ev.action}-${i}`}
-                style={{
-                  padding: "8px 12px",
-                  borderTop: i === 0 ? "none" : "1px solid var(--border-color)",
-                  fontSize: "0.875rem",
-                  color: "var(--charcoal)",
-                }}
-              >
-                <div style={{ fontWeight: 600 }}>{userAuditActionLabel(ev.action)}</div>
-                <div style={{ color: "var(--text-primary)", marginTop: 2 }}>
-                  {formatUserAuditAt(ev.at)}
-                  {ev.detail ? ` · ${ev.detail}` : ""}
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 export function UsersArea({ currentUserId = null }: { currentUserId?: string | null }) {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -390,10 +325,34 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [saveMsg, setSaveMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [busyKind, setBusyKind] = useState<"save" | "delete">("save");
+  const [busyKind, setBusyKind] = useState<"save" | "delete" | "bulk">("save");
   const [pendingDelete, setPendingDelete] = useState<GyshUser | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<"" | GyshUser["status"]>("");
+  const [bulkRoles, setBulkRoles] = useState<GyshRole[]>([]);
+  const [bulkRolesMode, setBulkRolesMode] = useState<GyshBulkRolesMode>("add");
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
   const [roleMenuUserId, setRoleMenuUserId] = useState<string | null>(null);
+  const membershipHandles = useRef(new Map<string, UsersMembershipAdjustHandle>());
+
+  const bindMembershipHandle = (id: string, handle: UsersMembershipAdjustHandle | null) => {
+    if (handle) membershipHandles.current.set(id, handle);
+    else membershipHandles.current.delete(id);
+  };
+
+  const applyMembershipUser = (next: GyshUser, message: string) => {
+    setUsers((list) =>
+      list.map((row) => (row.id === next.id ? mergeSavedAdminUser(row, next) : row)),
+    );
+    setDraft((cur) =>
+      cur && editingId === next.id
+        ? { ...cur, notes: mergeNotesPreservingFoundingGrant(cur.notes, next.notes) }
+        : cur,
+    );
+    setSaveMsg(message);
+    void reloadAudit();
+  };
 
   const reloadAudit = async () => {
     setAuditLoading(true);
@@ -526,9 +485,7 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
         joinedAt: u.joinedAt,
       });
       setUsers((list) =>
-        list.map((row) =>
-          row.id === u.id ? { ...saved, lastLoginAt: saved.lastLoginAt ?? row.lastLoginAt } : row,
-        ),
+        list.map((row) => (row.id === u.id ? mergeSavedAdminUser(row, saved) : row)),
       );
       void reloadAudit();
       const gainedQa = !prev.includes("qa") && nextRoles.includes("qa");
@@ -569,6 +526,18 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
     setBusy(true);
     setError("");
     try {
+      const membership = membershipHandles.current.get(id);
+      const membershipResult = membership
+        ? await membership.submit({ force: true })
+        : { ok: true as const, skipped: true as const };
+      if (!membershipResult.ok) {
+        setError(membershipResult.error || "Could not save membership.");
+        return;
+      }
+      const stampedNotes = mergeNotesPreservingFoundingGrant(
+        draft.notes.trim(),
+        membershipResult.user?.notes ?? existing.notes,
+      );
       await saveUser(
         {
           id,
@@ -576,7 +545,7 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
           email: nextEmail,
           roles: draft.roles,
           status: draft.status,
-          notes: draft.notes.trim(),
+          notes: stampedNotes,
           joinedAt: existing.joinedAt,
         },
         draft.password.trim() || undefined,
@@ -585,7 +554,39 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
       setDraft(null);
       await reload();
       void reloadAudit();
-      setSaveMsg(draft.password.trim() ? "User saved. Login password updated." : "User saved.");
+      const membershipNote =
+        membershipResult.skipped || !membershipResult.message ? "" : ` ${membershipResult.message}`;
+      setSaveMsg(
+        draft.password.trim()
+          ? `User saved. Login password updated.${membershipNote}`
+          : `User saved.${membershipNote}`,
+      );
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to save user.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveCard = async (u: GyshUser) => {
+    const handle = membershipHandles.current.get(u.id);
+    if (!handle) {
+      setError("Could not save this member’s membership.");
+      return;
+    }
+    if (handle.isBusy() || busy) return;
+    setBusyKind("save");
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      const result = await handle.submit({ force: true });
+      if (!result.ok) {
+        setError(result.error || "Could not save this member.");
+        return;
+      }
+      if (result.user) applyMembershipUser(result.user, result.message || `Saved ${u.name}.`);
+      else setSaveMsg(result.message || `Saved ${u.name}.`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to save user.");
     } finally {
@@ -634,6 +635,89 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
     }
   };
 
+  const visibleSelectedCount = filtered.filter((u) => selectedIds.includes(u.id)).length;
+  const allVisibleSelected =
+    filtered.length > 0 && filtered.every((u) => selectedIds.includes(u.id));
+  const bulkDeleteEligible = gyshBulkDeleteEligibleIds({
+    ids: selectedIds,
+    actorId: currentUserId,
+  }).eligible;
+
+  const applyBulkUpdate = async () => {
+    const blocked = gyshBulkUpdateBlockReason({
+      ids: selectedIds,
+      status: bulkStatus || undefined,
+      roles: bulkRoles,
+      rolesMode: bulkRolesMode,
+    });
+    if (blocked) {
+      setError(blocked);
+      return;
+    }
+    setBusyKind("bulk");
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      const result = await bulkUpdateUsers({
+        ids: selectedIds,
+        status: bulkStatus,
+        roles: bulkRoles,
+        rolesMode: bulkRolesMode,
+      });
+      await reload();
+      void reloadAudit();
+      setSaveMsg(
+        gyshBulkResultMessage({
+          action: "update",
+          changed: result.updated,
+          skipped: result.skipped,
+        }),
+      );
+      if (result.failures.length) {
+        setError(result.failures.map((f) => f.reason).slice(0, 3).join(" "));
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to update selected users.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (bulkDeleteEligible.length === 0) {
+      setError("None of the selected users can be deleted.");
+      setPendingBulkDelete(false);
+      return;
+    }
+    setBusyKind("bulk");
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      const result = await bulkDeleteUsers(selectedIds);
+      setPendingBulkDelete(false);
+      setSelectedIds([]);
+      setPendingDelete(null);
+      await reload();
+      void reloadAudit();
+      setSaveMsg(
+        gyshBulkResultMessage({
+          action: "delete",
+          changed: result.deleted,
+          skipped: result.skipped,
+        }),
+      );
+      if (result.failures.length) {
+        setError(result.failures.map((f) => f.reason).slice(0, 3).join(" "));
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to delete selected users.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <BusyOverlay
@@ -643,6 +727,8 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
             ? "Loading users…"
             : areaTab === "audit" && auditLoading
               ? "Loading audit log…"
+              : busyKind === "bulk"
+              ? "Updating selected users…"
               : busyKind === "delete"
               ? "Deleting user…"
               : "Saving user…"
@@ -658,10 +744,12 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
           appears on Testing Portal and Schedule test assignee lists. Failed and Conditionally Passed
           tests assign to Evelyn (Lead Developer).
           Passwords are never shown — only set or reset from Edit. Last signed-in time comes from the login audit trail.
-          Search by name or email (* and ? wildcards). View or change membership on each member
-          card (including first-5 complimentary Starter). Add or remove credits on each member card.
-          Edit a member, then Delete to remove them. Confirm stays on that member’s card. Tina
-          and Evelyn co-founder accounts stay protected.
+          Search by name or email (* and ? wildcards). Change membership on each member card
+          (including first-5 complimentary Starter) and click Save — you do not need Edit first.
+          Add or remove credits on each member card.
+          Check users to batch-update status or roles, or delete several at once. Edit a member,
+          then Delete to remove one. Confirm stays on that member’s card. Tina and Evelyn
+          co-founder accounts stay protected.
         </p>
 
         <div
@@ -894,6 +982,157 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
             </div>
           </div>
 
+          {filtered.length > 0 ? (
+            <div className="users-area-bulk" data-testid="users-area-bulk">
+              <div className="users-area-bulk-select">
+                <label className="users-area-select">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds((ids) => {
+                          const next = new Set(ids);
+                          for (const u of filtered) next.add(u.id);
+                          return [...next];
+                        });
+                      } else {
+                        const visible = new Set(filtered.map((u) => u.id));
+                        setSelectedIds((ids) => ids.filter((id) => !visible.has(id)));
+                      }
+                    }}
+                    data-testid="users-select-all"
+                  />
+                  <span>
+                    {visibleSelectedCount > 0
+                      ? `${visibleSelectedCount} selected`
+                      : "Select all on this list"}
+                  </span>
+                </label>
+                {selectedIds.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    data-testid="users-select-clear"
+                    onClick={() => {
+                      setSelectedIds([]);
+                      setPendingBulkDelete(false);
+                    }}
+                  >
+                    Clear selection
+                  </button>
+                ) : null}
+              </div>
+              <div className="users-area-bulk-fields">
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" htmlFor="users-bulk-status">
+                    Batch status
+                  </label>
+                  <select
+                    id="users-bulk-status"
+                    className="select-input"
+                    value={bulkStatus}
+                    disabled={busy || selectedIds.length === 0}
+                    onChange={(e) => setBulkStatus(e.target.value as "" | GyshUser["status"])}
+                    data-testid="users-bulk-status"
+                  >
+                    <option value="">Keep current</option>
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" htmlFor="users-bulk-roles-mode">
+                    Batch roles
+                  </label>
+                  <select
+                    id="users-bulk-roles-mode"
+                    className="select-input"
+                    value={bulkRolesMode}
+                    disabled={busy || selectedIds.length === 0}
+                    onChange={(e) => setBulkRolesMode(e.target.value as GyshBulkRolesMode)}
+                    data-testid="users-bulk-roles-mode"
+                  >
+                    <option value="add">Add roles</option>
+                    <option value="remove">Remove roles</option>
+                    <option value="set">Replace roles</option>
+                  </select>
+                </div>
+              </div>
+              <RoleBubbles
+                value={bulkRoles}
+                onChange={setBulkRoles}
+                showAll
+                disabled={busy || selectedIds.length === 0}
+              />
+              <div className="users-area-bulk-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  data-testid="users-bulk-apply"
+                  disabled={busy || selectedIds.length === 0}
+                  onClick={() => void applyBulkUpdate()}
+                >
+                  <Check size={14} /> Apply to selected
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  data-testid="users-bulk-delete"
+                  disabled={busy || bulkDeleteEligible.length === 0}
+                  title={
+                    bulkDeleteEligible.length === 0
+                      ? "Select users that can be deleted (not co-founders or your own account)"
+                      : `Delete ${bulkDeleteEligible.length} selected user${bulkDeleteEligible.length === 1 ? "" : "s"}`
+                  }
+                  onClick={() => {
+                    setError("");
+                    setPendingBulkDelete(true);
+                  }}
+                >
+                  <Trash2 size={14} /> Delete selected
+                </button>
+              </div>
+              {pendingBulkDelete ? (
+                <div
+                  className="user-delete-confirm user-delete-confirm--on-card"
+                  role="alertdialog"
+                  aria-labelledby="users-bulk-delete-title"
+                  aria-describedby="users-bulk-delete-desc"
+                  data-testid="users-bulk-delete-confirm"
+                >
+                  <p id="users-bulk-delete-title" className="user-delete-confirm__title">
+                    Are you sure?
+                  </p>
+                  <p id="users-bulk-delete-desc">
+                    {gyshBulkDeleteConfirmMessage(bulkDeleteEligible.length)}
+                  </p>
+                  <div className="user-delete-confirm__actions">
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      data-testid="users-bulk-delete-cancel"
+                      disabled={busy}
+                      onClick={() => setPendingBulkDelete(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      data-testid="users-bulk-delete-yes"
+                      disabled={busy}
+                      onClick={() => void confirmBulkDelete()}
+                    >
+                      Yes, delete selected
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {saveMsg && (
             <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(95,122,69,0.12)", border: "1px solid rgba(95,122,69,0.35)", color: "#3f5230", fontSize: "0.95rem" }}>
               {saveMsg}
@@ -929,6 +1168,7 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                       outline: pendingDelete?.id === u.id ? "2px solid rgba(155, 47, 40, 0.45)" : undefined,
                     }}
                     data-testid={`users-card-${u.id}`}
+                    data-selected={selectedIds.includes(u.id) ? "true" : "false"}
                     ref={(node) => {
                       if (node && pendingDelete?.id === u.id) {
                         node.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -947,7 +1187,18 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                     ) : null}
                     {!isEditing ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr auto", gap: "12px", alignItems: "start" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "auto 1.4fr 0.9fr auto", gap: "12px", alignItems: "start" }}>
+                          <label className="users-area-select users-area-select--card">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(u.id)}
+                              onChange={(e) =>
+                                setSelectedIds((ids) => toggleBulkUserId(ids, u.id, e.target.checked))
+                              }
+                              data-testid={`users-select-${u.id}`}
+                            />
+                            <span className="sr-only">Select {u.name}</span>
+                          </label>
                           <div>
                             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "8px 12px" }}>
                               <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
@@ -990,6 +1241,17 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                             {u.status} · Joined {u.joinedAt}
                           </div>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => void saveCard(u)}
+                            disabled={busy}
+                            data-testid={`users-save-${u.id}`}
+                            title="Save membership, including Count toward first 5"
+                            style={{ padding: "8px 12px" }}
+                          >
+                            <Check size={14} /> Save
+                          </button>
                           <button type="button" className="btn btn-outline" onClick={() => startEdit(u)} style={{ padding: "8px 12px" }}>
                             <Pencil size={14} /> Edit
                           </button>
@@ -1026,15 +1288,11 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                           />
                         </div>
                         <UsersMembershipAdjust
+                          key={u.id}
+                          ref={(handle) => bindMembershipHandle(u.id, handle)}
                           user={u}
                           foundingSlotsRemaining={foundingLeft}
-                          onUpdated={(next, message) => {
-                            setUsers((list) =>
-                              list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
-                            );
-                            setSaveMsg(message);
-                            void reloadAudit();
-                          }}
+                          onUpdated={applyMembershipUser}
                         />
                         <UsersCreditAdjust
                           user={u}
@@ -1106,15 +1364,11 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                           />
                         </div>
                         <UsersMembershipAdjust
+                          key={`edit-${u.id}`}
+                          ref={(handle) => bindMembershipHandle(u.id, handle)}
                           user={u}
                           foundingSlotsRemaining={foundingLeft}
-                          onUpdated={(next, message) => {
-                            setUsers((list) =>
-                              list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
-                            );
-                            setSaveMsg(message);
-                            void reloadAudit();
-                          }}
+                          onUpdated={applyMembershipUser}
                         />
                         <div className="form-group" style={{ margin: 0 }}>
                           <label className="form-label">Notes</label>

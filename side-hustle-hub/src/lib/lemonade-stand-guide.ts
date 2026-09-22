@@ -91,7 +91,7 @@ export const LEMONADE_STAND_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Classic sidewalk drink stand with parent help on pricing, hygiene, and location. Free Guide. 2 - 8 hrs/week. Price per drink (about $1–$3 examples). Displayed job ranges are examples only, not guarantees.",
   },
@@ -162,7 +162,7 @@ export const LEMONADE_STAND_PRICING = {
   intro: [
     "LEMONADE / DRINK STAND — PRICE PER DRINK",
     "",
-    "A $10–$40 “job” price does not fit this hustle. Price primarily PER DRINK.",
+    "A $10–$40 “job” price does not fit this side-hustle. Price primarily PER DRINK.",
     "Displayed figures are examples only, not guarantees.",
     "",
     "Total Batch Cost = ingredients + ice + cups/lids/straws + garnishes + sign/consumables + other direct costs.",

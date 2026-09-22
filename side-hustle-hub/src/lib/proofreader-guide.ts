@@ -50,7 +50,7 @@ Repeat: ☐  Testimonial: ☐
 `;
 
 export const PROOFREADER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Catch typos and clarity issues in flyers, blogs, school papers, and small-business copy. 3 - 10 hrs/week. $15 – $50 / project is examples only." },
+  { id: "overview", label: "What this side-hustle is", detail: "Catch typos and clarity issues in flyers, blogs, school papers, and small-business copy. 3 - 10 hrs/week. $15 – $50 / project is examples only." },
   { id: "integrity", label: "Academic integrity and confidentiality", detail: "Support learning; do not complete graded work. Keep files private. Define retention." },
 ];
 

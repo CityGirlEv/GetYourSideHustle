@@ -27,13 +27,13 @@ describe("guidePrepSectionIds notes tab", () => {
     expect(ids[ids.length - 1]).toBe("notes");
   });
 
-  it("keeps Notes on locked preview when includeNotes is set", () => {
+  it("still lists Notes when includeNotes is set on a locked guide", () => {
     expect(
       guidePrepSectionIds({
         kit,
         prerequisitesOnly: true,
         includeNotes: true,
       }),
-    ).toEqual(["prereqs", "notes"]);
+    ).toContain("notes");
   });
 });

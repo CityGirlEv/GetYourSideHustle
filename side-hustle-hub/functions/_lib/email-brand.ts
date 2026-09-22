@@ -32,7 +32,7 @@ const SITE_PURPOSE =
   "Get Your Side Hustle helps families — kids, teens, adults, and seniors — find safe, age-appropriate Side Hustles, and take the next learning and earning step together.";
 
 const FOOTER_LINKS: Array<{ label: string; href: string }> = [
-  { label: "About", href: `${SITE_URL}/about` },
+  { label: "About Us", href: `${SITE_URL}/about` },
   { label: "Join", href: `${SITE_URL}/join` },
   { label: "Community", href: `${SITE_URL}/community` },
   { label: "Newsletter", href: `${SITE_URL}/newsletter` },

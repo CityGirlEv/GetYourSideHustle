@@ -95,7 +95,7 @@ export type LaunchKitItem = {
   minTier?: string;
 };
 
-/** Related existing guides / checklist / Schedule CTA for a hustle — no fake links. */
+/** Related existing guides / checklist / Schedule CTA for a side hustle — no fake links. */
 export function buildLaunchKit(hustleId: string): LaunchKitItem[] {
   const record = SIDE_HUSTLE_CATALOG.find((h) => h.id === hustleId);
   const related = new Set<string>([

@@ -6,7 +6,7 @@
 export const HOMEWORK_HELPER_REALITY_CHECK = {
   title: "HELP THEM LEARN — DO NOT DO THE WORK FOR THEM",
   body: [
-    "This hustle is tutoring, homework help, and reading-buddy support. You explain, quiz, and practice — you do not complete graded work.",
+    "This side-hustle is tutoring, homework help, and reading-buddy support. You explain, quiz, and practice — you do not complete graded work.",
     "",
     "GROSS SERVICE REVENUE = session fees + packages + approved add-ons.",
     "ESTIMATED PROFIT = Gross − materials − travel − payment fees − advertising − other.",
@@ -50,7 +50,7 @@ Sessions: ____  Revenue: $____  Expenses: $____  Profit: $____  Hours: ____  Pro
 `;
 
 export const HOMEWORK_HELPER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Help nearby students with homework, reading practice, and study skills. 3 - 10 hrs/week. $15 – $40 / session is examples only." },
+  { id: "overview", label: "What this side-hustle is", detail: "Help nearby students with homework, reading practice, and study skills. 3 - 10 hrs/week. $15 – $40 / session is examples only." },
   { id: "integrity", label: "Academic integrity with parents", detail: "Support learning. Do not complete graded work. Confirm subject, session length, and location with a parent." },
 ];
 

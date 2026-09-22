@@ -72,7 +72,7 @@ Testimonial: ☐  Referral: ☐
 `;
 
 export const DIGITAL_COOKBOOK_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
-  { id: "overview", label: "What this hustle is", detail: "Collect family recipes into a simple PDF cookbook with photos and tips. Elite membership unchanged. 3 - 10 hrs/week. $15 – $50 / project display is examples only — price by recipe count." },
+  { id: "overview", label: "What this side-hustle is", detail: "Collect family recipes into a simple PDF cookbook with photos and tips. Elite membership unchanged. 3 - 10 hrs/week. $15 – $50 / project display is examples only — price by recipe count." },
   { id: "skills", label: "Layout, recipe cleanup, and PDF export", detail: "Canva/document layout, consistent recipe fields, photo handling, backups, proofreading, and copyright/permission awareness." },
 ];
 

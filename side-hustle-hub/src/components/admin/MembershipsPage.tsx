@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, RefreshCw, Trash2, Users } from "lucide-react";
+import { BadgeCheck, LayoutDashboard, RefreshCw, Trash2, Users } from "lucide-react";
 import { BusyOverlay } from "../WaitFeedback";
 import { ApiError } from "../../lib/api";
 import {
@@ -7,6 +7,7 @@ import {
   deleteUser,
   fetchUsers,
   formatRoles,
+  updateUserMembership,
   type GyshUser,
 } from "../../lib/gysh-roles";
 import {
@@ -19,8 +20,13 @@ import {
   gyshMembershipClearBlockReason,
   gyshUserDeleteBlockReason,
 } from "../../lib/gysh-user-delete";
+import { memberPreviewLinks } from "../../lib/admin-act-as";
+import { fetchMembershipBlueprintCounts } from "../../lib/blueprints-api";
+import { parseMembershipBlueprintCounts } from "../../lib/membership-member-blueprints";
+import { membershipChargeStatus } from "../../lib/membership-expiry";
 import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
 import { FoundingStarterTracker } from "./FoundingStarterTracker";
+import { MembershipMemberBlueprints } from "./MembershipMemberBlueprints";
 
 const AUDIENCE_LABELS: Record<string, string> = {
   kids: "Kids",
@@ -46,7 +52,13 @@ function tierName(id: TierId): string {
   return MEMBERSHIP_TIERS.find((t) => t.id === id)?.name ?? id;
 }
 
-export function MembershipsPage({ currentUserId = null }: { currentUserId?: string | null }) {
+export function MembershipsPage({
+  currentUserId = null,
+  onViewMemberDashboard,
+}: {
+  currentUserId?: string | null;
+  onViewMemberDashboard?: (user: GyshUser) => void;
+}) {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -56,15 +68,39 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
   const [tierFilter, setTierFilter] = useState<"all" | TierId>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | GyshUser["status"]>("all");
   const [pendingDelete, setPendingDelete] = useState<GyshUser | null>(null);
+  const [openBlueprintIds, setOpenBlueprintIds] = useState<Record<string, boolean>>({});
+  const [blueprintCounts, setBlueprintCounts] = useState<Record<string, number> | null>(null);
+  const [expiryEdits, setExpiryEdits] = useState<Record<string, string>>({});
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const reload = async () => {
     setLoading(true);
     setError("");
     try {
-      setUsers(await fetchUsers());
+      const [usersOutcome, countsOutcome] = await Promise.allSettled([
+        fetchUsers(),
+        fetchMembershipBlueprintCounts(),
+      ]);
+      if (usersOutcome.status === "rejected") {
+        setError(
+          usersOutcome.reason instanceof ApiError
+            ? usersOutcome.reason.message
+            : "Failed to load memberships.",
+        );
+        setUsers([]);
+        setBlueprintCounts(null);
+      } else {
+        setUsers(usersOutcome.value);
+        setBlueprintCounts(
+          countsOutcome.status === "fulfilled"
+            ? parseMembershipBlueprintCounts(countsOutcome.value)
+            : null,
+        );
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to load memberships.");
       setUsers([]);
+      setBlueprintCounts(null);
     } finally {
       setLoading(false);
     }
@@ -86,7 +122,7 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
     const plan = tierName(normalizeTier(u.membershipTier));
     if (
       !window.confirm(
-        `Remove ${u.name}'s ${plan} membership and set them to Free? The account stays. Cancel any Stripe subscription separately if they pay monthly.`,
+        `Remove ${u.name}'s ${plan} membership and set them to Free? The account stays. Cancel any Stripe subscription separately if they pay every 3 months.`,
       )
     ) {
       return;
@@ -115,6 +151,39 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
     }
     setError("");
     setPendingDelete(u);
+  };
+
+  const jumpToMember = (userId: string) => {
+    setHighlightId(userId);
+    const node = document.querySelector(`[data-testid="memberships-row-${userId}"]`);
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => setHighlightId((cur) => (cur === userId ? null : cur)), 2400);
+  };
+
+  const saveExpiry = async (u: GyshUser) => {
+    const next = (expiryEdits[u.id] ?? u.membershipExpiresAt ?? "").trim();
+    setBusyKind("clear");
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      const result = await updateUserMembership(u.id, {
+        membershipTier: u.membershipTier || "free",
+        notify: false,
+        membershipExpiresAt: next,
+      });
+      setUsers((prev) => prev.map((row) => (row.id === u.id ? { ...row, ...result.user } : row)));
+      setExpiryEdits((prev) => {
+        const copy = { ...prev };
+        delete copy[u.id];
+        return copy;
+      });
+      setSaveMsg(`Saved expiration for ${u.name}.`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to save expiration.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const confirmRemoveMember = async () => {
@@ -226,10 +295,12 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
               Memberships
             </h2>
             <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem" }}>
-              Members grouped by Free → Elite level from D1. Change a member’s plan on their Users
-              Area profile (including the first-5 complimentary Starter). Remove plan drops a paid
-              member to Free without deleting the account. Delete member asks “Are you sure?” on
-              that member’s row (Tina and Evelyn stay protected).
+              Members grouped by Free → Elite level from D1. Open Blueprints under Dashboard to see
+              that member’s saved Match Wizard results. Dashboard opens their My Dashboard. Change a
+              member’s plan on their Users Area profile (including the first-5 complimentary
+              Starter). Remove plan drops a paid member to Free without deleting the account.
+              Delete member asks “Are you sure?” on that member’s row (Tina and Evelyn stay
+              protected).
             </p>
           </div>
           <button
@@ -286,7 +357,7 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
         </div>
       </div>
 
-      <FoundingStarterTracker users={users} />
+      <FoundingStarterTracker users={users} onJumpToMember={jumpToMember} />
 
       {saveMsg && (
         <div
@@ -436,10 +507,12 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
                 const audience = normalizeAudience(u.audience);
                 const audienceLabel =
                   audience === "other" ? u.audience || "—" : AUDIENCE_LABELS[audience] ?? audience;
+                const blueprintsOpen = Boolean(openBlueprintIds[u.id]);
+                const links = memberPreviewLinks(u);
                 return (
                   <li
                     key={u.id}
-                    className={`memberships-page__row${pendingDelete?.id === u.id ? " memberships-page__row--pending-delete" : ""}`}
+                    className={`memberships-page__card${pendingDelete?.id === u.id ? " memberships-page__row--pending-delete" : ""}${blueprintsOpen ? " is-open" : ""}${highlightId === u.id ? " is-highlight" : ""}`}
                     data-testid={`memberships-row-${u.id}`}
                     ref={(node) => {
                       if (node && pendingDelete?.id === u.id) {
@@ -447,10 +520,34 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
                       }
                     }}
                   >
+                    <div className="memberships-page__row">
                     <div>
                       <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
                       <div style={{ fontSize: "0.9rem", color: "var(--text-primary)" }}>
                         {u.email}
+                      </div>
+                      <div className="memberships-page__member-links">
+                        <a
+                          href={links.dashboardHref}
+                          className="memberships-page__member-link"
+                          data-testid={`memberships-dashboard-${u.id}`}
+                          onClick={(e) => {
+                            if (!onViewMemberDashboard) return;
+                            e.preventDefault();
+                            onViewMemberDashboard(u);
+                          }}
+                        >
+                          <LayoutDashboard size={14} aria-hidden />
+                          Dashboard
+                        </a>
+                        <MembershipMemberBlueprints
+                          userId={u.id}
+                          open={blueprintsOpen}
+                          countHint={blueprintCounts ? (blueprintCounts[u.id] ?? 0) : null}
+                          onToggle={() =>
+                            setOpenBlueprintIds((prev) => ({ ...prev, [u.id]: !prev[u.id] }))
+                          }
+                        />
                       </div>
                       {pendingDelete?.id === u.id ? (
                         <ConfirmDeleteUserBanner
@@ -475,6 +572,37 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
                     <span style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
                       Joined {u.joinedAt}
                     </span>
+                    <div className="memberships-page__expiry">
+                      <label className="memberships-page__expiry-label" htmlFor={`membership-expires-${u.id}`}>
+                        Expires
+                      </label>
+                      <input
+                        id={`membership-expires-${u.id}`}
+                        type="date"
+                        className="memberships-page__expiry-input"
+                        data-testid={`memberships-expires-${u.id}`}
+                        value={expiryEdits[u.id] ?? (u.membershipExpiresAt || "")}
+                        onChange={(e) =>
+                          setExpiryEdits((prev) => ({ ...prev, [u.id]: e.target.value }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline memberships-page__expiry-save"
+                        data-testid={`memberships-expires-save-${u.id}`}
+                        disabled={busy}
+                        onClick={() => void saveExpiry(u)}
+                      >
+                        Save date
+                      </button>
+                      <span className="memberships-page__charge">
+                        {membershipChargeStatus({
+                          membershipTier: u.membershipTier,
+                          notes: u.notes,
+                          lastPaidAt: u.membershipLastPaidAt,
+                        }).label}
+                      </span>
+                    </div>
                     <div className="memberships-page__actions">
                       {(() => {
                         const clearBlocked = gyshMembershipClearBlockReason({
@@ -510,6 +638,7 @@ export function MembershipsPage({ currentUserId = null }: { currentUserId?: stri
                           </>
                         );
                       })()}
+                    </div>
                     </div>
                   </li>
                 );

@@ -122,7 +122,7 @@ AUTHORIZED AUDIO + DEFINED OUTPUT + AUDIO LIMIT + HUMAN VERIFICATION + PRIVATE D
 export const TRANSCRIPTION_NOTES_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Turn authorized voice memos and meeting recordings into clean notes, decisions, action items, or edited transcripts. Starter Membership. 10 hrs/week. Displayed $15 – $50 / project is examples only. Beginner. Startup $0–low. Remote / quiet workspace.",
   },

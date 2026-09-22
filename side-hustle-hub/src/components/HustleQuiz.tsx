@@ -17,10 +17,12 @@ import {
   savePendingBlueprintAsync,
 } from "../lib/pending-blueprint";
 import { saveBlueprintToAccount } from "../lib/blueprints-api";
+import { ensureComplimentaryClaim } from "../lib/wizard-comp-guide";
 import {
   SideHustleBlueprintResults,
   type BlueprintMatchCard,
 } from "./SideHustleBlueprintResults";
+import type { WizardSaveStatus } from "../lib/wizard-save";
 import { WizardStartHereBanner } from "./WizardStartHereBanner";
 import { getAdultWizardProfile } from "../lib/hustle-wizard-profiles";
 import { SIDE_HUSTLE_CATALOG } from "../lib/side-hustle-catalog-data";
@@ -34,6 +36,7 @@ import type { GuideCatalogStateMap } from "../lib/guide-catalog-state";
 import { filterGuidesForWizardResults } from "../lib/guide-catalog-state";
 import { libraryMinTierForAge } from "../lib/guide-library-pool";
 import type { GuideMinTier } from "../lib/guide-access";
+import { presentableGuideTitle } from "../lib/guide-title";
 
 interface HustleQuizProps {
   hustles: any[];
@@ -43,6 +46,10 @@ interface HustleQuizProps {
   previewAsGuest?: boolean;
   /** Unlock → Join / free account handoff */
   onUnlockBlueprint?: () => void;
+  /** Open My Dashboard after saving results. */
+  onOpenDashboard?: () => void;
+  membershipTier?: string | null;
+  isAdmin?: boolean;
   /** Live catalog statuses — wizard results stay Active-only even for admin. */
   catalogStates?: GuideCatalogStateMap | null;
 }
@@ -96,7 +103,7 @@ const BUDGET_LABELS: Record<string, string> = {
   high: "Over $1,000",
 };
 
-/** How well each hustle aligns with strength / goal tags (higher = stronger fit). */
+/** How well each side hustle aligns with strength / goal tags (higher = stronger fit). */
 function scoreHustle(hustleId: string, answers: Answers): number {
   const tags = SIDE_HUSTLE_CATALOG.find((h) => h.id === hustleId)?.matchTags ?? [];
   const profile = getAdultWizardProfile(hustleId, tags);
@@ -131,7 +138,7 @@ function toBlueprintCards(
       "free";
     return {
       id: row.hustle.id,
-      title: row.hustle.name,
+      title: presentableGuideTitle(row.hustle.id, row.hustle.name),
       description: row.hustle.description,
       pct: row.pct,
       tier: row.tier,
@@ -159,7 +166,10 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   isLoggedIn = false,
   previewAsGuest = false,
   onUnlockBlueprint,
+  onOpenDashboard,
   catalogStates = null,
+  membershipTier = null,
+  isAdmin = false,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
@@ -170,6 +180,7 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   });
   const [rankedResults, setRankedResults] = useState<ScoredMatch[] | null>(null);
   const [validationHint, setValidationHint] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<WizardSaveStatus>("idle");
   const startedRef = useRef(false);
   const partialViewedRef = useRef(false);
 
@@ -207,13 +218,45 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
     });
   };
 
-  const persistSavedBlueprint = (results: ScoredMatch[], nextAnswers: Answers) => {
-    void saveBlueprintToAccount({
-      ageGroup: "adult",
-      answers: nextAnswers as unknown as Record<string, unknown>,
-      resultIds: results.map((r) => r.hustle.id),
-      resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
-    });
+  const persistSavedBlueprint = async (
+    results: ScoredMatch[],
+    nextAnswers: Answers,
+  ): Promise<boolean> => {
+    try {
+      const saved = await saveBlueprintToAccount({
+        ageGroup: "adult",
+        answers: nextAnswers as unknown as Record<string, unknown>,
+        resultIds: results.map((r) => r.hustle.id),
+        resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+      });
+      if (saved) {
+        await ensureComplimentaryClaim({
+          isLoggedIn: true,
+          resultIds: results.map((r) => r.hustle.id),
+          resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+        });
+      }
+      return Boolean(saved);
+    } catch {
+      return false;
+    }
+  };
+
+  const handleSaveResults = async () => {
+    if (!rankedResults) return;
+    persistPending(rankedResults, answers);
+    if (!unlocked) {
+      handleUnlock();
+      return;
+    }
+    setSaveStatus("saving");
+    const ok = await persistSavedBlueprint(rankedResults, answers);
+    if (ok) {
+      clearPendingBlueprint();
+      setSaveStatus("saved");
+      return;
+    }
+    setSaveStatus("error");
   };
 
   useEffect(() => {
@@ -400,6 +443,12 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
     const results = buildResults(answers);
     setRankedResults(results);
     persistPending(results, answers);
+    void ensureComplimentaryClaim({
+      isLoggedIn: unlocked,
+      previewAsGuest,
+      resultIds: results.map((r) => r.hustle.id),
+      resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+    });
     trackGyshEvent("find_side_hustle_completed", {
       age_group: "adult",
       match_count: results.length,
@@ -415,8 +464,15 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
     if (unlocked) {
       trackGyshEvent("blueprint_unlocked", { age_group: "adult", match_count: results.length });
       trackGyshEvent("blueprint_saved", { age_group: "adult", match_count: results.length });
-      persistSavedBlueprint(results, answers);
-      clearPendingBlueprint();
+      setSaveStatus("saving");
+      void persistSavedBlueprint(results, answers).then((ok) => {
+        if (ok) {
+          clearPendingBlueprint();
+          setSaveStatus("saved");
+        } else {
+          setSaveStatus("error");
+        }
+      });
     }
   };
 
@@ -554,7 +610,7 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
               )}
 
               <p className="wizard-fill-tip">
-                Tip: Honest answers beat perfect ones — we match hustles to your real budget, hours, strengths, and
+                Tip: Honest answers beat perfect ones — we match side hustles to your real budget, hours, strengths, and
                 goals so your next step feels doable.
               </p>
 
@@ -595,16 +651,20 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
               unlocked={unlocked}
               onUnlock={handleUnlock}
               onRetake={resetQuiz}
-              onSelectCalculator={
-                unlocked ? (id) => onSelectAction(id, "calculator") : undefined
-              }
-              onSelectGuide={unlocked ? (id) => onSelectAction(id, "guide") : undefined}
+              onSelectGuide={(id) => onSelectAction(id, "guide")}
+              onSaveResults={handleSaveResults}
+              saveStatus={saveStatus}
+              onOpenDashboard={onOpenDashboard}
+              isLoggedIn={isLoggedIn}
+              previewAsGuest={previewAsGuest}
+              membershipTier={membershipTier}
+              isAdmin={isAdmin}
             >
               {unlocked && (
                 <div className="match-finder-adult-how">
                   <strong>How your ranking works</strong>
                   <p style={{ margin: "8px 0 12px", fontSize: "0.95rem", lineHeight: 1.45 }}>
-                    {wizardRankingDisclaimer()}
+                    {wizardRankingDisclaimer({ isLoggedIn: unlocked })}
                   </p>
                   <ul>
                     <li>

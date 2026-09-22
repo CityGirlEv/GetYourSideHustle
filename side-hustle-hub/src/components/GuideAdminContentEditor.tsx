@@ -330,7 +330,7 @@ export function GuideAdminContentEditor({
         <div>
           <h3 className="guide-admin-content-editor__heading">
             {focusSection === "prereqs"
-              ? "Edit Prerequisites"
+              ? "Edit About"
               : focusSection === "tools"
                 ? "Edit Tools"
                 : focusSection === "steps"
@@ -343,7 +343,7 @@ export function GuideAdminContentEditor({
           </h3>
           <p className="guide-admin-content-editor__lede">
             {focusSection === "prereqs"
-              ? "Edit prerequisites below — each item has its own Save."
+              ? "Edit the About tab below — each item has its own Save."
               : focusSection === "tools"
                 ? "Edit tools below — each item has its own Save."
                 : focusSection === "steps"
@@ -537,9 +537,9 @@ export function GuideAdminContentEditor({
 
       {showPrereqs ? (
       <BulletListEditor
-        title="Prerequisites"
+        title="About"
         testId="guide-admin-prereqs"
-        itemNoun="prerequisite"
+        itemNoun="item"
         saveLocked={saveLocked}
         savingKey={savingKey}
         itemSavedFlash={itemSavedFlash}
@@ -549,7 +549,7 @@ export function GuideAdminContentEditor({
           heading: p.label,
           body: p.detail,
         }))}
-        addLabel="Add prerequisite"
+        addLabel="Add About item"
         onChange={(items) =>
           setDraft((d) => ({
             ...d,

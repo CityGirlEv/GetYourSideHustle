@@ -7,8 +7,8 @@ import {
   PDF_MARGIN,
   applyPdfPageBranding,
   drawPdfPageChrome,
-  loadPdfLogoDataUrl,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 import { openPdfInBrowser, reservePdfTab } from "./open-pdf";
 import { STATUS_LABELS } from "./gysh-test-plan";
 import { healCursorNoteAuthor } from "./gysh-note-entries";

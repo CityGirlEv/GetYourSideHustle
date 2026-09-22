@@ -77,7 +77,7 @@ export const LOCAL_BUSINESS_AI_SETUP_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Set up simple, owner-approved AI reply templates, prompt libraries, and FAQ helpers for local shops that are new to ChatGPT — then train the owner to review every result before use. Tagline: Make AI Useful, Safe, and Simple for the Shop. Category: AI / Local. Best for Adults, Seniors / Retirees comfortable teaching simple technology. Beginner to Intermediate · $0 – $35 startup · Flexible / Appointment-Based · Local / Remote · Per Setup / Training / Light Support Retainer · 3 - 10 hrs/week · Elite Membership. Displayed $15 – $50 / project is examples only.",
   },

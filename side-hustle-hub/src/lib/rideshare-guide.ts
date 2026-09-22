@@ -73,7 +73,7 @@ export const RIDESHARE_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Drive passengers using rideshare platforms such as Uber or Lyft. Work flexible hours and focus on higher-demand windows such as airport traffic, commute periods, nightlife, concerts, sporting events, conventions, and other local events. Tagline: Drive Smart. Work the Busy Windows. Track Your Real Profit. Category: Driving / Gig Economy. Best for Adults and Seniors / Retirees. Beginner · Low to moderate startup · Timeline 3–7 days · Platform earnings / tips · Pro Membership. Displayed income example $600–$3,500 / month (examples only — not guaranteed).",
   },

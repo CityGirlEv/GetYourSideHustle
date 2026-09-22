@@ -110,7 +110,7 @@ export const CLOSET_CLEANOUT_LISTING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Help clients finish a closet clean-out by sorting the items they already decided to sell or donate, photographing sale items, recording item details, preparing listings, and organizing donation items for drop-off or pickup. Tagline: Clear the Closet. List the Good Stuff. Move the Rest Along. Category: Resale Support / Organization. Best for Teens with parent/guardian approval, Adults, Seniors / Retirees. Beginner · Very low startup · Flexible · Client home / remote listing work · Per project / batch · 3 - 10 hrs/week · Starter Membership.",
   },

@@ -7,7 +7,7 @@
 export const AI_PEERS_REALITY_CHECK = {
   title: "YOU ARE A PATIENT HOST, NOT AN AI ENGINEER",
   body: [
-    "This hustle is friendly beginner AI education. You host coffee-chat style sessions so peers can try ChatGPT and everyday AI tools at an office-hours pace — not a technical lecture.",
+    "This side-hustle is friendly beginner AI education. You host coffee-chat style sessions so peers can try ChatGPT and everyday AI tools at an office-hours pace — not a technical lecture.",
     "",
     "You do not need to be an AI engineer. You do need basic confidence with ChatGPT, patience, plain-language explanations, and the habit of saying “I don’t know — let’s verify that.”",
     "",
@@ -97,7 +97,7 @@ export const AI_PEERS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Host a friendly coffee-chat style session teaching peers ChatGPT and everyday AI tools — office hours pace, not tech jargon. Formats can include 1:1 chats, small groups, beginner office hours, private groups, community workshops, learning series, and follow-up sessions. Tagline: Friendly Pace. Everyday AI. No Jargon. Category: AI / Education. Best for patient hosts, especially peers and seniors. Beginner · $0 – Low · 2–8 hrs/week · Home / Library / Community Room / Zoom · $15–$40/hour (examples) · Elite Membership. You do NOT need to be an AI engineer.",
   },

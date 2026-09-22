@@ -106,6 +106,12 @@ export function sortGuidesByMembershipTier<T>(
 /** Membership filter tabs (Show All includes every tier including Free). */
 export type DemoMembershipFilter = "all" | "free" | "starter" | "pro" | "elite";
 
+/** Membership chip on first open of the Guide library (Show All, not Free-only). */
+export const DEFAULT_LIBRARY_MEMBERSHIP_FILTERS: DemoMembershipFilter[] = ["all"];
+
+/** Free / Starter / Pro / Elite groups start expanded on Show All. */
+export const DEFAULT_LIBRARY_TIER_GROUPS_OPEN = true;
+
 /**
  * Guide min-tiers listed under each membership filter tab (plan contents):
  * - Free → Free only
@@ -236,7 +242,7 @@ export function clampMembershipFiltersForAges(
   ages: readonly string[],
   allId = "all",
 ): DemoMembershipFilter[] {
-  if (membership.length === 0) return ["free"];
+  if (membership.length === 0) return [...DEFAULT_LIBRARY_MEMBERSHIP_FILTERS];
   if (ageSelectionAllowsPaidMembership(ages, allId)) return [...membership];
   if (membership.includes("all")) return ["all"];
   return ["free"];

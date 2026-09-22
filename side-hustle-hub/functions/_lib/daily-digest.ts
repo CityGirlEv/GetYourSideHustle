@@ -899,6 +899,7 @@ export async function handleCronDailyDigest(env: Env, request: Request): Promise
   });
   let parentReports = { sent: 0 };
   let scheduleReminders = { sent: 0 };
+  let membershipLifecycle = { reminders: 0, reverted: 0, stripeSynced: 0 };
   try {
     const { sendDueParentProgressReports } = await import("./family");
     parentReports = await sendDueParentProgressReports(env);
@@ -911,10 +912,17 @@ export async function handleCronDailyDigest(env: Env, request: Request): Promise
   } catch {
     scheduleReminders = { sent: 0 };
   }
+  try {
+    const { runMembershipLifecycle } = await import("./membership-lifecycle");
+    membershipLifecycle = await runMembershipLifecycle(env);
+  } catch {
+    membershipLifecycle = { reminders: 0, reverted: 0, stripeSynced: 0 };
+  }
   return json({
     ...result,
     parentProgressReports: parentReports,
     scheduleReminders,
+    membershipLifecycle,
   });
 }
 

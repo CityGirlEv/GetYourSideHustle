@@ -120,7 +120,7 @@ export const AI_AGENTS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Build and sell custom AI agents that help small businesses and side hustlers handle repetitive tasks such as lead research, appointment scheduling, information gathering, follow-up drafting, FAQ support, intake, reminders, and workflow assistance. Tagline: Find the Repetitive Work. Build the Agent. Save the Client Time. Category: AI Services / Automation / Business Support. Best for Adults, Seniors/Retirees, and experienced Teens with adult-managed business accounts where required. Intermediate · Low–Moderate startup · Remote / Local · Setup fee / custom agent / monthly support · 2 - 4 weeks · Elite Membership.",
   },

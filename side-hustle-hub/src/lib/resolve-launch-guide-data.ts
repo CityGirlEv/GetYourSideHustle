@@ -10,6 +10,7 @@ import {
 } from "./guide-detailed-steps";
 import { ensureMarketingPlanSteps } from "./guide-marketing-plan";
 import { kidsGuideById, kidsGuideToLaunchGuideData } from "./kids-guides";
+import { presentableGuideTitle, titleFromGuideSlug } from "./guide-title";
 
 export type LaunchGuideStep = {
   title: string;
@@ -44,7 +45,7 @@ export function resolveLaunchGuideData(
     fromKids ??
     ({
       id,
-      name: id || "Guide",
+      name: titleFromGuideSlug(id) || "Guide",
       timeframe: "—",
       estEarnings: "—",
       bestFor: "Guide content is not available for this id yet.",
@@ -60,7 +61,10 @@ export function resolveLaunchGuideData(
         : (["kids"] as const)
       : undefined);
   const forced = detailedStepsForGuide(id, { audiences });
-  const name = fromAuthored?.name ?? hustle?.name ?? fromKids?.name ?? base.name;
+  const name = presentableGuideTitle(
+    id,
+    fromAuthored?.name ?? hustle?.name ?? fromKids?.name ?? base.name,
+  );
   if (forced?.length) {
     return {
       ...base,

@@ -106,7 +106,7 @@ export const PET_SITTING_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Care for neighbors’ pets while they travel — walks, drop-ins, or overnight stays. Warm work that stays local. Tagline: Show Up. Follow the Notes. Send the Update. Category: Local Services / Pet Care. Beginner · 4 - 14 hrs/week · $25 – $75 / day drop-in (examples only).",
   },

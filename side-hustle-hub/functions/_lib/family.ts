@@ -572,7 +572,7 @@ export async function assignBlueprintToChild(
   return json({ ok: true, blueprintId, childProfileId });
 }
 
-/** Assign one hustle match inside a Blueprint to self or a linked kid. */
+/** Assign one side hustle match inside a Blueprint to self or a linked kid. */
 export async function assignBlueprintMatchToChild(
   env: Env,
   parent: DbUser,

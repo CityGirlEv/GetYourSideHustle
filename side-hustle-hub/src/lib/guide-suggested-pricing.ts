@@ -430,14 +430,151 @@ export function suggestedPricingForGuide(guideId: string): GuideSuggestedPricing
   return GUIDE_SUGGESTED_PRICING[guideId];
 }
 
-export function formatPricingLine(item: GuidePricingItem): string {
-  const label =
+export function pricingItemLabel(item: GuidePricingItem): string {
+  return (
     item.label?.trim() ||
-    String((item as { name?: string }).name ?? "").trim();
+    String((item as { name?: string }).name ?? "").trim()
+  );
+}
+
+export function formatPricingLine(item: GuidePricingItem): string {
+  const label = pricingItemLabel(item);
   const notes = item.notes ? ` — ${item.notes}` : "";
   return `${label}: ${item.price}${notes}`;
 }
 
 export function pricingDisclaimer(): string {
   return "Suggested prices are examples only — not income guarantees. Adjust for your city, experience, and materials cost. Confirm what the customer agrees to in writing (text is fine) before you start.";
+}
+
+export type SuggestedPricingIntroBlock =
+  | { kind: "heading"; text: string }
+  | { kind: "bullets"; lines: string[] };
+
+export type OrganizedSuggestedPricing = {
+  introBlocks: SuggestedPricingIntroBlock[];
+  items: GuidePricingItem[];
+};
+
+function pricingIntroText(intro: string | string[] | undefined): string {
+  if (!intro) return "";
+  return Array.isArray(intro) ? intro.join("\n") : String(intro);
+}
+
+function normalizePricingText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[–—−]/g, "-")
+    .replace(/[^a-z0-9$+/.-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizePriceToken(value: string): string {
+  return value.toLowerCase().replace(/[–—−]/g, "-").replace(/\s+/g, "");
+}
+
+function extractPriceTokens(value: string): string[] {
+  const matches = value.match(
+    /\$\s*[\d,]+(?:\.\d+)?(?:\s*[–—-]\s*\$?\s*[\d,]+(?:\.\d+)?)?\+?/g,
+  );
+  if (!matches) return [];
+  return [...new Set(matches.map(normalizePriceToken).filter(Boolean))];
+}
+
+function isStaffPricingPlaceholderLine(line: string): boolean {
+  return /replace\s+(the\s+old\s+)?(pricing|list|section)\b/i.test(line);
+}
+
+export function isPricingHeadingLine(line: string): boolean {
+  if (/\$\s*\d/.test(line)) return false;
+  const letters = line.replace(/[^A-Za-z]/g, "");
+  if (letters.length < 6) return false;
+  const upper = letters.replace(/[^A-Z]/g, "").length;
+  return upper / letters.length >= 0.82 && line.length <= 90;
+}
+
+function lineLooksLikeOfferRow(line: string): boolean {
+  return (
+    /:/.test(line) &&
+    /\$\s*\d/.test(line) &&
+    !/[×x]\s*\$/.test(line) &&
+    !/=\s*\$/.test(line)
+  );
+}
+
+export function introLineDuplicatesPricingItem(
+  line: string,
+  items: GuidePricingItem[],
+): boolean {
+  const n = normalizePricingText(line);
+  if (!n || !items.length) return false;
+  return items.some((item) => {
+    const label = normalizePricingText(pricingItemLabel(item));
+    const formatted = normalizePricingText(formatPricingLine(item));
+    const labelPrice = normalizePricingText(
+      `${pricingItemLabel(item)}: ${item.price}`,
+    );
+    if (n === formatted || n === labelPrice) return true;
+    if (label && (n === label || n.startsWith(`${label} `))) return true;
+    if (
+      label &&
+      label.length >= 8 &&
+      n.includes(label) &&
+      extractPriceTokens(line).some(
+        (token) => token === normalizePriceToken(item.price),
+      )
+    ) {
+      return true;
+    }
+    if (!lineLooksLikeOfferRow(line) || !label) return false;
+    const lineLabel = normalizePricingText(line.split(":")[0] ?? "");
+    if (!lineLabel || lineLabel.length < 8) return false;
+    if (!(label.includes(lineLabel) || lineLabel.includes(label))) return false;
+    const itemPrices = extractPriceTokens(item.price);
+    const linePrices = extractPriceTokens(line);
+    return itemPrices.some((price) => linePrices.includes(price));
+  });
+}
+
+function splitPricingIntroLines(intro: string): string[] {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const raw of intro.split(/\r?\n/)) {
+    const line = raw.replace(/^[•\-\u2013\u2014☐]\s+/, "").trim();
+    if (!line) continue;
+    const key = normalizePricingText(line);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    lines.push(line);
+  }
+  return lines;
+}
+
+export function organizeSuggestedPricingCopy(
+  pricing: Pick<GuideSuggestedPricing, "intro" | "items"> | undefined | null,
+): OrganizedSuggestedPricing {
+  const items = pricing?.items?.length ? pricing.items : [];
+  const introBlocks: SuggestedPricingIntroBlock[] = [];
+  let currentBullets: string[] = [];
+
+  const flushBullets = () => {
+    if (!currentBullets.length) return;
+    introBlocks.push({ kind: "bullets", lines: currentBullets });
+    currentBullets = [];
+  };
+
+  for (const line of splitPricingIntroLines(pricingIntroText(pricing?.intro))) {
+    if (isStaffPricingPlaceholderLine(line)) continue;
+    if (introLineDuplicatesPricingItem(line, items)) continue;
+    if (isPricingHeadingLine(line)) {
+      flushBullets();
+      introBlocks.push({ kind: "heading", text: line });
+      continue;
+    }
+    currentBullets.push(line);
+  }
+  flushBullets();
+
+  return { introBlocks, items };
 }

@@ -137,7 +137,7 @@ export const BOOK_PUBLISHING_KIDS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Write and illustrate a short, original storybook as a parent-and-child publishing project. Create the story and artwork, format and proof the book, then let the parent manage publishing accounts, payments, royalties, customer communication, and in-person sales. Tagline: Imagine It. Create It. Share Your Story. Category: Digital / Creative / Publishing. Best for kids working with a parent/guardian; teens with parent/guardian-managed publishing, payment, and sales accounts. Beginner · $0 – Low for a digital-first project (higher if ordering printed copies or paying event fees) · 12 hrs/week · Home / Online / Parent-Supervised Community Events · Gifts / Fair Sales / eBook Royalties / Print Royalties — Parent-Managed · Elite Membership.",
   },

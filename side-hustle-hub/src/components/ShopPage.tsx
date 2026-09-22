@@ -67,7 +67,7 @@ export function ShopPage({
         <span className="glow-badge pink">
           <ShoppingBag size={13} aria-hidden /> GYSH Gear
         </span>
-        <h2>Wear the hustle</h2>
+        <h2>Wear the side hustle</h2>
         <p>
           {SITE_NAME} tees and hats are live in the GYSH Gear shop. Starter includes{" "}
           {merchCompareCell("starter").toLowerCase()} ({merchItemPhrase(1)}); Pro and Elite include{" "}

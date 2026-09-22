@@ -1,85 +1,71 @@
 /**
- * One complimentary Match Wizard guide unlock per demographic.
+ * One complimentary Match Wizard extra guide per lifetime.
  *
- * Rule: on the first completed Blueprint for an age group, the true top match
- * (highest match %) is claimed forever for that account + age group.
- * Retakes may reorder results but do not grant another paid guide.
+ * Free members (after signup) check 1 guide on their wizard result list.
+ * That pick unlocks any membership floor. The choice is once per lifetime —
+ * retakes do not grant another extra. Unique Unique Free stays separate.
  */
 
-import type { BlueprintAgeGroup } from "./gysh-analytics";
+import { getSessionToken } from "./api";
 import { fetchMemberProgress, saveMemberProgress } from "./gysh-member-progress";
 import { getLocalStore } from "./browser-storage";
 import { isFreeWizardHustle } from "./side-hustle-catalog";
+import {
+  canOfferComplimentaryPick,
+  claimComplimentaryGuide,
+  complimentaryGuideIds,
+  complimentarySelectionError,
+  explicitComplimentaryGuideId,
+  type WizardCompMap,
+} from "./wizard-comp-pick";
+
+export {
+  WIZARD_COMP_EXTRA_KEY,
+  WIZARD_COMP_PICK_SOURCE,
+  canOfferComplimentaryPick,
+  claimComplimentaryGuide,
+  claimedExtraGuideId,
+  complimentaryGuideIds,
+  complimentaryPickNotice,
+  complimentarySelectionError,
+  explicitComplimentaryGuideId,
+  isExplicitComplimentaryPick,
+  pickComplimentaryExtraGuideId,
+  pickTrueTopMatchId,
+  type WizardCompMap,
+} from "./wizard-comp-pick";
 
 export const WIZARD_COMP_PROGRESS_KIND = "wizard_comp_guides" as const;
 export const WIZARD_COMP_LOCAL_KEY = "gysh_wizard_comp_guides_v1";
 
-export type WizardCompMap = Partial<Record<BlueprintAgeGroup, string>>;
+let cachedComplimentaryIds: string[] = [];
 
-export function pickTrueTopMatchId(input: {
-  resultIds: string[];
-  resultPcts?: Record<string, number> | null;
-}): string | null {
-  const ids = input.resultIds.map((id) => id.trim()).filter(Boolean);
-  if (!ids.length) return null;
-  const pcts = input.resultPcts ?? {};
-  let bestId = ids[0];
-  let bestPct = Number(pcts[bestId] ?? -1);
-  for (const id of ids) {
-    const pct = Number(pcts[id] ?? -1);
-    if (pct > bestPct) {
-      bestPct = pct;
-      bestId = id;
-    }
-  }
-  return bestId;
+export function setCachedComplimentaryGuideIds(ids: readonly string[]): void {
+  cachedComplimentaryIds = ids.map((id) => id.trim()).filter(Boolean);
 }
 
-/** Immutable claim: existing age-group unlock wins. */
-export function claimComplimentaryGuide(
-  existing: WizardCompMap,
-  ageGroup: BlueprintAgeGroup,
-  topGuideId: string | null | undefined,
-): { next: WizardCompMap; claimedId: string | null; alreadyClaimed: boolean } {
-  const prior = existing[ageGroup]?.trim() || null;
-  if (prior) {
-    return { next: existing, claimedId: prior, alreadyClaimed: true };
-  }
-  const id = topGuideId?.trim() || null;
-  if (!id) {
-    return { next: existing, claimedId: null, alreadyClaimed: false };
-  }
-  return {
-    next: { ...existing, [ageGroup]: id },
-    claimedId: id,
-    alreadyClaimed: false,
-  };
+export function cachedComplimentaryGuideIds(): string[] {
+  return cachedComplimentaryIds;
 }
 
-export function complimentaryGuideIds(map: WizardCompMap): string[] {
-  return Object.values(map).filter((id): id is string => Boolean(id?.trim()));
-}
-
-export function isComplimentaryGuide(
-  map: WizardCompMap,
-  guideId: string,
-  ageGroup?: BlueprintAgeGroup,
-): boolean {
+export function isComplimentaryGuide(map: WizardCompMap, guideId: string): boolean {
   const id = guideId.trim();
   if (!id) return false;
-  if (ageGroup) return map[ageGroup] === id;
-  return complimentaryGuideIds(map).includes(id);
-}
-
-export function complimentaryUnlockNote(guideId: string): string {
-  if (isFreeWizardHustle(guideId)) {
-    return "Already on the Free Membership library — open anytime. Your complimentary slot for this demographic is marked so retakes cannot unlock extra paid guides.";
-  }
-  return "Complimentary unlock from your Match Wizard — one top-match guide per Kids / Teens / Adult / Senior Blueprint. Retaking the wizard will not unlock more paid guides.";
+  return explicitComplimentaryGuideId(map) === id;
 }
 
 export function wizardCompUserFacingRule(): string {
-  return "Free members get every Free-library guide anytime, plus one complimentary top-match guide per demographic from your first Blueprint save. Retakes update rankings but do not unlock more paid guides. Upgrade to open the rest.";
+  return "After you create a Free account, check 1 Match Wizard result as your complimentary Launch Guide — even if that extra is Starter, Pro, or Elite. That gift is once per lifetime. Free members also keep Unique Unique Free. You cannot unlock another extra later.";
+}
+
+/** Sticky local extra id after the member has checked a result. */
+export function readLocalComplimentaryExtraId(): string | null {
+  return explicitComplimentaryGuideId(readLocalCompMap());
+}
+
+/** New Free accounts start with no complimentary pick — drop leftover auto-grants. */
+export function clearLocalComplimentaryClaim(): void {
+  writeLocalCompMap({});
 }
 
 function readLocalCompMap(): WizardCompMap {
@@ -95,60 +81,144 @@ function readLocalCompMap(): WizardCompMap {
 
 function writeLocalCompMap(map: WizardCompMap): void {
   getLocalStore().setItem(WIZARD_COMP_LOCAL_KEY, JSON.stringify(map));
+  setCachedComplimentaryGuideIds(complimentaryGuideIds(map));
 }
 
-/** Merge server + local; prefer first claim (do not overwrite with a different guide). */
+/** Merge server + local; only an explicit checked pick counts. */
 export function mergeCompMaps(a: WizardCompMap, b: WizardCompMap): WizardCompMap {
-  const out: WizardCompMap = { ...a };
-  for (const key of ["kids", "junior", "adult", "senior"] as BlueprintAgeGroup[]) {
-    if (!out[key] && b[key]) out[key] = b[key];
-  }
-  return out;
+  const extra = explicitComplimentaryGuideId(a) || explicitComplimentaryGuideId(b);
+  if (!extra) return {};
+  return { extra, source: "pick" };
 }
 
 export async function loadComplimentaryGuides(isLoggedIn: boolean): Promise<WizardCompMap> {
   const local = readLocalCompMap();
-  if (!isLoggedIn) return local;
+  if (!isLoggedIn || !getSessionToken()) {
+    const explicit = mergeCompMaps(local, {});
+    writeLocalCompMap(explicit);
+    setCachedComplimentaryGuideIds(complimentaryGuideIds(explicit));
+    return explicit;
+  }
   try {
     const remote = await fetchMemberProgress<WizardCompMap>(WIZARD_COMP_PROGRESS_KIND);
     const merged = mergeCompMaps(remote ?? {}, local);
     writeLocalCompMap(merged);
-    if (JSON.stringify(merged) !== JSON.stringify(remote ?? {})) {
+    if (explicitComplimentaryGuideId(merged) && !explicitComplimentaryGuideId(remote ?? {})) {
       await saveMemberProgress(WIZARD_COMP_PROGRESS_KIND, merged);
     }
     return merged;
   } catch {
-    return local;
+    const explicit = mergeCompMaps(local, {});
+    setCachedComplimentaryGuideIds(complimentaryGuideIds(explicit));
+    return explicit;
   }
 }
 
 /**
- * Claim top match for this age group (no-op if already claimed).
- * Returns the guide id that is unlocked for this demographic.
+ * Unlock the checked result as the one lifetime extra.
+ * Guests cannot claim — they must create a Free account first.
  */
-export async function ensureComplimentaryClaim(input: {
-  isLoggedIn: boolean;
-  ageGroup: BlueprintAgeGroup;
+export async function claimSelectedComplimentaryGuide(input: {
+  isLoggedIn?: boolean;
+  previewAsGuest?: boolean;
+  membershipTier?: string | null;
+  guideId: string;
   resultIds: string[];
-  resultPcts?: Record<string, number> | null;
-}): Promise<{ map: WizardCompMap; claimedId: string | null; alreadyClaimed: boolean }> {
-  const top = pickTrueTopMatchId({
+}): Promise<{
+  map: WizardCompMap;
+  claimedId: string | null;
+  alreadyClaimed: boolean;
+  error: string | null;
+}> {
+  if (input.previewAsGuest || !input.isLoggedIn) {
+    return {
+      map: {},
+      claimedId: null,
+      alreadyClaimed: false,
+      error: "Create a Free account to pick your 1 complimentary guide.",
+    };
+  }
+  if (!canOfferComplimentaryPick({ isLoggedIn: true, membershipTier: input.membershipTier })) {
+    const current = await loadComplimentaryGuides(true);
+    const prior = explicitComplimentaryGuideId(current);
+    if (prior) {
+      return {
+        map: current,
+        claimedId: prior,
+        alreadyClaimed: true,
+        error: complimentarySelectionError({
+          selectedId: input.guideId,
+          resultIds: input.resultIds,
+          alreadyClaimedId: prior,
+        }),
+      };
+    }
+    return {
+      map: current,
+      claimedId: null,
+      alreadyClaimed: false,
+      error: "Complimentary unlock is for Free members — 1 guide, once.",
+    };
+  }
+  const current = await loadComplimentaryGuides(true);
+  const prior = explicitComplimentaryGuideId(current);
+  const selectionError = complimentarySelectionError({
+    selectedId: input.guideId,
     resultIds: input.resultIds,
-    resultPcts: input.resultPcts,
+    alreadyClaimedId: prior,
+    alreadyOnFree: isFreeWizardHustle(input.guideId),
   });
-  const current = await loadComplimentaryGuides(input.isLoggedIn);
-  const { next, claimedId, alreadyClaimed } = claimComplimentaryGuide(
-    current,
-    input.ageGroup,
-    top,
-  );
+  if (selectionError) {
+    return {
+      map: current,
+      claimedId: prior,
+      alreadyClaimed: Boolean(prior),
+      error: selectionError,
+    };
+  }
+  const { next, claimedId, alreadyClaimed } = claimComplimentaryGuide(current, input.guideId);
   writeLocalCompMap(next);
-  if (input.isLoggedIn && !alreadyClaimed && claimedId) {
+  if (!alreadyClaimed && claimedId && getSessionToken()) {
     try {
       await saveMemberProgress(WIZARD_COMP_PROGRESS_KIND, next);
     } catch {
       /* local map still applies until next sync */
     }
   }
-  return { map: next, claimedId, alreadyClaimed };
+  return { map: next, claimedId, alreadyClaimed, error: null };
+}
+
+export function canOfferComplimentaryPickForSession(input: {
+  isLoggedIn?: boolean;
+  previewAsGuest?: boolean;
+  membershipTier?: string | null;
+}): boolean {
+  return canOfferComplimentaryPick({
+    isLoggedIn: input.isLoggedIn,
+    previewAsGuest: input.previewAsGuest,
+    membershipTier: input.membershipTier,
+    claimedId: cachedComplimentaryGuideIds()[0] ?? null,
+  });
+}
+
+/**
+ * Load the existing lifetime extra. Does not auto-pick a match —
+ * the member must check 1 result after Free signup.
+ */
+export async function ensureComplimentaryClaim(input: {
+  isLoggedIn?: boolean;
+  previewAsGuest?: boolean;
+  resultIds?: string[];
+  resultPcts?: Record<string, number> | null;
+}): Promise<{
+  map: WizardCompMap;
+  claimedId: string | null;
+  alreadyClaimed: boolean;
+}> {
+  if (input.previewAsGuest) {
+    return { map: {}, claimedId: null, alreadyClaimed: false };
+  }
+  const map = await loadComplimentaryGuides(Boolean(input.isLoggedIn));
+  const claimedId = explicitComplimentaryGuideId(map);
+  return { map, claimedId, alreadyClaimed: Boolean(claimedId) };
 }

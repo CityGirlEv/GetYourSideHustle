@@ -15,7 +15,6 @@ import { guideStepChecklistItemKey } from "../lib/guide-step-checklist";
 import { GuideStepDesc } from "./GuideStepDesc";
 import {
   guideTierBadgeLabel,
-  guideTierMembershipNote,
   guideTierShortLabel,
   resolveGuideAccess,
   type GuideMinTier,
@@ -78,6 +77,7 @@ import {
   libraryMinTierForGuideId,
   uniqueGuideLibraryEntries,
 } from "../lib/guide-library-pool";
+import { presentableGuideTitle } from "../lib/guide-title";
 import {
   applyLiveGuideLibraryCountsFromStates,
   patchLiveGuideLibraryCatalogState,
@@ -90,6 +90,7 @@ import {
 } from "../lib/guide-library-search";
 import { formatGuideNumber, guideNumberLabel, guideNumberParenthetical, orderedGuideIdsForNumbering } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
+import { ComplimentaryGiftNote } from "./ComplimentaryGiftNote";
 import { MembershipLockBadge } from "./MembershipLockBadge";
 import { GuidePrepSections, guidePrepAfterTabsOwnsPanel } from "./GuidePrepSections";
 import { GuideRevenueCalculator } from "./GuideRevenueCalculator";
@@ -712,7 +713,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           const patchedName = catalogStates[e.id]?.patch?.name?.trim();
           return {
             id: e.id,
-            name: patchedName || e.name || authored?.name || data.name,
+            name: presentableGuideTitle(
+              e.id,
+              patchedName || e.name || authored?.name || data.name,
+            ),
             peek:
               guideSideHustleDescription(e.id) ||
               authored?.bestFor ||
@@ -864,6 +868,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     membershipTier: effectiveTier,
     minTier: activeMinTier,
     isAdmin,
+    guideId: effectiveGuideId,
   });
   const guideIsFree = activeMinTier === "free";
   const unlocked = activeAccess.unlocked;
@@ -934,7 +939,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   );
   const activeGuide = {
     ...activeGuideBase,
-    name: String(patchedBase.name || activeGuideBase.name),
+    name: presentableGuideTitle(
+      effectiveGuideId,
+      String(patchedBase.name || activeGuideBase.name),
+    ),
     timeframe: String(patchedBase.timeframe || activeGuideBase.timeframe),
     estEarnings: String(patchedBase.estEarnings || activeGuideBase.estEarnings),
     steps:
@@ -986,61 +994,6 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       return next;
     });
   };
-
-  const lockedMainPanel = (
-    <section
-      className="glass launch-guides-catalog-banner launch-guide-detail__gated"
-      data-testid="launch-guides-locked"
-    >
-      <div>
-        <div className="free-guide-card-badges" style={{ marginBottom: 8 }}>
-          <span className={`glow-badge ${guideIsFree ? "free" : "pink"}`}>
-            {guideTierBadgeLabel(activeMinTier)}
-          </span>
-          <MembershipLockBadge
-            minTier={activeMinTier}
-            unlocked={false}
-            data-testid={`guide-lock-badge-main-${activeGuide.id}`}
-          />
-        </div>
-        <h2 style={{ fontSize: "1.35rem", color: "var(--charcoal)", margin: "0 0 6px" }}>
-          {activeGuide.name}
-          {(() => {
-            const n = guideNumberParenthetical(activeGuide.id);
-            return n ? ` ${n}` : "";
-          })()}{" "}
-          guide
-        </h2>
-        <p style={{ margin: "0 0 8px", color: "var(--text-primary)", fontSize: "1rem", maxWidth: 560 }}>
-          {activeGuideDescription} {guideTierMembershipNote(activeMinTier)}.
-        </p>
-        <div
-          className="launch-guide-detail__main-stats"
-          data-testid="launch-guide-hours-prices-locked"
-          style={{ marginBottom: 8 }}
-        >
-          <span>
-            <Clock size={14} aria-hidden /> {activeGuide.timeframe}
-          </span>
-          <span>
-            <TrendingUp size={14} aria-hidden /> {activeGuide.estEarnings}
-          </span>
-        </div>
-      </div>
-      <div className="launch-guides-catalog-actions">
-        {onGoToLogin && !isLoggedIn ? (
-          <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
-            <LogIn size={16} /> Log in
-          </button>
-        ) : null}
-        <JoinToUnlockCta
-          access={activeAccess}
-          onJoin={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
-          onUpgrade={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
-        />
-      </div>
-    </section>
-  );
 
   const guideFiltersBar = (
     <div className="launch-guide-detail__filters-bar" data-testid="launch-guide-filters-bar">
@@ -1484,6 +1437,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
               membershipTier: effectiveTier,
               minTier: gMin,
               isAdmin,
+              guideId: g.id,
             });
             const gFree = gMin === "free";
             const gStatus = getGuideVisibilityStatus(g.id, catalogStates);
@@ -1620,8 +1574,6 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           </div>
           {guideFiltersBar}
         </div>
-      ) : !unlocked ? (
-        lockedMainPanel
       ) : (
       <div className="glass launch-guide-detail__main">
         {/* Header summary */}
@@ -1630,6 +1582,13 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             <span className={`glow-badge ${guideIsFree ? "free" : "purple"}`} style={{ marginBottom: 0 }}>
               {guideTierBadgeLabel(activeMinTier)}
             </span>
+            {!unlocked ? (
+              <MembershipLockBadge
+                minTier={activeMinTier}
+                unlocked={false}
+                data-testid={`guide-lock-badge-main-${activeGuide.id}`}
+              />
+            ) : null}
             <h2 className="launch-guide-detail__main-title">
               <span className="launch-guide-detail__main-title-text">
                 {activeGuide.name}
@@ -1665,6 +1624,9 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
               <p className="launch-guide-detail__main-lede" data-testid="launch-guide-description">
                 {activeGuideDescription}
               </p>
+            ) : null}
+            {unlocked ? (
+              <ComplimentaryGiftNote guideId={activeGuide.id} minTier={activeMinTier} />
             ) : null}
             <div
               className="launch-guide-detail__main-stats"
@@ -1766,6 +1728,21 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           kit={guideKit}
           testIdPrefix="launch-guide"
           expandAllSections
+          guideUnlocked={unlocked}
+          lockCta={
+            <>
+              {onGoToLogin && !isLoggedIn ? (
+                <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
+                  <LogIn size={16} /> Log in
+                </button>
+              ) : null}
+              <JoinToUnlockCta
+                access={activeAccess}
+                onJoin={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
+                onUpgrade={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
+              />
+            </>
+          }
           afterTabsOwnsPanel={guidePrepAfterTabsOwnsPanel(canEditGuideContent)}
           afterTabs={(tab) => {
             if (!canEditGuideContent) return null;

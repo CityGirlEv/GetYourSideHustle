@@ -556,7 +556,7 @@ export function HustleScheduleSuite({
 
                 {hustleChoices.length === 0 && (
                   <p className="hustle-schedule-suite__hint" data-testid="schedule-suite-no-hustle">
-                    No hustles for this member yet. Run the Match Wizard
+                    No side hustles for this member yet. Run the Match Wizard
                     {pickOwner === "self" ? "" : " (or assign a Blueprint on Family)"}
                     , then come back.
                     {onOpenMatchWizard && (
@@ -622,7 +622,7 @@ export function HustleScheduleSuite({
                   <div
                     className="hustle-schedule-suite__tabs"
                     role="tablist"
-                    aria-label="Saved hustle schedules"
+                    aria-label="Saved side hustle schedules"
                     data-testid="schedule-suite-tabs"
                   >
                     {visibleSchedules.length === 0 ? (

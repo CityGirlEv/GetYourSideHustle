@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { outgoingAdminCopy, adminRecipients } from "../email";
+import { outgoingAdminCopy, adminRecipients, adminCopyRecipients } from "../email";
 import { ADMIN_EMAIL, ADMIN_NOTIFY_CC } from "../email-brand";
 
 describe("outgoingAdminCopy", () => {
@@ -30,5 +30,22 @@ describe("adminRecipients", () => {
     expect(recips).toContain(ADMIN_EMAIL);
     expect(recips).toContain("evelyn3@cox.net");
     expect(recips).toContain("tinamariebarham@gmail.com");
+  });
+});
+
+describe("adminCopyRecipients", () => {
+  it("CCs partner admins on registration mail and skips the attendee", () => {
+    const cc = adminCopyRecipients({} as never, "member@example.com");
+    expect(cc).toContain(ADMIN_EMAIL);
+    expect(cc).toContain("evelyn3@cox.net");
+    expect(cc).toContain("tinamariebarham@gmail.com");
+    expect(cc).toContain(ADMIN_NOTIFY_CC[0]);
+    expect(cc).not.toContain("member@example.com");
+  });
+
+  it("does not CC an admin who is the registrant", () => {
+    const cc = adminCopyRecipients({} as never, "evelyn3@cox.net");
+    expect(cc).not.toContain("evelyn3@cox.net");
+    expect(cc).toContain(ADMIN_EMAIL);
   });
 });

@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Lock } from "lucide-react";
 import type { GuideKit } from "../lib/guide-tools";
+import {
+  GUIDE_PREP_ABOUT_TAB_LABEL,
+  GUIDE_PREP_DEFAULT_TAB,
+  guidePrepTabIsLocked,
+  type GuidePrepSectionId,
+} from "../lib/guide-prep-visibility";
 import {
   YOUTH_SPORTS_HELPER_NOTES_WORKSHEET,
   YOUTH_SPORTS_HELPER_REALITY_CHECK,
@@ -305,8 +312,13 @@ import {
   KIDS_PIGGY_FIRST_GOAL_REALITY_CHECK,
 } from "../lib/kids-piggy-first-goal-guide";
 import {
+  displayPrerequisiteLabel,
+  expandStandaloneHustleCopy,
+} from "../lib/side-hustle-copy";
+import {
   formatGuideToolLine,
-  formatPricingLine,
+  organizeSuggestedPricingCopy,
+  pricingItemLabel,
   deliveryDriverToolsDisclaimer,
   estateSaleToolsDisclaimer,
   genealogyToolsDisclaimer,
@@ -1079,7 +1091,7 @@ export type GuidePrepFocusSignal = {
   nonce: number;
 };
 
-/** Prerequisites, pricing, supplies, tools — and optional Steps / Calculator / Notes — as tabs. */
+/** About, pricing, supplies, tools — and optional Steps / Calculator / Notes — as tabs. */
 export function GuidePrepSections({
   kit,
   testIdPrefix = "guide",
@@ -1091,6 +1103,8 @@ export function GuidePrepSections({
   expandAllSections = false,
   afterTabsOwnsPanel,
   guideId,
+  guideUnlocked = true,
+  lockCta = null,
 }: {
   kit: GuideKit;
   testIdPrefix?: string;
@@ -1115,13 +1129,18 @@ export function GuidePrepSections({
   expandAllSections?: boolean;
   /** Tabs whose body is already rendered in afterTabs (avoid duplicate panel content). */
   afterTabsOwnsPanel?: PrepTabId[];
-  /** Stable id — resets Show All expansion when the open guide changes (not on every kit object recreate). */
+  /** Stable id — resets expansion when the open guide changes (not on every kit object recreate). */
   guideId?: string;
+  /** False = About stays readable; other tabs show the membership lock. */
+  guideUnlocked?: boolean;
+  /** Join / Upgrade CTA shown on locked tabs. */
+  lockCta?: ReactNode;
 }) {
   const supplies = kit.supplies;
   const pricing = kit.suggestedPricing;
+  const pricingDisplay = organizeSuggestedPricingCopy(pricing);
   const [checkedSupplies, setCheckedSupplies] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<PrepTabId>("all");
+  const [activeTab, setActiveTab] = useState<PrepTabId>(GUIDE_PREP_DEFAULT_TAB);
   /** Show All: missing key = expanded. Explicit `false` collapses a section. */
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const ownedByAfterTabs = new Set(afterTabsOwnsPanel ?? []);
@@ -1134,8 +1153,8 @@ export function GuidePrepSections({
   useEffect(() => {
     // Reset only when switching guides — not when parent recreates the kit object each render.
     setOpenSections({});
-    if (expandAllSections) setActiveTab("all");
-  }, [guideId, expandAllSections]);
+    setActiveTab(GUIDE_PREP_DEFAULT_TAB);
+  }, [guideId]);
 
   const tabs = useMemo((): PrepTab[] => {
     const completedNotes = guideId ? COMPLETED_GUIDE_NOTES[guideId] : undefined;
@@ -1705,20 +1724,21 @@ export function GuidePrepSections({
     const list: PrepTab[] = [
       {
         id: "prereqs",
-        label: "Prerequisites",
+        label: GUIDE_PREP_ABOUT_TAB_LABEL,
         panelClass: "gysh-section-panel--prereqs",
         testId: `${testIdPrefix}-prerequisites`,
         content: (
           <>
-            {realityCheck}
             <p className="gysh-section-panel__lede">{prerequisitesDisclaimer()}</p>
             <ul className="gysh-section-panel__list">
               {kit.prerequisites.map((p) => (
                 <li key={p.id}>
-                  <strong>{p.label}:</strong> {p.detail}
+                  <strong>{displayPrerequisiteLabel(p.label)}:</strong>{" "}
+                  {expandStandaloneHustleCopy(p.detail)}
                 </li>
               ))}
             </ul>
+            {realityCheck}
           </>
         ),
       },
@@ -1732,23 +1752,50 @@ export function GuidePrepSections({
       content: (
         <>
           <p className="gysh-section-panel__lede">{pricingDisclaimer()}</p>
-          {pricing?.intro ? (
+          {pricingDisplay.introBlocks.length ? (
             <div
               className="gysh-section-panel__intro"
               data-testid={`${testIdPrefix}-pricing-intro`}
             >
-              {pricing.intro.split(/\n\n+/).map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
+              {pricingDisplay.introBlocks.map((block, i) =>
+                block.kind === "heading" ? (
+                  <p key={`heading-${i}`} className="gysh-section-panel__subhead">
+                    {block.text}
+                  </p>
+                ) : (
+                  <ul key={`intro-${i}`} className="gysh-section-panel__list">
+                    {block.lines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                ),
+              )}
             </div>
           ) : null}
-          {pricing?.items?.length ? (
-            <ul className="gysh-section-panel__list">
-              {pricing.items.map((item) => (
-                <li key={item.id}>{formatPricingLine(item)}</li>
-              ))}
-            </ul>
-          ) : (
+          {pricingDisplay.items.length ? (
+            <>
+              {pricingDisplay.introBlocks.length ? (
+                <p className="gysh-section-panel__subhead">Price examples</p>
+              ) : null}
+              <ul className="gysh-section-panel__list gysh-pricing-list">
+                {pricingDisplay.items.map((item) => {
+                  const label = pricingItemLabel(item);
+                  const notes = item.notes?.trim();
+                  return (
+                    <li key={item.id} className="gysh-pricing-line">
+                      <span className="gysh-pricing-line__main">
+                        <strong>{label}</strong>
+                        <span className="gysh-pricing-line__price">{item.price}</span>
+                      </span>
+                      {notes ? (
+                        <span className="gysh-pricing-line__notes">{notes}</span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : pricingDisplay.introBlocks.length ? null : (
             <p className="gysh-section-panel__empty">No suggested prices listed yet.</p>
           )}
           {pricing?.raiseTip ? (
@@ -3103,6 +3150,7 @@ export function GuidePrepSections({
   const showAll = activeTab === "all";
   const afterTabsNode =
     typeof afterTabs === "function" ? afterTabs(activeTab) : afterTabs;
+  const activeLocked = guidePrepTabIsLocked(activeTab as GuidePrepSectionId, guideUnlocked);
 
   const selectTab = (id: PrepTabId) => {
     setActiveTab(id);
@@ -3120,6 +3168,12 @@ export function GuidePrepSections({
     }));
   };
 
+  const lockedPanel = (
+    <div className="guide-prep-tab-locked" data-testid={`${testIdPrefix}-tab-locked`}>
+      {lockCta}
+    </div>
+  );
+
   return (
     <div className="guide-prep-sections guide-prep-sections--tabs" data-testid={`${testIdPrefix}-prep-tabs`}>
       <div
@@ -3128,7 +3182,9 @@ export function GuidePrepSections({
         aria-label="Guide sections"
         data-testid={`${testIdPrefix}-prep-tablist`}
       >
-        {tabs.map((tab) => (
+        {tabs.map((tab) => {
+          const locked = guidePrepTabIsLocked(tab.id as GuidePrepSectionId, guideUnlocked);
+          return (
           <button
             key={tab.id}
             type="button"
@@ -3145,15 +3201,21 @@ export function GuidePrepSections({
                   ? `${testIdPrefix}-steps-toggle`
                   : `${testIdPrefix}-tab-${tab.id}`
             }
-            className={`guide-prep-tab${active.id === tab.id ? " is-active" : ""}`}
+            data-locked={locked ? "true" : "false"}
+            className={`guide-prep-tab${active.id === tab.id ? " is-active" : ""}${locked ? " is-locked" : ""}`}
             onClick={() => selectTab(tab.id)}
           >
             {tab.label}
+            {locked ? <Lock size={12} aria-hidden /> : null}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {showAll ? (
+        activeLocked ? (
+          lockedPanel
+        ) : (
         <div
           className="guide-prep-show-all"
           id={`${testIdPrefix}-panel-all`}
@@ -3162,6 +3224,7 @@ export function GuidePrepSections({
           data-testid={`${testIdPrefix}-show-all`}
         >
           {sectionTabs.map((tab) => {
+            const sectionLocked = guidePrepTabIsLocked(tab.id as GuidePrepSectionId, guideUnlocked);
             const open = expandAllSections ? openSections[tab.id] !== false : openSections[tab.id] !== false;
             const panelId = `${testIdPrefix}-collapse-${tab.id}`;
             return (
@@ -3183,16 +3246,18 @@ export function GuidePrepSections({
                     {open ? "▾" : "▸"}
                   </span>
                   <span>{tab.label.replace(/^Show /, "")}</span>
+                  {sectionLocked ? <Lock size={14} aria-hidden /> : null}
                 </button>
                 {open ? (
                   <div className="gysh-section-panel__body" id={panelId}>
-                    {tab.content}
+                    {sectionLocked ? lockedPanel : tab.content}
                   </div>
                 ) : null}
               </section>
             );
           })}
         </div>
+        )
       ) : ownedByAfterTabs.has(active.id) ? null : (
         <section
           className={`gysh-section-panel ${active.panelClass} guide-prep-${active.id === "prereqs" ? "prereqs" : active.id}`}
@@ -3203,7 +3268,7 @@ export function GuidePrepSections({
           aria-label={active.label}
         >
           <h3 className="gysh-section-heading">{active.label.replace(/^Show /, "")}</h3>
-          <div className="gysh-section-panel__body">{active.content}</div>
+          <div className="gysh-section-panel__body">{activeLocked ? lockedPanel : active.content}</div>
         </section>
       )}
 

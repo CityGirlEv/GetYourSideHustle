@@ -98,7 +98,7 @@ export const AI_ASSETS_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Create polished AI-assisted brand graphics, ad concepts, social kits, packaging mockups, and campaign variations for clients. Begin with a written brief, use tools and source materials under terms that permit the intended use, add meaningful human selection and editing, screen for obvious intellectual-property and likeness risks, and deliver a documented package with an asset manifest instead of a mystery folder of generated files. Tagline: Human-Directed. Rights-Aware. Ready to Use. Category: AI / Creative. Best for visual creators who can combine AI-assisted ideation with human art direction, editing, quality control, and organized client delivery. Intermediate · Less than $100 startup · Project-Based / Campaign Deadlines / Recurring Content Packs · Online · Asset Pack / Campaign Kit / Monthly Creative Retainer / Licensed Add-On · Elite · 8 - 15 hrs/week · Displayed $500 - $5,000/mo (examples, not guarantees).",
   },

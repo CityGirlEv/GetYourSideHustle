@@ -17,6 +17,16 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     description: "Sent when someone registers — pending admin activation.",
   },
   {
+    slug: "workshop_registration_confirmation",
+    name: "Workshop registration confirmation",
+    description: "Sent to the attendee when they register or pre-register for a workshop.",
+  },
+  {
+    slug: "workshop_date_confirmed",
+    name: "Workshop date confirmed",
+    description: "Sent when the class date is set. Attaches the complete workshop guide PDF (Resend attachment).",
+  },
+  {
     slug: "welcome_free",
     name: "Welcome · Free",
     description: "Sent when an admin activates a Free member.",
@@ -96,6 +106,12 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     slug: "membership_upgraded",
     name: "Membership upgraded",
     description: "Notice when a member upgrades to a higher paid plan.",
+  },
+  {
+    slug: "membership_renewal_reminder",
+    name: "Membership renewal reminder",
+    description:
+      "Sent about a week before membership expiration / the next 3-month Stripe charge.",
   },
   {
     slug: "membership_merch_ready",
@@ -202,7 +218,7 @@ export const EMAIL_TEMPLATE_REVIEW_CASES: TestCase[] = EMAIL_TEMPLATE_REVIEW_CAT
       `Confirm description matches intent: ${tpl.description}`,
       "Review subject, preheader, eyebrow, headline, subhead, body, CTA label/URL, and footer for brand voice, clarity, and typos",
       "Confirm live preview looks branded and readable on a phone-width window",
-      "Confirm the footer legal disclaimer (“Your hustle, your results.”) is present — all templates share this footer",
+      "Confirm the footer legal disclaimer (“Your side hustle, your results.”) is present — all templates share this footer",
       "Optional: Send test to a mailbox you control and confirm inbox content matches the preview",
       "Note any copy or layout issues in the Testing Portal note, then set Pass / Conditional / Fail",
     ],

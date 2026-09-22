@@ -95,7 +95,7 @@ SCOPE → SECURE ACCESS → PAID TRIAL → APPROVALS → QUALITY CHECK → HANDO
 export const VIRTUAL_ASSISTANT_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Provide defined remote administrative support such as inbox organization, calendar upkeep, document formatting, data entry, research, meeting preparation, customer follow-up, or simple workflow maintenance. Work inside written authority; do not impersonate the owner or make unauthorized decisions. Pro Membership. 3 - 10 hrs/week. Displayed $15 – $50 / project is examples only, not guarantees. Category: Administrative Services / Remote Business Support. Beginner–Intermediate; specialized work may require training. Startup $0 – low. Remote / online. Hourly block / retainer / fixed-scope project. Best for organized communicators who follow instructions, protect confidential information, and enjoy improving everyday workflows.",
   },

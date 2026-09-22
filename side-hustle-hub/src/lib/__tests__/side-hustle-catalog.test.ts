@@ -94,6 +94,7 @@ describe("side-hustle-catalog expansion", () => {
     expect(hustleById("consulting")?.audiences).not.toContain("junior");
     expect(hustleById("dropshipping")?.audiences).not.toContain("junior");
     expect(hustleById("dropshipping")?.audiences).toContain("senior");
+    expect(hustleById("pod")?.audiences).toContain("senior");
     expect(hustleById("amazon")?.audiences).not.toContain("senior");
     // Teen-coded stays on Teens
     expect(hustleById("create-games-junior")?.audiences).toContain("junior");
@@ -130,7 +131,8 @@ describe("side-hustle-catalog expansion", () => {
     expect(hustleById("digital-cookbook-creator")?.minTier).toBe("elite");
   });
 
-  it("limits Free/guest wizard pools vs paid member full pools", () => {
+  it("ranks the full adult catalog for Free, guests, and paid members", () => {
+    const adultIds = hustlesForAudience("adult").map((h) => h.id).sort();
     const freeAdult = wizardPoolForMembership("adult", {
       isLoggedIn: true,
       membershipTier: "free",
@@ -143,10 +145,10 @@ describe("side-hustle-catalog expansion", () => {
       isLoggedIn: false,
       previewAsGuest: true,
     });
-    expect(freeAdult.length).toBe(freeWizardPool("adult").length);
-    expect(guest.length).toBe(freeWizardPool("adult").length);
-    expect(proAdult.length).toBe(hustlesForAudience("adult").length);
-    expect(proAdult.length).toBeGreaterThan(freeAdult.length);
+    expect(freeAdult.map((h) => h.id).sort()).toEqual(adultIds);
+    expect(guest.map((h) => h.id).sort()).toEqual(adultIds);
+    expect(proAdult.map((h) => h.id).sort()).toEqual(adultIds);
+    expect(freeWizardPool("adult").length).toBeLessThan(adultIds.length);
   });
 
   it("keeps Schedule Suite restricted to Pro (not Free)", () => {

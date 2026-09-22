@@ -77,7 +77,7 @@ export const LOCAL_CONTENT_PHOTO_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Use your smartphone to take clean, attractive photos of local businesses, products, menus, storefronts, food, displays, staff, and services for their social media and online business profiles. Tagline: Your Phone + Their Business = Fresh Content. Category: Photography / Local Business Services. Best for teens, adults, and seniors / retirees. Beginner · Very low startup · Flexible · Local businesses · Service-based / recurring. IMPORTANT: This is NOT professional commercial photography — affordable, simple smartphone content only.",
   },
@@ -163,7 +163,7 @@ export const LOCAL_CONTENT_PHOTO_EXTERNAL_LINKS: {
 
 export const LOCAL_CONTENT_PHOTO_SUPPLIES = {
   starterKitTotal:
-    "About $0–25 to start if you already have a phone — do NOT buy expensive equipment; upgrade only after the hustle makes money",
+    "About $0–25 to start if you already have a phone — do NOT buy expensive equipment; upgrade only after the side hustle makes money",
   items: [
     {
       id: "phone",

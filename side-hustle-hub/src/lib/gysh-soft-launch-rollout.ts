@@ -1168,7 +1168,7 @@ This week:
 3) Tell a friend who's been "meaning to start"
 
 Kids & Teens: parents coach the journey.
-Adults & Seniors: pick one hustle and a weekly hour budget.
+Adults & Seniors: pick one side hustle and a weekly hour budget.
 
 Start → https://getyoursidehustle.com
 
@@ -1213,7 +1213,7 @@ getyoursidehustle.com`,
 GYSH Seniors mode asks for flexible opportunities, fair pacing, and clear next steps — then a Blueprint you can keep.
 
 Explore Seniors → getyoursidehustle.com`,
-    imagePrompt: `${BRAND_IMAGE} Calm senior lifestyle + laptop, warm light, dignity-first. Headline: "Your pace. Your hustle."`,
+    imagePrompt: `${BRAND_IMAGE} Calm senior lifestyle + laptop, warm light, dignity-first. Headline: "Your pace. Your side hustle."`,
     artifacts: ["Post", "Boost consideration later in Sprint 4 ads"],
   },
   {
@@ -1408,7 +1408,7 @@ Sat: Family Match Wizard night reminder`,
     postTime: "12:00 PM CT",
     copy: `Adult tip: your constraint is a feature.
 
-Low hours? Pick a hustle that respects that.
+Low hours? Pick a side hustle that respects that.
 Tight budget? Start with free/low-cost GYSH guides.
 Need accountability? Workshops & community are coming.
 
@@ -1654,7 +1654,7 @@ Start free → getyoursidehustle.com`,
     channel: "newsletter",
     title: "Newsletter #4 — Senior path + Military membership teaser",
     owner: "Both",
-    copy: `Subject: A hustle that respects your calendar
+    copy: `Subject: A side hustle that respects your calendar
 
 This week we polish the Senior Get My Side Hustle path — flexible, clear next steps, no hustle-culture noise.
 
@@ -1928,7 +1928,7 @@ export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
       "IG grid live (3 posts) + TikTok #1",
       "Personal amplify cadence: IG/TT launch, Kevina, GYSH tip, YT Short #2 (Tina + Evelyn each)",
       "Meta ads test $5–15/day with daily monitoring",
-      "Newsletter #2 — “one hustle / 30 days”",
+      "Newsletter #2 — “one side hustle / 30 days”",
       "Kevina 2× + GYSH mid-week value post",
       "Ads retro with go/iterate/pause",
     ],

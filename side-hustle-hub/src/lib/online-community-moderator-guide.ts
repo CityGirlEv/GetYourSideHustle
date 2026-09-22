@@ -74,7 +74,7 @@ Effective profit per hour: $____
 export const COMMUNITY_MODERATOR_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Scheduled Facebook Group and Discord moderation from a written playbook: approvals, welcome, spam removal, rule reminders, and escalation logs. 10 hrs/week. Displayed $15 – $50 / project is examples only for small starter projects.",
   },

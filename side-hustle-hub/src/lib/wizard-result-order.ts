@@ -44,12 +44,22 @@ export function wizardMatchTierLabel(index: number, pct: number, hustleId: strin
   return "Good fit";
 }
 
-export function wizardRankingDisclaimer(): string {
-  return "Matches are ranked by how well they fit your answers (highest % first). Free members always keep the Free-library guides, plus one complimentary unlock of your first Blueprint’s #1 match for this demographic. Retakes do not unlock more paid guides — upgrade to open the rest.";
+export function wizardRankingDisclaimer(options?: { isLoggedIn?: boolean }): string {
+  const ranked =
+    "Matches are ranked by how well they fit your answers (highest % first).";
+  const extra =
+    "your highest % match as one extra Launch Guide — even if that extra is Starter, Pro, or Elite. Retakes do not grant another extra.";
+  if (options?.isLoggedIn) {
+    return `${ranked} Your membership already unlocks Unique Unique Free guides, plus ${extra} Open Guide still follows your plan except for that extra.`;
+  }
+  return `${ranked} Create a Free account to unlock Unique Unique Free guides. Your highest % match is one extra Launch Guide — even if that extra is Starter, Pro, or Elite — once per lifetime, not once per wizard.`;
 }
 
-export function wizardRankingShortNote(): string {
-  return "Highest match % first. One complimentary #1 unlock per demographic — retakes won’t farm more.";
+export function wizardRankingShortNote(options?: { isLoggedIn?: boolean }): string {
+  if (options?.isLoggedIn) {
+    return "Highest match % first. Unique Unique Free plus your highest % match as one extra are already unlocked for your account.";
+  }
+    return "Highest match % first. Your top match is one free guide for life. Free signup also unlocks Unique Unique Free.";
 }
 
 /** How many ranked matches to show on Blueprint results. */

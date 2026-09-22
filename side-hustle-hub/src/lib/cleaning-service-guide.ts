@@ -113,7 +113,7 @@ export const CLEANING_SERVICE_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Start a local residential cleaning side hustle offering clearly scoped standard cleans, deep-clean add-ons, move-out/move-in cleaning, recurring weekly or biweekly slots, and short-term rental turnovers. Tagline: Clean Homes. Clear Packages. Repeat Clients. Category: Home & Local Services / Cleaning. Best for Adults and Seniors/Retirees who can safely do the physical work. Beginner · Low startup · Flexible / Recurring · Client homes / STRs · Per clean / add-ons / recurring clients · Free Guide · 8 - 25 hrs/week · Displayed earnings: $600 – $4,000+ / month (examples, not guarantees).",
   },

@@ -9,6 +9,8 @@ import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
 import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
 import { PasswordField } from "./PasswordField";
+import { passwordPolicyError } from "../lib/password-policy";
+import { HEARD_ABOUT_SOURCES, parseHeardAboutInput } from "../lib/heard-about";
 
 type BlueprintUnlockPanelProps = {
   onUnlocked: (ageGroup: BlueprintAgeGroup, user?: AuthUser | null) => void;
@@ -28,8 +30,11 @@ export function BlueprintUnlockPanel({
   const pending = readPendingBlueprint();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [childDisplayName, setChildDisplayName] = useState("");
+  const [heardAboutSource, setHeardAboutSource] = useState("");
+  const [heardAboutDetail, setHeardAboutDetail] = useState("");
   const [error, setError] = useState("");
   const [applyBetaTester, setApplyBetaTester] = useState(false);
   const [betaNda, setBetaNda] = useState<BetaNdaAcceptanceValue>({
@@ -61,12 +66,25 @@ export function BlueprintUnlockPanel({
       setError(isKids ? "Enter a parent or guardian email." : "Enter a valid email address.");
       return;
     }
-    if (password.length < 5) {
-      setError("Password must be at least 5 characters.");
+    const pwErr = passwordPolicyError(password);
+    if (pwErr) {
+      setError(pwErr);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
     if (isKids && !childDisplayName.trim()) {
       setError("Enter a first name or nickname for the child (we do not collect a child email).");
+      return;
+    }
+    const heardAbout = parseHeardAboutInput({
+      sourceId: heardAboutSource,
+      detail: heardAboutDetail,
+    });
+    if (!heardAbout.ok) {
+      setError(heardAbout.error);
       return;
     }
     const ndaPayload = {
@@ -95,6 +113,8 @@ export function BlueprintUnlockPanel({
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         claimToken: wizard.claimToken ?? pending.claimToken,
         pendingBlueprint: wizard.pendingBlueprint,
+        membershipTier: "free",
+        heardAbout: { sourceId: heardAbout.sourceId, detail: heardAbout.detail },
         applyBetaTester,
         betaNda: applyBetaTester ? ndaPayload : undefined,
       });
@@ -216,12 +236,50 @@ export function BlueprintUnlockPanel({
           autoComplete="new-password"
           value={password}
           onChange={setPassword}
-          placeholder="At least 5 characters"
+          placeholder="At least 8 characters"
           required
-          minLength={5}
           showStrength
           data-testid="blueprint-unlock-password"
         />
+        <PasswordField
+          id="blueprint-unlock-password-confirm"
+          label="Confirm password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          required
+          data-testid="blueprint-unlock-password-confirm"
+        />
+        <label htmlFor="blueprint-unlock-heard-about">How did you hear about us?</label>
+        <select
+          id="blueprint-unlock-heard-about"
+          value={heardAboutSource}
+          onChange={(e) => setHeardAboutSource(e.target.value)}
+          required
+          data-testid="blueprint-unlock-heard-about"
+        >
+          <option value="">Select one</option>
+          {HEARD_ABOUT_SOURCES.map((source) => (
+            <option key={source.id} value={source.id}>
+              {source.label}
+            </option>
+          ))}
+        </select>
+        {heardAboutSource === "other" ? (
+          <>
+            <label htmlFor="blueprint-unlock-heard-about-detail">Please tell us more</label>
+            <input
+              id="blueprint-unlock-heard-about-detail"
+              type="text"
+              value={heardAboutDetail}
+              onChange={(e) => setHeardAboutDetail(e.target.value)}
+              maxLength={80}
+              required
+              placeholder="Podcast, neighbor, church…"
+              data-testid="blueprint-unlock-heard-about-detail"
+            />
+          </>
+        ) : null}
         <label className="membership-signup-role-opt" htmlFor="blueprint-unlock-beta">
           <input
             id="blueprint-unlock-beta"

@@ -126,7 +126,7 @@ export const HANDYMAN_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Offer small repairs, installs, painting, and punch-list jobs to homeowners and landlords who need reliable local help. Stay in competence and legal scope. Tagline: Small Jobs. Clear Scope. Stay in Your Lane. Category: Local Services / Home Repair. Beginner · 1 - 2 weeks to first jobs · $800 – $5,000 / month displayed figures are examples only, not guarantees. Free Guide.",
   },

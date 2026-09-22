@@ -86,7 +86,7 @@ export const YARD_HELP_PREREQUISITE_EXTRAS: {
 }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Earn money helping neighbors with light outdoor chores such as raking leaves, watering flowers, pulling weeds, picking up small yard debris, and shoveling light snow where appropriate. Tagline: Fresh Air. Helpful Work. Pocket Money. Category: Outdoor / Yard Services. Best for Juniors/Teens with guardian-approved jobs, Adults, Seniors / Retirees. Beginner · Very low startup · Flexible / seasonal · Client yard / garden · Per yard / per job / recurring · Free Guide · 3 - 10 hrs/week · Displayed pricing: $15 – $30 / yard.",
   },

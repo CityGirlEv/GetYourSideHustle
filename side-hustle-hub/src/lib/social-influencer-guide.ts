@@ -104,7 +104,7 @@ Build and test one Social Influencer system:
 export const SOCIAL_INFLUENCER_PREREQUISITE_EXTRAS: { id: string; label: string; detail: string }[] = [
   {
     id: "overview",
-    label: "What this hustle is",
+    label: "What this side-hustle is",
     detail:
       "Build an engaged audience around a clear topic, point of view, or useful transformation, then earn through appropriate sponsorships, affiliate commissions, platform monetization, products, services, subscriptions, or licensing. Social Influencer. Guide #103. Pro Membership. 15 - 30 hrs/week. Displayed $500 - $20,000/mo is examples only, not guarantees. Category: Creative / Audience & Creator Business. Best for Adults and responsible Teens with parent/guardian management where required who can publish consistently, protect their privacy, and recommend honestly. Intermediate. Startup less than $100. Online / on-camera or faceless. Tagline: Earn Attention. Keep Trust. Build Real Revenue.",
   },
