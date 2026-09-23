@@ -405,6 +405,45 @@ export async function sendAdminFormNotify(
   return true;
 }
 
+/** Confirmation to the registrant after a workshop seat is saved. */
+export async function sendWorkshopRegistrationConfirmation(
+  env: Env,
+  input: {
+    name: string;
+    email: string;
+    workshopId: string;
+    workshopTitle: string;
+    workshopDate?: string;
+    workshopTime?: string;
+    workshopFormat?: string;
+    attendeeCount: number;
+  },
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const when = [input.workshopDate, input.workshopTime].filter((p) => p && p !== "TBD").join(" · ") || "Date and time TBD";
+  const format = input.workshopFormat || "Live Zoom";
+  const workshopsUrl = `${SITE_URL}/workshops?register=${encodeURIComponent(input.workshopId)}`;
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "workshop_registration_confirmation", {
+    name: input.name || "Side Hustler",
+    workshopTitle: input.workshopTitle,
+    workshopWhen: when,
+    workshopFormat: format,
+    attendeeCount: String(input.attendeeCount),
+    ctaUrl: workshopsUrl,
+  });
+  if (!rendered) return false;
+  await sendResendEmail(env, {
+    to: input.email,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: "workshop_registration_confirmation",
+    meta: { workshopId: input.workshopId, email: input.email },
+  });
+  return true;
+}
+
 export async function sendRegistrationConfirmation(
   env: Env,
   user: Pick<DbUser, "id" | "email" | "name"> & {

@@ -88,6 +88,11 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     description: "Alert to admins whenever a public form is completed.",
   },
   {
+    slug: "workshop_registration_confirmation",
+    name: "Workshop registration confirmation",
+    description: "Sent to the registrant when they are added to a workshop roster.",
+  },
+  {
     slug: "password_reset",
     name: "Password reset link",
     description: "Forgot-password email with one-time reset link.",

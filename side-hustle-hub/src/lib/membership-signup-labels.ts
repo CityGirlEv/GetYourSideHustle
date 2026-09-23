@@ -75,6 +75,15 @@ export function membershipUpgradeActionBubbles(
   return membershipPlanBubbles(currentTier).filter((bubble) => bubble.kind !== "current");
 }
 
+/** Paid checkout copy — never list Stripe test card numbers on the public site. */
+export function membershipStripeCheckoutHint(): string {
+  return "You'll finish on Stripe's secure checkout page.";
+}
+
+export function membershipAlaCarteCheckoutNote(): string {
+  return "Secure Stripe Checkout.";
+}
+
 /** Guest browse CTA vs subscriber Member Guides. */
 export function browseGuidesButtonLabel(isSubscriber: boolean): string {
   return isSubscriber ? "Browse Member Guides" : "Browse free guides";

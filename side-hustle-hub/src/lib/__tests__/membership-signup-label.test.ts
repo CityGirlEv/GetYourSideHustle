@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   browseGuidesButtonLabel,
   memberGuidesButtonLabel,
+  membershipAlaCarteCheckoutNote,
   membershipPlanBubbles,
   membershipPlanChooseLabel,
   membershipSignupSubmitLabel,
+  membershipStripeCheckoutHint,
   membershipUpgradeActionBubbles,
 } from "../membership-signup-labels";
 
@@ -123,5 +125,14 @@ describe("browseGuidesButtonLabel", () => {
     expect(memberGuidesButtonLabel("Free Guides", false)).toBe("Free Guides");
     expect(memberGuidesButtonLabel("Free Guides", true)).toBe("Member Guides");
     expect(memberGuidesButtonLabel("Browse free guides", true)).toBe("Browse Member Guides");
+  });
+});
+
+describe("membership Stripe checkout copy", () => {
+  it("does not list test card numbers on the public membership pages", () => {
+    expect(membershipStripeCheckoutHint()).toBe("You'll finish on Stripe's secure checkout page.");
+    expect(membershipAlaCarteCheckoutNote()).toBe("Secure Stripe Checkout.");
+    expect(membershipStripeCheckoutHint()).not.toMatch(/4242/);
+    expect(membershipAlaCarteCheckoutNote()).not.toMatch(/4242/);
   });
 });

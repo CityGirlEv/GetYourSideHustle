@@ -4728,6 +4728,13 @@ html.gysh-mobile-menu-open body {
   opacity: 0.55;
 }
 
+.workshop-member-gate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
 .workshops-registration-alert {
   padding: 10px 12px;
   border-radius: 10px;
@@ -20559,22 +20566,24 @@ details[open] > summary .collapse-show-hide::before {
   flex: 1 1 11rem;
 }
 
+.membership-checkout-banner,
 .membership-fake-checkout-banner {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(155, 47, 40, 0.08);
-  border: 1px solid rgba(155, 47, 40, 0.28);
+  background: rgba(46, 125, 90, 0.08);
+  border: 1px solid rgba(46, 125, 90, 0.28);
   color: var(--charcoal);
   font-size: 0.9rem;
   font-weight: 650;
   line-height: 1.4;
 }
 
+.membership-checkout-banner svg,
 .membership-fake-checkout-banner svg {
-  color: var(--crimson);
+  color: var(--accent-emerald, #2e7d5a);
   flex-shrink: 0;
   margin-top: 2px;
 }

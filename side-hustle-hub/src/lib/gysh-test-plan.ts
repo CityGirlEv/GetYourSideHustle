@@ -1977,7 +1977,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
       "Check for confirmation email in inbox + Resend",
       "If no email by design, document actual UI success + note in Testing Portal",
     ],
-    expected: "Either confirmation email arrives, or intentional placeholder is documented without silent failure",
+    expected: "Confirmation email arrives in the registrant inbox and is logged in Resend",
     path: "workshops",
   },
   {

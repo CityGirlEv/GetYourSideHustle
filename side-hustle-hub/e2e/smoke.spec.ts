@@ -99,6 +99,13 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("page-title")).toContainText("Workshops");
   });
 
+  test("AI workshop registration asks signed-out visitors to sign in", async ({ page }) => {
+    await page.goto("/workshops?register=ai-marketing-video");
+    await expect(page.getByTestId("workshop-member-gate")).toBeVisible();
+    await expect(page.getByTestId("workshop-sign-in")).toBeVisible();
+    await expect(page.getByTestId("workshop-join-free")).toBeVisible();
+  });
+
   test("Kids/Teens Corner nav opens kids view", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("nav-kids").click();
@@ -242,7 +249,7 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("membership-alacarte-cart-count")).toContainText("1");
     await expect(page.getByTestId("membership-alacarte-cart-line-consult-30")).toBeVisible();
     await expect(page.getByTestId("membership-alacarte-cart-checkout")).toBeVisible();
-  });
+    await expect(page.getByTestId("membership-page")).not.toContainText("4242");
 
   test("header Cart opens a-la-carte checkout panel", async ({ page }) => {
     await page.goto("/join");

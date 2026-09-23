@@ -30,6 +30,8 @@ import {
   listUsers,
   listWorkshops,
   createWorkshopRegistration,
+  listWorkshopRegistrations,
+  adminAddWorkshopRegistration,
   createJuniorSignup,
   getJuniorConsent,
   grantJuniorConsent,
@@ -366,6 +368,12 @@ export async function onRequest(context: {
     }
     if (route === "workshops" && method === "PUT") {
       return withCors(request, await saveWorkshops(env, request));
+    }
+    if (route === "workshop-registrations" && method === "GET") {
+      return withCors(request, await listWorkshopRegistrations(env, request));
+    }
+    if (parts[0] === "workshop-registrations" && parts[1] === "admin" && method === "POST") {
+      return withCors(request, await adminAddWorkshopRegistration(env, request));
     }
     if (route === "junior-signups" && method === "GET") {
       return withCors(request, await listJuniorSignups(env));

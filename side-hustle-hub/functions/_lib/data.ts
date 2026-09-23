@@ -2420,6 +2420,15 @@ async function ensureWorkshopRegistrationSchema(env: Env): Promise<void> {
       FOREIGN KEY (workshop_id) REFERENCES workshops(id) ON DELETE CASCADE
     )`,
   ).run();
+  try {
+    await env.DB.prepare(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_workshop_registrations_workshop_email
+       ON workshop_registrations (workshop_id, email)
+       WHERE status = 'registered'`,
+    ).run();
+  } catch {
+    /* duplicates already present — unique index can be applied after cleanup */
+  }
 }
 
 export async function listWorkshops(env: Env): Promise<Response> {
@@ -2502,6 +2511,69 @@ export async function saveWorkshops(env: Env, request: Request): Promise<Respons
 }
 
 export async function createWorkshopRegistration(env: Env, request: Request): Promise<Response> {
+  return persistWorkshopRegistration(env, request, {
+    requireOpen: true,
+    allowOverCapacity: false,
+    resendIfExists: false,
+    notifyAdmins: true,
+  });
+}
+
+type WorkshopCatalogRow = {
+  id: string;
+  title: string;
+  registration_open: number;
+  capacity: number;
+  date: string;
+  time: string;
+  format: string;
+};
+
+type WorkshopRegistrationRow = {
+  id: string;
+  workshop_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  attendee_count: number;
+  notes: string;
+  status: string;
+  created_at: string;
+};
+
+const WORKSHOP_REGISTER_ALIASES: Record<string, string> = {
+  "ai-marketing-video": "ai-scene-production-packs",
+};
+
+function resolveWorkshopId(workshopId: string): string {
+  const raw = String(workshopId || "").trim();
+  return WORKSHOP_REGISTER_ALIASES[raw] || raw;
+}
+
+function mapWorkshopRegistrant(row: WorkshopRegistrationRow) {
+  return {
+    id: row.id,
+    workshopId: row.workshop_id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone || "",
+    attendeeCount: Number(row.attendee_count ?? 1) || 1,
+    notes: row.notes || "",
+    status: row.status === "cancelled" ? "cancelled" : "registered",
+    createdAt: row.created_at,
+  };
+}
+
+async function persistWorkshopRegistration(
+  env: Env,
+  request: Request,
+  opts: {
+    requireOpen: boolean;
+    allowOverCapacity: boolean;
+    resendIfExists: boolean;
+    notifyAdmins: boolean;
+  },
+): Promise<Response> {
   await ensureWorkshopRegistrationSchema(env);
   let body: Record<string, unknown>;
   try {
@@ -2510,7 +2582,7 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
     return error("Invalid JSON body.");
   }
 
-  const workshopId = String(body.workshopId || "").trim();
+  const workshopId = resolveWorkshopId(String(body.workshopId || "").trim());
   const name = String(body.name || "").trim();
   const email = canonicalizeEmail(String(body.email || ""));
   const phone = String(body.phone || "").trim();
@@ -2522,13 +2594,38 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
   if (!email || !email.includes("@")) return error("Valid email is required.");
 
   const workshop = await env.DB.prepare(
-    `SELECT id, title, registration_open, capacity FROM workshops WHERE id = ?`,
+    `SELECT id, title, registration_open, capacity, date, time, format FROM workshops WHERE id = ?`,
   )
     .bind(workshopId)
-    .first<{ id: string; title: string; registration_open: number; capacity: number }>();
+    .first<WorkshopCatalogRow>();
   if (!workshop) return error("Workshop not found.", 404);
-  if (Number(workshop.registration_open ?? 0) !== 1) {
+  if (opts.requireOpen && Number(workshop.registration_open ?? 0) !== 1) {
     return error("Registration is not open for this workshop yet.", 403);
+  }
+
+  const existing = await env.DB.prepare(
+    `SELECT * FROM workshop_registrations WHERE workshop_id = ? AND lower(email) = ? AND status = 'registered' LIMIT 1`,
+  )
+    .bind(workshopId, email)
+    .first<WorkshopRegistrationRow>();
+  if (existing) {
+    if (!opts.resendIfExists) {
+      return error("You're already registered for this workshop. Check your email for confirmation.", 409);
+    }
+    await sendWorkshopRegistrationEmails(env, {
+      workshop,
+      name: existing.name || name,
+      email: existing.email || email,
+      phone: existing.phone || phone,
+      attendeeCount: Number(existing.attendee_count ?? attendeeCount) || attendeeCount,
+      notes: existing.notes || notes,
+      notifyAdmins: false,
+    });
+    return json({
+      ok: true,
+      alreadyOnRoster: true,
+      message: `${existing.name || name} is already on the roster. Confirmation email sent again.`,
+    });
   }
 
   const current = await env.DB.prepare(
@@ -2538,37 +2635,123 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
     .first<{ taken: number }>();
   const capacity = Number(workshop.capacity ?? 0) || 0;
   const taken = Number(current?.taken ?? 0) || 0;
-  if (capacity > 0 && taken + attendeeCount > capacity) {
+  if (!opts.allowOverCapacity && capacity > 0 && taken + attendeeCount > capacity) {
     return error("This workshop is full. Please check back for the waitlist.", 409);
   }
 
-  await env.DB.prepare(
-    `INSERT INTO workshop_registrations (id, workshop_id, name, email, phone, attendee_count, notes, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'registered', ?)`,
-  )
-    .bind(`wr-${crypto.randomUUID()}`, workshopId, name, email, phone, attendeeCount, notes, new Date().toISOString())
-    .run();
-
   try {
-    const { sendAdminFormNotify } = await import("./email");
-    const { escapeHtml: esc } = await import("./email-brand");
-    await sendAdminFormNotify(env, {
-      formName: "Workshop registration",
-      summary: `${name} registered for ${workshop.title}`,
-      detailsHtml: `<p style="margin:0 0 8px;"><strong>Workshop:</strong> ${esc(workshop.title)}</p>
-        <p style="margin:0 0 8px;"><strong>Name:</strong> ${esc(name)}</p>
-        <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${esc(email)}" style="color:#9B2F28;">${esc(email)}</a></p>
-        <p style="margin:0 0 8px;"><strong>Phone:</strong> ${esc(phone || "—")}</p>
-        <p style="margin:0 0 8px;"><strong>Attendees:</strong> ${attendeeCount}</p>
-        ${notes ? `<p style="margin:0;"><strong>Notes:</strong> ${esc(notes)}</p>` : ""}`,
-      replyTo: email,
-      meta: { workshopId, email },
+    await env.DB.prepare(
+      `INSERT INTO workshop_registrations (id, workshop_id, name, email, phone, attendee_count, notes, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'registered', ?)`,
+    )
+      .bind(`wr-${crypto.randomUUID()}`, workshopId, name, email, phone, attendeeCount, notes, new Date().toISOString())
+      .run();
+  } catch (e) {
+    const msg = String((e as Error)?.message || e);
+    if (/UNIQUE|unique/i.test(msg)) {
+      return error("You're already registered for this workshop. Check your email for confirmation.", 409);
+    }
+    throw e;
+  }
+
+  await sendWorkshopRegistrationEmails(env, {
+    workshop,
+    name,
+    email,
+    phone,
+    attendeeCount,
+    notes,
+    notifyAdmins: opts.notifyAdmins,
+  });
+
+  return json({ ok: true, message: `You're registered for ${workshop.title}.` });
+}
+
+async function sendWorkshopRegistrationEmails(
+  env: Env,
+  input: {
+    workshop: WorkshopCatalogRow;
+    name: string;
+    email: string;
+    phone: string;
+    attendeeCount: number;
+    notes: string;
+    notifyAdmins: boolean;
+  },
+): Promise<void> {
+  const { workshop } = input;
+  try {
+    const { sendWorkshopRegistrationConfirmation } = await import("./email");
+    await sendWorkshopRegistrationConfirmation(env, {
+      name: input.name,
+      email: input.email,
+      workshopId: workshop.id,
+      workshopTitle: workshop.title,
+      workshopDate: workshop.date,
+      workshopTime: workshop.time,
+      workshopFormat: workshop.format,
+      attendeeCount: input.attendeeCount,
     });
   } catch {
     /* non-fatal */
   }
 
-  return json({ ok: true, message: `You're registered for ${workshop.title}.` });
+  if (!input.notifyAdmins) return;
+  try {
+    const { sendAdminFormNotify } = await import("./email");
+    const { escapeHtml: esc } = await import("./email-brand");
+    await sendAdminFormNotify(env, {
+      formName: "Workshop registration",
+      summary: `${input.name} registered for ${workshop.title}`,
+      detailsHtml: `<p style="margin:0 0 8px;"><strong>Workshop:</strong> ${esc(workshop.title)}</p>
+        <p style="margin:0 0 8px;"><strong>Name:</strong> ${esc(input.name)}</p>
+        <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${esc(input.email)}" style="color:#9B2F28;">${esc(input.email)}</a></p>
+        <p style="margin:0 0 8px;"><strong>Phone:</strong> ${esc(input.phone || "—")}</p>
+        <p style="margin:0 0 8px;"><strong>Attendees:</strong> ${input.attendeeCount}</p>
+        ${input.notes ? `<p style="margin:0;"><strong>Notes:</strong> ${esc(input.notes)}</p>` : ""}`,
+      replyTo: input.email,
+      meta: { workshopId: workshop.id, email: input.email },
+    });
+  } catch {
+    /* non-fatal */
+  }
+}
+
+export async function listWorkshopRegistrations(env: Env, request: Request): Promise<Response> {
+  await ensureWorkshopRegistrationSchema(env);
+  const workshopId = resolveWorkshopId(new URL(request.url).searchParams.get("workshopId") || "");
+  if (!workshopId) return error("workshopId is required.");
+  const workshop = await env.DB.prepare(
+    `SELECT id, title, registration_open, capacity, date, time, format FROM workshops WHERE id = ?`,
+  )
+    .bind(workshopId)
+    .first<WorkshopCatalogRow>();
+  if (!workshop) return error("Workshop not found.", 404);
+  const rows = await env.DB.prepare(
+    `SELECT * FROM workshop_registrations WHERE workshop_id = ? ORDER BY datetime(created_at) ASC, id ASC`,
+  )
+    .bind(workshopId)
+    .all<WorkshopRegistrationRow>();
+  const registrations = (rows.results ?? []).map(mapWorkshopRegistrant);
+  const seatsTaken = registrations
+    .filter((r) => r.status === "registered")
+    .reduce((sum, r) => sum + Math.max(0, r.attendeeCount), 0);
+  return json({
+    workshopId: workshop.id,
+    title: workshop.title,
+    capacity: Number(workshop.capacity ?? 0) || 0,
+    seatsTaken,
+    registrations,
+  });
+}
+
+export async function adminAddWorkshopRegistration(env: Env, request: Request): Promise<Response> {
+  return persistWorkshopRegistration(env, request, {
+    requireOpen: false,
+    allowOverCapacity: true,
+    resendIfExists: true,
+    notifyAdmins: true,
+  });
 }
 
 /* ————————————————————————————————————————————————————————————

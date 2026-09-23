@@ -204,24 +204,24 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Restore auth for this tab. Refresh keeps you signed in (sessionStorage survives).
- * A brand-new tab without a local marker must sign in again — but we do NOT call
- * logout() here, because that would wipe the server session used by other open tabs
- * and cause "Session invalid or expired" on Register My Kid / Dashboard actions.
+ * Restore auth for this window. Refresh keeps you signed in (sessionStorage survives).
+ * If this tab has no local marker, still try the httpOnly cookie so a member who
+ * already signed in (Starter/Free+) can open Workshops without signing in again.
+ * We do NOT call logout() on a miss — that would wipe other open tabs.
  */
 export async function restoreSession(): Promise<AuthUser | null> {
+  const user = await fetchMe();
+  if (user) {
+    markTabAlive();
+    return user;
+  }
   if (!tabIsAlive()) {
     setSessionToken(null);
-    clearTabAlive();
     return null;
   }
-  markTabAlive();
-  const user = await fetchMe();
-  if (!user) {
-    setSessionToken(null);
-    clearTabAlive();
-  }
-  return user;
+  setSessionToken(null);
+  clearTabAlive();
+  return null;
 }
 
 export async function fetchMe(): Promise<AuthUser | null> {

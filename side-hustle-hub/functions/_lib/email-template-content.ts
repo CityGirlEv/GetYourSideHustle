@@ -124,6 +124,12 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     sampleSubject: `[GYSH …] …`,
   },
   {
+    slug: "workshop_registration_confirmation",
+    name: "Workshop registration confirmation",
+    description: "Sent to the registrant when they are added to a workshop roster.",
+    sampleSubject: `${SITE_NAME} — you're registered for 90-Minute AI Marketing Video Hands-On Workshop`,
+  },
+  {
     slug: "membership_subscribed",
     name: "Membership subscribed",
     description: "Sent to the member when they pay for / join a paid plan (Stripe or credit plan).",
@@ -177,6 +183,10 @@ export const PREVIEW_SAMPLE_VARS: EmailTemplateVars = {
   audienceLabel: "Kids",
   periodKey: "2026-08-02",
   cadence: "Daily",
+  workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
+  workshopWhen: "Date and time TBD",
+  workshopFormat: "Live Zoom",
+  attendeeCount: "1",
   digestBodyHtml:
     "<p style=\"margin:0;\">Preview of your personal Admin/QA digest body (live digests are generated per person).</p>",
 };
@@ -389,6 +399,24 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         ctaLabel: "Open GYSH Admin",
         ctaUrl: "{{ctaUrl}}",
         footerNote: "This alert was sent because a GYSH public form was completed.",
+      };
+    case "workshop_registration_confirmation":
+      return {
+        subject: `${SITE_NAME} — you're registered for {{workshopTitle}}`,
+        preheader: "You're on the roster — we'll email you when the schedule is confirmed.",
+        eyebrow: "Workshops · You're registered",
+        headline: "{{name}}, you're on the roster!",
+        subhead: "You're registered for {{workshopTitle}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">We've saved your seat for <strong>{{workshopTitle}}</strong>.</p>
+        <p style="margin:0 0 8px;"><strong>When:</strong> {{workshopWhen}}</p>
+        <p style="margin:0 0 8px;"><strong>Format:</strong> {{workshopFormat}}</p>
+        <p style="margin:0 0 12px;"><strong>Attendees:</strong> {{attendeeCount}}</p>
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Next:</strong> We'll email this same address when the date and Zoom details are confirmed. Keep this message so you have the workshop on your calendar.
+        </p>`,
+        ctaLabel: "View workshop",
+        ctaUrl: "{{ctaUrl}}",
+        footerNote: "Questions? Reply to this email or write info@getyoursidehustle.com.",
       };
     case "membership_subscribed":
       return {

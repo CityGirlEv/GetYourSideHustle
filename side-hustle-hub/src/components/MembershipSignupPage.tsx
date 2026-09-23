@@ -32,6 +32,7 @@ import {
 import {
   browseGuidesButtonLabel,
   membershipSignupSubmitLabel,
+  membershipStripeCheckoutHint,
   membershipUpgradeActionBubbles,
 } from "../lib/membership-signup-labels";
 import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
@@ -447,7 +448,7 @@ export function MembershipSignupPage({
           <p>
             {step === "register" &&
               (isPaid && stripeReady
-                ? "Enter your details to join. Paid Adult and Senior plans continue to Stripe Checkout (test cards work in Test mode)."
+                ? "Enter your details to join. Paid Adult and Senior plans continue to Stripe Checkout."
                 : "Enter your details to join. Free plans need no payment; Kids/Teens paid plans use credits and activate after admin review.")}
             {step === "profile" &&
               (isPaid && stripeReady
@@ -455,8 +456,7 @@ export function MembershipSignupPage({
                 : `You're signed in${loggedInEmail ? ` as ${loggedInEmail}` : ""}. Choose a plan to add or upgrade on your profile${
                     currentTier ? ` (currently ${MEMBERSHIP_TIERS.find((t) => t.id === currentTier)?.name ?? currentTier})` : ""
                   }.`)}
-            {step === "checkout" &&
-              "You'll finish on Stripe's secure page. Use a test card like 4242 4242 4242 4242 while Stripe is in Test / Sandbox mode."}
+            {step === "checkout" && membershipStripeCheckoutHint()}
             {step === "done" &&
               (stripePaid
                 ? profileApplied || isLoggedIn
@@ -730,12 +730,9 @@ export function MembershipSignupPage({
             onSubmit={handleStripeCheckout}
             data-testid="membership-stripe-checkout"
           >
-            <div className="membership-fake-checkout-banner" role="status">
+            <div className="membership-checkout-banner" role="status">
               <CreditCard size={18} aria-hidden />
-              <span>
-                Secure Stripe Checkout — in <strong>Test / Sandbox</strong> mode use card{" "}
-                <code>4242 4242 4242 4242</code>, any future expiry, any CVC.
-              </span>
+              <span>{membershipStripeCheckoutHint()}</span>
             </div>
             <p className="membership-signup-plan-note">
               Plan: <strong>{tier.name}</strong> · {AUDIENCE_LABELS[audience]}

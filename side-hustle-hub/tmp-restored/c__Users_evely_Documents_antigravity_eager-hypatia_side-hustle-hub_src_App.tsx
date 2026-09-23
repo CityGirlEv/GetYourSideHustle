@@ -139,8 +139,6 @@ import {
   mustPickAgendaTimes,
 } from "./lib/gysh-partner-agenda";
 import { hasFreeMemberSession } from "./lib/free-member-session";
-import { consumeWorkshopJoinReturn } from "./lib/pending-join-return";
-import { resolveWorkshopId } from "./lib/workshops";
 import { readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
 import { isYouthDashboardUser, youthAgeBand } from "./lib/youth-dashboard";
@@ -824,24 +822,9 @@ function App() {
       scroll?: boolean;
       /** Open a specific adult Launch Guide on /guides (clears marketing manuals). */
       launchGuideId?: string | null;
-      /** Re-open a workshop registration form after Sign in / Join. */
-      workshopRegisterId?: string | null;
     },
   ) => {
     if (meetingGateLocked && view !== "admin") return;
-    if (view === "workshops" && opts?.workshopRegisterId) {
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set("register", resolveWorkshopId(opts.workshopRegisterId));
-        window.history.replaceState(
-          window.history.state,
-          "",
-          `${url.pathname}${url.search}${url.hash}`,
-        );
-      } catch {
-        /* ignore */
-      }
-    }
     setActiveView(view);
     // Kid dashboard is opened in-place (no goTo); any nav clears the parent coach preview.
     setParentKidDashboard(null);
@@ -927,7 +910,7 @@ function App() {
               "Tell us your startup budget and how many hours you can commit each week.",
               "Rank your strengths — what you’re naturally good at (pick up to two).",
               "Rank your goals — passive income, local gigs, and more.",
-              "See hustles ranked for adults — best match first from your answers.",
+              "See side hustles ranked for adults — best match first from your answers.",
             ],
           };
         }
@@ -975,7 +958,7 @@ function App() {
           title: "How GYSH Workshops work",
           steps: [
             "Browse live and replay sessions from Tina, Evelyn, and guest experts.",
-            "Pick a track that fits — adult hustles, AI agents, or family-friendly Kids Glow.",
+            "Pick a track that fits — adult side hustles, AI agents, or family-friendly Kids Glow.",
             "Join or waitlist when a date is announced.",
             "Use the takeaways with Guides and the GYSH Match Wizard afterward.",
           ],
@@ -1015,7 +998,7 @@ function App() {
           title: "About GYSH",
           steps: [
             "Tina dreamed Get Your Side Hustle; Evelyn helped build the platform.",
-            "Kids Glow, Teen hustles, adult pilots, and senior paths share one mission.",
+            "Kids Glow, Teen side hustles, adult pilots, and senior paths share one mission.",
             "Explore the GYSH Match Wizard, Guides, Workshops, and Join to get started.",
             "Questions? Use Contact Us anytime.",
           ],
@@ -1024,7 +1007,7 @@ function App() {
         return {
           title: "How GYSH Contact works",
           steps: [
-            "Send questions about hustles, partnerships, or workshops.",
+            "Send questions about side hustles, partnerships, or workshops.",
             "Include your age group if you want Kids, Teens, Adult, or Senior help.",
             "We read messages through the GYSH inbox.",
             "For account help, try Login or Join first.",
@@ -1385,13 +1368,8 @@ function App() {
               resumeCheckout: pendingMembership.resumeCheckout,
             });
           } else {
-            const workshopId = consumeWorkshopJoinReturn();
-            if (workshopId) {
-              goTo("workshops", { workshopRegisterId: workshopId });
-            } else {
-              sessionStorage.setItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG, "1");
-              restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
-            }
+            sessionStorage.setItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG, "1");
+            restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
           }
         }
       } else if (outcome === "unavailable") {
@@ -1610,7 +1588,7 @@ function App() {
       case "checklist": return "Practical launch steps — preview is open; the full list unlocks when you sign in.";
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
-      case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult hustle tip.";
+      case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult side hustle tip.";
       case "kids": return "Stories, GYSH Match Wizard, ideas, savings, and guides for Kids and Teens — parents coach the journey.";
       case "seniors": return "GYSH Match Wizard and flexible Side Hustles for 55+, retirees, and second careers.";
       case "about": return "Meet Tina Marie Barham and Evelyn Irving — the partnership behind Get Your Side Hustle.";
@@ -1671,7 +1649,7 @@ function App() {
             </span>
             <span className="home-step-bubble__body">
               <strong>Families</strong>
-              <span>Safe hustles, stories, and parents as GYSH Coaches.</span>
+              <span>Safe side hustles, stories, and parents as GYSH Coaches.</span>
             </span>
             <Star size={16} className="home-step-bubble__icon" aria-hidden="true" />
           </button>
@@ -1692,7 +1670,7 @@ function App() {
           <button
             type="button"
             className="home-step-bubble"
-            onClick={() => setActiveView("workshops")}
+            onClick={() => goTo("workshops")}
           >
             <span className="home-step-bubble__num" aria-hidden="true">
               4
@@ -1775,7 +1753,7 @@ function App() {
             <span className="home-match-family__band">9–12</span>
           </span>
           <span className="home-match-family__desc">
-            Confidence, kindness, and parent-guided first hustles.
+            Confidence, kindness, and parent-guided first side hustles.
           </span>
         </li>
         <li className="home-match-family__card home-match-family__card--teens">
@@ -2576,7 +2554,10 @@ function App() {
                 onSelectAction={handleSelectHustleAction}
                 isLoggedIn={effectiveMemberAccess}
                 previewAsGuest={previewingAsGuest}
-                onUnlockBlueprint={() => openJoin("adult")}
+                onUnlockBlueprint={() => {
+                  const target = wizardUnlockSignupTarget("adult");
+                  openMembershipSignup(target.tier, target.audience);
+                }}
               />
             )}
             <TrainingCircles
@@ -2641,7 +2622,8 @@ function App() {
               membershipTier={
                 authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null)
               }
-              onGoToJoin={() => openJoin("adult")}
+              isAdmin={canUseAdminPortal && !previewingAsMember}
+            onGoToJoin={() => openJoin("adult")}
               onGoToLogin={() => goTo("login")}
               onBackToCatalog={() => setGuidesDetailId(null)}
             />
@@ -2678,12 +2660,7 @@ function App() {
 
         {activeView === "workshops" && (
           <WorkshopsHub
-            isLoggedIn={effectivePortalLogin}
-            memberName={authUser?.name || ""}
-            memberEmail={authUser?.email || ""}
-            onGoToJoin={() => openMembershipSignup("free", "adult")}
-            onGoToLogin={() => goTo("login")}
-          />
+            key={workshopsHubEpoch} />
         )}
 
         {activeView === "community" && (

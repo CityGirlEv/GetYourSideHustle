@@ -49,6 +49,7 @@ import {
 } from "../lib/join-audience";
 import {
   browseGuidesButtonLabel,
+  membershipAlaCarteCheckoutNote,
   membershipPlanBubbles,
   membershipPlanChooseLabel,
 } from "../lib/membership-signup-labels";
@@ -1040,7 +1041,7 @@ export function MembershipPage({
                 </button>
               </div>
               <p className="membership-alacarte-cart-note">
-                Secure Stripe Checkout. In test mode use card <code>4242 4242 4242 4242</code>.
+                {membershipAlaCarteCheckoutNote()}
               </p>
             </form>
           )}

@@ -1,38 +1,10 @@
 /** GYSH Workshops & Guest Speakers — defaults + D1 API. */
 
 import { api } from "./api";
+import { siteUrl } from "./site-config";
 import { AI_SCENE_PACKS_WORKSHOP_ID } from "./workshop-playbooks";
-import type { WorkshopRegistrant, WorkshopRegistrationInput } from "./workshop-registration";
-
-export type { WorkshopRegistrant, WorkshopRegistrationInput } from "./workshop-registration";
 
 export { AI_SCENE_PACKS_WORKSHOP_ID } from "./workshop-playbooks";
-
-/** Public ?register= slugs that map onto catalog workshop ids. */
-export const WORKSHOP_REGISTER_ALIASES: Record<string, string> = {
-  "ai-marketing-video": AI_SCENE_PACKS_WORKSHOP_ID,
-};
-
-export function resolveWorkshopId(workshopId: string): string {
-  const raw = String(workshopId || "").trim();
-  return WORKSHOP_REGISTER_ALIASES[raw] || raw;
-}
-
-export function parseWorkshopRegisterParam(
-  search = typeof window !== "undefined" ? window.location.search : "",
-): string | null {
-  try {
-    const value = new URLSearchParams(search).get("register")?.trim() || "";
-    return value ? resolveWorkshopId(value) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function findWorkshopById(id: string, list: Workshop[]): Workshop | undefined {
-  const canonical = resolveWorkshopId(id);
-  return list.find((w) => w.id === canonical || w.id === id);
-}
 
 export type WorkshopAudience = "adult" | "kids" | "family" | "all";
 export type WorkshopStatus = "upcoming" | "past" | "waitlist";
@@ -63,12 +35,13 @@ export type Workshop = {
   tags: string[];
 };
 
-export type WorkshopRoster = {
+export type WorkshopRegistrationInput = {
   workshopId: string;
-  title: string;
-  capacity: number;
-  seatsTaken: number;
-  registrations: WorkshopRegistrant[];
+  name: string;
+  email: string;
+  phone?: string;
+  attendeeCount: number;
+  notes?: string;
 };
 
 export const WORKSHOP_FORMATS: Workshop["format"][] = ["Live Zoom", "In-Person", "Hybrid", "Replay"];
@@ -133,21 +106,6 @@ export const DEFAULT_SPEAKERS: GuestSpeaker[] = [
 /** Seed / fallback workshops — all dates intentionally TBD until admins set them. */
 export const DEFAULT_WORKSHOPS: Workshop[] = [
   {
-    id: AI_SCENE_PACKS_WORKSHOP_ID,
-    title: "90-Minute AI Marketing Video Hands-On Workshop",
-    blurb: "90-minute hands-on AI marketing video lab with ChatGPT, Hedra, and CapCut. Turn one idea into a 3-scene marketing video you can reuse as a Scene Production Pack.",
-    date: "TBD",
-    time: "TBD",
-    format: "Live Zoom",
-    audience: "adult",
-    status: "upcoming",
-    registrationOpen: true,
-    capacity: 10,
-    registrationNote: "Pre-registration is open — date and time are TBD. We'll email you when the schedule is confirmed. This class is limited to 10 participants max.",
-    speakerIds: ["tina", "evelyn"],
-    tags: ["AI Video"],
-  },
-  {
     id: "glow-getter-launch",
     title: "Glow Getter Launch Lab",
     blurb: "Story time + parent playbook: turn Kevina Starr episodes into weekly confidence and teen hustle routines.",
@@ -157,7 +115,7 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     audience: "family",
     status: "upcoming",
     registrationOpen: false,
-    capacity: 25,
+    capacity: 10,
     registrationNote: "Registration is not open yet. Check back after the schedule is confirmed.",
     speakerIds: ["tina", "kevina-voice", "lyriq"],
     tags: ["Kids", "Kevina Starr", "Parents", "Youth"],
@@ -334,19 +292,6 @@ export async function submitWorkshopRegistration(
   return api("workshop-registrations", {
     method: "POST",
     auth: false,
-    body: input,
-  });
-}
-
-export async function fetchWorkshopRoster(workshopId: string): Promise<WorkshopRoster> {
-  return api(`workshop-registrations?workshopId=${encodeURIComponent(workshopId)}`);
-}
-
-export async function adminAddWorkshopRegistrant(
-  input: WorkshopRegistrationInput,
-): Promise<{ ok: boolean; message: string; alreadyOnRoster?: boolean }> {
-  return api("workshop-registrations/admin", {
-    method: "POST",
     body: input,
   });
 }

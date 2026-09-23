@@ -46,4 +46,21 @@ describe("email-template-content", () => {
     const progress = defaultContentForSlug("parent_kid_progress_daily");
     expect(progress?.dynamicBody).toBe(true);
   });
+
+  it("renders a workshop registration confirmation without test-card copy", () => {
+    const content = defaultContentForSlug("workshop_registration_confirmation");
+    expect(content).toBeTruthy();
+    const rendered = renderContent(content!, {
+      name: "Brenda",
+      workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
+      workshopWhen: "Date and time TBD",
+      workshopFormat: "Live Zoom",
+      attendeeCount: "1",
+      ctaUrl: "https://getyoursidehustle.com/workshops?register=ai-scene-production-packs",
+    });
+    expect(rendered.subject).toMatch(/90-Minute AI Marketing Video/i);
+    expect(rendered.html).toContain("Brenda");
+    expect(rendered.html).toContain("on the roster");
+    expect(rendered.html).not.toContain("4242");
+  });
 });

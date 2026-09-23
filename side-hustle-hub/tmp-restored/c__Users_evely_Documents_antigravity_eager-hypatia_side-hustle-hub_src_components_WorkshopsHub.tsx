@@ -1,43 +1,20 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, MapPin, Mic2, Users, Video } from "lucide-react";
-import { ApiError } from "../lib/api";
 import {
   AUDIENCE_LABELS,
   STATUS_LABELS,
   fetchWorkshops,
-  findWorkshopById,
-  parseWorkshopRegisterParam,
   submitWorkshopRegistration,
   type GuestSpeaker,
   type Workshop,
   type WorkshopStatus,
   type WorkshopAudience,
 } from "../lib/workshops";
-import {
-  WORKSHOP_FREE_MEMBERSHIP_NEED,
-  WORKSHOP_JOIN_OR_SIGN_IN,
-  saveWorkshopRegistrationJoinReturn,
-  workshopMemberGateDirections,
-  workshopRegistrationFormUnlocked,
-  workshopRegistrationMemberOk,
-} from "../lib/workshop-member-gate";
 import workshopsHero from "../assets/workshops-hero.png";
 
 type Filter = "all" | WorkshopStatus;
 
-export function WorkshopsHub({
-  isLoggedIn = false,
-  memberName = "",
-  memberEmail = "",
-  onGoToJoin,
-  onGoToLogin,
-}: {
-  isLoggedIn?: boolean;
-  memberName?: string;
-  memberEmail?: string;
-  onGoToJoin?: () => void;
-  onGoToLogin?: () => void;
-} = {}) {
+export function WorkshopsHub() {
   const [statusFilter, setStatusFilter] = useState<Filter>("all");
   const [audienceFilter, setAudienceFilter] = useState<"all" | WorkshopAudience>("all");
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -52,7 +29,7 @@ export function WorkshopsHub({
     notes: "",
   });
   const [registrationStatus, setRegistrationStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-  const [submittingRegistration, setSubmittingRegistration] = useState(false);
+  const [focusedWorkshopId, setFocusedWorkshopId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,72 +55,21 @@ export function WorkshopsHub({
 
   const upcomingCount = workshops.filter((w) => w.status === "upcoming" || w.status === "waitlist").length;
 
-  const setRegisterQuery = (workshopId: string | null) => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (workshopId) url.searchParams.set("register", workshopId);
-    else url.searchParams.delete("register");
-    const next = `${url.pathname}${url.search}${url.hash}`;
-    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    if (current !== next) window.history.replaceState(window.history.state, "", next);
-  };
-
   const openRegistration = (workshop: Workshop) => {
     setRegisteringFor(workshop);
     setRegistrationStatus(null);
     setRegistrationForm({
-      name: memberName || "",
-      email: memberEmail || "",
+      name: "",
+      email: "",
       phone: "",
       attendeeCount: 1,
       notes: "",
     });
-    setRegisterQuery(workshop.id);
-  };
-
-  const closeRegistration = () => {
-    setRegisteringFor(null);
-    setRegistrationStatus(null);
-    setRegisterQuery(null);
-  };
-
-  useEffect(() => {
-    if (loading || registeringFor) return;
-    const wanted = parseWorkshopRegisterParam();
-    if (!wanted) return;
-    const match = findWorkshopById(wanted, workshops);
-    if (match) openRegistration(match);
-  }, [loading, workshops]);
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    setRegistrationForm((prev) => ({
-      ...prev,
-      name: prev.name || memberName,
-      email: prev.email || memberEmail,
-    }));
-  }, [isLoggedIn, memberName, memberEmail]);
-
-  const leaveForJoin = (workshopId: string) => {
-    saveWorkshopRegistrationJoinReturn(workshopId);
-    onGoToJoin?.();
-  };
-
-  const leaveForLogin = (workshopId: string) => {
-    saveWorkshopRegistrationJoinReturn(workshopId);
-    onGoToLogin?.();
   };
 
   const handleRegistrationSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!registeringFor || !registeringFor.registrationOpen) return;
-    if (!workshopRegistrationMemberOk(registeringFor.id, isLoggedIn)) {
-      setRegistrationStatus({
-        kind: "error",
-        message: WORKSHOP_JOIN_OR_SIGN_IN,
-      });
-      return;
-    }
     setSubmittingRegistration(true);
     setRegistrationStatus(null);
     try {
@@ -156,14 +82,9 @@ export function WorkshopsHub({
         message: res.message || "Registration received. Check your email for confirmation.",
       });
     } catch (err) {
-      const unauthorized = err instanceof ApiError && err.status === 401;
       setRegistrationStatus({
         kind: "error",
-        message: unauthorized
-          ? WORKSHOP_JOIN_OR_SIGN_IN
-          : err instanceof Error
-            ? err.message
-            : "Registration failed. Please try again.",
+        message: err instanceof Error ? err.message : "Registration failed. Please try again.",
       });
     } finally {
       setSubmittingRegistration(false);
@@ -172,12 +93,6 @@ export function WorkshopsHub({
 
   if (registeringFor) {
     const isOpen = registeringFor.registrationOpen && registeringFor.status !== "past";
-    const memberOk = workshopRegistrationMemberOk(registeringFor.id, isLoggedIn);
-    const formUnlocked = workshopRegistrationFormUnlocked({
-      isOpen,
-      memberOk,
-      submitting: submittingRegistration,
-    });
     const eventSpeakers = registeringFor.speakerIds
       .map((id) => speakersById[id])
       .filter(Boolean);
@@ -245,16 +160,9 @@ export function WorkshopsHub({
 
           <form className="workshops-registration-form glass" onSubmit={(e) => void handleRegistrationSubmit(e)}>
             <h3>Workshop Registration</h3>
-            <p data-testid="workshop-registration-intro">
+            <p>
               {isOpen
-                ? memberOk
-                  ? "Save your spot for this event."
-                  : (
-                    <>
-                      <strong>{WORKSHOP_FREE_MEMBERSHIP_NEED}</strong>{" "}
-                      {workshopMemberGateDirections(registeringFor.id, registeringFor.title)}
-                    </>
-                  )
+                ? "Save your spot for this event."
                 : "Registration fields are previewed here and will unlock when Admin opens registration."}
             </p>
             {registrationStatus && (
@@ -262,29 +170,7 @@ export function WorkshopsHub({
                 {registrationStatus.message}
               </div>
             )}
-            {!memberOk && (
-              <div className="workshop-member-gate" data-testid="workshop-member-gate">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  data-testid="workshop-join-free"
-                  onClick={() => leaveForJoin(registeringFor.id)}
-                >
-                  Create a FREE account
-                </button>
-                {onGoToLogin ? (
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    data-testid="workshop-sign-in"
-                    onClick={() => leaveForLogin(registeringFor.id)}
-                  >
-                    Sign in
-                  </button>
-                ) : null}
-              </div>
-            )}
-            <fieldset disabled={!formUnlocked}>
+            <fieldset disabled={!isOpen || submittingRegistration}>
               <div className="form-group">
                 <label className="form-label">Full name</label>
                 <input

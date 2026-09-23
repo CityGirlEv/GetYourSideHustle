@@ -1,15 +1,18 @@
-import { useEffect, useState } from "react";
-import { Mic2, Save } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Mic2, Save, UserPlus, Users } from "lucide-react";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import {
   AUDIENCE_LABELS,
   STATUS_LABELS,
   WORKSHOP_FORMATS,
+  adminAddWorkshopRegistrant,
+  fetchWorkshopRoster,
   fetchWorkshops,
   persistWorkshops,
   type GuestSpeaker,
   type Workshop,
   type WorkshopAudience,
+  type WorkshopRoster,
   type WorkshopStatus,
 } from "../../lib/workshops";
 import { ApiError } from "../../lib/api";
@@ -296,6 +299,201 @@ export function WorkshopsAdmin() {
           </div>
         )}
       </div>
+
+      {selected && <WorkshopRosterPanel workshopId={selected.id} workshopTitle={selected.title} />}
+    </div>
+  );
+}
+
+function WorkshopRosterPanel({
+  workshopId,
+  workshopTitle,
+}: {
+  workshopId: string;
+  workshopTitle: string;
+}) {
+  const [roster, setRoster] = useState<WorkshopRoster | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState("");
+  const [savedMsg, setSavedMsg] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [attendeeCount, setAttendeeCount] = useState(1);
+  const [notes, setNotes] = useState("");
+
+  const reload = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setRoster(await fetchWorkshopRoster(workshopId));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to load roster.");
+      setRoster(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void reload();
+  }, [workshopId]);
+
+  const addRegistrant = async (e: FormEvent) => {
+    e.preventDefault();
+    setAdding(true);
+    setError("");
+    setSavedMsg("");
+    try {
+      const result = await adminAddWorkshopRegistrant({
+        workshopId,
+        name,
+        email,
+        phone,
+        attendeeCount,
+        notes,
+      });
+      setSavedMsg(result.message);
+      setName("");
+      setEmail("");
+      setPhone("");
+      setAttendeeCount(1);
+      setNotes("");
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to add registrant.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const seats = roster
+    ? `${roster.seatsTaken}${roster.capacity > 0 ? ` / ${roster.capacity}` : ""} seats`
+    : "";
+
+  return (
+    <div className="glass" style={{ padding: 20, borderRadius: 14 }} data-testid="workshop-roster">
+      <BusyOverlay active={adding} message="Adding registrant…" />
+      <h3 style={{ fontSize: "1.15rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <Users size={18} style={{ color: "var(--bronze)" }} /> Roster · {workshopTitle}
+      </h3>
+      <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", margin: 0 }}>
+        Registrants for this workshop. Adding someone here emails them a confirmation.
+        {seats ? ` ${seats}.` : ""}
+      </p>
+      {error && (
+        <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
+          {error}
+        </div>
+      )}
+      {savedMsg && (
+        <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(46,125,50,0.1)", border: "1px solid rgba(46,125,50,0.35)", color: "#2e7d32", fontSize: "0.95rem" }}>
+          {savedMsg}
+        </div>
+      )}
+
+      {loading ? (
+        <WaitIndicator message="Loading roster…" style={{ marginTop: 12 }} />
+      ) : (
+        <div style={{ marginTop: 14, overflowX: "auto" }}>
+          {(roster?.registrations.length ?? 0) === 0 ? (
+            <p style={{ margin: 0, color: "var(--text-primary)" }} data-testid="workshop-roster-empty">
+              No one is on this roster yet.
+            </p>
+          ) : (
+            <table className="admin-table" data-testid="workshop-roster-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: "8px 6px" }}>Name</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px" }}>Email</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px" }}>Phone</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px" }}>Seats</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px" }}>Registered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roster?.registrations.map((row) => (
+                  <tr key={row.id} data-testid={`workshop-roster-row-${row.email}`}>
+                    <td style={{ padding: "8px 6px" }}>{row.name}</td>
+                    <td style={{ padding: "8px 6px" }}>{row.email}</td>
+                    <td style={{ padding: "8px 6px" }}>{row.phone || "—"}</td>
+                    <td style={{ padding: "8px 6px" }}>{row.attendeeCount}</td>
+                    <td style={{ padding: "8px 6px" }}>{row.createdAt.slice(0, 10)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={(e) => void addRegistrant(e)} data-testid="workshop-roster-add" style={{ marginTop: 16, display: "grid", gap: 10 }}>
+        <strong style={{ color: "var(--charcoal)" }}>Add registrant</strong>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="workshop-roster-name">Name</label>
+            <input
+              id="workshop-roster-name"
+              className="text-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              data-testid="workshop-roster-name"
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="workshop-roster-email">Email</label>
+            <input
+              id="workshop-roster-email"
+              className="text-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              data-testid="workshop-roster-email"
+            />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 8rem", gap: 10 }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="workshop-roster-phone">Phone (optional)</label>
+            <input
+              id="workshop-roster-phone"
+              className="text-input"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              data-testid="workshop-roster-phone"
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="workshop-roster-seats">Seats</label>
+            <input
+              id="workshop-roster-seats"
+              className="text-input"
+              type="number"
+              min={1}
+              max={10}
+              value={attendeeCount}
+              onChange={(e) => setAttendeeCount(Math.max(1, Number(e.target.value) || 1))}
+              data-testid="workshop-roster-seats"
+            />
+          </div>
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label" htmlFor="workshop-roster-notes">Notes (optional)</label>
+          <input
+            id="workshop-roster-notes"
+            className="text-input"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            data-testid="workshop-roster-notes"
+          />
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={adding} data-testid="workshop-roster-add-submit">
+          {adding ? <WaitLabel>Adding…</WaitLabel> : <><UserPlus size={14} /> Add and send confirmation</>}
+        </button>
+      </form>
     </div>
   );
 }

@@ -128,7 +128,7 @@ describe("email template review sprint / dues", () => {
     const today = dueDatePlusDays(0, ref);
     const tomorrow = dueDatePlusDays(1, ref);
     const dues = EMAIL_TEMPLATE_REVIEW_CASES.map((c) => emailTemplateReviewDueDate(c.id, ref));
-    expect(dues.filter((d) => d === today)).toHaveLength(9);
+    expect(dues.filter((d) => d === today)).toHaveLength(10);
     expect(dues.filter((d) => d === tomorrow)).toHaveLength(9);
     expect(dues).not.toContain(dueDateForSprint(3));
   });
