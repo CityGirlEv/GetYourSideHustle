@@ -1,5 +1,5 @@
 import { savePendingJoinReturn } from "./pending-join-return";
-import { workshopRequiresMember } from "./workshop-playbooks";
+import { workshopRequiresMember, AI_SCENE_PACKS_WORKSHOP_TITLE } from "./workshop-playbooks";
 import { AI_SCENE_PACKS_WORKSHOP_ID, resolveWorkshopId } from "./workshops";
 
 /** Bold lead on the workshop registration gate. */
@@ -25,7 +25,7 @@ export function workshopRegistrationFormUnlocked(opts: {
 
 export function workshopMemberGateWorkshopName(workshopId: string, title: string): string {
   if (resolveWorkshopId(workshopId) === AI_SCENE_PACKS_WORKSHOP_ID) {
-    return "the 90-Minute AI Workshop";
+    return AI_SCENE_PACKS_WORKSHOP_TITLE;
   }
   return title;
 }

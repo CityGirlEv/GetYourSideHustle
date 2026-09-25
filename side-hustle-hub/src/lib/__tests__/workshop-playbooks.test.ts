@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   AI_SCENE_PACKS_WORKSHOP_ID,
@@ -63,5 +66,20 @@ describe("workshop playbooks", () => {
     expect(workshopPublicTags(AI_SCENE_PACKS_WORKSHOP_ID, ["AI Video", "Content"])).toEqual(["AI Video"]);
     expect(workshopSneakPeek("glow-getter-launch")).toBeNull();
     expect(workshopPublicTags("glow-getter-launch", ["Kids", "Content"])).toEqual(["Kids", "Content"]);
+  });
+});
+
+describe("workshop hub guide surface", () => {
+  it("shows the Prerequisites guide on workshop cards and the registration page", () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../components/WorkshopsHub.tsx"), "utf8");
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../index.css"), "utf8");
+    expect(src).toContain("WorkshopSneakPeekLink");
+    expect(src).toContain("Prerequisites");
+    expect(src).toContain('data-testid="workshop-sneak-peek"');
+    expect(src).toContain('className="workshops-sneak-peek--page"');
+    expect(src).toContain('className="workshops-title-row"');
+    expect(css).toContain(".workshops-title-row");
+    expect(src).toContain("workshopSneakPeekPdfPublicPath");
+    expect(css).toMatch(/\.workshops-card h4 \{[\s\S]*font-size: 1\.35rem;[\s\S]*font-weight: 800;/);
   });
 });

@@ -4,7 +4,7 @@ INSERT INTO workshops (
   speaker_ids_json, tags_json, sort_order, updated_at
 ) VALUES (
   'ai-scene-production-packs',
-  '90-Minute AI Marketing Video Hands-On Workshop',
+  '90-Minute AI Marketing Video Workshop',
   '90-minute hands-on AI marketing video lab with ChatGPT, Hedra, and CapCut. Turn one idea into a 3-scene marketing video you can reuse as a Scene Production Pack.',
   'TBD',
   'TBD',

@@ -99,8 +99,31 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("page-title")).toContainText("Workshops");
   });
 
+  test("AI workshop shows Prerequisites on the card and registration page", async ({ page }) => {
+    await page.goto("/workshops");
+    await expect(page.getByTestId("workshop-sneak-peek-toggle").first()).toBeVisible();
+    await expect(page.getByTestId("workshop-sneak-peek-toggle").first()).toHaveText(/Prerequisites/i);
+    await page.goto("/workshops?register=90-minute-ai-marketing-video-workshop");
+    await expect(page.getByTestId("workshop-sneak-peek")).toBeVisible();
+    await expect(page.getByTestId("workshop-sneak-peek-toggle")).toHaveText(/Prerequisites/i);
+    await page.getByTestId("workshop-sneak-peek-toggle").click();
+    await expect(page.getByTestId("workshop-sneak-peek-pdf")).toBeVisible();
+    await expect(page.getByTestId("workshop-sneak-peek-pdf")).toHaveAttribute(
+      "href",
+      "/guides/90-minute-ai-marketing-video-workshop-prerequisites.pdf",
+    );
+  });
+
+  test("AI workshop Prerequisites PDF is a public file", async ({ request }) => {
+    const res = await request.get("/guides/90-minute-ai-marketing-video-workshop-prerequisites.pdf");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toMatch(/pdf/i);
+    const buf = await res.body();
+    expect(Buffer.from(buf.subarray(0, 4)).toString()).toBe("%PDF");
+  });
+
   test("AI workshop registration asks signed-out visitors to sign in", async ({ page }) => {
-    await page.goto("/workshops?register=ai-marketing-video");
+    await page.goto("/workshops?register=90-minute-ai-marketing-video-workshop");
     await expect(page.getByTestId("workshop-member-gate")).toBeVisible();
     await expect(page.getByTestId("workshop-sign-in")).toBeVisible();
     await expect(page.getByTestId("workshop-join-free")).toBeVisible();

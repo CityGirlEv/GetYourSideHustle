@@ -1,4 +1,4 @@
-/** Branded PDF of the MAKE IT POP workshop sneak peek (TOC, rules, Before Class). */
+/** Branded PDF of the MAKE IT POP workshop sneak peek (copyright, TOC, rules, Before Class). */
 
 import { jsPDF } from "jspdf";
 import {
@@ -11,7 +11,9 @@ import {
   applyPdfPageBranding,
   drawPdfPageChrome,
 } from "./pdf-branding";
+import { PRODUCTION_SITE_URL } from "./site-config";
 import {
+  AI_SCENE_PACKS_PREREQ_PDF_PATH,
   workshopSneakPeek,
   type WorkshopChecklistItem,
   type WorkshopSneakPeek,
@@ -41,6 +43,16 @@ export function pdfSafeWorkshopText(text: string): string {
 export function workshopSneakPeekPdfFilename(workshopId: string): string | null {
   if (!workshopSneakPeek(workshopId)) return null;
   return "GYSH-MAKE-IT-POP-Workshop-Guide.pdf";
+}
+
+export function workshopSneakPeekPdfPublicPath(workshopId: string): string | null {
+  if (!workshopSneakPeek(workshopId)) return null;
+  return AI_SCENE_PACKS_PREREQ_PDF_PATH;
+}
+
+export function workshopSneakPeekPdfPublicUrl(workshopId: string): string | null {
+  const path = workshopSneakPeekPdfPublicPath(workshopId);
+  return path ? `${PRODUCTION_SITE_URL}${path}` : null;
 }
 
 export function workshopSneakPeekPdfTitle(_peek: WorkshopSneakPeek): string {
@@ -200,6 +212,11 @@ function creditPlanRow(state: DrawState, plan: WorkshopSneakPeek["creditPlans"][
   state.y = top + rowH + 8;
 }
 
+function copyrightSection(state: DrawState, peek: WorkshopSneakPeek) {
+  sectionHeading(state, peek.copyrightHeading);
+  peek.copyrightLines.forEach((line) => bodyPara(state, line, BODY, 8));
+}
+
 function creditsSection(state: DrawState, peek: WorkshopSneakPeek) {
   state.doc.addPage();
   drawPdfPageChrome(state.doc);
@@ -235,6 +252,8 @@ export async function buildWorkshopSneakPeekPdf(workshopId: string): Promise<jsP
   centerLines(state, peek.title, 12, true, PDF_BRAND_COLORS.charcoal, 2);
   centerLines(state, peek.tools, 11, false, PDF_BRAND_COLORS.muted, 6);
 
+  copyrightSection(state, peek);
+
   sectionHeading(state, "Table of Contents");
   peek.toc.forEach((item, i) => tocRow(state, i + 1, item));
 
@@ -246,7 +265,9 @@ export async function buildWorkshopSneakPeekPdf(workshopId: string): Promise<jsP
 
   creditsSection(state, peek);
 
-  applyPdfPageBranding(doc, workshopSneakPeekPdfTitle(peek), logoDataUrl);
+  applyPdfPageBranding(doc, workshopSneakPeekPdfTitle(peek), logoDataUrl, new Date(), {
+    hideLastUpdated: true,
+  });
   return doc;
 }
 

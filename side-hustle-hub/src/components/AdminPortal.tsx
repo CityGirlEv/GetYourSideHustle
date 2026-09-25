@@ -510,7 +510,7 @@ export const AdminPortal: React.FC<Props> = ({
           }}
         />
       )}
-      {activeTab === "users" && <UsersArea />}
+      {activeTab === "users" && <UsersArea currentUserId={authUser?.id ?? null} />}
       {activeTab === "memberships" && <MembershipsPage />}
       {activeTab === "hustle-schedules" && <AdminHustleSchedulesPage />}
       {activeTab === "certificates" && <CertificatesAdmin />}

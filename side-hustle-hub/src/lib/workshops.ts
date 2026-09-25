@@ -1,21 +1,37 @@
 /** GYSH Workshops & Guest Speakers — defaults + D1 API. */
 
 import { api } from "./api";
-import { AI_SCENE_PACKS_WORKSHOP_ID } from "./workshop-playbooks";
+import {
+  AI_SCENE_PACKS_WORKSHOP_ID,
+  AI_SCENE_PACKS_WORKSHOP_REGISTER_SLUG,
+  AI_SCENE_PACKS_WORKSHOP_TITLE,
+} from "./workshop-playbooks";
 import type { WorkshopRegistrant, WorkshopRegistrationInput } from "./workshop-registration";
 
 export type { WorkshopRegistrant, WorkshopRegistrationInput } from "./workshop-registration";
 
-export { AI_SCENE_PACKS_WORKSHOP_ID } from "./workshop-playbooks";
+export {
+  AI_SCENE_PACKS_WORKSHOP_ID,
+  AI_SCENE_PACKS_WORKSHOP_REGISTER_SLUG,
+  AI_SCENE_PACKS_WORKSHOP_TITLE,
+} from "./workshop-playbooks";
 
 /** Public ?register= slugs that map onto catalog workshop ids. */
 export const WORKSHOP_REGISTER_ALIASES: Record<string, string> = {
   "ai-marketing-video": AI_SCENE_PACKS_WORKSHOP_ID,
+  [AI_SCENE_PACKS_WORKSHOP_REGISTER_SLUG]: AI_SCENE_PACKS_WORKSHOP_ID,
 };
 
 export function resolveWorkshopId(workshopId: string): string {
   const raw = String(workshopId || "").trim();
   return WORKSHOP_REGISTER_ALIASES[raw] || raw;
+}
+
+/** Slug to put in `/workshops?register=` share links. */
+export function workshopPublicRegisterSlug(workshopId: string): string {
+  const id = resolveWorkshopId(workshopId);
+  if (id === AI_SCENE_PACKS_WORKSHOP_ID) return AI_SCENE_PACKS_WORKSHOP_REGISTER_SLUG;
+  return id;
 }
 
 export function parseWorkshopRegisterParam(
@@ -134,7 +150,7 @@ export const DEFAULT_SPEAKERS: GuestSpeaker[] = [
 export const DEFAULT_WORKSHOPS: Workshop[] = [
   {
     id: AI_SCENE_PACKS_WORKSHOP_ID,
-    title: "90-Minute AI Marketing Video Hands-On Workshop",
+    title: AI_SCENE_PACKS_WORKSHOP_TITLE,
     blurb: "90-minute hands-on AI marketing video lab with ChatGPT, Hedra, and CapCut. Turn one idea into a 3-scene marketing video you can reuse as a Scene Production Pack.",
     date: "TBD",
     time: "TBD",
@@ -152,7 +168,7 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     title: "Glow Getter Launch Lab",
     blurb: "Story time + parent playbook: turn Kevina Starr episodes into weekly confidence and teen hustle routines.",
     date: "TBD",
-    time: "6:30 PM EST",
+    time: "TBD",
     format: "Live Zoom",
     audience: "family",
     status: "upcoming",
@@ -167,13 +183,13 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     title: "Airbnb Arbitrage 101",
     blurb: "Lease math, furnishing on a budget, and listing optimization — without buying property first.",
     date: "TBD",
-    time: "7:00 PM EST",
+    time: "TBD",
     format: "Hybrid",
     audience: "adult",
     status: "upcoming",
-    registrationOpen: true,
+    registrationOpen: false,
     capacity: 25,
-    registrationNote: "Registration is open — reserve your spot. Final date/time will be emailed once confirmed.",
+    registrationNote: "Registration is not open yet. Check back after the schedule is confirmed.",
     speakerIds: ["evelyn", "guest-str"],
     tags: ["Airbnb", "Real Estate"],
   },
@@ -182,7 +198,7 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     title: "Building AI Agents with Soul",
     blurb: "Identity, memory, and plain-English orchestration — the Muntie Ev way, adapted for side hustle operators.",
     date: "TBD",
-    time: "7:00 PM EST",
+    time: "TBD",
     format: "Live Zoom",
     audience: "adult",
     status: "upcoming",
@@ -197,10 +213,10 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     title: "Meta + Shopify Creative Clinic",
     blurb: "Live ad teardowns: what to kill, hold, or scale against real store P&L.",
     date: "TBD",
-    time: "7:00 PM EST",
+    time: "TBD",
     format: "Live Zoom",
     audience: "adult",
-    status: "waitlist",
+    status: "upcoming",
     registrationOpen: false,
     capacity: 25,
     registrationNote: "Registration is not open yet. Check back after the schedule is confirmed.",
@@ -212,13 +228,13 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     title: "Teen Earnings Fair (Kids & Teens Session)",
     blurb: "Safe micro-jobs, piggy bank goals, and parent safety checklists — after story time.",
     date: "TBD",
-    time: "5:00 PM EST",
-    format: "Replay",
+    time: "TBD",
+    format: "Live Zoom",
     audience: "kids",
-    status: "past",
+    status: "upcoming",
     registrationOpen: false,
-    capacity: 0,
-    registrationNote: "This session has ended. Replay access will be shared when available.",
+    capacity: 25,
+    registrationNote: "Registration is not open yet. Check back after the schedule is confirmed.",
     speakerIds: ["tina", "lyriq"],
     tags: ["Teen Hustles", "Safety", "Youth"],
   },
@@ -227,13 +243,13 @@ export const DEFAULT_WORKSHOPS: Workshop[] = [
     title: "POD → Etsy Listing Sprint",
     blurb: "Niche research, design briefs, and evergreen SEO tags in one focused working session.",
     date: "TBD",
-    time: "7:00 PM EST",
-    format: "Replay",
+    time: "TBD",
+    format: "Live Zoom",
     audience: "adult",
-    status: "past",
+    status: "upcoming",
     registrationOpen: false,
-    capacity: 0,
-    registrationNote: "This session has ended. Replay access will be shared when available.",
+    capacity: 25,
+    registrationNote: "Registration is not open yet. Check back after the schedule is confirmed.",
     speakerIds: ["evelyn", "guest-ecom"],
     tags: ["POD", "Etsy"],
   },

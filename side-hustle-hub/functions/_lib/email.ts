@@ -24,6 +24,18 @@ import { PARTNER_ADMINS } from "./partners";
 export { ROOT_DOMAIN, SITE_NAME, EMAIL_SENDER_DOMAIN, ADMIN_EMAIL } from "./email-brand";
 export { SITE_URL };
 
+function workshopPublicRegisterSlug(workshopId: string): string {
+  const raw = String(workshopId || "").trim();
+  if (
+    raw === "ai-scene-production-packs" ||
+    raw === "ai-marketing-video" ||
+    raw === "90-minute-ai-marketing-video-workshop"
+  ) {
+    return "90-minute-ai-marketing-video-workshop";
+  }
+  return raw;
+}
+
 export type EmailAttachment = {
   filename: string;
   content: string; // base64
@@ -422,7 +434,7 @@ export async function sendWorkshopRegistrationConfirmation(
   if (!emailConfigured(env)) return false;
   const when = [input.workshopDate, input.workshopTime].filter((p) => p && p !== "TBD").join(" · ") || "Date and time TBD";
   const format = input.workshopFormat || "Live Zoom";
-  const workshopsUrl = `${SITE_URL}/workshops?register=${encodeURIComponent(input.workshopId)}`;
+  const workshopsUrl = `${SITE_URL}/workshops?register=${encodeURIComponent(workshopPublicRegisterSlug(input.workshopId))}`;
   const { renderCatalogEmail } = await import("./email-admin");
   const rendered = await renderCatalogEmail(env, "workshop_registration_confirmation", {
     name: input.name || "Side Hustler",

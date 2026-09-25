@@ -140,7 +140,7 @@ import {
 } from "./lib/gysh-partner-agenda";
 import { hasFreeMemberSession } from "./lib/free-member-session";
 import { consumeWorkshopJoinReturn } from "./lib/pending-join-return";
-import { resolveWorkshopId } from "./lib/workshops";
+import { workshopPublicRegisterSlug } from "./lib/workshops";
 import { readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
 import { isYouthDashboardUser, youthAgeBand } from "./lib/youth-dashboard";
@@ -832,7 +832,7 @@ function App() {
     if (view === "workshops" && opts?.workshopRegisterId) {
       try {
         const url = new URL(window.location.href);
-        url.searchParams.set("register", resolveWorkshopId(opts.workshopRegisterId));
+        url.searchParams.set("register", workshopPublicRegisterSlug(opts.workshopRegisterId));
         window.history.replaceState(
           window.history.state,
           "",

@@ -303,12 +303,12 @@ ON CONFLICT(id) DO NOTHING;
   }
 
   const WORKSHOPS = [
-    ["glow-getter-launch", "Glow Getter Launch Lab", "Story time + parent playbook: turn Kevina Starr episodes into weekly confidence and teen hustle routines.", "TBD", "6:30 PM EST", "Live Zoom", "family", "upcoming", '["tina","kevina-voice","lyriq"]', '["Kids","Kevina Starr","Parents","Youth"]'],
-    ["airbnb-arbitrage-101", "Airbnb Arbitrage 101", "Lease math, furnishing on a budget, and listing optimization — without buying property first.", "TBD", "7:00 PM EST", "Hybrid", "adult", "upcoming", '["evelyn","guest-str"]', '["Airbnb","Real Estate"]'],
-    ["agents-with-soul", "Building AI Agents with Soul", "Identity, memory, and plain-English orchestration — the Muntie Ev way, adapted for side hustle operators.", "TBD", "7:00 PM EST", "Live Zoom", "adult", "upcoming", '["evelyn"]', '["AI Agents","Automation"]'],
-    ["meta-shopify-clinic", "Meta + Shopify Creative Clinic", "Live ad teardowns: what to kill, hold, or scale against real store P&L.", "TBD", "7:00 PM EST", "Live Zoom", "adult", "waitlist", '["evelyn","guest-ecom"]', '["Meta Ads","Shopify","POD"]'],
-    ["junior-earnings-fair", "Teen Earnings Fair (Kids & Teens Session)", "Safe micro-jobs, piggy bank goals, and parent safety checklists — after story time.", "TBD", "5:00 PM EST", "Replay", "kids", "past", '["tina","lyriq"]', '["Teen Hustles","Safety","Youth"]'],
-    ["pod-etsy-sprint", "POD → Etsy Listing Sprint", "Niche research, design briefs, and evergreen SEO tags in one focused working session.", "TBD", "7:00 PM EST", "Replay", "adult", "past", '["evelyn","guest-ecom"]', '["POD","Etsy"]'],
+    ["glow-getter-launch", "Glow Getter Launch Lab", "Story time + parent playbook: turn Kevina Starr episodes into weekly confidence and teen hustle routines.", "TBD", "TBD", "Live Zoom", "family", "upcoming", '["tina","kevina-voice","lyriq"]', '["Kids","Kevina Starr","Parents","Youth"]'],
+    ["airbnb-arbitrage-101", "Airbnb Arbitrage 101", "Lease math, furnishing on a budget, and listing optimization — without buying property first.", "TBD", "TBD", "Hybrid", "adult", "upcoming", '["evelyn","guest-str"]', '["Airbnb","Real Estate"]'],
+    ["agents-with-soul", "Building AI Agents with Soul", "Identity, memory, and plain-English orchestration — the Muntie Ev way, adapted for side hustle operators.", "TBD", "TBD", "Live Zoom", "adult", "upcoming", '["evelyn"]', '["AI Agents","Automation"]'],
+    ["meta-shopify-clinic", "Meta + Shopify Creative Clinic", "Live ad teardowns: what to kill, hold, or scale against real store P&L.", "TBD", "TBD", "Live Zoom", "adult", "upcoming", '["evelyn","guest-ecom"]', '["Meta Ads","Shopify","POD"]'],
+    ["junior-earnings-fair", "Teen Earnings Fair (Kids & Teens Session)", "Safe micro-jobs, piggy bank goals, and parent safety checklists — after story time.", "TBD", "TBD", "Live Zoom", "kids", "upcoming", '["tina","lyriq"]', '["Teen Hustles","Safety","Youth"]'],
+    ["pod-etsy-sprint", "POD → Etsy Listing Sprint", "Niche research, design briefs, and evergreen SEO tags in one focused working session.", "TBD", "TBD", "Live Zoom", "adult", "upcoming", '["evelyn","guest-ecom"]', '["POD","Etsy"]'],
   ];
 
   let wsOrder = 0;
@@ -336,7 +336,9 @@ ON CONFLICT(id) DO NOTHING;
   }
 
   // Force TBD on any previously seeded fake calendar dates
-  statements.push(`UPDATE workshops SET date = 'TBD', updated_at = '${now}' WHERE date != 'TBD';`);
+  statements.push(`UPDATE workshops SET date = 'TBD', time = 'TBD', status = 'upcoming', updated_at = '${now}' WHERE date != 'TBD' OR time != 'TBD' OR status != 'upcoming';`);
+  statements.push(`UPDATE workshops SET registration_open = 0, registration_note = 'Registration is not open yet. Check back after the schedule is confirmed.', updated_at = '${now}' WHERE id != 'ai-scene-production-packs';`);
+  statements.push(`UPDATE workshops SET registration_open = 1, status = 'upcoming', date = 'TBD', time = 'TBD', updated_at = '${now}' WHERE id = 'ai-scene-production-packs';`);
 
   runSqlFile(statements.join("\n"));
   console.log(`  ✓ ${ADMINS.length} partner admins upserted`);

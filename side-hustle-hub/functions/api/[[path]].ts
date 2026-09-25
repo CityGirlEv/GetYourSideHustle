@@ -45,6 +45,7 @@ import {
   saveTasks,
   saveWorkshops,
   setTestStatus,
+  updateUserMembership,
   uploadTestAttachment,
   deleteTestAttachment,
   handleTaskAttachments,
@@ -52,7 +53,7 @@ import {
   upsertUser,
 } from "../_lib/data";
 import { closeSprint, listClosedSprints, reopenSprint } from "../_lib/closed-sprints";
-import { getMemberCredits } from "../_lib/member-credits";
+import { getMemberCredits, handleAdminGrantInternalCredits } from "../_lib/member-credits";
 import {
   listEmailLog,
   listEmailTemplates,
@@ -297,10 +298,10 @@ export async function onRequest(context: {
     if (adminAuth instanceof Response) return withCors(request, adminAuth);
 
     if (route === "audit" && method === "GET") {
-      return withCors(request, await listAudit(env));
+      return withCors(request, await listAudit(env, request));
     }
     if (route === "users" && method === "GET") {
-      return withCors(request, await listUsers(env));
+      return withCors(request, await listUsers(env, request));
     }
     if (route === "admin/hustle-schedules" && method === "GET") {
       const { listAllHustleSchedules } = await import("../_lib/schedule-reminders");
@@ -310,7 +311,13 @@ export async function onRequest(context: {
       return withCors(request, await upsertUser(env, request, user));
     }
     if (parts[0] === "users" && parts[1] && method === "DELETE") {
-      return withCors(request, await deleteUser(env, parts[1]));
+      return withCors(request, await deleteUser(env, parts[1], user));
+    }
+    if (parts[0] === "users" && parts[1] && parts[2] === "membership" && method === "PUT") {
+      return withCors(request, await updateUserMembership(env, request, parts[1], user));
+    }
+    if (route === "admin/internal-credits" && method === "POST") {
+      return withCors(request, await handleAdminGrantInternalCredits(env, request, user));
     }
     if (route === "tasks" && method === "GET") {
       return withCors(request, await listTasks(env));

@@ -1,7 +1,12 @@
 /**
  * Member Kid Credit wallet + ledger (D1).
  */
-import { error, json, type DbUser, type Env } from "./auth";
+import { appendAudit, error, getUserByEmail, json, type DbUser, type Env } from "./auth";
+import {
+  internalCreditDelta,
+  internalCreditReason,
+  parseInternalCreditGrant,
+} from "../../src/lib/internal-credits";
 
 export type CreditLedgerRow = {
   id: string;
@@ -269,4 +274,56 @@ export async function applyMemberCreditDelta(
   ]);
 
   return { balance: next };
+}
+
+/** Admin-only: add or remove credits on any member wallet. */
+export async function handleAdminGrantInternalCredits(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return error("Email and credit amount are required.", 400);
+  }
+  const parsed = parseInternalCreditGrant(body);
+  if (!parsed.ok) return error(parsed.error, 400);
+
+  const target = await getUserByEmail(env.DB, parsed.email);
+  if (!target) return error("No GYSH account found for that email.", 404);
+
+  const delta = internalCreditDelta(parsed.credits, parsed.action);
+  const reason = internalCreditReason(parsed.action);
+  let result: { balance: number };
+  try {
+    result = await applyMemberCreditDelta(env, target.id, delta, reason);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Could not update credits.";
+    if (/insufficient/i.test(msg)) {
+      return error("Not enough credits on that account to remove that amount.", 400);
+    }
+    return error(msg, 500);
+  }
+  try {
+    await appendAudit(
+      env.DB,
+      parsed.action === "remove" ? "credits_removed" : "credits_granted",
+      target.email,
+      `${reason} · ${parsed.credits} by ${actor.email}`,
+    );
+  } catch {
+    /* audit optional */
+  }
+  return json({
+    ok: true,
+    email: target.email,
+    name: target.name,
+    granted: parsed.action === "add" ? parsed.credits : 0,
+    removed: parsed.action === "remove" ? parsed.credits : 0,
+    action: parsed.action,
+    balance: result.balance,
+    reason,
+  });
 }

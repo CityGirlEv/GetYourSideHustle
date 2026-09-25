@@ -9,6 +9,21 @@ import {
   type AudienceGroup,
   type TierId,
 } from "../../lib/membership";
+import {
+  adminMembershipTierLabel,
+  FOUNDING_STARTER_LIMIT,
+  foundingStarterSlotsRemaining,
+  hasFoundingStarterGrant,
+  parseFoundingStarterSlot,
+} from "../../lib/admin-membership";
+import {
+  isDeletedGyshUser,
+  membershipDirectoryView,
+  userMatchesDirectoryStatus,
+} from "../../lib/gysh-user-delete";
+import { formatKidCreditBalance } from "../../lib/member-credits";
+import { UsersCreditAdjust } from "./UsersCreditAdjust";
+import { UsersMembershipAdjust } from "./UsersMembershipAdjust";
 
 const AUDIENCE_LABELS: Record<string, string> = {
   kids: "Kids",
@@ -34,10 +49,18 @@ function tierName(id: TierId): string {
   return MEMBERSHIP_TIERS.find((t) => t.id === id)?.name ?? id;
 }
 
+function audienceLabelFor(user: GyshUser): string {
+  const audience = normalizeAudience(user.audience);
+  if (audience === "other") return user.audience || "—";
+  return AUDIENCE_LABELS[audience] ?? audience;
+}
+
 export function MembershipsPage() {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [saveMsg, setSaveMsg] = useState("");
+  const [showDeleted, setShowDeleted] = useState(false);
   const [tierFilter, setTierFilter] = useState<"all" | TierId>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | GyshUser["status"]>("all");
 
@@ -45,7 +68,7 @@ export function MembershipsPage() {
     setLoading(true);
     setError("");
     try {
-      setUsers(await fetchUsers());
+      setUsers(await fetchUsers({ includeDeleted: true }));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to load memberships.");
       setUsers([]);
@@ -58,15 +81,21 @@ export function MembershipsPage() {
     void reload();
   }, []);
 
+  const { forCounts: liveUsers, forList: directoryUsers, deletedCount } = useMemo(
+    () => membershipDirectoryView(users, showDeleted),
+    [users, showDeleted],
+  );
+  const foundingLeft = useMemo(() => foundingStarterSlotsRemaining(liveUsers), [liveUsers]);
+
   const byTier = useMemo(() => {
     const map = new Map<TierId, GyshUser[]>();
     for (const id of TIER_LADDER) map.set(id, []);
-    for (const u of users) {
+    for (const u of liveUsers) {
       const tier = normalizeTier(u.membershipTier);
       map.get(tier)!.push(u);
     }
     return map;
-  }, [users]);
+  }, [liveUsers]);
 
   const tierStats = useMemo(() => {
     return TIER_LADDER.map((id) => {
@@ -85,12 +114,12 @@ export function MembershipsPage() {
   }, [byTier]);
 
   const filtered = useMemo(() => {
-    return users.filter((u) => {
+    return directoryUsers.filter((u) => {
       if (tierFilter !== "all" && normalizeTier(u.membershipTier) !== tierFilter) return false;
-      if (statusFilter !== "all" && u.status !== statusFilter) return false;
-      return true;
+      if (statusFilter !== "all" && isDeletedGyshUser(u) && statusFilter !== "deleted") return false;
+      return userMatchesDirectoryStatus(u, statusFilter);
     });
-  }, [users, tierFilter, statusFilter]);
+  }, [directoryUsers, tierFilter, statusFilter]);
 
   const groupedMembers = useMemo(() => {
     const groups: { id: TierId; name: string; members: GyshUser[] }[] = [];
@@ -103,6 +132,11 @@ export function MembershipsPage() {
     }
     return groups;
   }, [filtered, tierFilter]);
+
+  const applyUserUpdate = (next: GyshUser, message: string) => {
+    setUsers((list) => list.map((row) => (row.id === next.id ? { ...row, ...next } : row)));
+    setSaveMsg(message);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -133,8 +167,9 @@ export function MembershipsPage() {
               Memberships
             </h2>
             <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem" }}>
-              Members grouped by Free → Elite level from D1. Counts by status and audience lane;
-              drill into any tier below.
+              Members grouped by Free → Elite from D1. Counts are live members only (deleted
+              accounts are excluded). Change plan, first-{FOUNDING_STARTER_LIMIT} complimentary
+              Starter, and credits on each card.
             </p>
           </div>
           <button
@@ -206,6 +241,21 @@ export function MembershipsPage() {
         </div>
       )}
 
+      {saveMsg && (
+        <div
+          style={{
+            padding: "10px 14px",
+            borderRadius: 8,
+            background: "rgba(95,122,69,0.12)",
+            border: "1px solid rgba(95,122,69,0.35)",
+            color: "#3f5230",
+            fontSize: "0.95rem",
+          }}
+        >
+          {saveMsg}
+        </div>
+      )}
+
       <div
         className="glass memberships-page__filters"
         style={{
@@ -271,18 +321,14 @@ export function MembershipsPage() {
                 data-testid={`memberships-status-${opt.id}`}
                 onClick={() =>
                   setStatusFilter(
-                    opt.id === "all"
-                      ? "all"
-                      : statusFilter === opt.id
-                        ? "all"
-                        : opt.id,
+                    opt.id === "all" ? "all" : statusFilter === opt.id ? "all" : opt.id,
                   )
                 }
               >
                 {opt.label}
                 {opt.id !== "all" ? (
                   <span className="qa-tester-meta">
-                    {users.filter((u) => u.status === opt.id).length}
+                    {liveUsers.filter((u) => u.status === opt.id).length}
                   </span>
                 ) : null}
               </button>
@@ -290,8 +336,28 @@ export function MembershipsPage() {
           </div>
         </div>
 
-        <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--bronze)", fontWeight: 600 }}>
-          Showing {filtered.length} of {users.length} members
+        <label className="users-show-deleted" data-testid="memberships-show-deleted">
+          <input
+            type="checkbox"
+            checked={showDeleted}
+            onChange={(e) => {
+              const on = e.target.checked;
+              setShowDeleted(on);
+              if (!on && statusFilter === "deleted") setStatusFilter("all");
+            }}
+          />
+          Show deleted users{deletedCount ? ` (${deletedCount})` : ""}
+        </label>
+
+        <p
+          style={{ margin: 0, fontSize: "0.9rem", color: "var(--bronze)", fontWeight: 600 }}
+          data-testid="memberships-showing-count"
+        >
+          Showing {filtered.filter((u) => !isDeletedGyshUser(u)).length} of {liveUsers.length}{" "}
+          members
+          {showDeleted && deletedCount
+            ? ` · ${filtered.filter(isDeletedGyshUser).length} deleted visible`
+            : ""}
         </p>
       </div>
 
@@ -310,7 +376,7 @@ export function MembershipsPage() {
             <Users size={18} />
             {group.name}
             <span style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: "0.95rem" }}>
-              ({group.members.length})
+              ({group.members.filter((u) => !isDeletedGyshUser(u)).length})
             </span>
           </h3>
 
@@ -321,29 +387,79 @@ export function MembershipsPage() {
           ) : (
             <ul className="memberships-page__list">
               {group.members.map((u) => {
-                const audience = normalizeAudience(u.audience);
-                const audienceLabel =
-                  audience === "other" ? u.audience || "—" : AUDIENCE_LABELS[audience] ?? audience;
+                const deleted = isDeletedGyshUser(u);
+                const foundingSlot = parseFoundingStarterSlot(u.notes);
                 return (
-                  <li key={u.id} className="memberships-page__row">
-                    <div>
-                      <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
-                      <div style={{ fontSize: "0.9rem", color: "var(--text-primary)" }}>
-                        {u.email}
+                  <li
+                    key={u.id}
+                    className={`memberships-page__row${deleted ? " users-card--deleted" : ""}`}
+                    data-testid={`memberships-card-${u.id}`}
+                  >
+                    <div className="memberships-page__row-head">
+                      <div>
+                        <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
+                        {deleted ? (
+                          <span className="users-deleted-pill" style={{ marginLeft: 8 }}>
+                            Deleted
+                          </span>
+                        ) : null}
+                        <div style={{ fontSize: "0.9rem", color: "var(--text-primary)" }}>
+                          {u.email}
+                        </div>
+                      </div>
+                      <div className="memberships-page__details">
+                        <span
+                          className="glow-badge memberships-page__pill"
+                          data-testid={`memberships-tier-label-${u.id}`}
+                        >
+                          {adminMembershipTierLabel(u.membershipTier)}
+                        </span>
+                        <span className="glow-badge memberships-page__pill">
+                          {audienceLabelFor(u)}
+                        </span>
+                        <span
+                          className={`glow-badge memberships-page__pill memberships-page__pill--status memberships-page__pill--${deleted ? "disabled" : u.status}`}
+                        >
+                          {deleted ? "deleted" : u.status}
+                        </span>
+                        <span className="glow-badge memberships-page__pill">
+                          {formatKidCreditBalance(u.creditBalance ?? 0)}
+                        </span>
+                        {hasFoundingStarterGrant(u.notes) ? (
+                          <span className="users-membership-founding-pill">
+                            First {FOUNDING_STARTER_LIMIT} · slot {foundingSlot}/{FOUNDING_STARTER_LIMIT}
+                          </span>
+                        ) : null}
+                        <span style={{ fontSize: "0.85rem", color: "var(--bronze)" }}>
+                          {formatRoles(u)}
+                        </span>
+                        <span style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
+                          Joined {u.joinedAt}
+                        </span>
                       </div>
                     </div>
-                    <span className="glow-badge memberships-page__pill">{audienceLabel}</span>
-                    <span
-                      className={`glow-badge memberships-page__pill memberships-page__pill--status memberships-page__pill--${u.status}`}
-                    >
-                      {u.status}
-                    </span>
-                    <span style={{ fontSize: "0.85rem", color: "var(--bronze)" }}>
-                      {formatRoles(u)}
-                    </span>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
-                      Joined {u.joinedAt}
-                    </span>
+                    {!deleted ? (
+                      <>
+                        <UsersMembershipAdjust
+                          user={u}
+                          foundingSlotsRemaining={foundingLeft}
+                          onUpdated={applyUserUpdate}
+                        />
+                        <UsersCreditAdjust
+                          user={u}
+                          onBalanceChanged={(email, balance) => {
+                            const target = email.toLowerCase();
+                            setUsers((list) =>
+                              list.map((row) =>
+                                row.id === u.id || row.email.toLowerCase() === target
+                                  ? { ...row, creditBalance: balance }
+                                  : row,
+                              ),
+                            );
+                          }}
+                        />
+                      </>
+                    ) : null}
                   </li>
                 );
               })}

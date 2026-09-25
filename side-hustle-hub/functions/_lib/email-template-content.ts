@@ -127,7 +127,7 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     slug: "workshop_registration_confirmation",
     name: "Workshop registration confirmation",
     description: "Sent to the registrant when they are added to a workshop roster.",
-    sampleSubject: `${SITE_NAME} — you're registered for 90-Minute AI Marketing Video Hands-On Workshop`,
+    sampleSubject: `${SITE_NAME} — you're registered for 90-Minute AI Marketing Video Workshop`,
   },
   {
     slug: "membership_subscribed",
@@ -183,7 +183,7 @@ export const PREVIEW_SAMPLE_VARS: EmailTemplateVars = {
   audienceLabel: "Kids",
   periodKey: "2026-08-02",
   cadence: "Daily",
-  workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
+  workshopTitle: "90-Minute AI Marketing Video Workshop",
   workshopWhen: "Date and time TBD",
   workshopFormat: "Live Zoom",
   attendeeCount: "1",

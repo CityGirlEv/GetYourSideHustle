@@ -134,3 +134,26 @@ export function summarizeMemberCredits(payload: MemberCreditsPayload): MemberCre
 export async function fetchMemberCredits(): Promise<MemberCreditsPayload> {
   return api<MemberCreditsPayload>("member-credits");
 }
+
+export type InternalCreditsGrantResult = {
+  ok: true;
+  email: string;
+  name: string;
+  granted: number;
+  removed: number;
+  action: "add" | "remove";
+  balance: number;
+  reason: string;
+};
+
+/** Admin only — add or remove credits on any member wallet. */
+export async function grantInternalCredits(input: {
+  email: string;
+  credits: number;
+  action?: "add" | "remove";
+}): Promise<InternalCreditsGrantResult> {
+  return api<InternalCreditsGrantResult>("admin/internal-credits", {
+    method: "POST",
+    body: input,
+  });
+}

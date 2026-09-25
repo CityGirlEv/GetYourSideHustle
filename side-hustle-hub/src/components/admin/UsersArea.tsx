@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Users, Plus, Pencil, Check, X } from "lucide-react";
+import { Users, Plus, Pencil, Check, X, ScrollText, Trash2 } from "lucide-react";
 import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { PasswordField } from "../PasswordField";
 import {
@@ -9,6 +9,8 @@ import {
   GYSH_ROLE_SHORT,
   GYSH_ROLES,
   contrastTextForBg,
+  deleteUser,
+  fetchAuditEvents,
   fetchUsers,
   saveUser,
   userHasRole,
@@ -16,7 +18,28 @@ import {
   type GyshRole,
   type GyshUser,
 } from "../../lib/gysh-roles";
+import {
+  filterAuditEvents,
+  formatLastLoginLabel,
+  formatUserAuditAt,
+  lastLoginAtFromEvents,
+  userAuditActionLabel,
+  type UserAuditEvent,
+} from "../../lib/gysh-user-audit";
+import {
+  gyshUserDeleteBlockReason,
+  isDeletedGyshUser,
+  membershipDirectoryView,
+  userMatchesDirectoryStatus,
+} from "../../lib/gysh-user-delete";
+import { foundingStarterSlotsRemaining, adminMembershipTierLabel } from "../../lib/admin-membership";
 import { ApiError } from "../../lib/api";
+import { UserAuditTrail } from "./UserAuditTrail";
+import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
+import { UsersCreditAdjust } from "./UsersCreditAdjust";
+import { UsersMembershipAdjust } from "./UsersMembershipAdjust";
+
+type UsersAreaTab = "users" | "audit";
 
 type EditDraft = {
   name: string;
@@ -269,12 +292,19 @@ function RoleBubbles({
   );
 }
 
-export function UsersArea() {
+export function UsersArea({ currentUserId = null }: { currentUserId?: string | null }) {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [areaTab, setAreaTab] = useState<UsersAreaTab>("users");
+  const [auditEvents, setAuditEvents] = useState<UserAuditEvent[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState("");
+  const [auditFilterEmail, setAuditFilterEmail] = useState("");
+  const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<"all" | GyshRole>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | GyshUser["status"]>("all");
+  const [showDeleted, setShowDeleted] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [newRoles, setNewRoles] = useState<GyshRole[]>(["adult"]);
@@ -282,14 +312,28 @@ export function UsersArea() {
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [saveMsg, setSaveMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<GyshUser | null>(null);
   const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
   const [roleMenuUserId, setRoleMenuUserId] = useState<string | null>(null);
+
+  const reloadAudit = async () => {
+    setAuditLoading(true);
+    setAuditError("");
+    try {
+      setAuditEvents(await fetchAuditEvents({ limit: 500 }));
+    } catch (e) {
+      setAuditEvents([]);
+      setAuditError(e instanceof ApiError ? e.message : "Failed to load audit log.");
+    } finally {
+      setAuditLoading(false);
+    }
+  };
 
   const reload = async () => {
     setLoading(true);
     setError("");
     try {
-      setUsers(await fetchUsers());
+      setUsers(await fetchUsers({ includeDeleted: true }));
     } catch (e) {
       setUsers([]);
       setError(e instanceof ApiError ? e.message : "Failed to load users from database.");
@@ -300,23 +344,35 @@ export function UsersArea() {
 
   useEffect(() => {
     void reload();
+    void reloadAudit();
   }, []);
 
-  const filtered = users.filter((u) => {
+  const { forCounts: liveUsers, forList: directoryUsers, deletedCount } = useMemo(
+    () => membershipDirectoryView(users, showDeleted),
+    [users, showDeleted],
+  );
+  const foundingLeft = useMemo(() => foundingStarterSlotsRemaining(liveUsers), [liveUsers]);
+
+  const filtered = directoryUsers.filter((u) => {
     if (roleFilter !== "all" && !userHasRole(u, roleFilter)) return false;
-    if (statusFilter !== "all" && u.status !== statusFilter) return false;
-    return true;
+    if (statusFilter !== "all" && isDeletedGyshUser(u) && statusFilter !== "deleted") return false;
+    return userMatchesDirectoryStatus(u, statusFilter);
   });
+
+  const auditFiltered = useMemo(
+    () => filterAuditEvents(auditEvents, auditFilterEmail),
+    [auditEvents, auditFilterEmail],
+  );
 
   const counts = useMemo(() => {
     return GYSH_ROLES.reduce(
       (acc, r) => {
-        acc[r] = users.filter((u) => userHasRole(u, r)).length;
+        acc[r] = liveUsers.filter((u) => userHasRole(u, r)).length;
         return acc;
       },
       {} as Record<GyshRole, number>,
     );
-  }, [users]);
+  }, [liveUsers]);
 
   const addUser = async () => {
     if (!name.trim() || !email.trim()) return;
@@ -344,6 +400,46 @@ export function UsersArea() {
       );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to add user.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requestRemoveUser = (u: GyshUser) => {
+    const blocked = gyshUserDeleteBlockReason({ targetId: u.id, actorId: currentUserId });
+    if (blocked) {
+      setError(blocked);
+      setPendingDelete(null);
+      return;
+    }
+    setError("");
+    setPendingDelete(u);
+  };
+
+  const confirmRemoveUser = async () => {
+    const u = pendingDelete;
+    if (!u) return;
+    const blocked = gyshUserDeleteBlockReason({ targetId: u.id, actorId: currentUserId });
+    if (blocked) {
+      setError(blocked);
+      setPendingDelete(null);
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      await deleteUser(u.id);
+      setPendingDelete(null);
+      if (editingId === u.id) {
+        setEditingId(null);
+        setDraft(null);
+      }
+      await reload();
+      void reloadAudit();
+      setSaveMsg(`Deleted ${u.name}.`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to delete user.");
     } finally {
       setBusy(false);
     }
@@ -446,8 +542,14 @@ export function UsersArea() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <BusyOverlay
-        active={busy || loading || roleBusyId !== null}
-        message={loading ? "Loading users…" : "Saving user…"}
+        active={busy || loading || roleBusyId !== null || (areaTab === "audit" && auditLoading)}
+        message={
+          loading
+            ? "Loading users…"
+            : areaTab === "audit" && auditLoading
+              ? "Loading audit log…"
+              : "Saving user…"
+        }
       />
       <div className="glass" style={{ padding: "24px", borderRadius: "16px" }}>
         <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -456,14 +558,62 @@ export function UsersArea() {
         <p style={{ color: "var(--text-primary)", marginTop: "6px", fontSize: "1rem" }}>
           GYSH audiences in production D1 — Admin, QA, Dev, Kids, Teens, Adult, Senior, and Beta Tester. Assigned roles show as
           highlighted bubbles; click a bubble to toggle, or use + to add a role. Failed tests assign to Evelyn (Dev).
-          Passwords are never shown — only set or reset from Edit.
+          Passwords are never shown — only set or reset from Edit. Last signed-in time comes from the login audit trail.
         </p>
 
         <div
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginTop: "18px" }}
-          role="group"
-          aria-label="Filter users by role"
+          role="tablist"
+          aria-label="Users Area sections"
+          style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}
         >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={areaTab === "users"}
+            data-testid="users-area-tab-users"
+            className="btn"
+            onClick={() => setAreaTab("users")}
+            style={{
+              padding: "8px 14px",
+              background: areaTab === "users" ? "rgba(215,198,151,0.55)" : "#fff",
+              border: areaTab === "users" ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
+              color: "var(--charcoal)",
+              fontWeight: 700,
+            }}
+          >
+            <Users size={14} /> Users
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={areaTab === "audit"}
+            data-testid="users-area-tab-audit"
+            className="btn"
+            onClick={() => {
+              setAreaTab("audit");
+              if (auditEvents.length === 0 && !auditLoading) void reloadAudit();
+            }}
+            style={{
+              padding: "8px 14px",
+              background: areaTab === "audit" ? "rgba(215,198,151,0.55)" : "#fff",
+              border: areaTab === "audit" ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
+              color: "var(--charcoal)",
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <ScrollText size={14} /> Audit Log
+          </button>
+        </div>
+
+        {areaTab === "users" && (
+          <div
+            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginTop: "18px" }}
+            role="group"
+            aria-label="Filter users by role"
+          >
           <button
             type="button"
             className="glass"
@@ -485,7 +635,7 @@ export function UsersArea() {
               />
               All
             </div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--bronze)" }}>{users.length}</div>
+            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--bronze)" }}>{liveUsers.length}</div>
             <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>All users</div>
           </button>
           {GYSH_ROLES.map((r) => (
@@ -515,7 +665,34 @@ export function UsersArea() {
               <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>{GYSH_ROLE_LABELS[r]}</div>
             </button>
           ))}
-        </div>
+          </div>
+        )}
+
+        {areaTab === "users" && (
+          <div style={{ marginTop: 14 }}>
+            <label className="users-show-deleted" data-testid="users-show-deleted">
+              <input
+                type="checkbox"
+                checked={showDeleted}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setShowDeleted(on);
+                  if (!on && statusFilter === "deleted") setStatusFilter("all");
+                }}
+              />
+              Show deleted users{deletedCount ? ` (${deletedCount})` : ""}
+            </label>
+            <p
+              style={{ margin: "4px 0 0", fontSize: "0.9rem", color: "var(--bronze)", fontWeight: 600 }}
+              data-testid="users-showing-count"
+            >
+              Showing {filtered.filter((u) => !isDeletedGyshUser(u)).length} of {liveUsers.length} users
+              {showDeleted && deletedCount
+                ? ` · ${filtered.filter(isDeletedGyshUser).length} deleted visible`
+                : ""}
+            </p>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -524,6 +701,75 @@ export function UsersArea() {
         </div>
       )}
 
+      {areaTab === "audit" ? (
+        <div className="glass" style={{ padding: "18px", borderRadius: "14px" }} data-testid="users-area-audit-panel">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", marginBottom: 14 }}>
+            <div className="form-group" style={{ margin: 0, flex: "1 1 220px" }}>
+              <label className="form-label" htmlFor="users-audit-filter">
+                Filter audit log
+              </label>
+              <input
+                id="users-audit-filter"
+                className="text-input"
+                value={auditFilterEmail}
+                onChange={(e) => setAuditFilterEmail(e.target.value)}
+                placeholder="Email, action, or detail"
+                data-testid="users-audit-filter"
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => void reloadAudit()}
+              disabled={auditLoading}
+              data-testid="users-audit-refresh"
+            >
+              Refresh
+            </button>
+          </div>
+          {auditError && (
+            <p style={{ color: "#9B2F28", marginBottom: 12 }} data-testid="users-audit-error">
+              {auditError}
+            </p>
+          )}
+          {auditLoading && auditEvents.length === 0 ? (
+            <WaitIndicator message="Loading audit log…" style={{ marginTop: 0 }} />
+          ) : auditFiltered.length === 0 ? (
+            <p style={{ color: "var(--text-primary)" }}>No audit events match.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                data-testid="users-audit-table"
+                style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}
+              >
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: "2px solid var(--border-color)" }}>
+                    <th style={{ padding: "8px 10px" }}>When</th>
+                    <th style={{ padding: "8px 10px" }}>Action</th>
+                    <th style={{ padding: "8px 10px" }}>Email</th>
+                    <th style={{ padding: "8px 10px" }}>Detail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditFiltered.map((ev, i) => (
+                    <tr key={`${ev.at}-${ev.email}-${ev.action}-${i}`} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", color: "var(--text-primary)" }}>
+                        {formatUserAuditAt(ev.at)}
+                      </td>
+                      <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--charcoal)" }}>
+                        {userAuditActionLabel(ev.action)}
+                      </td>
+                      <td style={{ padding: "8px 10px", color: "var(--charcoal)" }}>{ev.email}</td>
+                      <td style={{ padding: "8px 10px", color: "var(--text-primary)" }}>{ev.detail || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
       <div className="glass" style={{ padding: "18px", borderRadius: "14px", display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "end" }}>
           <div className="form-group" style={{ margin: 0, flex: "1 1 160px" }}>
@@ -547,6 +793,7 @@ export function UsersArea() {
             <option value="active">Active</option>
             <option value="pending">Pending</option>
             <option value="disabled">Disabled</option>
+            {showDeleted ? <option value="deleted">Deleted</option> : null}
           </select>
         </div>
         <div className="form-group" style={{ margin: 0 }}>
@@ -565,8 +812,8 @@ export function UsersArea() {
         <WaitIndicator message="Loading users from database…" style={{ marginTop: 0 }} />
       ) : filtered.length === 0 ? (
         <p style={{ color: "var(--text-primary)" }}>
-          {roleFilter !== "all" || statusFilter !== "all"
-            ? "No users match the current filters. Choose All users (and All statuses) to see everyone."
+          {roleFilter !== "all" || statusFilter !== "all" || (deletedCount > 0 && !showDeleted)
+            ? "No users match the current filters. Choose All users (and All statuses), or show deleted users."
             : "No users yet."}
         </p>
       ) : (
@@ -575,34 +822,91 @@ export function UsersArea() {
             const isEditing = editingId === u.id && draft;
             const currentRoles = userRoles(u);
             const menuOpenHere = roleMenuUserId === u.id;
+            const lastLogin = formatLastLoginLabel(u.lastLoginAt ?? lastLoginAtFromEvents(auditEvents, u.email));
+            const deleted = isDeletedGyshUser(u);
+            const deleteBlocked = gyshUserDeleteBlockReason({
+              targetId: u.id,
+              actorId: currentUserId,
+            });
             return (
               <div
                 key={u.id}
-                className="glass"
+                className={`glass${deleted ? " users-card--deleted" : ""}`}
+                data-testid={`users-card-${u.id}`}
                 style={{
                   padding: "16px",
                   borderRadius: "12px",
                   position: "relative",
-                  zIndex: menuOpenHere ? 40 : "auto",
+                  zIndex: menuOpenHere || expandedAuditId === u.id || pendingDelete?.id === u.id ? 40 : "auto",
+                  outline: pendingDelete?.id === u.id ? "2px solid rgba(155, 47, 40, 0.45)" : undefined,
+                  opacity: deleted ? 0.78 : 1,
                 }}
               >
+                {pendingDelete?.id === u.id ? (
+                  <ConfirmDeleteUserBanner
+                    name={pendingDelete.name}
+                    email={pendingDelete.email}
+                    userId={u.id}
+                    busy={busy}
+                    onCancel={() => setPendingDelete(null)}
+                    onConfirm={() => void confirmRemoveUser()}
+                  />
+                ) : null}
                 {!isEditing ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr auto", gap: "12px", alignItems: "start" }}>
                       <div>
-                        <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "8px 12px" }}>
+                          <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
+                          {deleted ? (
+                            <span className="users-deleted-pill" data-testid={`users-deleted-pill-${u.id}`}>
+                              Deleted
+                            </span>
+                          ) : null}
+                          <span
+                            data-testid={`users-last-login-${u.id}`}
+                            style={{ fontSize: "0.875rem", color: "var(--bronze)", fontWeight: 600 }}
+                            title="Last successful sign-in"
+                          >
+                            Last logged in: {lastLogin}
+                          </span>
+                        </div>
                         <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{u.email}</div>
                         <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}>{u.notes || "—"}</div>
-                        {u.canLogin && (
+                        {u.canLogin && !deleted ? (
                           <div style={{ fontSize: "0.9375rem", color: "var(--bronze)", marginTop: 4 }}>Portal login account</div>
-                        )}
+                        ) : null}
+                        <UserAuditTrail
+                          email={u.email}
+                          events={auditEvents}
+                          open={expandedAuditId === u.id}
+                          onToggle={() =>
+                            setExpandedAuditId((cur) => (cur === u.id ? null : u.id))
+                          }
+                          testId={`users-audit-dropdown-${u.id}`}
+                        />
                       </div>
                       <div style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
-                        {u.status} · Joined {u.joinedAt}
+                        {deleted ? "deleted" : u.status} · Joined {u.joinedAt}
                       </div>
-                      <button type="button" className="btn btn-outline" onClick={() => startEdit(u)} style={{ padding: "8px 12px" }}>
-                        <Pencil size={14} /> Edit
-                      </button>
+                      {!deleted ? (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <button type="button" className="btn btn-outline" onClick={() => startEdit(u)} style={{ padding: "8px 12px" }}>
+                            <Pencil size={14} /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() => requestRemoveUser(u)}
+                            disabled={busy || Boolean(deleteBlocked)}
+                            title={deleteBlocked ?? "Delete this user"}
+                            data-testid={`users-delete-${u.id}`}
+                            style={{ padding: "8px 12px" }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                     <div>
                       <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: 6, fontWeight: 600 }}>
@@ -611,10 +915,38 @@ export function UsersArea() {
                       <RoleBubbles
                         value={currentRoles}
                         onChange={(next) => void persistRoles(u, next)}
-                        disabled={busy || roleBusyId === u.id}
+                        disabled={deleted || busy || roleBusyId === u.id}
                         onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
                       />
                     </div>
+                    {!deleted ? (
+                      <>
+                        <UsersMembershipAdjust
+                          user={u}
+                          foundingSlotsRemaining={foundingLeft}
+                          onUpdated={(next, message) => {
+                            setUsers((list) =>
+                              list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
+                            );
+                            setSaveMsg(message);
+                            void reloadAudit();
+                          }}
+                        />
+                        <UsersCreditAdjust
+                          user={u}
+                          onBalanceChanged={(changedEmail, balance) => {
+                            const target = changedEmail.toLowerCase();
+                            setUsers((list) =>
+                              list.map((row) =>
+                                row.id === u.id || row.email.toLowerCase() === target
+                                  ? { ...row, creditBalance: balance }
+                                  : row,
+                              ),
+                            );
+                          }}
+                        />
+                      </>
+                    ) : null}
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -635,6 +967,15 @@ export function UsersArea() {
                           <option value="disabled">Disabled</option>
                         </select>
                       </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Membership</label>
+                        <input
+                          className="text-input"
+                          value={adminMembershipTierLabel(u.membershipTier)}
+                          readOnly
+                          aria-label="Current membership level"
+                        />
+                      </div>
                       <PasswordField
                         label="Password (login)"
                         value={draft.password}
@@ -653,6 +994,17 @@ export function UsersArea() {
                         onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
                       />
                     </div>
+                    <UsersMembershipAdjust
+                      user={u}
+                      foundingSlotsRemaining={foundingLeft}
+                      onUpdated={(next, message) => {
+                        setUsers((list) =>
+                          list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
+                        );
+                        setSaveMsg(message);
+                        void reloadAudit();
+                      }}
+                    />
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">Notes</label>
                       <textarea className="text-input" rows={2} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ resize: "vertical" }} />
@@ -664,13 +1016,34 @@ export function UsersArea() {
                       <button type="button" className="btn btn-outline" onClick={cancelEdit}>
                         <X size={14} /> Cancel
                       </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => requestRemoveUser(u)}
+                        disabled={busy || Boolean(deleteBlocked)}
+                        title={deleteBlocked ?? "Delete this user"}
+                        data-testid={`users-delete-edit-${u.id}`}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
                     </div>
+                    <UserAuditTrail
+                      email={u.email}
+                      events={auditEvents}
+                      open={expandedAuditId === u.id}
+                      onToggle={() =>
+                        setExpandedAuditId((cur) => (cur === u.id ? null : u.id))
+                      }
+                      testId={`users-audit-dropdown-edit-${u.id}`}
+                    />
                   </div>
                 )}
               </div>
             );
           })}
         </div>
+      )}
+        </>
       )}
     </div>
   );

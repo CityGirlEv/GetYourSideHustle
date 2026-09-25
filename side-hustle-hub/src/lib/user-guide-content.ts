@@ -467,6 +467,10 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         id: "u-rule",
         text: "At least one role required per user.",
       },
+      {
+        id: "u-audit",
+        text: "Each member card has Last logged in and a collapsible Audit log (sign-in, emails sent, password, membership, blueprint). Open the Audit Log tab for the full searchable trail.",
+      },
     ],
   },
   {

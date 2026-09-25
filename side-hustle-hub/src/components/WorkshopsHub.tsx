@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, MapPin, Mic2, Users, Video } from "lucide-react";
+import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, ChevronRight, Clock, Download, MapPin, Mic2, Users, Video } from "lucide-react";
 import { ApiError } from "../lib/api";
 import {
   AUDIENCE_LABELS,
@@ -21,7 +21,143 @@ import {
   workshopRegistrationFormUnlocked,
   workshopRegistrationMemberOk,
 } from "../lib/workshop-member-gate";
+import {
+  workshopMemberAccessLabel,
+  workshopPublicTags,
+  workshopSneakPeek,
+} from "../lib/workshop-playbooks";
+import { workshopSneakPeekPdfFilename, workshopSneakPeekPdfPublicPath } from "../lib/workshop-sneak-peek-pdf";
 import workshopsHero from "../assets/workshops-hero.png";
+
+function workshopCardTags(workshop: Workshop): string[] {
+  return workshopPublicTags(workshop.id, workshop.tags);
+}
+
+function workshopIsPreRegistration(workshop: Workshop): boolean {
+  return workshop.registrationOpen && workshop.status !== "past" && (!workshop.date || workshop.date === "TBD");
+}
+
+function WorkshopSneakPeekLink({
+  workshopId,
+  className,
+}: {
+  workshopId: string;
+  className?: string;
+}) {
+  const peek = workshopSneakPeek(workshopId);
+  if (!peek) return null;
+  const pdfHref = workshopSneakPeekPdfPublicPath(workshopId);
+  const pdfFilename = workshopSneakPeekPdfFilename(workshopId);
+
+  return (
+    <details
+      className={["workshops-sneak-peek", className].filter(Boolean).join(" ")}
+      data-testid="workshop-sneak-peek"
+    >
+      <summary className="workshops-sneak-peek__link" data-testid="workshop-sneak-peek-toggle">
+        Prerequisites
+        <ChevronRight size={18} className="workshops-sneak-peek__arrow" aria-hidden />
+        <span className="collapse-show-hide" aria-hidden="true" />
+      </summary>
+      <div className="workshops-sneak-peek__body" data-testid="workshop-sneak-peek-body">
+        <header className="workshops-sneak-peek__header">
+          <p className="workshops-sneak-peek__kicker">{peek.kicker}</p>
+          <h5>{peek.title}</h5>
+          <p className="workshops-sneak-peek__tools">• {peek.tools} •</p>
+          {pdfHref ? (
+            <a
+              className="btn btn-outline workshops-sneak-peek__pdf"
+              data-testid="workshop-sneak-peek-pdf"
+              href={pdfHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={pdfFilename ?? undefined}
+            >
+              <Download size={16} aria-hidden />
+              Download PDF
+            </a>
+          ) : null}
+        </header>
+        <section className="workshops-sneak-peek__cover" data-testid="workshop-sneak-peek-cover">
+          <h6>{peek.coverLead}</h6>
+          <ul className="workshops-sneak-peek__cover-items">
+            {peek.coverItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <aside className="workshops-sneak-peek__copyright">
+            <h6>{peek.copyrightHeading}</h6>
+            {peek.copyrightLines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </aside>
+        </section>
+        <section>
+          <h6>Table of Contents</h6>
+          <ol>
+            {peek.toc.map((item, i) => (
+              <li key={item}>
+                {i + 1}. {item}
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section>
+          <h6>{peek.rulesHeading}</h6>
+          <ul>
+            {peek.rules.map((item) => (
+              <li key={item.code}>
+                <span className="workshops-sneak-peek__code">{item.code}</span> {item.text}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section>
+          <h6>{peek.beforeClassHeading}</h6>
+          <ul>
+            {peek.beforeClass.map((item) => (
+              <li key={item.code}>
+                <span className="workshops-sneak-peek__code">{item.code}</span> {item.text}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section>
+          <h6>{peek.creditsHeading}</h6>
+          <p>{peek.creditsIntro}</p>
+          <table className="workshops-sneak-peek__credits">
+            <thead>
+              <tr>
+                <th>Tool</th>
+                <th>Pricing</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {peek.creditPlans.map((plan) => (
+                <tr key={plan.tool}>
+                  <td>{plan.tool}</td>
+                  <td>{plan.pricing}</td>
+                  <td>{plan.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <h6>{peek.creditsImportantHeading}</h6>
+          <p>{peek.creditsImportantLead}</p>
+          <p>Plan for:</p>
+          <ul>
+            {peek.creditsPlanFor.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="workshops-sneak-peek__tip">{peek.creditsTip}</p>
+          <p className="workshops-sneak-peek__disclaimer">{peek.creditsDisclaimer}</p>
+        </section>
+      </div>
+    </details>
+  );
+}
 
 type Filter = "all" | WorkshopStatus;
 
@@ -172,6 +308,8 @@ export function WorkshopsHub({
 
   if (registeringFor) {
     const isOpen = registeringFor.registrationOpen && registeringFor.status !== "past";
+    const isPreReg = workshopIsPreRegistration(registeringFor);
+    const accessLabel = workshopMemberAccessLabel(registeringFor.id);
     const memberOk = workshopRegistrationMemberOk(registeringFor.id, isLoggedIn);
     const formUnlocked = workshopRegistrationFormUnlocked({
       isOpen,
@@ -195,10 +333,19 @@ export function WorkshopsHub({
 
         <section className="workshops-registration-layout">
           <article className="workshops-registration-summary glass">
-            <span className={`glow-badge ${isOpen ? "emerald" : "amber"}`}>
-              {isOpen ? "Registration Open" : "Registration Closed"}
-            </span>
-            <h2>{registeringFor.title}</h2>
+            <div className="workshops-card-top">
+              <span className={`glow-badge ${isOpen ? "emerald" : "amber"}`}>
+                {isOpen ? (isPreReg ? "Pre-Registration Open" : "Registration Open") : "Registration Closed"}
+              </span>
+              {accessLabel ? <span className="glow-badge free">{accessLabel}</span> : null}
+            </div>
+            <div className="workshops-title-row">
+              <h2>{registeringFor.title}</h2>
+              <WorkshopSneakPeekLink
+                workshopId={registeringFor.id}
+                className="workshops-sneak-peek--page"
+              />
+            </div>
             <p>{registeringFor.blurb}</p>
             <div className="workshops-card-meta">
               <span>
@@ -447,7 +594,10 @@ export function WorkshopsHub({
                   </span>
                   <span className="glow-badge cyan">{AUDIENCE_LABELS[w.audience]}</span>
                 </div>
-                <h4>{w.title}</h4>
+                <div className="workshops-title-row">
+                  <h4>{w.title}</h4>
+                  <WorkshopSneakPeekLink workshopId={w.id} />
+                </div>
                 <p className="workshops-card-blurb">{w.blurb}</p>
                 <div className="workshops-card-meta">
                   <span>
@@ -478,39 +628,36 @@ export function WorkshopsHub({
                   })}
                 </div>
                 <div className="workshops-tag-row">
-                  {w.tags.map((t) => (
+                  {workshopCardTags(w).map((t) => (
                     <span key={t} className="glow-badge purple">
                       {t}
                     </span>
                   ))}
                 </div>
                 <div className={`workshops-registration-chip ${w.registrationOpen ? "is-open" : "is-closed"}`}>
-                  {w.registrationOpen && w.status !== "past" ? "Registration open" : "Registration closed"}
+                  {w.registrationOpen && w.status !== "past"
+                    ? workshopIsPreRegistration(w)
+                      ? "Pre-registration open"
+                      : "Registration open"
+                    : "Registration closed"}
                 </div>
-                {w.status !== "past" && (
+                <div className="workshops-card-actions">
                   <button
                     type="button"
-                    className={w.registrationOpen ? "btn btn-primary" : "btn btn-outline"}
-                    style={{ width: "100%", marginTop: 12 }}
+                    className={w.registrationOpen && w.status !== "past" ? "btn btn-primary" : "btn btn-outline"}
                     onClick={() => openRegistration(w)}
                   >
-                    {w.registrationOpen
-                      ? w.status === "waitlist"
-                        ? "Join Waitlist"
-                        : "Reserve Spot"
-                      : "View Registration"}
+                    {w.status === "past"
+                      ? "View Event"
+                      : w.registrationOpen
+                        ? w.status === "waitlist"
+                          ? "Join Waitlist"
+                          : workshopIsPreRegistration(w)
+                            ? "Pre-Register"
+                            : "Reserve Spot"
+                        : "View Registration"}
                   </button>
-                )}
-                {w.status === "past" && (
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    style={{ width: "100%", marginTop: 12 }}
-                    onClick={() => openRegistration(w)}
-                  >
-                    View Event
-                  </button>
-                )}
+                </div>
               </article>
             ))}
           </div>

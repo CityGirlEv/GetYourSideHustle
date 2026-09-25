@@ -6,6 +6,7 @@ import {
   canonicalizeEmail,
   error,
   getUserByEmail,
+  getUserById,
   hashPassword,
   json,
   MIN_PASSWORD_LENGTH,
@@ -15,6 +16,24 @@ import {
   type DbUser,
   type Env,
 } from "./auth";
+import {
+  gyshUserDeleteBlockReason,
+  gyshUserDeletedEmailTombstone,
+  isGyshUserDeletedEmail,
+  isGyshUserDeletedStatus,
+  usersListIncludesDeleted,
+} from "../../src/lib/gysh-user-delete";
+import {
+  appendFoundingStarterStamp,
+  buildFoundingStarterStamp,
+  FOUNDING_STARTER_LIMIT,
+  foundingStarterGrantBlockReason,
+  nextFoundingStarterSlot,
+  parseAdminMembershipUpdate,
+  parseFoundingStarterSlot,
+} from "../../src/lib/admin-membership";
+import { parseAuditListQuery } from "./audit-list-query";
+import { mergeAuditEventsWithEmails, type EmailLogAuditRow } from "./audit-email-events";
 import { ensurePartnerAdmins } from "./partners";
 import {
   canChangeTestStatus,
@@ -311,21 +330,53 @@ async function ensureTaskColumns(env: Env): Promise<void> {
   );
 }
 
-export async function listUsers(env: Env): Promise<Response> {
+function mapListedUsers(
+  rows: Array<DbUser & { credit_balance?: number | null }>,
+  includeDeleted: boolean,
+  withCredits: boolean,
+) {
+  return (rows ?? [])
+    .filter(
+      (u) => includeDeleted || !(isGyshUserDeletedStatus(u.status) || isGyshUserDeletedEmail(u.email)),
+    )
+    .map((u) => {
+      const pub = publicUser(u);
+      if (!withCredits) return pub;
+      return {
+        ...pub,
+        creditBalance: Math.max(0, Number(u.credit_balance) || 0),
+      };
+    });
+}
+
+export async function listUsers(env: Env, request?: Request): Promise<Response> {
   await ensurePartnerAdmins(env);
+  const includeDeleted = usersListIncludesDeleted(request?.url);
   try {
     const { results } = await env.DB.prepare(
-      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
-              membership_tier, audience
-       FROM users ORDER BY joined_at DESC, name ASC`,
-    ).all<DbUser>();
-    return json({ users: (results ?? []).map(publicUser) });
+      `SELECT users.id, users.name, users.email, users.role, users.roles, users.status, users.joined_at,
+              users.notes, users.password_hash, users.password_salt, users.membership_tier, users.audience,
+              COALESCE(w.balance, 0) AS credit_balance
+       FROM users
+       LEFT JOIN member_credit_wallets w ON w.user_id = users.id
+       ORDER BY users.joined_at DESC, users.name ASC`,
+    ).all<DbUser & { credit_balance?: number | null }>();
+    return json({ users: mapListedUsers(results ?? [], includeDeleted, true) });
   } catch {
-    const { results } = await env.DB.prepare(
-      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
-       FROM users ORDER BY joined_at DESC, name ASC`,
-    ).all<DbUser>();
-    return json({ users: (results ?? []).map(publicUser) });
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
+                membership_tier, audience
+         FROM users ORDER BY joined_at DESC, name ASC`,
+      ).all<DbUser>();
+      return json({ users: mapListedUsers(results ?? [], includeDeleted, false) });
+    } catch {
+      const { results } = await env.DB.prepare(
+        `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
+         FROM users ORDER BY joined_at DESC, name ASC`,
+      ).all<DbUser>();
+      return json({ users: mapListedUsers(results ?? [], includeDeleted, false) });
+    }
   }
 }
 
@@ -492,13 +543,221 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
   });
 }
 
-export async function deleteUser(env: Env, id: string): Promise<Response> {
-  if (id === "u-tina" || id === "u-ev") {
-    return error("Cannot delete co-founder admin accounts.", 403);
+export async function softDeleteUserRecord(
+  env: Env,
+  existing: DbUser,
+  actor: DbUser,
+): Promise<{ ok: true; alreadyDeleted?: boolean } | { ok: false; message: string }> {
+  if (isGyshUserDeletedStatus(existing.status) || isGyshUserDeletedEmail(existing.email)) {
+    return { ok: true, alreadyDeleted: true };
   }
-  await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id).run();
-  await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
-  return json({ ok: true });
+
+  const targetId = existing.id;
+  const originalEmail = canonicalizeEmail(existing.email);
+  const tombstone = gyshUserDeletedEmailTombstone(targetId);
+  const now = new Date().toISOString();
+  const stamp = `soft-deleted ${now} by ${actor.email}; was ${originalEmail}`;
+  const prev = String(existing.notes || "").trim();
+  const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+
+  await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(targetId).run();
+  for (const sql of [`DELETE FROM password_reset_tokens WHERE user_id = ?`]) {
+    try {
+      await env.DB.prepare(sql).bind(targetId).run();
+    } catch {
+      /* older schema */
+    }
+  }
+
+  try {
+    await env.DB.prepare(
+      `UPDATE users
+       SET status = 'deleted',
+           email = ?,
+           password_hash = NULL,
+           password_salt = NULL,
+           notes = ?,
+           updated_at = ?,
+           deactivated_at = ?,
+           deactivated_by = ?
+       WHERE id = ?`,
+    )
+      .bind(tombstone, notes, now, now, actor.email, targetId)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/check/i.test(msg) || /constraint/i.test(msg)) {
+      await env.DB.prepare(
+        `UPDATE users
+         SET status = 'disabled',
+             email = ?,
+             password_hash = NULL,
+             password_salt = NULL,
+             notes = ?,
+             updated_at = ?
+         WHERE id = ?`,
+      )
+        .bind(tombstone, notes, now, targetId)
+        .run();
+    } else {
+      return { ok: false, message: `Failed to delete user: ${msg}` };
+    }
+  }
+
+  await appendAudit(
+    env.DB,
+    "user_deleted",
+    originalEmail,
+    `soft-deleted ${existing.name} by ${actor.email}; email freed for re-signup`,
+  );
+  return { ok: true };
+}
+
+export async function deleteUser(env: Env, id: string, actor: DbUser): Promise<Response> {
+  const targetId = String(id || "").trim();
+  const blocked = gyshUserDeleteBlockReason({ targetId, actorId: actor.id });
+  if (blocked) return error(blocked, 403);
+
+  const existing = await getUserById(env.DB, targetId);
+  if (!existing) return error("User not found.", 404);
+
+  const result = await softDeleteUserRecord(env, existing, actor);
+  if (!result.ok) return error(result.message, 500);
+  return json({ ok: true, alreadyDeleted: result.alreadyDeleted === true });
+}
+
+async function listFoundingStarterNoteUsers(
+  db: Env["DB"],
+): Promise<Array<{ id: string; name: string; email: string; notes: string }>> {
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT id, name, email, notes FROM users
+         WHERE instr(UPPER(COALESCE(notes, '')), 'FOUNDING-STARTER') > 0
+           AND LOWER(COALESCE(status, '')) != 'deleted'`,
+      )
+      .all<{ id: string; name: string; email: string; notes: string }>();
+    return (results ?? []).filter((row) => !isGyshUserDeletedEmail(row.email));
+  } catch {
+    return [];
+  }
+}
+
+export async function updateUserMembership(
+  env: Env,
+  request: Request,
+  id: string,
+  actor: DbUser,
+): Promise<Response> {
+  const targetId = String(id || "").trim();
+  if (!targetId) return error("User id is required.");
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const parsed = parseAdminMembershipUpdate(body);
+  if (!parsed.ok) return error(parsed.error);
+
+  const existing = await getUserById(env.DB, targetId);
+  if (!existing) return error("User not found.", 404);
+  if (isGyshUserDeletedStatus(existing.status) || isGyshUserDeletedEmail(existing.email)) {
+    return error("User is deleted.", 400);
+  }
+
+  const previousTier = String(existing.membership_tier || "free").toLowerCase();
+  const foundingUsers = await listFoundingStarterNoteUsers(env.DB);
+  const foundingBlocked = foundingStarterGrantBlockReason({
+    complimentary: parsed.complimentaryFoundingStarter,
+    membershipTier: parsed.membershipTier,
+    targetNotes: existing.notes,
+    existingUsers: foundingUsers,
+  });
+  if (foundingBlocked) return error(foundingBlocked, 400);
+
+  const now = new Date().toISOString();
+  let notes = String(existing.notes || "");
+  let foundingSlot: number | null = parseFoundingStarterSlot(existing.notes);
+  if (parsed.complimentaryFoundingStarter) {
+    const slot = nextFoundingStarterSlot(foundingUsers);
+    if (slot == null) return error(`All ${FOUNDING_STARTER_LIMIT} complimentary Starter slots are already used.`, 400);
+    foundingSlot = slot;
+    const stamp = buildFoundingStarterStamp({
+      slot,
+      actorEmail: actor.email,
+      grantedOn: now.slice(0, 10),
+    });
+    notes = appendFoundingStarterStamp(notes, stamp);
+  } else if (previousTier !== parsed.membershipTier) {
+    const stamp = `Membership set to ${parsed.membershipTier} by ${actor.email} ${now} (was ${previousTier})`;
+    const prev = notes.trim();
+    notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+  }
+
+  try {
+    await env.DB.prepare(
+      `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
+    )
+      .bind(parsed.membershipTier, notes, now, targetId)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.toLowerCase().includes("no such column") && msg.toLowerCase().includes("membership")) {
+      return error("Membership columns are not available on this database yet.", 503);
+    }
+    throw e;
+  }
+
+  const detailParts = [
+    `${previousTier} → ${parsed.membershipTier}`,
+    `by ${actor.email}`,
+    parsed.complimentaryFoundingStarter && foundingSlot
+      ? `FOUNDING-STARTER ${foundingSlot}/${FOUNDING_STARTER_LIMIT}`
+      : "",
+    parsed.notify ? "notify" : "no email",
+  ].filter(Boolean);
+  await appendAudit(env.DB, "membership_admin_updated", existing.email, detailParts.join(" · "));
+
+  const updated = await getUserById(env.DB, targetId);
+  const nextUser = updated ?? {
+    ...existing,
+    membership_tier: parsed.membershipTier,
+    notes,
+  };
+
+  let emailSent = false;
+  if (parsed.notify && parsed.membershipTier !== "free") {
+    try {
+      const { sendMembershipSubscriptionEmails } = await import("./email");
+      emailSent = await sendMembershipSubscriptionEmails(env, {
+        user: {
+          id: nextUser.id,
+          email: nextUser.email,
+          name: nextUser.name,
+          audience: nextUser.audience,
+          membership_tier: parsed.membershipTier,
+        },
+        previousTier,
+        source: "profile",
+        amountLabel: parsed.complimentaryFoundingStarter
+          ? `Complimentary — first ${FOUNDING_STARTER_LIMIT} members (no charge)`
+          : "Admin plan update (no charge)",
+      });
+    } catch {
+      emailSent = false;
+    }
+  }
+
+  return json({
+    ok: true,
+    user: publicUser(nextUser),
+    emailSent,
+    foundingSlot,
+    previousTier,
+  });
 }
 
 export async function listTasks(env: Env): Promise<Response> {
@@ -2543,6 +2802,7 @@ type WorkshopRegistrationRow = {
 
 const WORKSHOP_REGISTER_ALIASES: Record<string, string> = {
   "ai-marketing-video": "ai-scene-production-packs",
+  "90-minute-ai-marketing-video-workshop": "ai-scene-production-packs",
 };
 
 function resolveWorkshopId(workshopId: string): string {
@@ -3227,11 +3487,84 @@ export async function listFamilyChildren(
   return json({ children });
 }
 
-export async function listAudit(env: Env): Promise<Response> {
-  const { results } = await env.DB.prepare(
-    `SELECT at, action, email, detail FROM audit_events ORDER BY id DESC LIMIT 100`,
-  ).all<{ at: string; action: string; email: string; detail: string }>();
-  return json({ events: results ?? [] });
+export async function listAudit(env: Env, request?: Request): Promise<Response> {
+  const { email: emailFilter, limit } = parseAuditListQuery(
+    request?.url || "https://getyoursidehustle.com/api/audit",
+  );
+
+  let events: Array<{ at: string; action: string; email: string; detail: string }> = [];
+  if (emailFilter) {
+    const { results } = await env.DB.prepare(
+      `SELECT at, action, email, detail FROM audit_events WHERE email = ? ORDER BY id DESC LIMIT ?`,
+    )
+      .bind(emailFilter, limit)
+      .all<{ at: string; action: string; email: string; detail: string }>();
+    events = results ?? [];
+  } else {
+    const { results } = await env.DB.prepare(
+      `SELECT at, action, email, detail FROM audit_events ORDER BY id DESC LIMIT ?`,
+    )
+      .bind(limit)
+      .all<{ at: string; action: string; email: string; detail: string }>();
+    events = results ?? [];
+  }
+
+  let emailRows: EmailLogAuditRow[] = [];
+  try {
+    if (emailFilter) {
+      const { results } = await env.DB.prepare(
+        `SELECT to_email, subject, template_slug, status, error, created_at
+         FROM email_log WHERE to_email = ? ORDER BY created_at DESC LIMIT ?`,
+      )
+        .bind(emailFilter, limit)
+        .all<{
+          to_email: string;
+          subject: string;
+          template_slug: string;
+          status: string;
+          error: string;
+          created_at: string;
+        }>();
+      emailRows = (results ?? []).map((r) => ({
+        toEmail: r.to_email,
+        subject: r.subject,
+        templateSlug: r.template_slug,
+        status: r.status,
+        error: r.error,
+        createdAt: r.created_at,
+      }));
+    } else {
+      const { results } = await env.DB.prepare(
+        `SELECT to_email, subject, template_slug, status, error, created_at
+         FROM email_log ORDER BY created_at DESC LIMIT ?`,
+      )
+        .bind(limit)
+        .all<{
+          to_email: string;
+          subject: string;
+          template_slug: string;
+          status: string;
+          error: string;
+          created_at: string;
+        }>();
+      emailRows = (results ?? []).map((r) => ({
+        toEmail: r.to_email,
+        subject: r.subject,
+        templateSlug: r.template_slug,
+        status: r.status,
+        error: r.error,
+        createdAt: r.created_at,
+      }));
+    }
+  } catch {
+    /* email_log may be missing on older D1 */
+  }
+
+  return json({
+    events: mergeAuditEventsWithEmails(events, emailRows, limit),
+    email: emailFilter || undefined,
+    limit,
+  });
 }
 
 export async function health(env: Env): Promise<Response> {

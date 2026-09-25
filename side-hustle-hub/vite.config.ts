@@ -1,8 +1,70 @@
-import { defineConfig } from 'vite'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
+/** Host the MAKE IT POP Prerequisites PDF as a real file Discord can open. */
+function workshopPrereqPdfPlugin(): Plugin {
+  return {
+    name: 'workshop-prereq-pdf',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split('?')[0] ?? ''
+        if (!url.startsWith('/guides/') || !url.endsWith('.pdf')) {
+          next()
+          return
+        }
+        void (async () => {
+          const pdfMod = await server.ssrLoadModule('/src/lib/workshop-sneak-peek-pdf.ts')
+          const books = await server.ssrLoadModule('/src/lib/workshop-playbooks.ts')
+          const id = books.AI_SCENE_PACKS_WORKSHOP_ID as string
+          const publicPath = pdfMod.workshopSneakPeekPdfPublicPath(id) as string | null
+          if (!publicPath || url !== publicPath) {
+            next()
+            return
+          }
+          const doc = await pdfMod.buildWorkshopSneakPeekPdf(id)
+          if (!doc) {
+            res.statusCode = 404
+            res.end('Not found')
+            return
+          }
+          const filename = pdfMod.workshopSneakPeekPdfFilename(id) as string
+          res.setHeader('Content-Type', 'application/pdf')
+          res.setHeader('Content-Disposition', `inline; filename="${filename}"`)
+          res.end(Buffer.from(doc.output('arraybuffer')))
+        })().catch(next)
+      })
+    },
+    async writeBundle(options) {
+      const outDir = options.dir
+      if (!outDir) return
+      const { createServer } = await import('vite')
+      const server = await createServer({
+        configFile: false,
+        plugins: [react()],
+        server: { middlewareMode: true, hmr: false },
+        appType: 'custom',
+      })
+      try {
+        const pdfMod = await server.ssrLoadModule('/src/lib/workshop-sneak-peek-pdf.ts')
+        const books = await server.ssrLoadModule('/src/lib/workshop-playbooks.ts')
+        const id = books.AI_SCENE_PACKS_WORKSHOP_ID as string
+        const publicPath = pdfMod.workshopSneakPeekPdfPublicPath(id) as string | null
+        const doc = await pdfMod.buildWorkshopSneakPeekPdf(id)
+        if (!doc || !publicPath) return
+        const dest = join(outDir, publicPath.replace(/^\//, ''))
+        mkdirSync(dirname(dest), { recursive: true })
+        writeFileSync(dest, Buffer.from(doc.output('arraybuffer')))
+      } finally {
+        await server.close()
+      }
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), workshopPrereqPdfPlugin()],
   server: {
     port: 5173,
     strictPort: true,

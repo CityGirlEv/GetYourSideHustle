@@ -15,3 +15,8 @@
 /assets/404.html
   Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
+
+/guides/90-minute-ai-marketing-video-workshop-prerequisites.pdf
+  Content-Type: application/pdf
+  Content-Disposition: inline; filename="GYSH-MAKE-IT-POP-Workshop-Guide.pdf"
+  X-Content-Type-Options: nosniff

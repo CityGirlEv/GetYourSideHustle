@@ -501,10 +501,11 @@ export function applyPdfPageBranding(
   label: string,
   logoDataUrl?: string,
   updatedAt: Date = new Date(),
-  opts?: { draft?: boolean; updatedBy?: string },
+  opts?: { draft?: boolean; updatedBy?: string; hideLastUpdated?: boolean },
 ) {
   // Opt-in only — marketing/member/audience guide PDFs must not show DRAFT by default.
   const showDraft = opts?.draft === true;
+  const hideLastUpdated = opts?.hideLastUpdated === true;
   const pages = doc.getNumberOfPages();
   const by = String(opts?.updatedBy || "").trim();
   const updatedLabel = by
@@ -530,10 +531,12 @@ export function applyPdfPageBranding(
         PDF_FOOTER_BASELINE,
         PDF_BRAND_COLORS.link,
       ) + 10;
-    doc.setTextColor(...PDF_BRAND_COLORS.muted);
-    const maxUpdatedW = PDF_PAGE_W - PDF_MARGIN - fx - 72;
-    const updatedLines = doc.splitTextToSize(`·  ${updatedLabel}`, Math.max(120, maxUpdatedW)) as string[];
-    doc.text(updatedLines[0] || `·  ${updatedLabel}`, fx, PDF_FOOTER_BASELINE);
+    if (!hideLastUpdated) {
+      doc.setTextColor(...PDF_BRAND_COLORS.muted);
+      const maxUpdatedW = PDF_PAGE_W - PDF_MARGIN - fx - 72;
+      const updatedLines = doc.splitTextToSize(`·  ${updatedLabel}`, Math.max(120, maxUpdatedW)) as string[];
+      doc.text(updatedLines[0] || `·  ${updatedLabel}`, fx, PDF_FOOTER_BASELINE);
+    }
     doc.text(`Page ${i} of ${pages}`, PDF_PAGE_W - PDF_MARGIN, PDF_FOOTER_BASELINE, {
       align: "right",
     });

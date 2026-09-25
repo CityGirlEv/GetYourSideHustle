@@ -6,6 +6,12 @@
 import type { GuideMinTier } from "./guide-access";
 
 export const AI_SCENE_PACKS_WORKSHOP_ID = "ai-scene-production-packs";
+export const AI_SCENE_PACKS_WORKSHOP_TITLE = "90-Minute AI Marketing Video Workshop";
+/** Public `?register=` slug for the AI video class (share this URL). */
+export const AI_SCENE_PACKS_WORKSHOP_REGISTER_SLUG = "90-minute-ai-marketing-video-workshop";
+/** Hosted Prerequisites PDF — share this path (not nested under `/workshops/`). */
+export const AI_SCENE_PACKS_PREREQ_PDF_PATH =
+  `/guides/${AI_SCENE_PACKS_WORKSHOP_REGISTER_SLUG}-prerequisites.pdf`;
 
 export type WorkshopClockRow = {
   section: string;
@@ -195,7 +201,10 @@ export const WORKSHOP_PLAYBOOKS: Record<string, WorkshopPlaybook> = {
 
 export function workshopPlaybook(workshopId: string): WorkshopPlaybook | null {
   const raw = String(workshopId || "").trim();
-  const id = raw === "ai-marketing-video" ? AI_SCENE_PACKS_WORKSHOP_ID : raw;
+  const id =
+    raw === "ai-marketing-video" || raw === AI_SCENE_PACKS_WORKSHOP_REGISTER_SLUG
+      ? AI_SCENE_PACKS_WORKSHOP_ID
+      : raw;
   return WORKSHOP_PLAYBOOKS[id] ?? WORKSHOP_PLAYBOOKS[raw] ?? null;
 }
 

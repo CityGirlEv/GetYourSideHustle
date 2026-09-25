@@ -52,11 +52,11 @@ describe("email-template-content", () => {
     expect(content).toBeTruthy();
     const rendered = renderContent(content!, {
       name: "Brenda",
-      workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
+      workshopTitle: "90-Minute AI Marketing Video Workshop",
       workshopWhen: "Date and time TBD",
       workshopFormat: "Live Zoom",
       attendeeCount: "1",
-      ctaUrl: "https://getyoursidehustle.com/workshops?register=ai-scene-production-packs",
+      ctaUrl: "https://getyoursidehustle.com/workshops?register=90-minute-ai-marketing-video-workshop",
     });
     expect(rendered.subject).toMatch(/90-Minute AI Marketing Video/i);
     expect(rendered.html).toContain("Brenda");

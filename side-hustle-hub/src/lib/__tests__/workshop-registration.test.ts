@@ -27,10 +27,10 @@ describe("workshop roster", () => {
   });
 
   it("names the confirmation email after the workshop", () => {
-    expect(workshopRegistrationConfirmationSubject("90-Minute AI Marketing Video Hands-On Workshop")).toBe(
-      "You're registered — 90-Minute AI Marketing Video Hands-On Workshop",
+    expect(workshopRegistrationConfirmationSubject("90-Minute AI Marketing Video Workshop")).toBe(
+      "You're registered — 90-Minute AI Marketing Video Workshop",
     );
-    expect(workshopRegistrationConfirmationLead("90-Minute AI Marketing Video Hands-On Workshop")).toMatch(
+    expect(workshopRegistrationConfirmationLead("90-Minute AI Marketing Video Workshop")).toMatch(
       /You're on the roster/i,
     );
   });

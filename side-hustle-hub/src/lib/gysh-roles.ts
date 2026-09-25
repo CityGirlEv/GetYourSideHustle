@@ -1,6 +1,7 @@
 /** GYSH user roles — age-banded audiences + admin + QA + Dev (types + labels only). DB is source of truth. */
 
 import { api } from "./api";
+import type { UserAuditEvent } from "./gysh-user-audit";
 
 export type GyshRole = "admin" | "qa" | "dev" | "kid" | "junior" | "adult" | "senior" | "beta";
 
@@ -399,7 +400,7 @@ export type GyshUser = {
   role: GyshRole;
   /** All assigned roles (admin + QA + Dev allowed together). */
   roles?: GyshRole[];
-  status: "active" | "pending" | "disabled";
+  status: "active" | "pending" | "disabled" | "deleted";
   joinedAt: string;
   notes: string;
   canLogin?: boolean;
@@ -407,11 +408,28 @@ export type GyshUser = {
   membershipTier?: string;
   /** Audience lane: kids | junior | adult | senior */
   audience?: string;
+  /** Spendable credit wallet on this membership account. */
+  creditBalance?: number;
+  /** Last successful sign-in (ISO), when the API provides it. */
+  lastLoginAt?: string | null;
 };
 
-export async function fetchUsers(): Promise<GyshUser[]> {
-  const data = await api<{ users: GyshUser[] }>("users");
+export async function fetchUsers(opts?: { includeDeleted?: boolean }): Promise<GyshUser[]> {
+  const qs = opts?.includeDeleted ? "?includeDeleted=1" : "";
+  const data = await api<{ users: GyshUser[] }>(`users${qs}`);
   return data.users ?? [];
+}
+
+export async function fetchAuditEvents(opts?: {
+  email?: string;
+  limit?: number;
+}): Promise<UserAuditEvent[]> {
+  const qs = new URLSearchParams();
+  if (opts?.email) qs.set("email", opts.email);
+  if (opts?.limit != null) qs.set("limit", String(opts.limit));
+  const path = qs.toString() ? `audit?${qs}` : "audit";
+  const data = await api<{ events: UserAuditEvent[] }>(path);
+  return data.events ?? [];
 }
 
 export async function saveUser(
@@ -430,4 +448,36 @@ export async function saveUser(
     body: { ...user, roles, role: roles[0], password: password || undefined },
   });
   return data.user;
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  const userId = String(id || "").trim();
+  if (!userId) throw new Error("User id is required.");
+  await api(`users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+}
+
+/** Admin: set a member's plan from Users Area / Memberships. Optionally notify and count a complimentary Starter grant. */
+export async function updateUserMembership(
+  id: string,
+  body: {
+    membershipTier: string;
+    notify?: boolean;
+    complimentaryFoundingStarter?: boolean;
+  },
+): Promise<{ user: GyshUser; emailSent: boolean; foundingSlot: number | null }> {
+  const userId = String(id || "").trim();
+  if (!userId) throw new Error("User id is required.");
+  const data = await api<{
+    user: GyshUser;
+    emailSent?: boolean;
+    foundingSlot?: number | null;
+  }>(`users/${encodeURIComponent(userId)}/membership`, {
+    method: "PUT",
+    body,
+  });
+  return {
+    user: data.user,
+    emailSent: data.emailSent === true,
+    foundingSlot: data.foundingSlot ?? null,
+  };
 }

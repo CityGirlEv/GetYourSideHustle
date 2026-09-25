@@ -14,17 +14,17 @@ describe("workshop member gate copy", () => {
     expect(WORKSHOP_FREE_MEMBERSHIP_NEED).toBe("Need Free membership or higher to attend.");
   });
 
-  it("sends people back through Community → Workshops for the 90-Minute AI Workshop", () => {
+  it("sends people back through Community → Workshops for the 90-Minute AI Marketing Video Workshop", () => {
     expect(workshopMemberGateWorkshopName(AI_SCENE_PACKS_WORKSHOP_ID, "ignored")).toBe(
-      "the 90-Minute AI Workshop",
+      "90-Minute AI Marketing Video Workshop",
     );
     const directions = workshopMemberGateDirections(
       "ai-marketing-video",
-      "90-Minute AI Marketing Video Hands-On Workshop",
+      "90-Minute AI Marketing Video Workshop",
     );
     expect(directions).toMatch(/Create a FREE account/i);
     expect(directions).toContain("Community → Workshops");
-    expect(directions).toContain("the 90-Minute AI Workshop");
+    expect(directions).toContain("90-Minute AI Marketing Video Workshop");
     expect(directions).toMatch(/click Register again/i);
   });
 

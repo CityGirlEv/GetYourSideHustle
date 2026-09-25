@@ -11,6 +11,7 @@ import {
   filterWorkshops,
   parseWorkshopRegisterParam,
   resolveWorkshopId,
+  workshopPublicRegisterSlug,
 } from "../workshops";
 
 describe("workshops", () => {
@@ -23,6 +24,17 @@ describe("workshops", () => {
 
   it("keeps all workshop dates as TBD", () => {
     expect(WORKSHOPS.every((w) => w.date === "TBD")).toBe(true);
+  });
+
+  it("keeps every workshop upcoming with TBD times and only the AI video class open for registration", () => {
+    expect(DEFAULT_WORKSHOPS.every((w) => w.status === "upcoming")).toBe(true);
+    expect(DEFAULT_WORKSHOPS.every((w) => w.time === "TBD")).toBe(true);
+    expect(DEFAULT_WORKSHOPS.filter((w) => w.registrationOpen).map((w) => w.id)).toEqual([
+      AI_SCENE_PACKS_WORKSHOP_ID,
+    ]);
+    expect(DEFAULT_WORKSHOPS.find((w) => w.id === AI_SCENE_PACKS_WORKSHOP_ID)?.title).toBe(
+      "90-Minute AI Marketing Video Workshop",
+    );
   });
 
   it("counts workshops by status", () => {
@@ -45,10 +57,20 @@ describe("workshops", () => {
 
   it("maps the public AI marketing video register slug onto the catalog workshop", () => {
     expect(resolveWorkshopId("ai-marketing-video")).toBe(AI_SCENE_PACKS_WORKSHOP_ID);
+    expect(resolveWorkshopId("90-minute-ai-marketing-video-workshop")).toBe(AI_SCENE_PACKS_WORKSHOP_ID);
     expect(parseWorkshopRegisterParam("?register=ai-marketing-video")).toBe(
       AI_SCENE_PACKS_WORKSHOP_ID,
     );
-    expect(findWorkshopById("ai-marketing-video", [
+    expect(parseWorkshopRegisterParam("?register=90-minute-ai-marketing-video-workshop")).toBe(
+      AI_SCENE_PACKS_WORKSHOP_ID,
+    );
+    expect(workshopPublicRegisterSlug(AI_SCENE_PACKS_WORKSHOP_ID)).toBe(
+      "90-minute-ai-marketing-video-workshop",
+    );
+    expect(workshopPublicRegisterSlug("ai-marketing-video")).toBe(
+      "90-minute-ai-marketing-video-workshop",
+    );
+    expect(findWorkshopById("90-minute-ai-marketing-video-workshop", [
       { id: AI_SCENE_PACKS_WORKSHOP_ID } as (typeof DEFAULT_WORKSHOPS)[number],
     ])?.id).toBe(AI_SCENE_PACKS_WORKSHOP_ID);
   });
