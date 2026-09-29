@@ -11,6 +11,10 @@ import {
   persistAttachmentBase64,
   resolveAttachmentBase64,
 } from "./attachment-limits";
+import {
+  deleteTaskMirrorsForSoftLaunchAtt,
+  mirrorSoftLaunchUploadToTask,
+} from "./attachment-cross-ref";
 const MEDIA_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|heic|mp4|webm|mov|pdf)$/i;
 const IMAGE_MIME = /^(image\/(png|jpeg|jpg|gif|webp|svg\+xml|bmp|heic|heif))$/i;
 const VIDEO_MIME = /^(video\/(mp4|webm|quicktime))$/i;
@@ -278,6 +282,20 @@ export async function uploadSoftLaunchAttachment(
       .run();
   }
 
+  try {
+    await mirrorSoftLaunchUploadToTask(env, itemId, {
+      sourceId: id,
+      name,
+      mimeType: validated.mime,
+      size: validated.size,
+      contentBase64: validated.cleaned,
+      addedAt,
+      addedBy,
+    });
+  } catch {
+    /* cross-ref is best-effort — primary upload already succeeded */
+  }
+
   return json(
     {
       ok: true,
@@ -311,6 +329,11 @@ export async function deleteSoftLaunchAttachment(
   const id = String(body.id || "").trim();
   if (!id) return error("id is required.");
   await ensureAttachmentContentChunksTable(env.DB);
+  try {
+    await deleteTaskMirrorsForSoftLaunchAtt(env, id);
+  } catch {
+    /* best-effort peer cleanup */
+  }
   await deleteAttachmentChunks(env.DB, id);
   await env.DB.prepare(`DELETE FROM soft_launch_item_attachments WHERE id = ?`).bind(id).run();
   return json({ ok: true });

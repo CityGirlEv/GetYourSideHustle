@@ -49,7 +49,7 @@ export const FIND_MINE_WIZARD_GROUPS = [
   {
     id: "adult",
     label: "Adults",
-    ages: "Ages 18–54",
+    ages: "Ages 18–49",
     bands: "Budget, hours, strengths & goals",
     bandAges: null,
     title: "GYSH Adults Match Wizard",
@@ -63,12 +63,12 @@ export const FIND_MINE_WIZARD_GROUPS = [
   {
     id: "senior",
     label: "Seniors",
-    ages: "Ages 55+",
-    bands: "Flexible pace for 55+",
+    ages: "Ages 50+",
+    bands: "Flexible pace for 50+",
     bandAges: null,
     title: "GYSH Seniors Match Wizard",
     copy:
-      "Flexible matches for retirees, second careers, and 55+ earners who want experience-friendly pacing.",
+      "Flexible matches for retirees, second careers, and 50+ earners who want experience-friendly pacing.",
     icon: Heart,
     accent: "amber",
     cta: "Open",
@@ -161,7 +161,6 @@ export function FindMineWizardSelector({
               width={1600}
               height={900}
               decoding="async"
-              fetchPriority="high"
             />
           </div>
 

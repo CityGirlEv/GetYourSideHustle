@@ -17,6 +17,16 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     description: "Sent when someone registers — pending admin activation.",
   },
   {
+    slug: "workshop_registration_confirmation",
+    name: "Workshop registration confirmation",
+    description: "Sent to the attendee when they register or pre-register for a workshop.",
+  },
+  {
+    slug: "workshop_date_confirmed",
+    name: "Workshop date confirmed",
+    description: "Sent when the class date is set. Attaches the complete workshop guide PDF (Resend attachment).",
+  },
+  {
     slug: "welcome_free",
     name: "Welcome · Free",
     description: "Sent when an admin activates a Free member.",
@@ -75,7 +85,7 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     slug: "schedule_suite_reminder",
     name: "Schedule Suite reminder",
     description:
-      "Pro+ hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
+      "Pro or higher hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
   },
   {
     slug: "contact_inbox",
@@ -88,9 +98,36 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     description: "Alert to admins whenever a public form is completed.",
   },
   {
-    slug: "workshop_registration_confirmation",
-    name: "Workshop registration confirmation",
-    description: "Sent to the registrant when they are added to a workshop roster.",
+    slug: "membership_subscribed",
+    name: "Membership subscribed",
+    description: "Confirmation after a paid membership checkout completes.",
+  },
+  {
+    slug: "membership_upgraded",
+    name: "Membership upgraded",
+    description: "Notice when a member upgrades to a higher paid plan.",
+  },
+  {
+    slug: "membership_renewal_reminder",
+    name: "Membership renewal reminder",
+    description:
+      "Sent about a week before membership expiration / the next 3-month Stripe charge.",
+  },
+  {
+    slug: "membership_merch_ready",
+    name: "GYSHFamily t-shirt discount · hat or tee",
+    description:
+      "Email to Starter and up with the t-shirt/hat discount: shop GYSH Gear, pick the complimentary hat or t-shirt count for their plan, enter GYSHFamily at checkout for 100% off.",
+  },
+  {
+    slug: "alacarte_purchased",
+    name: "A la carte purchase",
+    description: "Confirmation after a-la-carte checkout (Stripe, GYSH credits, or mixed).",
+  },
+  {
+    slug: "credit_pack_purchased",
+    name: "Kid Credit pack purchase",
+    description: "Confirmation after a parent-funded Kid Credit pack purchase (Stripe cash).",
   },
   {
     slug: "password_reset",
@@ -140,6 +177,26 @@ export function isEmailTemplateReviewCaseId(caseId: string): boolean {
     .startsWith("EMAIL-TPL-");
 }
 
+/**
+ * Whether Testing Portal should (re)place an EMAIL-TPL case onto the live sprint/due/Candace.
+ * Never rewrite graded work — that stole Daily Progress attribution and fought Fail→Dev.
+ */
+export function needsEmailTemplatePlacementHeal(input: {
+  status: string | null | undefined;
+  sprint: number | null | undefined;
+  due: string | null | undefined;
+  assignee: string | null | undefined;
+  wantSprint: number;
+  wantDue: string;
+}): boolean {
+  const st = String(input.status || "not_run").trim() || "not_run";
+  if (st !== "not_run") return false;
+  const sprint = input.sprint;
+  const due = String(input.due ?? "").trim();
+  const assignee = String(input.assignee ?? "").trim().toLowerCase();
+  return sprint !== input.wantSprint || due !== input.wantDue || assignee !== "candace";
+}
+
 /** Manual QA: one case per email template, owned by Candace. */
 export const EMAIL_TEMPLATE_REVIEW_CASES: TestCase[] = EMAIL_TEMPLATE_REVIEW_CATALOG.map((tpl) => {
   const href = emailTemplateAdminPath(tpl.slug);
@@ -161,6 +218,7 @@ export const EMAIL_TEMPLATE_REVIEW_CASES: TestCase[] = EMAIL_TEMPLATE_REVIEW_CAT
       `Confirm description matches intent: ${tpl.description}`,
       "Review subject, preheader, eyebrow, headline, subhead, body, CTA label/URL, and footer for brand voice, clarity, and typos",
       "Confirm live preview looks branded and readable on a phone-width window",
+      "Confirm the footer legal disclaimer (“Your side hustle, your results.”) is present — all templates share this footer",
       "Optional: Send test to a mailbox you control and confirm inbox content matches the preview",
       "Note any copy or layout issues in the Testing Portal note, then set Pass / Conditional / Fail",
     ],

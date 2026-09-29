@@ -89,6 +89,22 @@ export async function listSavedBlueprints(): Promise<SavedBlueprint[]> {
   return data.blueprints ?? [];
 }
 
+/** Admin Memberships: read that member’s Blueprints without switching Profile Switcher. */
+export async function listSavedBlueprintsForUser(userId: string): Promise<SavedBlueprint[]> {
+  const id = String(userId || "").trim();
+  if (!id) return [];
+  const data = await api<{ ok: boolean; blueprints: SavedBlueprint[] }>("blueprints", {
+    actAsUserId: id,
+  });
+  return data.blueprints ?? [];
+}
+
+/** Admin Memberships: one request for Blueprint counts next to each member’s link. */
+export async function fetchMembershipBlueprintCounts(): Promise<unknown> {
+  const data = await api<{ ok: boolean; counts?: unknown }>("admin/blueprint-counts");
+  return data.counts ?? {};
+}
+
 export async function assignSavedBlueprint(input: {
   blueprintId: string;
   childProfileId: string | null;
@@ -108,4 +124,17 @@ export async function assignBlueprintMatch(input: {
   matchAssignees: Record<string, string>;
 }> {
   return api("blueprints/assign-match", { method: "POST", body: input });
+}
+
+/**
+ * Auth failures return null so Blueprint shows the empty/retake state instead of
+ * a raw "Not authenticated." line.
+ */
+export function friendlyBlueprintsLoadError(err: unknown): string | null {
+  const msg = err instanceof Error ? err.message : String(err || "");
+  if (/not authenticated|session (invalid|expired)|unauthorized|401/i.test(msg)) {
+    return null;
+  }
+  if (!msg.trim()) return "Could not load your Blueprint right now.";
+  return "Could not load your Blueprint right now. Take the Match Wizard to save matches.";
 }

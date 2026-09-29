@@ -45,7 +45,7 @@ const AUTOMATED_VITEST_CASES_RAW: GyshTestCase[] = [
   {
     id: "VT-ROLE-001",
     area: "Vitest",
-    title: "QA tester bubbles include T + E",
+    title: "QA tester bubbles include Tina & Evelyn",
     priority: "P0",
     roles: ["qa", "admin"],
     assignees: ["vitest"],
@@ -173,7 +173,7 @@ const AUTOMATED_VITEST_CASES_RAW: GyshTestCase[] = [
     path: "beta_nda",
     steps: [
       "Run: npm run test:unit -- src/lib/__tests__/beta-tester-nda.test.ts src/lib/__tests__/beta-tester-dashboard.test.ts functions/_lib/__tests__/beta-tester-nda.test.ts",
-      "Confirm GYSH-BETA-NDA-v1.0, reject paths, and 00:00 / Not yet qualified stats",
+      "Confirm GYSH-BETA-NDA-v1.1, reject paths, and 00:00 / Not yet qualified stats",
     ],
     expected: "NDA version stored; invalid accept rejected; empty dashboard shows 0 / 00:00 / Not yet qualified",
   },
@@ -343,7 +343,7 @@ const AUTOMATED_PLAYWRIGHT_CASES_RAW: GyshTestCase[] = [
     suite: "playwright",
     path: "beta_nda",
     steps: [
-      "Open /beta-nda and confirm GYSH-BETA-NDA-v1.0",
+      "Open /beta-nda and confirm GYSH-BETA-NDA-v1.1",
       "Open membership signup, check Apply as a Beta Tester",
       "Confirm NDA scroll, full legal name, and I have read and agree",
     ],
@@ -648,8 +648,8 @@ export function isWizardMatrixCaseId(id: string): boolean {
 export function isAutomatedTestId(id: string): boolean {
   if (AUTOMATED_TEST_IDS.has(id)) return true;
   // Wizard matrix paths are Vitest-covered — treat as automated in the portal.
-  // VT-FAIL-* / PW-FAIL-* are generated from suite failures.
-  return isWizardMatrixCaseId(id) || /^(VT|PW)-FAIL-/i.test(id);
+  // VT-FAIL-* / PW-FAIL-* are human QA follow-ups (assignable) — not suite-locked.
+  return isWizardMatrixCaseId(id);
 }
 
 /**

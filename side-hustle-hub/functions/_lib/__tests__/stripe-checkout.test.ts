@@ -22,7 +22,7 @@ describe("stripe checkout resolution", () => {
     if (monthly.ok) {
       expect(monthly.mode).toBe("subscription");
       expect(monthly.priceId).toMatch(/^price_/);
-      expect(monthly.amountUsd).toBe(39);
+      expect(monthly.amountUsd).toBe(117);
     }
 
     const seniorYear = resolveCheckoutPrice({
@@ -53,11 +53,33 @@ describe("stripe checkout resolution", () => {
     expect(consult.ok).toBe(true);
     if (consult.ok) {
       expect(consult.mode).toBe("payment");
-      expect(consult.amountUsd).toBe(120);
+      expect(consult.amountUsd).toBe(65);
     }
     const pack = resolveCheckoutPrice({ kind: "credit_pack", packId: "launcher" });
     expect(pack.ok).toBe(true);
     if (pack.ok) expect(pack.amountUsd).toBe(20);
+  });
+
+  it("resolves credit packs in the Join cart using pack Stripe prices", () => {
+    const packs = resolveAlaCarteCheckoutLines([
+      { itemId: "boost", quantity: 2 },
+      { itemId: "launcher", quantity: 1 },
+    ]);
+    expect(packs.ok).toBe(true);
+    if (packs.ok) {
+      expect(packs.checkoutKind).toBe("credit_pack");
+      expect(packs.amountUsd).toBe(5 * 2 + 20);
+      expect(packs.lines.map((l) => l.skuKind)).toEqual(["credit_pack", "credit_pack"]);
+    }
+    const mixed = resolveAlaCarteCheckoutLines([
+      { itemId: "boost", quantity: 1 },
+      { itemId: "consult-30", quantity: 1 },
+    ]);
+    expect(mixed.ok).toBe(true);
+    if (mixed.ok) {
+      expect(mixed.checkoutKind).toBe("alacarte");
+      expect(mixed.amountUsd).toBe(5 + 45);
+    }
   });
 
   it("resolves multi-item a-la-carte cart lines", () => {
@@ -69,7 +91,7 @@ describe("stripe checkout resolution", () => {
     if (cart.ok) {
       expect(cart.mode).toBe("payment");
       expect(cart.lines).toHaveLength(2);
-      expect(cart.amountUsd).toBe(75 * 2 + 35);
+      expect(cart.amountUsd).toBe(45 * 2 + 40);
       expect(cart.label).toMatch(/cart/i);
     }
     const single = resolveAlaCarteCheckoutLines(undefined, "progress-pdf");

@@ -29,6 +29,7 @@ test.describe("Schedule Suite checkbox, hours, exports", () => {
       ageGroup: "adult",
       blueprintId: null,
       dueDate: "2026-08-23",
+      guideSteps: [],
     });
     plan = applyScheduleBlockCheckbox(plan, "mon", true);
     expect(plan.blocks.find((b) => b.id === "mon")?.status).toBe("done");
@@ -81,6 +82,7 @@ test.describe("Schedule Suite checkbox, hours, exports", () => {
       ageGroup: "adult",
       blueprintId: null,
       dueDate: "2026-08-23",
+      guideSteps: [],
     });
     const kidPlan = createSchedulePlan({
       ownerId: "c1",
@@ -90,6 +92,7 @@ test.describe("Schedule Suite checkbox, hours, exports", () => {
       ageGroup: "kids",
       blueprintId: null,
       dueDate: "2026-08-23",
+      guideSteps: [],
     });
     expect(planHasRequiredHours(selfPlan)).toBe(true);
     expect(planHasRequiredHours(setScheduleBlockHours(selfPlan, "fri", 0))).toBe(false);
@@ -101,7 +104,7 @@ test.describe("Schedule Suite checkbox, hours, exports", () => {
     expect(html).toContain("Airbnb");
   });
 
-  test("Join page still advertises Schedule Suite for Pro+", async ({ page }) => {
+  test("Join page still advertises Schedule Suite for Pro & Above", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("nav-join").click();
     await expect(page.getByTestId("membership-schedule-suite")).toBeVisible();

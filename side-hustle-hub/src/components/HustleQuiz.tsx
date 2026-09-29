@@ -17,11 +17,26 @@ import {
   savePendingBlueprintAsync,
 } from "../lib/pending-blueprint";
 import { saveBlueprintToAccount } from "../lib/blueprints-api";
+import { ensureComplimentaryClaim } from "../lib/wizard-comp-guide";
 import {
   SideHustleBlueprintResults,
   type BlueprintMatchCard,
 } from "./SideHustleBlueprintResults";
+import type { WizardSaveStatus } from "../lib/wizard-save";
 import { WizardStartHereBanner } from "./WizardStartHereBanner";
+import { getAdultWizardProfile } from "../lib/hustle-wizard-profiles";
+import { SIDE_HUSTLE_CATALOG } from "../lib/side-hustle-catalog-data";
+import {
+  relativeMatchPct,
+  sortWizardByMatchScore,
+  wizardMatchTierLabel,
+  wizardRankingDisclaimer,
+} from "../lib/wizard-result-order";
+import type { GuideCatalogStateMap } from "../lib/guide-catalog-state";
+import { filterGuidesForWizardResults } from "../lib/guide-catalog-state";
+import { libraryMinTierForAge } from "../lib/guide-library-pool";
+import type { GuideMinTier } from "../lib/guide-access";
+import { presentableGuideTitle } from "../lib/guide-title";
 
 interface HustleQuizProps {
   hustles: any[];
@@ -31,6 +46,12 @@ interface HustleQuizProps {
   previewAsGuest?: boolean;
   /** Unlock → Join / free account handoff */
   onUnlockBlueprint?: () => void;
+  /** Open My Dashboard after saving results. */
+  onOpenDashboard?: () => void;
+  membershipTier?: string | null;
+  isAdmin?: boolean;
+  /** Live catalog statuses — wizard results stay Active-only even for admin. */
+  catalogStates?: GuideCatalogStateMap | null;
 }
 
 type SingleKey = "budget" | "time";
@@ -45,121 +66,11 @@ type Answers = {
   goal: string[];
 };
 
-type MatchTier = "Best match" | "Strong match" | "Good fit";
-
 type ScoredMatch = {
   hustle: any;
   score: number;
   pct: number;
-  tier: MatchTier;
-};
-
-/** How well each hustle aligns with strength / goal tags (higher = stronger fit). */
-const HUSTLE_PROFILES: Record<
-  string,
-  {
-    skills: Partial<Record<string, number>>;
-    goals: Partial<Record<string, number>>;
-    budgets: string[];
-    times: string[];
-  }
-> = {
-  airbnb: {
-    skills: { operations: 1, marketing: 0.35 },
-    goals: { physical: 1, passive: 0.55, scale: 0.3 },
-    budgets: ["high", "medium"],
-    times: ["medium", "high"],
-  },
-  pod: {
-    skills: { creative: 1, marketing: 0.45 },
-    goals: { passive: 1, brand: 0.4, scale: 0.55 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium"],
-  },
-  dropshipping: {
-    skills: { marketing: 1, operations: 0.5, creative: 0.35 },
-    goals: { scale: 1, brand: 0.35, passive: 0.25 },
-    budgets: ["medium", "high"],
-    times: ["high", "medium"],
-  },
-  "digital-products": {
-    skills: { creative: 1, marketing: 0.55, tech: 0.35 },
-    goals: { passive: 1, brand: 0.7, scale: 0.4 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium", "high"],
-  },
-  affiliate: {
-    skills: { marketing: 1, creative: 0.45 },
-    goals: { passive: 1, brand: 0.6, scale: 0.3 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium", "high"],
-  },
-  amazon: {
-    skills: { operations: 1, marketing: 0.55 },
-    goals: { scale: 1, passive: 0.4, physical: 0.35 },
-    budgets: ["high"],
-    times: ["high"],
-  },
-  social: {
-    skills: { creative: 1, marketing: 0.7 },
-    goals: { brand: 1, passive: 0.35, scale: 0.4 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "web-leads": {
-    skills: { marketing: 1, tech: 0.7, creative: 0.35 },
-    goals: { local: 1, scale: 0.4, brand: 0.25 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "ai-assets": {
-    skills: { creative: 1, tech: 0.75, marketing: 0.4 },
-    goals: { brand: 0.7, local: 0.55, ai: 0.9, passive: 0.25 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium"],
-  },
-  "property-mgmt": {
-    skills: { operations: 1, marketing: 0.4, hands_on: 0.35 },
-    goals: { physical: 1, passive: 0.5, scale: 0.35 },
-    budgets: ["medium", "high"],
-    times: ["medium", "high"],
-  },
-  handyman: {
-    skills: { hands_on: 1, operations: 0.45 },
-    goals: { local: 1, flexible: 0.7, physical: 0.4 },
-    budgets: ["medium", "low"],
-    times: ["medium", "high"],
-  },
-  rideshare: {
-    skills: { vehicle: 1, operations: 0.3 },
-    goals: { flexible: 1, local: 0.4 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "food-delivery": {
-    skills: { vehicle: 1, hands_on: 0.35 },
-    goals: { flexible: 1, local: 0.45 },
-    budgets: ["low"],
-    times: ["very_low", "medium", "high"],
-  },
-  "ai-timing": {
-    skills: { tech: 1, vehicle: 0.55, marketing: 0.35 },
-    goals: { ai: 1, flexible: 0.75, local: 0.4 },
-    budgets: ["low"],
-    times: ["very_low", "medium"],
-  },
-  "ai-agents": {
-    skills: { tech: 1, marketing: 0.5, creative: 0.3 },
-    goals: { ai: 1, scale: 0.55, passive: 0.45, brand: 0.3 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "book-publishing": {
-    skills: { creative: 1, marketing: 0.65, operations: 0.35 },
-    goals: { brand: 1, passive: 0.75, scale: 0.35 },
-    budgets: ["low", "medium", "high"],
-    times: ["medium", "high"],
-  },
+  tier: string;
 };
 
 const STRENGTH_WEIGHTS = [30, 15]; // rank 1, rank 2
@@ -192,8 +103,10 @@ const BUDGET_LABELS: Record<string, string> = {
   high: "Over $1,000",
 };
 
+/** How well each side hustle aligns with strength / goal tags (higher = stronger fit). */
 function scoreHustle(hustleId: string, answers: Answers): number {
-  const profile = HUSTLE_PROFILES[hustleId];
+  const tags = SIDE_HUSTLE_CATALOG.find((h) => h.id === hustleId)?.matchTags ?? [];
+  const profile = getAdultWizardProfile(hustleId, tags);
   if (!profile) return 0;
 
   let score = 0;
@@ -214,33 +127,37 @@ function scoreHustle(hustleId: string, answers: Answers): number {
   return Math.round(score * 10) / 10;
 }
 
-function tierForRank(index: number, pct: number): MatchTier {
-  if (index === 0) return "Best match";
-  if (pct >= 70 || index === 1) return "Strong match";
-  return "Good fit";
-}
-
-function toBlueprintCards(results: ScoredMatch[]): BlueprintMatchCard[] {
-  return results.map((row) => ({
-    id: row.hustle.id,
-    title: row.hustle.name,
-    description: row.hustle.description,
-    pct: row.pct,
-    tier: row.tier,
-    badge: row.hustle.category,
-    gradient: row.hustle.gradient,
-    whyFits: `${row.tier} for your budget, time, strengths, and goals — a Side Hustle that fits how you want to earn.`,
-    benefits: [
-      `Difficulty: ${row.hustle.difficulty}`,
-      `Income potential: ${row.hustle.potentialIncome}`,
-      `Startup cost: ${row.hustle.startupCost}`,
-    ],
-    meta: [
-      { label: "Difficulty", value: row.hustle.difficulty },
-      { label: "Income", value: row.hustle.potentialIncome },
-      { label: "Startup", value: row.hustle.startupCost },
-    ],
-  }));
+function toBlueprintCards(
+  results: ScoredMatch[],
+  catalogStates?: GuideCatalogStateMap | null,
+): BlueprintMatchCard[] {
+  return results.map((row) => {
+    const minTier: GuideMinTier =
+      libraryMinTierForAge(row.hustle.id, "adult", catalogStates) ||
+      (row.hustle.minTier as GuideMinTier) ||
+      "free";
+    return {
+      id: row.hustle.id,
+      title: presentableGuideTitle(row.hustle.id, row.hustle.name),
+      description: row.hustle.description,
+      pct: row.pct,
+      tier: row.tier,
+      badge: row.hustle.category,
+      gradient: row.hustle.gradient,
+      minTier,
+      whyFits: `${row.tier} for your budget, time, strengths, and goals — a Side Hustle that fits how you want to earn.`,
+      benefits: [
+        `Difficulty: ${row.hustle.difficulty}`,
+        `Income potential: ${row.hustle.potentialIncome}`,
+        `Startup cost: ${row.hustle.startupCost}`,
+      ],
+      meta: [
+        { label: "Difficulty", value: row.hustle.difficulty },
+        { label: "Income", value: row.hustle.potentialIncome },
+        { label: "Startup", value: row.hustle.startupCost },
+      ],
+    };
+  });
 }
 
 export const HustleQuiz: React.FC<HustleQuizProps> = ({
@@ -249,6 +166,10 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   isLoggedIn = false,
   previewAsGuest = false,
   onUnlockBlueprint,
+  onOpenDashboard,
+  catalogStates = null,
+  membershipTier = null,
+  isAdmin = false,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
@@ -259,6 +180,7 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   });
   const [rankedResults, setRankedResults] = useState<ScoredMatch[] | null>(null);
   const [validationHint, setValidationHint] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<WizardSaveStatus>("idle");
   const startedRef = useRef(false);
   const partialViewedRef = useRef(false);
 
@@ -269,12 +191,20 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   });
 
   const buildResults = (nextAnswers: Answers): ScoredMatch[] => {
-    const scored = hustles.map((h) => ({ hustle: h, score: scoreHustle(h.id, nextAnswers) }));
-    scored.sort((a, b) => b.score - a.score);
-    const maxScore = Math.max(scored[0]?.score ?? 1, 1);
-    return scored.map((row, index) => {
-      const pct = Math.round((row.score / maxScore) * 100);
-      return { ...row, pct, tier: tierForRank(index, pct) };
+    const pool = filterGuidesForWizardResults(hustles, catalogStates);
+    const scored = pool.map((h) => ({ hustle: h, score: scoreHustle(h.id, nextAnswers) }));
+    const maxScore = Math.max(...scored.map((r) => r.score), 1);
+    const ordered = sortWizardByMatchScore(
+      scored.map((row) => ({ id: row.hustle.id, score: row.score, hustle: row.hustle })),
+    );
+    return ordered.map((row, index) => {
+      const pct = relativeMatchPct(row.score, maxScore);
+      return {
+        hustle: row.hustle,
+        score: row.score,
+        pct,
+        tier: wizardMatchTierLabel(index, pct, row.id),
+      };
     });
   };
 
@@ -288,13 +218,45 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
     });
   };
 
-  const persistSavedBlueprint = (results: ScoredMatch[], nextAnswers: Answers) => {
-    void saveBlueprintToAccount({
-      ageGroup: "adult",
-      answers: nextAnswers as unknown as Record<string, unknown>,
-      resultIds: results.map((r) => r.hustle.id),
-      resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
-    });
+  const persistSavedBlueprint = async (
+    results: ScoredMatch[],
+    nextAnswers: Answers,
+  ): Promise<boolean> => {
+    try {
+      const saved = await saveBlueprintToAccount({
+        ageGroup: "adult",
+        answers: nextAnswers as unknown as Record<string, unknown>,
+        resultIds: results.map((r) => r.hustle.id),
+        resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+      });
+      if (saved) {
+        await ensureComplimentaryClaim({
+          isLoggedIn: true,
+          resultIds: results.map((r) => r.hustle.id),
+          resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+        });
+      }
+      return Boolean(saved);
+    } catch {
+      return false;
+    }
+  };
+
+  const handleSaveResults = async () => {
+    if (!rankedResults) return;
+    persistPending(rankedResults, answers);
+    if (!unlocked) {
+      handleUnlock();
+      return;
+    }
+    setSaveStatus("saving");
+    const ok = await persistSavedBlueprint(rankedResults, answers);
+    if (ok) {
+      clearPendingBlueprint();
+      setSaveStatus("saved");
+      return;
+    }
+    setSaveStatus("error");
   };
 
   useEffect(() => {
@@ -481,6 +443,12 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
     const results = buildResults(answers);
     setRankedResults(results);
     persistPending(results, answers);
+    void ensureComplimentaryClaim({
+      isLoggedIn: unlocked,
+      previewAsGuest,
+      resultIds: results.map((r) => r.hustle.id),
+      resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+    });
     trackGyshEvent("find_side_hustle_completed", {
       age_group: "adult",
       match_count: results.length,
@@ -496,8 +464,15 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
     if (unlocked) {
       trackGyshEvent("blueprint_unlocked", { age_group: "adult", match_count: results.length });
       trackGyshEvent("blueprint_saved", { age_group: "adult", match_count: results.length });
-      persistSavedBlueprint(results, answers);
-      clearPendingBlueprint();
+      setSaveStatus("saving");
+      void persistSavedBlueprint(results, answers).then((ok) => {
+        if (ok) {
+          clearPendingBlueprint();
+          setSaveStatus("saved");
+        } else {
+          setSaveStatus("error");
+        }
+      });
     }
   };
 
@@ -635,7 +610,7 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
               )}
 
               <p className="wizard-fill-tip">
-                Tip: Honest answers beat perfect ones — we match hustles to your real budget, hours, strengths, and
+                Tip: Honest answers beat perfect ones — we match side hustles to your real budget, hours, strengths, and
                 goals so your next step feels doable.
               </p>
 
@@ -672,18 +647,25 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
           ) : (
             <SideHustleBlueprintResults
               ageGroup="adult"
-              matches={toBlueprintCards(rankedResults)}
+              matches={toBlueprintCards(rankedResults, catalogStates)}
               unlocked={unlocked}
               onUnlock={handleUnlock}
               onRetake={resetQuiz}
-              onSelectCalculator={
-                unlocked ? (id) => onSelectAction(id, "calculator") : undefined
-              }
-              onSelectGuide={unlocked ? (id) => onSelectAction(id, "guide") : undefined}
+              onSelectGuide={(id) => onSelectAction(id, "guide")}
+              onSaveResults={handleSaveResults}
+              saveStatus={saveStatus}
+              onOpenDashboard={onOpenDashboard}
+              isLoggedIn={isLoggedIn}
+              previewAsGuest={previewAsGuest}
+              membershipTier={membershipTier}
+              isAdmin={isAdmin}
             >
               {unlocked && (
                 <div className="match-finder-adult-how">
                   <strong>How your ranking works</strong>
+                  <p style={{ margin: "8px 0 12px", fontSize: "0.95rem", lineHeight: 1.45 }}>
+                    {wizardRankingDisclaimer({ isLoggedIn: unlocked })}
+                  </p>
                   <ul>
                     <li>
                       <strong>Budget ({BUDGET_LABELS[answers.budget]})</strong> and time commitment

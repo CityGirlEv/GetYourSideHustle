@@ -1,11 +1,11 @@
 -- GYSH production schema (Cloudflare D1)
--- Seed T/E + initial tasks via: npm run db:seed
+-- Seed Tina & Evelyn + initial tasks via: npm run db:seed
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'qa', 'kid', 'junior', 'adult')),
+  role TEXT NOT NULL CHECK (role IN ('admin', 'qa', 'dev', 'kid', 'junior', 'adult', 'senior', 'beta')),
   status TEXT NOT NULL CHECK (status IN ('active', 'pending', 'disabled')),
   joined_at TEXT NOT NULL,
   notes TEXT NOT NULL DEFAULT '',

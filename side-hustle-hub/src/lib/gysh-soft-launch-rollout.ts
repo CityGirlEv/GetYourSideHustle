@@ -1,5 +1,5 @@
 /**
- * GYSH Soft Launch Marketing Rollout — Sprints 3–5
+ * GYSH Marketing Rollout — Sprints 2–10
  * Expert marketing cadence: Facebook, Kevina Starr, website/newsletter, ads, new channels.
  * Dates aligned to sprint windows (Tue–Mon) from gysh-sprints.
  */
@@ -7,28 +7,38 @@
 import { adminMarkdownLink } from "./admin-deep-links";
 import { currentSprintIndex } from "./gysh-sprints";
 
-/** Soft-launch calendar covers Sprints 2–5 in Content Factory. */
-export const SOFT_LAUNCH_FACTORY_SPRINTS = [2, 3, 4, 5] as const;
+/** Marketing calendar covers Sprints 2–10 in Content Factory. */
+export const SOFT_LAUNCH_FACTORY_MIN_SPRINT = 2;
+/**
+ * Last marketing-calendar sprint (Sprint 10).
+ * Keep this numeric literal — do not import DEFAULT_SPRINT_COUNT here.
+ * gysh-sprints → gysh-tasks → this file → gysh-sprints is a cycle; reading
+ * DEFAULT_SPRINT_COUNT at module init throws during Vite HMR reloads.
+ */
+export const SOFT_LAUNCH_FACTORY_MAX_SPRINT = 10;
+export const SOFT_LAUNCH_FACTORY_SPRINTS = Array.from(
+  { length: SOFT_LAUNCH_FACTORY_MAX_SPRINT - SOFT_LAUNCH_FACTORY_MIN_SPRINT + 1 },
+  (_, i) => i + SOFT_LAUNCH_FACTORY_MIN_SPRINT,
+);
+/** Button / batch label for seeding the full marketing calendar. */
+export const SOFT_LAUNCH_SEED_ALL_RANGE = `S${SOFT_LAUNCH_FACTORY_MIN_SPRINT}–S${SOFT_LAUNCH_FACTORY_MAX_SPRINT}`;
 
 /**
- * Default Sprint filter for Content Factory — live sprint,
- * clamped to the soft-launch calendar range (2–5).
+ * Default Sprint filter for Content Factory — live sprint only,
+ * clamped to the marketing calendar range (2–10).
  */
 export function softLaunchFactoryDefaultSprint(ref: Date = new Date()): number {
   const cur = currentSprintIndex(ref);
-  if (cur < 2) return 2;
-  if (cur > 5) return 5;
-  return cur;
+  if (cur < SOFT_LAUNCH_FACTORY_MIN_SPRINT) return SOFT_LAUNCH_FACTORY_MIN_SPRINT;
+  return Math.min(cur, SOFT_LAUNCH_FACTORY_MAX_SPRINT);
 }
 
 /**
- * Default multi-select Sprint filters: current + next (both clamped to 2–5).
- * When already on Sprint 5, returns only [5].
+ * Default multi-select Sprint filters: current sprint only (clamped to 2–10).
+ * Kept as an array for Set(...)/chip init callers.
  */
 export function softLaunchFactoryDefaultSprints(ref: Date = new Date()): number[] {
-  const cur = softLaunchFactoryDefaultSprint(ref);
-  const next = Math.min(5, cur + 1);
-  return next === cur ? [cur] : [cur, next];
+  return [softLaunchFactoryDefaultSprint(ref)];
 }
 
 /** How Content Factory works + glossary for the Marketing/Launch Plan report. */
@@ -66,7 +76,7 @@ export const MARKETING_PLAN_DEFINITIONS: { term: string; definition: string }[] 
   {
     term: "GYSH Marketing/Launch Plan",
     definition:
-      "The living soft-launch marketing calendar (Sprints 2 kickoff through 5): daily posts, newsletters, ads prep, channel setup, Kevina Starr bridges, website actions, projections, and artifact checklists.",
+      "The living marketing calendar (Sprint 2 kickoff through Sprint 10): daily posts, newsletters, ads, channel setup, Kevina Starr bridges, website actions, projections, and artifact checklists.",
   },
   {
     term: "Cadence",
@@ -76,7 +86,7 @@ export const MARKETING_PLAN_DEFINITIONS: { term: string; definition: string }[] 
   {
     term: "Cadence locked",
     definition:
-      "The weekly rhythm is agreed and standing — soft launch is no longer ad hoc. Content keeps shipping on a fixed schedule without reinventing the plan every week. Sprint 5 ops item: lock owners, post days/times, and the Tuesday Content Factory review habit.",
+      "The weekly rhythm is agreed and standing — marketing is no longer ad hoc. Content keeps shipping on a fixed schedule without reinventing the plan every week. Sprint 5+ ops: lock owners, post days/times, and the Tuesday Content Factory review habit.",
   },
   {
     term: "Artifacts",
@@ -155,8 +165,8 @@ export type SoftLaunchCfStatus = SoftLaunchItemStatus;
 
 export type SoftLaunchItem = {
   id: string;
-  /** Sprint index (3–5; kickoff items may be 2 if finishing soft-launch week). */
-  sprint: 2 | 3 | 4 | 5;
+  /** Sprint index (2–10 marketing calendar; kickoff items may be 2). */
+  sprint: number;
   /** ISO date YYYY-MM-DD */
   day: string;
   channel: RolloutChannel;
@@ -522,6 +532,80 @@ export function softLaunchItemCompletion(
   };
 }
 
+/** Incomplete CF calendar rows still assigned outside `targetSprint`. */
+export type SoftLaunchSprintRolloverPlan = {
+  itemId: string;
+  itemRef: string;
+  title: string;
+  fromSprint: number;
+  taskId: string;
+  relatedTestIds: string[];
+};
+
+/**
+ * Plan Content Factory sprint carry: incomplete (not done) items whose calendar
+ * sprint is not `targetSprint`. Callers persist task/test moves + CF overrides.
+ */
+export function planSoftLaunchSprintRollovers(input: {
+  items: readonly SoftLaunchItem[];
+  targetSprint: number;
+  taskStatusById?: Record<string, string | undefined>;
+  testStatusById?: Record<string, string | undefined>;
+}): SoftLaunchSprintRolloverPlan[] {
+  const target = Math.floor(Number(input.targetSprint));
+  if (!Number.isFinite(target)) return [];
+  const out: SoftLaunchSprintRolloverPlan[] = [];
+  for (const item of input.items) {
+    const fromSprint = Number(item.sprint);
+    if (!Number.isFinite(fromSprint) || fromSprint === target) continue;
+    const completion = softLaunchItemCompletion(item, {
+      taskStatusById: input.taskStatusById,
+      testStatusById: input.testStatusById,
+    });
+    if (completion.itemDone) continue;
+    const links = softLaunchCrossLinks(item);
+    out.push({
+      itemId: item.id,
+      itemRef: links.itemRef || item.id,
+      title: item.title,
+      fromSprint,
+      taskId: links.taskId,
+      relatedTestIds: links.testIds,
+    });
+  }
+  return out;
+}
+
+/** True when a CF item notes field already records a rollover from `fromSprint`. */
+export function softLaunchNotesIndicateRollover(
+  notes: string | null | undefined,
+  fromSprint: number,
+): boolean {
+  return new RegExp(`Roll(?:ed|ing) over from Sprint\\s*${fromSprint}\\b`, "i").test(
+    String(notes ?? ""),
+  );
+}
+
+/** Append (or keep) a CF calendar rollover marker in free-text notes. */
+export function withSoftLaunchRolloverNote(
+  notes: string | null | undefined,
+  fromSprint: number,
+): string {
+  const text = `Rolled over from Sprint ${fromSprint}`;
+  const prev = String(notes ?? "").trim();
+  if (softLaunchNotesIndicateRollover(prev, fromSprint)) return prev;
+  return prev ? `${prev}\n\n${text}` : text;
+}
+
+/** True when a CF calendar item notes field already records a rollover from `fromSprint`. */
+export function softLaunchItemShowsRollover(
+  item: Pick<SoftLaunchItem, "notes" | "sprint">,
+  fromSprint?: number,
+): boolean {
+  if (fromSprint != null) return softLaunchNotesIndicateRollover(item.notes, fromSprint);
+  return /Roll(?:ed|ing) over from Sprint\s*\d+/i.test(String(item.notes ?? ""));
+}
+
 /** True when a seeded draft id belongs to a soft-launch calendar item. */
 export function draftBelongsToSoftLaunchItem(draftId: string, itemId: string): boolean {
   const id = String(draftId || "");
@@ -546,8 +630,8 @@ export function softLaunchVideoItems(): SoftLaunchItem[] {
  */
 export const PERSONAL_AMPLIFY_CADENCE = [
   {
-    sprint: 3 as const,
-    day: "2026-08-18",
+    sprint: 6 as const,
+    day: "2026-09-08",
     idBase: "sl-s3-personal-amplify-why",
     title: "Personal amplify — Why GYSH (+ Welcome catch-up)",
     postTime: "7:00 PM CT",
@@ -558,8 +642,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: origin story + soft-launch kickoff — best early-follower magnet.",
   },
   {
-    sprint: 3 as const,
-    day: "2026-08-20",
+    sprint: 6 as const,
+    day: "2026-09-09",
     idBase: "sl-s3-personal-amplify-guides",
     title: "Personal amplify — Free Guides + first YouTube Short",
     postTime: "7:00 PM CT",
@@ -570,8 +654,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: value post + video — dual format lifts reach.",
   },
   {
-    sprint: 3 as const,
-    day: "2026-08-24",
+    sprint: 6 as const,
+    day: "2026-09-14",
     idBase: "sl-s3-personal-amplify-wrap",
     title: "Personal amplify — Soft launch week wrap",
     postTime: "6:00 PM CT",
@@ -582,8 +666,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: week close + ask engagement; seeds Sprint 4 habit.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-25",
+    sprint: 6 as const,
+    day: "2026-09-10",
     idBase: "sl-s4-personal-amplify-ig-tt",
     title: "Personal amplify — IG grid + TikTok launch day",
     postTime: "7:00 PM CT",
@@ -595,8 +679,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: new-channel launch day — personal graphs seed first followers on IG/TT.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-26",
+    sprint: 6 as const,
+    day: "2026-09-08",
     idBase: "sl-s4-personal-amplify-kevina",
     title: "Personal amplify — Kevina Tuesday bridge",
     postTime: "7:30 PM CT",
@@ -606,8 +690,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: Kids-path trust voice → parents in personal network.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-28",
+    sprint: 6 as const,
+    day: "2026-09-09",
     idBase: "sl-s4-personal-amplify-fb",
     title: "Personal amplify — Mid-sprint GYSH FB tip",
     postTime: "7:00 PM CT",
@@ -617,8 +701,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: mid-week consistency — algorithm rewards steady personal shares.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-30",
+    sprint: 6 as const,
+    day: "2026-09-12",
     idBase: "sl-s4-personal-amplify-yt2",
     title: "Personal amplify — YouTube Short #2",
     postTime: "6:00 PM CT",
@@ -629,8 +713,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: weekend video share — high watch + subscribe path.",
   },
   {
-    sprint: 5 as const,
-    day: "2026-09-02",
+    sprint: 6 as const,
+    day: "2026-09-10",
     idBase: "sl-s5-personal-amplify-kevina",
     title: "Personal amplify — Kevina bridge posts",
     postTime: "7:30 PM CT",
@@ -640,8 +724,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: trust bridge into Kids Corner for personal network parents.",
   },
   {
-    sprint: 5 as const,
-    day: "2026-09-04",
+    sprint: 6 as const,
+    day: "2026-09-11",
     idBase: "sl-s5-personal-amplify-ugc",
     title: "Personal amplify — UGC ask",
     postTime: "7:00 PM CT",
@@ -652,8 +736,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: UGC posts need personal graph comments to take off.",
   },
   {
-    sprint: 5 as const,
-    day: "2026-09-05",
+    sprint: 6 as const,
+    day: "2026-09-13",
     idBase: "sl-s5-personal-amplify-montage",
     title: "Personal amplify — Soft-launch montage",
     postTime: "7:00 PM CT",
@@ -677,7 +761,7 @@ const PERSONAL_AMPLIFY_ARTIFACTS_FOR = (owner: "Tina" | "Evelyn") => [
 /** Calendar row: one partner’s personal amplify for a brand-post day. */
 export function personalAmplifyItem(p: {
   id: string;
-  sprint: 2 | 3 | 4 | 5;
+  sprint: number;
   day: string;
   title: string;
   owner: "Tina" | "Evelyn";
@@ -703,7 +787,7 @@ export function personalAmplifyItem(p: {
 /** Tina + Evelyn Tasks for one amplify calendar day. */
 export function personalAmplifyPair(p: {
   idBase: string;
-  sprint: 2 | 3 | 4 | 5;
+  sprint: number;
   day: string;
   title: string;
   amplifyTargets: string;
@@ -743,7 +827,7 @@ export function personalAmplifyCadenceItems(): SoftLaunchItem[] {
   return PERSONAL_AMPLIFY_CADENCE.flatMap((row) => personalAmplifyFromCadence(row.idBase));
 }
 
-/** Soft-launch marketing calendar — Sprint 3 kickoff through Sprint 5. */
+/** Marketing calendar — Sprint 2 kickoff through Sprint 10. */
 export const SOFT_LAUNCH_ROLLOUT: SoftLaunchItem[] = [
   /* ───────────── Sprint 2 close / Soft Launch day (Mon Aug 3) ───────────── */
   {
@@ -1084,7 +1168,7 @@ This week:
 3) Tell a friend who's been "meaning to start"
 
 Kids & Teens: parents coach the journey.
-Adults & Seniors: pick one hustle and a weekly hour budget.
+Adults & Seniors: pick one side hustle and a weekly hour budget.
 
 Start → https://getyoursidehustle.com
 
@@ -1129,7 +1213,7 @@ getyoursidehustle.com`,
 GYSH Seniors mode asks for flexible opportunities, fair pacing, and clear next steps — then a Blueprint you can keep.
 
 Explore Seniors → getyoursidehustle.com`,
-    imagePrompt: `${BRAND_IMAGE} Calm senior lifestyle + laptop, warm light, dignity-first. Headline: "Your pace. Your hustle."`,
+    imagePrompt: `${BRAND_IMAGE} Calm senior lifestyle + laptop, warm light, dignity-first. Headline: "Your pace. Your side hustle."`,
     artifacts: ["Post", "Boost consideration later in Sprint 4 ads"],
   },
   {
@@ -1324,7 +1408,7 @@ Sat: Family Match Wizard night reminder`,
     postTime: "12:00 PM CT",
     copy: `Adult tip: your constraint is a feature.
 
-Low hours? Pick a hustle that respects that.
+Low hours? Pick a side hustle that respects that.
 Tight budget? Start with free/low-cost GYSH guides.
 Need accountability? Workshops & community are coming.
 
@@ -1534,6 +1618,264 @@ Description: Highlights from the Get Your Side Hustle soft launch. Free Match Wi
       "Update Content Factory statuses to published where done",
     ],
   },
+
+  /* ───────────── Sprint 6 — Senior GMSH (Sep 8–14) ───────────── */
+  {
+    id: "sl-s6-ops",
+    sprint: 6,
+    day: "2026-09-08",
+    channel: "website",
+    title: "Senior GMSH week — Content Factory batch (ops)",
+    owner: "Both",
+    artifacts: [
+      "Tuesday batch: Senior Side Hustles + Match Wizard senior path",
+      "Standing cadence from Sprint 5 stays locked",
+    ],
+  },
+  {
+    id: "sl-s6-fb-senior",
+    sprint: 6,
+    day: "2026-09-10",
+    channel: "facebook_gysh",
+    title: "FB — Senior hustles at your pace",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `Side hustles after 50 don't have to look like a 20-year-old's grind.
+
+Get Your Side Hustle has a Senior path: Match Wizard → Blueprint → Launch Guides at a pace that protects rest and real life.
+
+Start free → getyoursidehustle.com`,
+    artifacts: ["GYSH FB post", "Cross-share to Kevina if it fits families-with-grandparents"],
+  },
+  {
+    id: "sl-s6-newsletter-4",
+    sprint: 6,
+    day: "2026-09-11",
+    channel: "newsletter",
+    title: "Newsletter #4 — Senior path + Military membership teaser",
+    owner: "Both",
+    copy: `Subject: A side hustle that respects your calendar
+
+This week we polish the Senior Get My Side Hustle path — flexible, clear next steps, no hustle-culture noise.
+
+If you know a veteran household: Military membership discount lands with this band (Task T-MEM-MILITARY).
+
+getyoursidehustle.com`,
+    artifacts: ["Send", "Link Senior Side Hustles + Join"],
+  },
+  {
+    id: "sl-s6-retro",
+    sprint: 6,
+    day: "2026-09-14",
+    channel: "website",
+    title: "Sprint 6 retro — Senior GMSH sign-off",
+    owner: "Both",
+    artifacts: ["Senior matrix status", "Carry-over list into Sprint 7"],
+  },
+
+  /* ───────────── Sprint 7 — Catch-up (Sep 15–21) ───────────── */
+  {
+    id: "sl-s7-ops",
+    sprint: 7,
+    day: "2026-09-15",
+    channel: "website",
+    title: "Catch-up week — rolled-over marketing + QA (ops)",
+    owner: "Both",
+    artifacts: [
+      "Pull incomplete S3–S6 Content Factory items",
+      "Tuesday batch only for items that still ship this week",
+    ],
+  },
+  {
+    id: "sl-s7-fb-value",
+    sprint: 7,
+    day: "2026-09-17",
+    channel: "facebook_gysh",
+    title: "FB — One clear next step (value post)",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `If GYSH feels like a lot, ignore the catalog for today.
+
+Do one thing: take the Match Wizard. That's the whole next step.
+
+getyoursidehustle.com`,
+    artifacts: ["GYSH FB post"],
+  },
+  {
+    id: "sl-s7-ads-hold",
+    sprint: 7,
+    day: "2026-09-16",
+    channel: "ads",
+    title: "Ads — Hold or light maintenance only",
+    owner: "Evelyn",
+    artifacts: ["No new tests unless a Sprint 5/6 winner is still profitable", "Cap documented"],
+  },
+  {
+    id: "sl-s7-retro",
+    sprint: 7,
+    day: "2026-09-21",
+    channel: "website",
+    title: "Sprint 7 retro — ready for workshops + conversion",
+    owner: "Both",
+    artifacts: ["Deferred list cleared or parked", "Workshop dates confirmed for Sprint 8"],
+  },
+
+  /* ───────────── Sprint 8 — Workshops + paid conversion (Sep 22–28) ───────────── */
+  {
+    id: "sl-s8-ops",
+    sprint: 8,
+    day: "2026-09-22",
+    channel: "website",
+    title: "Workshops live — Content Factory batch (ops)",
+    owner: "Both",
+    artifacts: [
+      "Public workshop cards dated",
+      "Join / membership upgrade CTAs on workshop pages",
+    ],
+  },
+  {
+    id: "sl-s8-fb-workshops",
+    sprint: 8,
+    day: "2026-09-24",
+    channel: "facebook_gysh",
+    title: "FB — Workshops are on the calendar",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `Dates are live. Pick a workshop, waitlist if you need to, and bring a friend.
+
+Get Your Side Hustle workshops — practical, paced, no guru theater.
+
+getyoursidehustle.com (Workshops)`,
+    artifacts: ["GYSH FB post", "Event/reminder if Facebook Events is in use"],
+  },
+  {
+    id: "sl-s8-newsletter-5",
+    sprint: 8,
+    day: "2026-09-25",
+    channel: "newsletter",
+    title: "Newsletter #5 — Workshop dates + membership upgrade",
+    owner: "Both",
+    copy: `Subject: Workshop dates (and why membership helps)
+
+This week we put workshop dates on the site. Members get the smoother path: reminders, certificates, and the next Blueprint step without hunting.
+
+Start or upgrade → getyoursidehustle.com/join`,
+    artifacts: ["Send", "UTM on Join + Workshops"],
+  },
+  {
+    id: "sl-s8-retro",
+    sprint: 8,
+    day: "2026-09-28",
+    channel: "website",
+    title: "Sprint 8 retro — conversion notes",
+    owner: "Both",
+    artifacts: ["Waitlist vs. registered", "Membership upgrade count", "Carry-over to retention week"],
+  },
+
+  /* ───────────── Sprint 9 — Community & retention (Sep 29–Oct 5) ───────────── */
+  {
+    id: "sl-s9-ops",
+    sprint: 9,
+    day: "2026-09-29",
+    channel: "website",
+    title: "Retention week — invite + certificates (ops)",
+    owner: "Both",
+    artifacts: ["Invite-a-friend live path checked", "Certificate copy reviewed"],
+  },
+  {
+    id: "sl-s9-fb-invite",
+    sprint: 9,
+    day: "2026-10-01",
+    channel: "facebook_gysh",
+    title: "FB — Invite a friend who would actually use this",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `The best GYSH member is someone you already talk to about money, kids, or "I wish I had a small extra stream."
+
+Send them the Match Wizard. That's the invite.
+
+getyoursidehustle.com`,
+    artifacts: ["GYSH FB post", "Personal amplify optional if it feels natural"],
+  },
+  {
+    id: "sl-s9-kevina",
+    sprint: 9,
+    day: "2026-10-02",
+    channel: "facebook_kevina",
+    title: "Kevina Starr — family invite + Kids Corner bridge",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `If a family on your street is hunting for a first kid hustle — Kids Corner is the gentle on-ramp.
+
+Match Wizard → Kids path → one Launch Guide. That's enough for this week.
+
+getyoursidehustle.com`,
+    artifacts: ["Kevina post", "Optional GYSH cross-share"],
+  },
+  {
+    id: "sl-s9-retro",
+    sprint: 9,
+    day: "2026-10-05",
+    channel: "website",
+    title: "Sprint 9 retro — retention loops",
+    owner: "Both",
+    artifacts: ["Invite uses", "Certificate issues", "Returning-member notes"],
+  },
+
+  /* ───────────── Sprint 10 — Next horizon (Oct 6–12) ───────────── */
+  {
+    id: "sl-s10-ops",
+    sprint: 10,
+    day: "2026-10-06",
+    channel: "website",
+    title: "Next-horizon week — S0–S10 retro (ops)",
+    owner: "Both",
+    artifacts: [
+      "Written retro of Sprints 0–10",
+      "Holiday / Q4 themes list",
+      "What we stop doing",
+    ],
+  },
+  {
+    id: "sl-s10-fb-horizon",
+    sprint: 10,
+    day: "2026-10-08",
+    channel: "facebook_gysh",
+    title: "FB — What's next for GYSH",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `Soft launch taught us the rhythm. Next we scale what families actually used — Match Wizard, Guides, workshops, and a membership that earns its keep.
+
+If you've been lurking: this is a good week to start free.
+
+getyoursidehustle.com`,
+    artifacts: ["GYSH FB post"],
+  },
+  {
+    id: "sl-s10-newsletter-6",
+    sprint: 10,
+    day: "2026-10-09",
+    channel: "newsletter",
+    title: "Newsletter #6 — Horizon note + holiday pacing",
+    owner: "Both",
+    copy: `Subject: What we learned — and what's next
+
+We just closed a full band from soft launch through Senior GMSH, workshops, and retention. Next up: a calmer Q4 plan you can actually keep.
+
+Stay on the list. We'll send dates, not noise.
+
+getyoursidehustle.com`,
+    artifacts: ["Send"],
+  },
+  {
+    id: "sl-s10-retro",
+    sprint: 10,
+    day: "2026-10-12",
+    channel: "website",
+    title: "Sprint 10 retro — planning pull",
+    owner: "Both",
+    artifacts: ["S0–S10 recap for Agenda", "Next sprint-count decision", "Holiday calendar sketch"],
+  },
 ];
 
 export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
@@ -1586,7 +1928,7 @@ export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
       "IG grid live (3 posts) + TikTok #1",
       "Personal amplify cadence: IG/TT launch, Kevina, GYSH tip, YT Short #2 (Tina + Evelyn each)",
       "Meta ads test $5–15/day with daily monitoring",
-      "Newsletter #2 — “one hustle / 30 days”",
+      "Newsletter #2 — “one side hustle / 30 days”",
       "Kevina 2× + GYSH mid-week value post",
       "Ads retro with go/iterate/pause",
     ],
@@ -1643,6 +1985,119 @@ export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
         lowUsd: -105,
         highUsd: 250,
         note: "OK to run slightly negative while learning CPA.",
+      },
+    ],
+  },
+  {
+    sprint: 6,
+    label: "Sprint 6 — Senior GMSH",
+    rangeLabel: "9/8/26–9/14/26",
+    theme: "Senior path polish, Military membership teaser, cadence continues",
+    expectedOutcomes: [
+      "Senior Get My Side Hustle sign-off",
+      "Newsletter #4",
+      "Senior-paced FB post shipped",
+    ],
+    metrics: [
+      { label: "Senior-path Wizard starts", low: "5", high: "40" },
+      { label: "Newsletter list", low: "50", high: "250" },
+    ],
+    revenue: [
+      {
+        label: "Paid memberships (cumulative)",
+        lowUsd: 27,
+        highUsd: 500,
+        note: "Senior + Military callout is awareness first.",
+      },
+    ],
+  },
+  {
+    sprint: 7,
+    label: "Sprint 7 — Catch-up",
+    rangeLabel: "9/15/26–9/21/26",
+    theme: "Clear rolled-over marketing/QA before workshops go live",
+    expectedOutcomes: [
+      "Rolled-over CF items done or parked",
+      "Workshop dates locked for Sprint 8",
+      "Ads on hold unless a winner is still profitable",
+    ],
+    metrics: [
+      { label: "Open CF items closed", low: "50%", high: "100%" },
+    ],
+    revenue: [
+      {
+        label: "Ad spend",
+        lowUsd: 0,
+        highUsd: 50,
+        note: "Maintenance only.",
+      },
+    ],
+  },
+  {
+    sprint: 8,
+    label: "Sprint 8 — Workshops + conversion",
+    rangeLabel: "9/22/26–9/28/26",
+    theme: "Public workshop dates + membership upgrade push",
+    expectedOutcomes: [
+      "Workshop cards live with dates",
+      "Newsletter #5 with Join CTA",
+      "Waitlist or registrations started",
+    ],
+    metrics: [
+      { label: "Workshop waitlist / RSVP", low: "8", high: "60" },
+      { label: "Membership upgrades", low: "1", high: "15" },
+    ],
+    revenue: [
+      {
+        label: "Paid memberships (this week)",
+        lowUsd: 27,
+        highUsd: 400,
+        note: "Conversion week — still directional.",
+      },
+    ],
+  },
+  {
+    sprint: 9,
+    label: "Sprint 9 — Community & retention",
+    rangeLabel: "9/29/26–10/5/26",
+    theme: "Invite-a-friend, certificates, returning members",
+    expectedOutcomes: [
+      "Invite-a-friend path used in the wild",
+      "Certificate copy reviewed",
+      "Kevina family invite post",
+    ],
+    metrics: [
+      { label: "Invite clicks", low: "10", high: "80" },
+      { label: "Returning site users", low: "25", high: "120" },
+    ],
+    revenue: [
+      {
+        label: "Renewals / returning paid",
+        lowUsd: 0,
+        highUsd: 200,
+        note: "Retention over new logos this week.",
+      },
+    ],
+  },
+  {
+    sprint: 10,
+    label: "Sprint 10 — Next horizon",
+    rangeLabel: "10/6/26–10/12/26",
+    theme: "S0–S10 retro, holiday / Q4 sketch, stop-doing list",
+    expectedOutcomes: [
+      "Written S0–S10 retro for Agenda",
+      "Newsletter #6 horizon note",
+      "Holiday calendar sketch",
+    ],
+    metrics: [
+      { label: "Email list size", low: "60", high: "300" },
+    ],
+    revenue: [
+      {
+        label: "MRR run-rate (directional)",
+        lowUsd: 0,
+        highUsd: 500,
+        note: "Snapshot for the next planning pull — not a hard target.",
       },
     ],
   },
@@ -1844,7 +2299,7 @@ export function softLaunchTaskSeeds(
     return {
       id: taskId,
       description: `${ref} · ${ROLLOUT_CHANNEL_LABELS[item.channel]}: ${item.title}`,
-      category: "launch_marketing",
+      category: item.channel === "personal_amplify" ? "personal_amplify" : "launch_marketing",
       priority:
         item.id.includes("welcome") ||
         item.id.includes("yt-create") ||

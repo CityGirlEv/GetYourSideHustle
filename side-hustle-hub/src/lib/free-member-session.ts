@@ -51,22 +51,89 @@ export function clearFreeMemberSession(): void {
   getLocalStore().removeItem(FREE_MEMBER_SESSION_KEY);
 }
 
-/** Blueprint unlock = portal login OR free member session OR kids/junior team membership. */
+/** Synthetic user for the local Free-signup marker — not an API session. */
+export const PENDING_FREE_AUTH_USER_ID = "free-pending";
+
+/** True when the dashboard was hydrated from localStorage with no login token. */
+export function isPendingFreePlaceholderUser(
+  user: { id?: string | null } | null | undefined,
+): boolean {
+  return String(user?.id || "").trim() === PENDING_FREE_AUTH_USER_ID;
+}
+
+/** Keep pending Free signups usable until admin activation issues a real login token. */
+export function pendingFreeAuthUser(session: FreeMemberSession | null): {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  roles: string[];
+  status: string;
+  joinedAt: string;
+  notes: string;
+  canLogin: boolean;
+  membershipTier: "free";
+  audience: string;
+} | null {
+  if (!session?.email) return null;
+  const audience =
+    session.ageGroup === "kids" || session.isParentAccount ? "parent" : session.ageGroup;
+  return {
+    id: PENDING_FREE_AUTH_USER_ID,
+    name: "Free member",
+    email: session.email,
+    role: "member",
+    roles: ["member"],
+    status: "pending",
+    joinedAt: session.createdAt.slice(0, 10),
+    notes: "",
+    canLogin: false,
+    membershipTier: "free",
+    audience,
+  };
+}
+
+/**
+ * Ranked wizard matches require a signed-in GYSH account (Free or higher).
+ * Guests, localStorage “free session” markers, and Kids/Teens team join do not unlock results.
+ * Admin / QA accounts count as logged in — do not exclude staff from their own Blueprint.
+ */
 export function hasBlueprintAccess(options: {
   isLoggedIn?: boolean;
   ageGroup: BlueprintAgeGroup;
+  /** @deprecated Lightweight Kids/Teens team join does not unlock wizard results. */
   hasTeamMembership?: boolean;
   /** Profile Switcher → Unlogged in User: force locked Blueprint preview. */
   previewAsGuest?: boolean;
 }): boolean {
   if (options.previewAsGuest) return false;
-  if (options.isLoggedIn) return true;
-  if (hasFreeMemberSession()) return true;
-  if (
-    (options.ageGroup === "kids" || options.ageGroup === "junior") &&
-    options.hasTeamMembership
-  ) {
-    return true;
-  }
-  return false;
+  return Boolean(options.isLoggedIn);
+}
+
+/**
+ * Kids / Teens / Senior hubs + Match Wizard ranking follow the portal session.
+ * Any signed-in GYSH account (Free+) is a member, including Admin and QA.
+ * Use Profile Switcher → Unlogged in User to preview the guest Unlock Blueprint gate.
+ */
+export function portalSessionUnlocksBlueprint(options: {
+  isLoggedIn: boolean;
+  previewAsGuest?: boolean;
+}): boolean {
+  return hasBlueprintAccess({
+    isLoggedIn: options.isLoggedIn,
+    previewAsGuest: options.previewAsGuest,
+    ageGroup: "adult",
+  });
+}
+
+/** Guests see only their one lifetime extra (if claimed). Members see the full ranked list. */
+export function visibleBlueprintMatches<T extends { id?: string }>(
+  matches: T[],
+  unlocked: boolean,
+  extraGuideId?: string | null,
+): T[] {
+  if (unlocked) return matches;
+  const extra = extraGuideId?.trim();
+  if (!extra) return [];
+  return matches.filter((row) => row.id === extra);
 }

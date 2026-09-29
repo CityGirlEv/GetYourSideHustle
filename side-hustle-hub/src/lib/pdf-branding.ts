@@ -1,6 +1,5 @@
 import type { jsPDF } from "jspdf";
-/** Cream-panel logo — plate color must match header fill so the mark reads transparent. */
-import gyshLogoUrl from "../assets/gysh-logo-pdf.png";
+import { legalDisclaimerPdfParagraphs } from "./legal-disclaimer";
 import {
   ADMIN_EMAIL,
   FACEBOOK_HANDLE,
@@ -17,7 +16,6 @@ export const PDF_CONTENT_W = PDF_PAGE_W - PDF_MARGIN * 2;
 
 /** Exact cream of the PDF logo plate — header uses the same so edges disappear. */
 export const PDF_LOGO_CREAM: [number, number, number] = [247, 243, 237];
-const LOGO_CREAM_HEX = "#F7F3ED";
 
 /** Logo slot height inside the header (extra pad keeps print from clipping). */
 export const PDF_LOGO_H = 48;
@@ -31,9 +29,12 @@ const HEADER_PAD_TOP = 14;
 const HEADER_PAD_BOTTOM = 12;
 export const PDF_HEADER_BAND = HEADER_PAD_TOP + PDF_LOGO_H + HEADER_PAD_BOTTOM; // 74
 
-/** Tall footer band — keeps page numbers off the page edge. */
-export const PDF_FOOTER_BAND = 36;
-export const PDF_FOOTER_BASELINE = PDF_PAGE_H - 16;
+/**
+ * Tall footer band — copyright, legal disclaimer, website/updated, page numbers.
+ * Keep page chrome off the printable edge.
+ */
+export const PDF_FOOTER_BAND = 102;
+export const PDF_FOOTER_BASELINE = PDF_PAGE_H - 14;
 /** Breathing room under the header separator before any body content. */
 export const PDF_CONTENT_TOP = PDF_HEADER_BAND + 28;
 export const PDF_CONTENT_BOTTOM = PDF_PAGE_H - PDF_FOOTER_BAND - 10;
@@ -216,100 +217,6 @@ export function drawPdfLinkedWrappedText(
   return cy;
 }
 
-let logoDataUrlCache: string | undefined;
-
-async function trimLogoToDataUrl(srcUrl: string): Promise<string | undefined> {
-  try {
-    const res = await fetch(srcUrl);
-    if (!res.ok) return undefined;
-    const blob = await res.blob();
-    const bmp = await createImageBitmap(blob);
-    const w = bmp.width;
-    const h = bmp.height;
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      bmp.close();
-      return undefined;
-    }
-    ctx.drawImage(bmp, 0, 0);
-    bmp.close();
-
-    const { data } = ctx.getImageData(0, 0, w, h);
-    let minX = w;
-    let minY = h;
-    let maxX = 0;
-    let maxY = 0;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
-        const a = data[i + 3]!;
-        if (a < 8) continue;
-        const r = data[i]!;
-        const g = data[i + 1]!;
-        const b = data[i + 2]!;
-        if (r < 18 && g < 18 && b < 18) continue;
-        const chroma = Math.max(r, g, b) - Math.min(r, g, b);
-        if (r > 220 && g > 210 && b > 190 && chroma < 40) continue;
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-      }
-    }
-
-    if (maxX <= minX || maxY <= minY) {
-      return canvas.toDataURL("image/png");
-    }
-
-    const pad = 4;
-    const sx = Math.max(0, minX - pad);
-    const sy = Math.max(0, minY - pad);
-    const sw = Math.min(w - sx, maxX - minX + 1 + pad * 2);
-    const sh = Math.min(h - sy, maxY - minY + 1 + pad * 2);
-    const scale = sw < 400 ? 2 : 1;
-    const out = document.createElement("canvas");
-    out.width = Math.round(sw * scale);
-    out.height = Math.round(sh * scale);
-    const octx = out.getContext("2d");
-    if (!octx) return canvas.toDataURL("image/png");
-    octx.imageSmoothingEnabled = true;
-    octx.imageSmoothingQuality = "high";
-    octx.fillStyle = LOGO_CREAM_HEX;
-    octx.fillRect(0, 0, out.width, out.height);
-    octx.drawImage(canvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
-    return out.toDataURL("image/png");
-  } catch {
-    return undefined;
-  }
-}
-
-export async function loadPdfLogoDataUrl(): Promise<string | undefined> {
-  if (logoDataUrlCache) return logoDataUrlCache;
-  const trimmed = await trimLogoToDataUrl(gyshLogoUrl);
-  if (trimmed) {
-    logoDataUrlCache = trimmed;
-    return trimmed;
-  }
-  try {
-    const res = await fetch(gyshLogoUrl);
-    if (!res.ok) return undefined;
-    const blob = await res.blob();
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-    logoDataUrlCache = dataUrl;
-    return dataUrl;
-  } catch {
-    return undefined;
-  }
-}
-
 function fillHeaderCream(doc: jsPDF, bandH: number) {
   doc.setFillColor(...PDF_LOGO_CREAM);
   doc.rect(0, 0, PDF_PAGE_W, bandH, "F");
@@ -326,6 +233,35 @@ function drawFooterChrome(doc: jsPDF) {
   doc.setDrawColor(...PDF_BRAND_COLORS.line);
   doc.setLineWidth(0.5);
   doc.line(PDF_MARGIN, PDF_PAGE_H - PDF_FOOTER_BAND, PDF_PAGE_W - PDF_MARGIN, PDF_PAGE_H - PDF_FOOTER_BAND);
+}
+
+/** Copyright + legal disclaimer block in the PDF footer (every printable page). */
+export function drawPdfLegalDisclaimer(doc: jsPDF): void {
+  const paras = legalDisclaimerPdfParagraphs();
+  const top = PDF_PAGE_H - PDF_FOOTER_BAND + 8;
+  const maxW = PDF_CONTENT_W;
+  const lineH = 7;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6);
+  doc.setTextColor(...PDF_BRAND_COLORS.muted);
+  let y = top;
+  for (let p = 0; p < paras.length; p++) {
+    const para = paras[p]!;
+    if (p === 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.1);
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6);
+    }
+    const lines = doc.splitTextToSize(para, maxW) as string[];
+    for (const line of lines) {
+      if (y > PDF_FOOTER_BASELINE - 12) break;
+      doc.text(line, PDF_MARGIN, y);
+      y += lineH;
+    }
+    y += 1.8;
+  }
 }
 
 export function drawPdfPageChrome(doc: jsPDF) {
@@ -516,6 +452,7 @@ export function applyPdfPageBranding(
     if (showDraft) drawPdfDraftWatermark(doc);
     drawPdfBrandedHeader(doc, label, logoDataUrl);
     drawFooterChrome(doc);
+    drawPdfLegalDisclaimer(doc);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);

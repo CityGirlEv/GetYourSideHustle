@@ -3,9 +3,9 @@ import {
   getLaunchGuidePeekSections,
   sneakPeekText,
 } from "../launch-guide-peeks";
-import { LAUNCH_GUIDES } from "../launch-guides";
+import { LAUNCH_GUIDES, sortGuidesFreeFirst } from "../launch-guides";
+import { adultGuideMinTier, kidsGuideMinTier } from "../guide-access";
 import { guidesForAudience } from "../kids-guides";
-import { SENIOR_GUIDE_TEASERS } from "../seniors-content";
 
 describe("launch guide peeks", () => {
   it("organizes Kids, Teens (junior id), Senior, and Adult sections from real data", () => {
@@ -17,10 +17,22 @@ describe("launch guide peeks", () => {
     const senior = sections.find((s) => s.id === "senior")!;
     const adult = sections.find((s) => s.id === "adult")!;
 
-    expect(kids.guides.map((g) => g.id)).toEqual(guidesForAudience("kids").map((g) => g.id));
-    expect(junior.guides.map((g) => g.id)).toEqual(guidesForAudience("junior").map((g) => g.id));
-    expect(senior.guides.map((g) => g.id)).toEqual(SENIOR_GUIDE_TEASERS.map((g) => g.id));
+    expect(kids.guides.map((g) => g.id)).toEqual(
+      sortGuidesFreeFirst(
+        guidesForAudience("kids").map((g) => ({ id: g.id, name: g.title })),
+        (id) => kidsGuideMinTier(id),
+      ).map((g) => g.id),
+    );
+    expect(junior.guides.map((g) => g.id)).toEqual(
+      sortGuidesFreeFirst(
+        guidesForAudience("junior").map((g) => ({ id: g.id, name: g.title })),
+        (id) => kidsGuideMinTier(id),
+      ).map((g) => g.id),
+    );
+    expect(senior.guides[0]?.minTier).toBeDefined();
     expect(adult.guides.map((g) => g.id)).toEqual(LAUNCH_GUIDES.map((g) => g.id));
+    expect(adult.guides[0]?.minTier).toBe("free");
+    expect(adultGuideMinTier(LAUNCH_GUIDES[0].id)).toBe("free");
 
     for (const section of sections) {
       for (const guide of section.guides) {
@@ -30,23 +42,65 @@ describe("launch guide peeks", () => {
     }
   });
 
-  it("routes adult peeks to Launch Guides and audience peeks to their hubs", () => {
+  it("routes every peek Open Guide to the actual guide when an id exists", () => {
     const sections = getLaunchGuidePeekSections();
     expect(sections.find((s) => s.id === "adult")!.guides[0].nav).toEqual({
       view: "guides",
       hustleId: LAUNCH_GUIDES[0].id,
     });
-    expect(sections.find((s) => s.id === "kids")!.guides[0].nav).toEqual({
-      view: "kids",
-      mode: "kids",
+
+    const kidsGuide = sections.find((s) => s.id === "kids")!.guides[0]!;
+    expect(kidsGuide.nav).toEqual({ view: "guides", hustleId: kidsGuide.id });
+
+    const juniorGuide = sections.find((s) => s.id === "junior")!.guides[0]!;
+    expect(juniorGuide.nav).toEqual({ view: "guides", hustleId: juniorGuide.id });
+
+    const kindness = sections
+      .find((s) => s.id === "kids")!
+      .guides.find((g) => g.id === "kids-kindness-share");
+    expect(kindness?.nav).toEqual({
+      view: "guides",
+      hustleId: "kids-kindness-share",
     });
-    expect(sections.find((s) => s.id === "junior")!.guides[0].nav).toEqual({
-      view: "kids",
-      mode: "junior",
+
+    const giveBack = sections
+      .find((s) => s.id === "junior")!
+      .guides.find((g) => g.id === "junior-give-back-teach");
+    expect(giveBack?.nav).toEqual({
+      view: "guides",
+      hustleId: "junior-give-back-teach",
     });
-    expect(sections.find((s) => s.id === "senior")!.guides[0].nav).toEqual({
-      view: "seniors",
+
+    const seniorRideshare = sections
+      .find((s) => s.id === "senior")!
+      .guides.find((g) => g.id === "senior-rideshare");
+    expect(seniorRideshare?.nav).toEqual({
+      view: "guides",
+      hustleId: "rideshare",
     });
+
+    // Coming-soon teasers without a launch guide still open the Seniors hub.
+    const comingSoon = sections
+      .find((s) => s.id === "senior")!
+      .guides.find((g) => g.id === "start-consulting");
+    expect(comingSoon?.nav).toEqual({ view: "seniors" });
+  });
+
+  it("marks free launch guides so peek buttons can show a Free badge", () => {
+    const sections = getLaunchGuidePeekSections();
+    const adult = sections.find((s) => s.id === "adult")!;
+    const plantWatering = adult.guides.find((g) => g.id === "plant-watering")!;
+    const handyman = adult.guides.find((g) => g.id === "handyman")!;
+    const rideshare = adult.guides.find((g) => g.id === "rideshare")!;
+    const airbnb = adult.guides.find((g) => g.id === "airbnb")!;
+    expect(plantWatering.minTier).toBe("free");
+    expect(handyman.minTier).toBe("free");
+    expect(rideshare.minTier).toBe("pro");
+    expect(airbnb.minTier).toBe("starter");
+
+    const kids = sections.find((s) => s.id === "kids")!;
+    expect(kids.guides.some((g) => g.minTier === "free")).toBe(true);
+    expect(kids.guides.some((g) => g.minTier !== "free")).toBe(true);
   });
 
   it("shortens long blurbs to a sneak peek", () => {

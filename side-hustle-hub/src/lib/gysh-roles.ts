@@ -23,7 +23,7 @@ export const GYSH_ROLE_LABELS: Record<GyshRole, string> = {
   kid: "Kid (3–12)",
   junior: "Teens (13–17)",
   adult: "Adult (18+)",
-  senior: "Senior (55+)",
+  senior: "Senior (50+)",
   beta: "Beta Tester",
 };
 
@@ -115,7 +115,7 @@ export function userHasRole(u: Pick<GyshUser, "role" | "roles">, role: GyshRole)
   return userRoles(u).includes(role);
 }
 
-/** Admin Studio / partner tooling — admin, QA, or Dev (matches functions/_lib/roles.ts). */
+/** Admin Studio / Admin menu — admin role only (QA and Dev do not see Admin). */
 export function canAccessAdminPortal(
   u: Pick<GyshUser, "role" | "roles"> | { role?: string; roles?: string[] } | null | undefined,
 ): boolean {
@@ -125,7 +125,27 @@ export function canAccessAdminPortal(
     : u.role
       ? [u.role]
       : [];
-  return roles.includes("admin") || roles.includes("qa") || roles.includes("dev");
+  return roles.includes("admin");
+}
+
+/** Testing Portal — Admin or QA (Dev alone is not enough). */
+export function canAccessTestingPortal(
+  u: Pick<GyshUser, "role" | "roles"> | { role?: string; roles?: string[] } | null | undefined,
+): boolean {
+  if (!u) return false;
+  const roles = Array.isArray(u.roles) && u.roles.length > 0
+    ? u.roles
+    : u.role
+      ? [u.role]
+      : [];
+  return roles.includes("admin") || roles.includes("qa");
+}
+
+/** True when the account is QA but not Admin (Testing Portal only — no Admin menu). */
+export function isQaOnlyPortalUser(
+  u: Pick<GyshUser, "role" | "roles"> | { role?: string; roles?: string[] } | null | undefined,
+): boolean {
+  return canAccessTestingPortal(u) && !canAccessAdminPortal(u);
 }
 
 /**
@@ -175,7 +195,7 @@ const QA_ACCENT_FALLBACKS = [
 
 /**
  * Seed / fallback roster + preferred accents for known partners.
- * Live UI lists come from {@link qaTestersFromUsers} (active Users with the QA role).
+ * Live UI lists come from {@link qaTestersFromUsers} (Users with the QA role).
  */
 export const QA_TESTERS: QaTester[] = [
   {
@@ -201,6 +221,12 @@ export const QA_TESTERS: QaTester[] = [
     name: "Candace Jackson",
     shortName: "Candace",
     accent: "#3d6b8c",
+  },
+  {
+    id: "teejay",
+    name: "Tee Jay",
+    shortName: "Tee Jay",
+    accent: "#6b5b95",
   },
 ];
 
@@ -254,51 +280,99 @@ export function qaTesterIdForUser(u: {
     return "lyriq";
   }
   if (email.includes("candace")) return "candace";
+  if (
+    email.includes("teejay") ||
+    email.includes("tee-jay") ||
+    email.includes("tee.jay") ||
+    /\btee\s*jay\b/.test(name)
+  ) {
+    return "teejay";
+  }
   const slug = slugifyQaTesterId(u.name, u.email);
   return slug || null;
 }
 
 function sortQaTesters(list: QaTester[]): QaTester[] {
-  const order = new Map(QA_TESTERS.map((t, i) => [t.id, i]));
-  return [...list].sort((a, b) => {
-    const ai = order.has(a.id) ? order.get(a.id)! : 1000;
-    const bi = order.has(b.id) ? order.get(b.id)! : 1000;
-    if (ai !== bi) return ai - bi;
-    return a.shortName.localeCompare(b.shortName, undefined, { sensitivity: "base" });
+  return [...list].sort((a, b) =>
+    a.shortName.localeCompare(b.shortName, undefined, { sensitivity: "base" }),
+  );
+}
+
+const CANONICAL_QA_PARTNER_IDS = new Set(QA_TESTERS.map((t) => t.id));
+
+function appendUniqueQaTester(
+  out: QaTester[],
+  seen: Set<string>,
+  u: Pick<GyshUser, "id" | "name">,
+  rawId: string,
+): void {
+  let id = rawId;
+  if (seen.has(id)) {
+    // Two accounts for the same partner (evelyn3 + evvelyn3) stay one Evelyn.
+    if (CANONICAL_QA_PARTNER_IDS.has(id)) return;
+    const tail = String(u.id || "")
+      .replace(/\W+/g, "")
+      .slice(-4)
+      .toLowerCase();
+    id = tail ? `${id}-${tail}` : `${id}-${out.length + 1}`;
+    if (seen.has(id)) return;
+  }
+  const catalog = QA_TESTERS.find((t) => t.id === id);
+  const shortName = catalog?.shortName || firstNameLabel(u.name);
+  if (
+    out.some(
+      (t) =>
+        t.shortName.toLowerCase() === shortName.toLowerCase() &&
+        CANONICAL_QA_PARTNER_IDS.has(t.id),
+    )
+  ) {
+    return;
+  }
+  seen.add(id);
+  out.push({
+    id,
+    name: String(u.name || "").trim() || catalog?.name || id,
+    shortName,
+    accent: catalog?.accent || QA_ACCENT_FALLBACKS[out.length % QA_ACCENT_FALLBACKS.length]!,
   });
 }
 
 /**
- * Active Users Area accounts with the QA role → Testing Portal chips / assignee dropdowns.
- * Falls back to {@link QA_TESTERS} when none are found (offline / empty Users).
+ * Active or pending Users Area accounts with the QA role → Testing Portal chips /
+ * assignee dropdowns (disabled accounts stay out). Falls back to {@link QA_TESTERS}
+ * when none are found (offline / empty Users).
  */
+export function userEligibleForQaAssigneeList(
+  u: Pick<GyshUser, "status" | "role" | "roles">,
+): boolean {
+  if (u.status === "disabled") return false;
+  if (u.status !== "active" && u.status !== "pending") return false;
+  return userHasRole(u, "qa");
+}
+
 export function qaTestersFromUsers(users: readonly GyshUser[]): QaTester[] {
   const seen = new Set<string>();
   const out: QaTester[] = [];
   for (const u of users) {
-    if (u.status !== "active") continue;
-    if (!userHasRole(u, "qa")) continue;
-    let id = qaTesterIdForUser(u);
+    if (!userEligibleForQaAssigneeList(u)) continue;
+    const id = qaTesterIdForUser(u);
     if (!id) continue;
-    if (seen.has(id)) {
-      const tail = String(u.id || "")
-        .replace(/\W+/g, "")
-        .slice(-4)
-        .toLowerCase();
-      id = tail ? `${id}-${tail}` : `${id}-${out.length + 1}`;
-      if (seen.has(id)) continue;
-    }
-    seen.add(id);
-    const catalog = QA_TESTERS.find((t) => t.id === id);
-    out.push({
-      id,
-      name: String(u.name || "").trim() || catalog?.name || id,
-      shortName: catalog?.shortName || firstNameLabel(u.name),
-      accent: catalog?.accent || QA_ACCENT_FALLBACKS[out.length % QA_ACCENT_FALLBACKS.length]!,
-    });
+    appendUniqueQaTester(out, seen, u, id);
   }
-  if (out.length === 0) return [...QA_TESTERS];
+  if (out.length === 0) return sortQaTesters([...QA_TESTERS]);
   return sortQaTesters(out);
+}
+
+/**
+ * Daily Progress roster: seed QA catalog plus every live Users-area QA person.
+ * Catalog testers stay visible even when only a subset of Users have the QA role.
+ */
+export function allQaTestersForProgress(users: readonly GyshUser[] = []): QaTester[] {
+  const byId = new Map(QA_TESTERS.map((t) => [t.id, t]));
+  if (users.length > 0) {
+    for (const t of qaTestersFromUsers(users)) byId.set(t.id, t);
+  }
+  return sortQaTesters([...byId.values()]);
 }
 
 /**
@@ -311,24 +385,9 @@ export function devAssigneesFromUsers(users: readonly GyshUser[]): QaTester[] {
   for (const u of users) {
     if (u.status !== "active") continue;
     if (!userHasRole(u, "dev")) continue;
-    let id = qaTesterIdForUser(u);
+    const id = qaTesterIdForUser(u);
     if (!id) continue;
-    if (seen.has(id)) {
-      const tail = String(u.id || "")
-        .replace(/\W+/g, "")
-        .slice(-4)
-        .toLowerCase();
-      id = tail ? `${id}-${tail}` : `${id}-${out.length + 1}`;
-      if (seen.has(id)) continue;
-    }
-    seen.add(id);
-    const catalog = QA_TESTERS.find((t) => t.id === id);
-    out.push({
-      id,
-      name: String(u.name || "").trim() || catalog?.name || id,
-      shortName: catalog?.shortName || firstNameLabel(u.name),
-      accent: catalog?.accent || QA_ACCENT_FALLBACKS[out.length % QA_ACCENT_FALLBACKS.length]!,
-    });
+    appendUniqueQaTester(out, seen, u, id);
   }
   if (out.length === 0) {
     const lead = QA_TESTERS.find((t) => t.id === FAILED_TEST_ASSIGNEE);
@@ -375,9 +434,20 @@ export function isHumanQaTester(id: string): id is QaTesterId {
 
 /** Normalize a stored Testing Portal assignee to a canonical lowercase id (or ""). */
 export function normalizeQaAssigneeId(raw: string | null | undefined): string {
-  return String(raw || "")
+  const n = String(raw || "")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  if (!n) return "";
+  if (n === "tee jay" || n === "tee-jay" || n === "tee.jay" || n === "teej") {
+    return "teejay";
+  }
+  for (const t of QA_TESTERS) {
+    const short = t.shortName.toLowerCase();
+    if (n === t.id || n === short || n === t.name.toLowerCase()) return t.id;
+    if (n.startsWith(`${short} `)) return t.id;
+  }
+  return n;
 }
 
 export function testOwnerLabel(
@@ -408,10 +478,16 @@ export type GyshUser = {
   membershipTier?: string;
   /** Audience lane: kids | junior | adult | senior */
   audience?: string;
+  /** How they said they found GYSH at signup. */
+  heardAbout?: string | null;
   /** Spendable credit wallet on this membership account. */
   creditBalance?: number;
-  /** Last successful sign-in (ISO), when the API provides it. */
+  /** ISO timestamp of last successful login (`login_ok`), if known. */
   lastLoginAt?: string | null;
+  /** YYYY-MM-DD membership expiration / next renewal. */
+  membershipExpiresAt?: string | null;
+  /** ISO timestamp of last recorded membership charge. */
+  membershipLastPaidAt?: string | null;
 };
 
 export async function fetchUsers(opts?: { includeDeleted?: boolean }): Promise<GyshUser[]> {
@@ -456,13 +532,76 @@ export async function deleteUser(id: string): Promise<void> {
   await api(`users/${encodeURIComponent(userId)}`, { method: "DELETE" });
 }
 
-/** Admin: set a member's plan from Users Area / Memberships. Optionally notify and count a complimentary Starter grant. */
+export type GyshBulkOpFailure = { id: string; reason: string };
+
+export type GyshBulkUpdateResult = {
+  ok: boolean;
+  updated: number;
+  skipped: number;
+  failures: GyshBulkOpFailure[];
+};
+
+export type GyshBulkDeleteResult = {
+  ok: boolean;
+  deleted: number;
+  skipped: number;
+  failures: GyshBulkOpFailure[];
+};
+
+export async function bulkUpdateUsers(input: {
+  ids: string[];
+  status?: GyshUser["status"] | "";
+  roles?: GyshRole[];
+  rolesMode?: "set" | "add" | "remove";
+}): Promise<GyshBulkUpdateResult> {
+  const data = await api<GyshBulkUpdateResult>("users/bulk-update", {
+    method: "POST",
+    body: {
+      ids: input.ids,
+      status: input.status || undefined,
+      roles: input.roles,
+      rolesMode: input.rolesMode,
+    },
+  });
+  return {
+    ok: data.ok === true,
+    updated: Number(data.updated) || 0,
+    skipped: Number(data.skipped) || 0,
+    failures: Array.isArray(data.failures) ? data.failures : [],
+  };
+}
+
+export async function bulkDeleteUsers(ids: string[]): Promise<GyshBulkDeleteResult> {
+  const data = await api<GyshBulkDeleteResult>("users/bulk-delete", {
+    method: "POST",
+    body: { ids },
+  });
+  return {
+    ok: data.ok === true,
+    deleted: Number(data.deleted) || 0,
+    skipped: Number(data.skipped) || 0,
+    failures: Array.isArray(data.failures) ? data.failures : [],
+  };
+}
+
+/** Admin: drop a paid plan back to Free. Does not delete the member account. */
+export async function clearUserMembership(id: string): Promise<GyshUser> {
+  const userId = String(id || "").trim();
+  if (!userId) throw new Error("User id is required.");
+  const data = await api<{ user: GyshUser }>(`users/${encodeURIComponent(userId)}/membership`, {
+    method: "DELETE",
+  });
+  return data.user;
+}
+
+/** Admin: set a member's plan from Users Area / Memberships. Optionally notify and count a first-5 Starter grant. */
 export async function updateUserMembership(
   id: string,
   body: {
     membershipTier: string;
     notify?: boolean;
     complimentaryFoundingStarter?: boolean;
+    membershipExpiresAt?: string;
   },
 ): Promise<{ user: GyshUser; emailSent: boolean; foundingSlot: number | null }> {
   const userId = String(id || "").trim();
@@ -479,5 +618,20 @@ export async function updateUserMembership(
     user: data.user,
     emailSent: data.emailSent === true,
     foundingSlot: data.foundingSlot ?? null,
+  };
+}
+
+export async function sendMerchClaimEmail(
+  userId: string,
+): Promise<{ emailSent: boolean; message: string }> {
+  const id = String(userId || "").trim();
+  if (!id) throw new Error("User id is required.");
+  const data = await api<{ emailSent?: boolean; message?: string }>("email/merch-claim", {
+    method: "POST",
+    body: { userId: id },
+  });
+  return {
+    emailSent: data.emailSent === true,
+    message: data.message || (data.emailSent ? "GYSH Gear shop email sent." : "Email was not sent."),
   };
 }

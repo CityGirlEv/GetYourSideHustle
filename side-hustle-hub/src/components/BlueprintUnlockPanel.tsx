@@ -2,18 +2,21 @@ import { useState } from "react";
 import { Unlock } from "lucide-react";
 import { trackGyshEvent, type BlueprintAgeGroup } from "../lib/gysh-analytics";
 import { grantFreeMemberSession } from "../lib/free-member-session";
-import { clearPendingBlueprint, readPendingBlueprint } from "../lib/pending-blueprint";
-import { registerFreeMember } from "../lib/auth";
+import { pendingWizardRegisterPayload, readPendingBlueprint } from "../lib/pending-blueprint";
+import { registerFreeMember, type AuthUser } from "../lib/auth";
 import { claimBlueprint, saveBlueprintToAccount } from "../lib/blueprints-api";
 import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
 import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
 import { PasswordField } from "./PasswordField";
+import { passwordPolicyError } from "../lib/password-policy";
+import { HEARD_ABOUT_SOURCES, parseHeardAboutInput } from "../lib/heard-about";
 
 type BlueprintUnlockPanelProps = {
-  onUnlocked: (ageGroup: BlueprintAgeGroup) => void;
+  onUnlocked: (ageGroup: BlueprintAgeGroup, user?: AuthUser | null) => void;
   onSignIn: () => void;
   onOpenBetaNda?: () => void;
+  onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
 };
 
@@ -21,13 +24,17 @@ export function BlueprintUnlockPanel({
   onUnlocked,
   onSignIn,
   onOpenBetaNda,
+  onBetaTesterRegistered,
   onBetaTestingUnlocked,
 }: BlueprintUnlockPanelProps) {
   const pending = readPendingBlueprint();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [childDisplayName, setChildDisplayName] = useState("");
+  const [heardAboutSource, setHeardAboutSource] = useState("");
+  const [heardAboutDetail, setHeardAboutDetail] = useState("");
   const [error, setError] = useState("");
   const [applyBetaTester, setApplyBetaTester] = useState(false);
   const [betaNda, setBetaNda] = useState<BetaNdaAcceptanceValue>({
@@ -59,12 +66,25 @@ export function BlueprintUnlockPanel({
       setError(isKids ? "Enter a parent or guardian email." : "Enter a valid email address.");
       return;
     }
-    if (password.length < 5) {
-      setError("Password must be at least 5 characters.");
+    const pwErr = passwordPolicyError(password);
+    if (pwErr) {
+      setError(pwErr);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
     if (isKids && !childDisplayName.trim()) {
       setError("Enter a first name or nickname for the child (we do not collect a child email).");
+      return;
+    }
+    const heardAbout = parseHeardAboutInput({
+      sourceId: heardAboutSource,
+      detail: heardAboutDetail,
+    });
+    if (!heardAbout.ok) {
+      setError(heardAbout.error);
       return;
     }
     const ndaPayload = {
@@ -84,13 +104,17 @@ export function BlueprintUnlockPanel({
 
     setBusy(true);
     try {
+      const wizard = pendingWizardRegisterPayload(pending);
       const result = await registerFreeMember({
         email: trimmed,
         password,
         name: name.trim() || undefined,
         ageGroup,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
-        claimToken: pending.claimToken,
+        claimToken: wizard.claimToken ?? pending.claimToken,
+        pendingBlueprint: wizard.pendingBlueprint,
+        membershipTier: "free",
+        heardAbout: { sourceId: heardAbout.sourceId, detail: heardAbout.detail },
         applyBetaTester,
         betaNda: applyBetaTester ? ndaPayload : undefined,
       });
@@ -119,25 +143,26 @@ export function BlueprintUnlockPanel({
       if (!result.claimedBlueprintId) {
         try {
           await saveBlueprintToAccount({
-            ageGroup,
+            ageGroup: pending.ageGroup,
             answers: pending.answers,
             resultIds: pending.resultIds,
             resultPcts: pending.resultPcts,
-            childProfileId: result.childProfileId,
+            childProfileId: pending.ageGroup === "kids" ? result.childProfileId : null,
             claimToken: pending.claimToken,
           });
         } catch {
-          /* local restore still works */
+          /* keep local pending for My Dashboard until login can attach it */
         }
       }
-
-      clearPendingBlueprint();
       trackGyshEvent("blueprint_unlocked", { age_group: ageGroup, source: "free_signup" });
       trackGyshEvent("blueprint_saved", { age_group: ageGroup, source: "free_signup" });
+      if (applyBetaTester) {
+        onBetaTesterRegistered?.();
+      }
       if (applyBetaTester && result.testingUnlocked && result.betaNda && onBetaTestingUnlocked) {
         onBetaTestingUnlocked(result.betaNda);
       }
-      onUnlocked(ageGroup);
+      onUnlocked(ageGroup, result.user);
     } catch {
       setError("Registration unavailable. Check that the database migration has been applied.");
     } finally {
@@ -211,12 +236,50 @@ export function BlueprintUnlockPanel({
           autoComplete="new-password"
           value={password}
           onChange={setPassword}
-          placeholder="At least 5 characters"
+          placeholder="At least 8 characters"
           required
-          minLength={5}
           showStrength
           data-testid="blueprint-unlock-password"
         />
+        <PasswordField
+          id="blueprint-unlock-password-confirm"
+          label="Confirm password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          required
+          data-testid="blueprint-unlock-password-confirm"
+        />
+        <label htmlFor="blueprint-unlock-heard-about">How did you hear about us?</label>
+        <select
+          id="blueprint-unlock-heard-about"
+          value={heardAboutSource}
+          onChange={(e) => setHeardAboutSource(e.target.value)}
+          required
+          data-testid="blueprint-unlock-heard-about"
+        >
+          <option value="">Select one</option>
+          {HEARD_ABOUT_SOURCES.map((source) => (
+            <option key={source.id} value={source.id}>
+              {source.label}
+            </option>
+          ))}
+        </select>
+        {heardAboutSource === "other" ? (
+          <>
+            <label htmlFor="blueprint-unlock-heard-about-detail">Please tell us more</label>
+            <input
+              id="blueprint-unlock-heard-about-detail"
+              type="text"
+              value={heardAboutDetail}
+              onChange={(e) => setHeardAboutDetail(e.target.value)}
+              maxLength={80}
+              required
+              placeholder="Podcast, neighbor, church…"
+              data-testid="blueprint-unlock-heard-about-detail"
+            />
+          </>
+        ) : null}
         <label className="membership-signup-role-opt" htmlFor="blueprint-unlock-beta">
           <input
             id="blueprint-unlock-beta"
@@ -266,7 +329,7 @@ export function BlueprintUnlockPanel({
                 : "Create free account & unlock"}
           </button>
           <button type="button" className="btn btn-outline" onClick={onSignIn} disabled={busy}>
-            Already have an account? Sign in
+            Already have an account? Log in
           </button>
         </div>
       </form>

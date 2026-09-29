@@ -42,6 +42,48 @@ describe("sprint schedule assignments", () => {
     expect(suggestedSprintForTask({ id: "T-016", category: "content", notes: "" })).toBe(4);
   });
 
+  it("places Personal amplify tasks and titled tests on Sprint 6", () => {
+    const amplifyTasks = Object.entries(TASK_SPRINT_MAP).filter(([id]) =>
+      id.includes("PERSONAL-AMPLIFY"),
+    );
+    expect(amplifyTasks.length).toBeGreaterThan(0);
+    for (const [id, sprint] of amplifyTasks) {
+      expect(sprint).toBe(6);
+      expect(suggestedSprintForTask({ id, category: "launch_marketing", notes: "" })).toBe(6);
+    }
+    expect(
+      suggestedSprintForTest({
+        id: "GEN-AMPLIFY-TINA",
+        area: "Content Factory",
+        priority: "P1",
+        title: "Personal amplify — Why GYSH (Tina)",
+      }),
+    ).toBe(6);
+    expect(
+      suggestedSprintForTest({
+        id: "GEN-AMPLY-EVELYN",
+        area: "Content Factory",
+        priority: "P1",
+        title: "Personal Amply share for Soft launch week wrap",
+      }),
+    ).toBe(6);
+    expect(
+      suggestedSprintForTask({
+        id: "T-SL-S3-PERSONAL-AMPLIFY-0804",
+        category: "launch_marketing",
+        notes: "",
+        description: "Personal amplify — Why we built GYSH",
+      }),
+    ).toBe(6);
+  });
+
+  it("maps later Content Factory task ids onto Sprints 6–10", () => {
+    expect(suggestedSprintForTask({ id: "T-SL-S6-OPS", category: "launch_marketing", notes: "" })).toBe(6);
+    expect(suggestedSprintForTask({ id: "T-SL-S8-FB-WORKSHOPS", category: "launch_marketing", notes: "" })).toBe(8);
+    expect(suggestedSprintForTask({ id: "T-SL-S10-RETRO", category: "launch_marketing", notes: "" })).toBe(10);
+    expect(suggestedSprintForTask({ id: "T-MEM-MILITARY", category: "membership", notes: "" })).toBe(6);
+  });
+
   it("spreads wizard FMSH matrices across sprints 4–6", () => {
     const kids = WIZARD_SCENARIO_CASES.find(
       (c) => c.area === "Kids Get Your Side Hustle",
@@ -239,6 +281,32 @@ describe("sprint schedule assignments", () => {
     expect(changed).toBe(true);
     expect(next[0]!.sprint).toBe(1);
     expect(next[0]!.dueDate).toBe("07/23/26");
+  });
+
+  it("commitTaskSprintPlan does not collapse Personal amplify cadence due dates", () => {
+    const tasks = [
+      {
+        id: "T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA",
+        description: "Personal amplify — Soft launch week wrap",
+        category: "personal_amplify" as const,
+        priority: "P1" as const,
+        status: "not_started" as const,
+        assignBy: "Evelyn",
+        assignedTo: "Tina" as const,
+        dateAssigned: "",
+        dueDate: "09/14/26",
+        dateCompleted: "",
+        notes: "CF notes",
+        sprint: 6,
+        tinaDone: false,
+        evelynDone: false,
+        attachments: [],
+      },
+    ];
+    const { tasks: next, changed } = commitTaskSprintPlan(tasks);
+    expect(changed).toBe(false);
+    expect(next[0]!.sprint).toBe(6);
+    expect(next[0]!.dueDate).toBe("09/14/26");
   });
 
   it("commitTaskSprintPlan does not heal Done task dues when sprint unchanged", () => {

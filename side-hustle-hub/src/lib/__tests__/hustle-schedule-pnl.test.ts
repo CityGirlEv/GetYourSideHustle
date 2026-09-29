@@ -3,6 +3,7 @@ import {
   BLUEPRINT_MAX_DAYS,
   blueprintWindowStats,
   emptyPnLLedger,
+  salesVsTarget,
   summarizePnLLines,
   upsertPnLLine,
   weeklyOutcomesForBlueprint,
@@ -32,6 +33,25 @@ describe("hustle schedule P&L", () => {
     expect(s.expensesUsd).toBe(50);
     expect(s.profitUsd).toBe(150);
     expect(s.byCategory.advertising).toBe(50);
+  });
+
+  it("recomputes remaining and percent when target sales change", () => {
+    expect(salesVsTarget(200, 500)).toEqual({
+      targetUsd: 500,
+      actualUsd: 200,
+      remainingUsd: 300,
+      overTargetUsd: 0,
+      progressPct: 40,
+    });
+    expect(salesVsTarget(500, 400)).toEqual({
+      targetUsd: 400,
+      actualUsd: 500,
+      remainingUsd: 0,
+      overTargetUsd: 100,
+      progressPct: 125,
+    });
+    expect(salesVsTarget(0, 0).progressPct).toBe(0);
+    expect(salesVsTarget(50, 0).progressPct).toBe(100);
   });
 
   it("keeps blueprint window ≤ 10 days when due is within a week", () => {

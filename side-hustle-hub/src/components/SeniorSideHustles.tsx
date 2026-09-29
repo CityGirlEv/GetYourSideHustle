@@ -17,7 +17,8 @@ import {
 import {
   SENIOR_AUDIENCE_LABEL,
   SENIOR_INTRO,
-  SENIOR_OPPORTUNITIES,
+  SENIOR_OPPORTUNITIES_EXPANDED as SENIOR_OPPORTUNITIES,
+  isSeniorGuideFree,
   orderedSeniorGuides,
   type SeniorGuideTeaser,
   type SeniorOpportunity,
@@ -27,13 +28,17 @@ import {
   type SeniorMatchAnswers,
 } from "../lib/seniors-content";
 import {
-  guideTierBadgeLabel,
+  COMING_SOON_NOT_UNLOCKED_NOTE,
   guideTierMembershipNote,
   resolveGuideAccess,
   seniorGuideMinTier,
 } from "../lib/guide-access";
+import type { TierId } from "../lib/membership";
+import { guideNumberParenthetical } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
-import { MembershipLockBadge } from "./MembershipLockBadge";
+import { ComplimentaryGiftNote } from "./ComplimentaryGiftNote";
+import { GuideMembershipBadges } from "./GuideMembershipBadges";
+import { OpenGuideButton } from "./OpenGuideButton";
 import { trackGyshEvent } from "../lib/gysh-analytics";
 import { hasBlueprintAccess } from "../lib/free-member-session";
 import {
@@ -42,8 +47,18 @@ import {
   savePendingBlueprintAsync,
 } from "../lib/pending-blueprint";
 import { saveBlueprintToAccount } from "../lib/blueprints-api";
+import { ensureComplimentaryClaim } from "../lib/wizard-comp-guide";
 import { SideHustleBlueprintResults } from "./SideHustleBlueprintResults";
 import { WizardStartHereBanner } from "./WizardStartHereBanner";
+import { filterGuidesForWizardResults } from "../lib/guide-catalog-state";
+import { libraryMinTierForAge } from "../lib/guide-library-pool";
+import { presentableGuideTitle } from "../lib/guide-title";
+import { useLiveGuideLibraryCounts } from "../lib/guide-library-live-counts";
+import {
+  relativeMatchPct,
+  sortWizardByMatchScore,
+  wizardMatchTierLabel,
+} from "../lib/wizard-result-order";
 import seniorSideHustleHero from "../assets/senior-side-hustle-hero.png";
 import seniorSideHustleIdeasHero from "../assets/senior-side-hustle-ideas-hero.png";
 import seniorGuidesHero from "../assets/senior-guides-hero.png";
@@ -60,7 +75,7 @@ function SeniorGuideCard({
   guide: SeniorGuideTeaser;
   isMember: boolean;
   membershipTier?: string | null;
-  onJoinCta?: () => void;
+  onJoinCta?: (focusTier?: TierId) => void;
   onOpenLaunchGuide?: (launchGuideId: string) => void;
 }) {
   const comingSoon = guide.status === "coming_soon";
@@ -69,6 +84,7 @@ function SeniorGuideCard({
     isMember: comingSoon ? false : isMember,
     membershipTier,
     minTier,
+    guideId: guide.launchGuideId || guide.id,
   });
   const canOpen =
     !comingSoon &&
@@ -81,40 +97,57 @@ function SeniorGuideCard({
     : minTier === "free"
       ? "preview"
       : "live";
+  const numberParen = guideNumberParenthetical(guide.id);
 
   return (
     <article className="glass seniors-guide-card" data-testid={`seniors-guide-card-${guide.id}`}>
       <div className="seniors-guide-card-top">
         <Sparkles size={20} style={{ color: "var(--bronze)" }} aria-hidden="true" />
-        <div className="free-guide-card-badges">
-          <span className={`seniors-guide-badge seniors-guide-badge--${badgeClass}`}>
-            {comingSoon ? "Coming soon" : guideTierBadgeLabel(minTier)}
-          </span>
-          {!comingSoon ? (
-            <MembershipLockBadge
-              minTier={minTier}
-              unlocked={access.unlocked}
-              data-testid={`guide-lock-badge-${guide.id}`}
-            />
-          ) : null}
+        <div className="free-guide-card-title-block">
+          <div className="free-guide-card-badges">
+            {comingSoon ? (
+              <span className={`seniors-guide-badge seniors-guide-badge--${badgeClass}`}>Coming soon</span>
+            ) : (
+              <GuideMembershipBadges minTier={minTier} data-testid={`guide-memberships-${guide.id}`} />
+            )}
+          </div>
         </div>
       </div>
-      <h3>{guide.title}</h3>
-      {!comingSoon && (
-        <p className="seniors-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+      <h3 className="free-guide-card-title">
+        <span className="free-guide-card-title-text">{guide.title}</span>
+        {numberParen ? (
+          <span className="free-guide-number" data-testid={`guide-number-${guide.id}`}>
+            {" "}
+            {numberParen}
+          </span>
+        ) : null}
+      </h3>
+      {comingSoon ? (
+        <p className="seniors-guide-tier-note">{COMING_SOON_NOT_UNLOCKED_NOTE}</p>
+      ) : (
+        <>
+          <p className="seniors-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+          {canOpen ? (
+            <ComplimentaryGiftNote guideId={guide.launchGuideId || guide.id} minTier={minTier} />
+          ) : null}
+        </>
       )}
       <p>{guide.blurb}</p>
       {comingSoon ? null : canOpen ? (
-        <button
-          type="button"
-          className="glow-chip-btn seniors-guide-open-btn"
+        <OpenGuideButton
+          minTier={minTier}
+          className="seniors-guide-open-btn"
           onClick={() => onOpenLaunchGuide!(guide.launchGuideId!)}
         >
-          Open guide <ArrowRight size={16} aria-hidden />
-        </button>
+          <ArrowRight size={16} aria-hidden />
+        </OpenGuideButton>
       ) : (
         <div className="seniors-guide-lock">
-          <JoinToUnlockCta access={access} onJoin={onJoinCta} onUpgrade={onJoinCta} />
+          <JoinToUnlockCta
+            access={access}
+            onJoin={onJoinCta ? () => onJoinCta(minTier) : undefined}
+            onUpgrade={onJoinCta ? () => onJoinCta(minTier) : undefined}
+          />
         </div>
       )}
     </article>
@@ -146,22 +179,24 @@ type SeniorSideHustlesProps = {
   previewAsGuest?: boolean;
   /** Account plan for guide gates. */
   membershipTier?: string | null;
-  onGoToJoin?: () => void;
+  onGoToJoin?: (focusTier?: TierId) => void;
+  /** Free membership signup after Match Wizard unlock (full account fields). */
+  onUnlockBlueprint?: () => void;
   /** Open the main GYSH Guides library. */
   onOpenGuides?: () => void;
   /** Open a member adult Launch Guide from a senior card (only when unlocked). */
   onOpenLaunchGuide?: (launchGuideId: string) => void;
+  /** Open My Dashboard from wizard results. */
+  onOpenDashboard?: () => void;
   /** Deep-link from checklist Launch Guide peeks. */
   entryTab?: SeniorTab | null;
 };
-
-type MatchTier = "Best match" | "Strong match" | "Good fit";
 
 type ScoredMatch = {
   hustle: SeniorOpportunity;
   score: number;
   pct: number;
-  tier: MatchTier;
+  tier: string;
 };
 
 type SingleKey = "lifestyle" | "availability";
@@ -186,28 +221,28 @@ const GOAL_LABELS: Record<string, string> = {
   learn: "Keep learning",
 };
 
-function tierForRank(index: number, pct: number): MatchTier {
-  if (index === 0) return "Best match";
-  if (pct >= 70 || index === 1) return "Strong match";
-  return "Good fit";
-}
-
 function SeniorMatchFinder({
   onBrowseOpportunities,
   isLoggedIn = false,
   previewAsGuest = false,
   onUnlockBlueprint,
+  onOpenLaunchGuide,
+  onOpenDashboard,
 }: {
   onBrowseOpportunities: () => void;
   isLoggedIn?: boolean;
   previewAsGuest?: boolean;
   onUnlockBlueprint?: () => void;
+  onOpenLaunchGuide?: (launchGuideId: string) => void;
+  onOpenDashboard?: () => void;
 }) {
   const unlocked = hasBlueprintAccess({
     isLoggedIn,
     ageGroup: "senior",
     previewAsGuest,
   });
+  const liveGuideCounts = useLiveGuideLibraryCounts();
+  const catalogStates = liveGuideCounts.states;
   const startedRef = useRef(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<SeniorMatchAnswers>({
@@ -218,6 +253,9 @@ function SeniorMatchFinder({
   });
   const [rankedResults, setRankedResults] = useState<ScoredMatch[] | null>(null);
   const [validationHint, setValidationHint] = useState<string | null>(null);
+
+  const activeWizardPool = () =>
+    filterGuidesForWizardResults(SENIOR_OPPORTUNITIES, catalogStates);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -233,20 +271,27 @@ function SeniorMatchFinder({
     };
     if (!restored.lifestyle || restored.skills.length < 1) return;
     setAnswers(restored);
-    const scored = SENIOR_OPPORTUNITIES.map((hustle) => ({
+    const scored = activeWizardPool().map((hustle) => ({
       hustle,
       score: scoreSeniorMatch(hustle.id, restored),
+      id: hustle.id,
     }));
-    scored.sort((a, b) => b.score - a.score);
-    const maxScore = Math.max(scored[0]?.score ?? 1, 1);
-    const results: ScoredMatch[] = scored.slice(0, 5).map((row, index) => {
-      const pct = Math.round((row.score / maxScore) * 100);
-      return { ...row, pct, tier: tierForRank(index, pct) };
+    const maxScore = Math.max(...scored.map((r) => r.score), 1);
+    const ordered = sortWizardByMatchScore(scored);
+    const results: ScoredMatch[] = ordered.slice(0, 5).map((row, index) => {
+      const pct = relativeMatchPct(row.score, maxScore);
+      return {
+        hustle: row.hustle,
+        score: row.score,
+        pct,
+        tier: wizardMatchTierLabel(index, pct, row.id),
+      };
     });
     setRankedResults(results);
     trackGyshEvent("blueprint_unlocked", { age_group: "senior", match_count: results.length });
     trackGyshEvent("blueprint_saved", { age_group: "senior", match_count: results.length });
     clearPendingBlueprint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore pending once on mount
   }, [unlocked]);
 
   const steps = [
@@ -301,7 +346,7 @@ function SeniorMatchFinder({
       key: "availability" as const,
       mode: "single" as const,
       title: "How much time can you comfortably give?",
-      subtitle: "Be honest — the best hustle fits the calendar you already have.",
+      subtitle: "Be honest — the best side hustle fits the calendar you already have.",
       icon: <Clock size={24} style={{ color: "#6b4f3a" }} />,
       options: [
         { label: "A few hours per week", value: "light" },
@@ -361,15 +406,21 @@ function SeniorMatchFinder({
   };
 
   const calculateResults = () => {
-    const scored = SENIOR_OPPORTUNITIES.map((hustle) => ({
+    const scored = activeWizardPool().map((hustle) => ({
       hustle,
       score: scoreSeniorMatch(hustle.id, answers),
+      id: hustle.id,
     }));
-    scored.sort((a, b) => b.score - a.score);
-    const maxScore = Math.max(scored[0]?.score ?? 1, 1);
-    const results: ScoredMatch[] = scored.slice(0, 5).map((row, index) => {
-      const pct = Math.round((row.score / maxScore) * 100);
-      return { ...row, pct, tier: tierForRank(index, pct) };
+    const maxScore = Math.max(...scored.map((r) => r.score), 1);
+    const ordered = sortWizardByMatchScore(scored);
+    const results: ScoredMatch[] = ordered.slice(0, 5).map((row, index) => {
+      const pct = relativeMatchPct(row.score, maxScore);
+      return {
+        hustle: row.hustle,
+        score: row.score,
+        pct,
+        tier: wizardMatchTierLabel(index, pct, row.id),
+      };
     });
     setRankedResults(results);
     void savePendingBlueprintAsync({
@@ -379,6 +430,12 @@ function SeniorMatchFinder({
       resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
       returnView: "seniors",
       returnTab: "match",
+    });
+    void ensureComplimentaryClaim({
+      isLoggedIn: unlocked,
+      previewAsGuest,
+      resultIds: results.map((r) => r.hustle.id),
+      resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
     });
     trackGyshEvent("find_side_hustle_completed", {
       age_group: "senior",
@@ -398,6 +455,13 @@ function SeniorMatchFinder({
         answers: answers as unknown as Record<string, unknown>,
         resultIds: results.map((r) => r.hustle.id),
         resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+      }).then((saved) => {
+        if (!saved) return;
+        void ensureComplimentaryClaim({
+          isLoggedIn: true,
+          resultIds: results.map((r) => r.hustle.id),
+          resultPcts: Object.fromEntries(results.map((r) => [r.hustle.id, r.pct])),
+        });
       });
       clearPendingBlueprint();
     }
@@ -619,10 +683,11 @@ function SeniorMatchFinder({
               ageGroup="senior"
               matches={rankedResults.map((row) => ({
                 id: row.hustle.id,
-                title: row.hustle.name,
+                title: presentableGuideTitle(row.hustle.id, row.hustle.name),
                 description: row.hustle.desc,
                 pct: row.pct,
                 tier: row.tier,
+                minTier: libraryMinTierForAge(row.hustle.id, "senior", catalogStates),
                 whyFits: `${row.tier} for your pace, strengths, goals, and availability — a Side Hustle that fits this chapter of life.`,
                 benefits: [row.hustle.fit, row.hustle.schedule, row.hustle.startup],
                 meta: [
@@ -634,6 +699,10 @@ function SeniorMatchFinder({
               unlocked={unlocked}
               onUnlock={handleUnlock}
               onRetake={resetQuiz}
+              onSelectGuide={
+                onOpenLaunchGuide ? (id) => onOpenLaunchGuide(id) : undefined
+              }
+              onOpenDashboard={onOpenDashboard}
               extraActions={
                 unlocked ? (
                   <button
@@ -688,8 +757,10 @@ export function SeniorSideHustles({
   previewAsGuest = false,
   membershipTier = null,
   onGoToJoin,
+  onUnlockBlueprint,
   onOpenGuides,
   onOpenLaunchGuide,
+  onOpenDashboard,
   entryTab = null,
 }: SeniorSideHustlesProps) {
   const [tab, setTab] = useState<SeniorTab>("match");
@@ -697,9 +768,11 @@ export function SeniorSideHustles({
   const sideIdeas = SENIOR_OPPORTUNITIES.slice(0, 3);
   const belowIdeas = SENIOR_OPPORTUNITIES.slice(3);
   const seniorGuides = orderedSeniorGuides();
-  const sideGuides = seniorGuides.slice(0, 3);
-  const belowGuides = seniorGuides.slice(3);
-  const isGuideMember = !previewAsGuest && (isLoggedIn || interested);
+  const freeGuides = seniorGuides.filter((g) => isSeniorGuideFree(g));
+  const memberGuides = seniorGuides.filter((g) => !isSeniorGuideFree(g));
+  const sideGuides = freeGuides;
+  const belowGuides = memberGuides;
+  const isGuideMember = !previewAsGuest && isLoggedIn;
   const effectiveGuideTier = membershipTier ?? (isGuideMember ? "free" : null);
 
   useEffect(() => {
@@ -712,7 +785,7 @@ export function SeniorSideHustles({
   };
 
   return (
-    <div className="seniors-stage" data-testid="seniors-page">
+    <div className={`seniors-stage${tab === "match" ? " seniors-stage--match" : ""}`} data-testid="seniors-page">
       <div className="seniors-lead">
         <div className="seniors-lead-top">
           <span className="flat-label flat-label--accent">{SENIOR_AUDIENCE_LABEL}</span>
@@ -731,7 +804,7 @@ export function SeniorSideHustles({
         {tab === "guides" && (
           <p className="seniors-lead-ideas">
             Guides stay locked until you have a Free Membership (or higher). Free-plan guides unlock
-            with Free Membership; Starter+ guides need those plans. A few senior-specific playbooks
+            with Free Membership; Starter or higher guides need those plans. A few senior-specific playbooks
             are still coming soon.
           </p>
         )}
@@ -773,7 +846,9 @@ export function SeniorSideHustles({
             onBrowseOpportunities={() => setTab("opportunities")}
             isLoggedIn={isLoggedIn}
             previewAsGuest={previewAsGuest}
-            onUnlockBlueprint={onGoToJoin}
+            onUnlockBlueprint={onUnlockBlueprint ?? onGoToJoin}
+            onOpenLaunchGuide={onOpenLaunchGuide}
+            onOpenDashboard={onOpenDashboard}
           />
         </div>
       )}
@@ -808,7 +883,8 @@ export function SeniorSideHustles({
               src={seniorGuidesHero}
               alt="Get Your Side Hustle Senior Guides — smart, flexible side hustles for seniors who want extra income, purpose, and freedom on your terms."
             />
-            <div className="seniors-guides-side" aria-label="Senior guides beside banner">
+            <div className="seniors-guides-side" aria-label="Free with Free Membership">
+              <h3 className="seniors-guides-section-title">Free with Free Membership</h3>
               {sideGuides.map((g) => (
                 <SeniorGuideCard
                   key={g.id}
@@ -820,7 +896,10 @@ export function SeniorSideHustles({
                 />
               ))}
             </div>
-            <div className="seniors-guides-below" aria-label="More senior guides">
+            <div className="seniors-guides-below" aria-label="Starter, Pro and Elite guides">
+              <h3 className="seniors-guides-section-title seniors-guides-section-title--below">
+                Starter, Pro &amp; Elite guides
+              </h3>
               {belowGuides.map((g) => (
                 <SeniorGuideCard
                   key={g.id}
@@ -864,7 +943,7 @@ export function SeniorSideHustles({
                 <h3 className="seniors-join-title" data-testid="seniors-join-pane-title">
                   <BadgeCheck size={22} aria-hidden="true" style={{ color: "var(--crimson)" }} />
                   <span>Join the Senior Side Hustle Team</span>
-                  <span className="glow-badge amber kids-audience-age-badge">Ages 55+</span>
+                  <span className="glow-badge amber kids-audience-age-badge">Ages 50+</span>
                 </h3>
                 {!interested ? (
                   <div className="seniors-join-cta-row seniors-join-cta-row--top" data-testid="seniors-join-cta-row">
@@ -886,7 +965,7 @@ export function SeniorSideHustles({
                 )}
                 <p>
                   A lightweight team join for senior-focused updates, workshops, and guides.
-                  A full GYSH account unlocks bookmarks and launch guides sitewide.
+                  A full GYSH account unlocks launch guides sitewide.
                 </p>
               </div>
               <ul className="seniors-join-perks">
@@ -906,7 +985,11 @@ export function SeniorSideHustles({
 
               <div className="seniors-join-actions seniors-join-actions--bottom">
                 {onGoToJoin && (
-                  <button type="button" className="btn btn-outline seniors-btn" onClick={onGoToJoin}>
+                  <button
+                    type="button"
+                    className="btn btn-outline seniors-btn"
+                    onClick={() => onGoToJoin()}
+                  >
                     {isLoggedIn || interested ? "Full GYSH Join page" : "Create free GYSH account"}{" "}
                     <ArrowRight size={18} />
                   </button>

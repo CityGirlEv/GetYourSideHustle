@@ -1,0 +1,24 @@
+---
+description: Rules and architectural conventions for My Plan, Not My Mood (nonnegotiation.com)
+alwaysApply: true
+---
+
+# My Plan, Not My Mood (`my-plan-not-my-mood`)
+
+## Overview
+- **Brand**: My Plan, Not My Mood
+- **Canonical Domain**: https://nonnegotiation.com
+- **Local Dev Port**: http://localhost:3001 (`bun run dev` inside `my-plan-not-my-mood/`)
+- **Tech Stack**: React 18, Vite 6, TailwindCSS 3, Lucide React, Vitest
+
+## Core Directives & Standards
+1. **Interactive Magic First**: The "What's Your Mood Today?" tool (`MoodTool.tsx`), Daily Affirmations (`DailyAffirmationsModal.tsx`), and "What Won Today?" receipt generator (`ReceiptBuilder.tsx`) are hero features.
+2. **Accessibility & Responsive First**: Mobile layout (320px+) must feature 0 horizontal scroll and minimum 44x44px touch targets.
+3. **No Mock Data Collusion**: Development/test environments must label demo data clearly (`DEMO DATA` / `TEST USER`).
+4. **Vercel SPA Rewrites**: Keep [`vercel.json`](file:///c:/Users/evely/Documents/antigravity/eager-hypatia/my-plan-not-my-mood/vercel.json) updated with SPA fallback rewrites to `/index.html` and security headers.
+5. **Automated Testing Policy**: Every new utility, helper, or security gate must ship with automated Vitest coverage in `src/lib/__tests__/*.test.ts`.
+
+## Key Commands
+- **Dev**: `bun run dev` (runs on http://localhost:3001)
+- **Build**: `bun run build` (`tsc && vite build`)
+- **Test**: `bun run test` (`vitest run`)

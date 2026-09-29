@@ -66,9 +66,9 @@ export function NewsletterPage({
         <span className="flat-label flat-label--accent">
           <Newspaper size={13} aria-hidden /> {NEWSLETTER_CADENCE_LABEL}
         </span>
-        <h2>GYSH Weekly Newsletter</h2>
+        <h2>GYSH Bi-Weekly Newsletter</h2>
         <p>
-          A {NEWSLETTER_SEND_DAY} issue for the whole family — kids glow story on one side, adult hustle tip
+          Two issues a month for the whole family — kids glow story on one side, adult hustle tip
           on the other. Content Factory drafts go live here once they are marked Published.
         </p>
         <MembershipLockBadge minTier="starter" unlocked={unlocked} data-testid="newsletter-lock-badge" />
@@ -77,13 +77,13 @@ export function NewsletterPage({
       {!unlocked ? (
         <section className="glass static-page-card newsletter-page__lock" data-testid="newsletter-lock">
           <p>
-            <Lock size={16} aria-hidden /> The archive and inbox send are a Starter+ membership perk.
-            {!isLoggedIn ? " Sign in if you already subscribe, or join to unlock." : " Upgrade to Starter to read every issue."}
+            <Lock size={16} aria-hidden /> The archive and inbox send are a Starter or higher membership perk.
+            {!isLoggedIn ? " Sign in if you already subscribe, or join to unlock." : " Upgrade to Starter or higher to read every issue."}
           </p>
           <div className="newsletter-page__actions">
             {!isLoggedIn ? (
               <button type="button" className="btn btn-outline" onClick={onLogin} data-testid="newsletter-login">
-                <LogIn size={16} aria-hidden /> Sign in
+                <LogIn size={16} aria-hidden /> Log in
               </button>
             ) : null}
             <button type="button" className="btn btn-primary" onClick={onJoin} data-testid="newsletter-join">
@@ -127,7 +127,7 @@ export function NewsletterPage({
       </div>
 
       <p className="newsletter-page__footnote">
-        <Mail size={14} aria-hidden />         Issues send on {NEWSLETTER_SEND_DAY}s. Unsubscribe anytime from the email
+        <Mail size={14} aria-hidden /> Two issues a month (typically {NEWSLETTER_SEND_DAY}s). Unsubscribe anytime from the email
         footer.
       </p>
     </div>

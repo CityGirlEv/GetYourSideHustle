@@ -1,96 +1,372 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { 
   Check, 
   AlertTriangle, 
   Award,
-  ArrowRight,
   TrendingUp,
-  Coins,
+  Clock,
   LogIn,
+  CircleAlert,
+  X,
+  Search,
 } from "lucide-react";
 import { fetchMemberProgress, saveMemberProgress } from "../lib/gysh-member-progress";
+import { guideStepChecklistItemKey } from "../lib/guide-step-checklist";
+import { GuideStepDesc } from "./GuideStepDesc";
 import {
-  adultGuideMinTier,
-  FREE_GUIDE_SIGNUP_NOTE,
   guideTierBadgeLabel,
-  guideTierMembershipNote,
   guideTierShortLabel,
   resolveGuideAccess,
+  type GuideMinTier,
 } from "../lib/guide-access";
+import type { TierId } from "../lib/membership";
+import { LAUNCH_GUIDES, sortGuidesFreeFirst } from "../lib/launch-guides";
+import { guideSideHustleDescription } from "../lib/side-hustle-catalog";
+import { resolveGuideKit } from "../lib/guide-kit-overrides";
+import { kidsGuideById } from "../lib/kids-guides";
+import {
+  resolveLaunchGuideData,
+  type LaunchGuideData,
+} from "../lib/resolve-launch-guide-data";
+import {
+  fetchGuideCatalogStates,
+  setGuideCatalogStatus,
+  setGuideCatalogStatusBulk,
+} from "../lib/guide-catalog-client";
+import {
+  applyGuideCatalogPatch,
+  effectiveGuideMinTier,
+  guideHoldsActive,
+  getGuideVisibilityStatus,
+  GUIDE_BULK_STATUS_OPTIONS,
+  GUIDE_STATUS_NOTE_MIN_LENGTH,
+  guideHeldVisibilityStatuses,
+  guideStatusNoteMeetsRequirement,
+  guideStatusRequiresNote,
+  guideVisibilityStatusLabel,
+  mergeGuideCatalogStateMapsPreferNewer,
+  overlayGuideCatalogState,
+  overlayGuideCatalogStateMap,
+  type GuideCatalogStateMap,
+  type GuideVisibilityStatus,
+} from "../lib/guide-catalog-state";
+import {
+  effectiveGuideAudiences,
+  effectiveGuideMembershipSelection,
+} from "../lib/guide-library-update";
+import {
+  countGuideNavByAge,
+  countGuideNavByAssignee,
+  countGuideNavByMembership,
+  countGuideNavByStatus,
+  defaultLibraryStatusFilters,
+  filterGuideNavItems,
+  guideNavFilterIsAll,
+  type GuideNavAgeFilter,
+  type GuideNavAssigneeFilter,
+  type GuideNavMembershipFilter,
+  type GuideNavStatusFilter,
+} from "../lib/guide-nav-filters";
+import {
+  guideAssigneeRoster,
+} from "../lib/guide-assignee";
+import { testOwnerLabel } from "../lib/gysh-roles";
+import { toggleLibraryFilterSelection } from "../lib/guide-list-expand";
+import {
+  audiencesForLibraryGuideId,
+  libraryMinTierForGuideId,
+  uniqueGuideLibraryEntries,
+} from "../lib/guide-library-pool";
+import { presentableGuideTitle } from "../lib/guide-title";
+import {
+  applyLiveGuideLibraryCountsFromStates,
+  patchLiveGuideLibraryCatalogState,
+} from "../lib/guide-library-live-counts";
+import {
+  guideMatchesLibrarySearch,
+  libraryGuideNotFoundCopy,
+  librarySidebarCountText,
+  sideHustleLibraryPageTitle,
+} from "../lib/guide-library-search";
+import { formatGuideNumber, guideNumberLabel, guideNumberParenthetical, orderedGuideIdsForNumbering } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
+import { ComplimentaryGiftNote } from "./ComplimentaryGiftNote";
 import { MembershipLockBadge } from "./MembershipLockBadge";
+import { GuidePrepSections, guidePrepAfterTabsOwnsPanel } from "./GuidePrepSections";
+import { GuideRevenueCalculator } from "./GuideRevenueCalculator";
+import { GuideNotesTab } from "./GuideNotesTab";
+import { GuideActiveToggle } from "./GuideActiveToggle";
+import { GuideAdminContentEditor } from "./GuideAdminContentEditor";
+import { GuideAssigneeField } from "./GuideAssigneeField";
+import { GuideMembershipAgeFields } from "./GuideMembershipAgeFields";
+import { GuideChangeLogPanel } from "./GuideChangeLogPanel";
+import { navigateAdminDeepLink } from "../lib/admin-deep-links";
+import { guideReviewCaseIdForGuide, testingPortalHrefForGuide } from "../lib/guide-review-link";
+import { formatAuditTrail } from "../lib/gysh-audit";
 
-interface GuideStep {
-  title: string;
-  desc: string;
-}
+/** First Free-sorted library guide — used when no hustle was explicitly opened. */
+const FIRST_LIBRARY_GUIDE_ID = orderedGuideIdsForNumbering()[0] ?? "";
 
-interface GuideData {
-  id: string;
-  name: string;
-  timeframe: string;
-  estEarnings: string;
-  bestFor: string;
-  steps: GuideStep[];
-  proTip: string;
-  pitfall: string;
-}
+const AGE_FILTERS: { id: GuideNavAgeFilter; label: string }[] = [
+  { id: "all", label: "Show All" },
+  { id: "kids", label: "Kids" },
+  { id: "junior", label: "Teens" },
+  { id: "adult", label: "Adults" },
+  { id: "senior", label: "Seniors" },
+];
+
+const MEMBERSHIP_FILTERS: { id: GuideNavMembershipFilter; label: string }[] = [
+  { id: "all", label: "Show All" },
+  { id: "free", label: "Free" },
+  { id: "starter", label: "Starter" },
+  { id: "pro", label: "Pro" },
+  { id: "elite", label: "Elite" },
+];
+
+const STATUS_FILTERS: { id: GuideNavStatusFilter; label: string }[] = [
+  { id: "all", label: "Show All" },
+  { id: "active", label: "Active" },
+  { id: "not_reviewed", label: "Not Reviewed" },
+  { id: "reviewed", label: "Reviewed" },
+  { id: "pending", label: "Pending / Needs Further Review" },
+  { id: "fixed_rereview", label: "Fixed/Re-Review" },
+  { id: "reviewed_by_qa", label: "Reviewed by QA / No Changes" },
+  { id: "reviewed_by_dev", label: "Reviewed by Dev" },
+  { id: "inactive", label: "Inactive" },
+];
+
+
+type GuideData = LaunchGuideData;
 
 interface StepByStepGuidesProps {
   selectedHustleId?: string;
-  onGoToCalculator: (hustleId: string) => void;
   isLoggedIn?: boolean;
   membershipTier?: string | null;
-  onGoToJoin?: () => void;
+  /** Admin self-profile: unlock every live guide. */
+  isAdmin?: boolean;
+  /** Display name for note authorship stamps. */
+  memberName?: string;
+  /** User id for own-note edit/delete checks. */
+  memberUserId?: string;
+  /** Admin or QA — see unpublished guides + Lyriq Review / Pass controls. */
+  canReviewGuides?: boolean;
+  /** Evelyn-only: set Reviewed by Dev when marking Reviewed. */
+  canSetReviewedByDev?: boolean;
+  onGoToJoin?: (focusTier?: TierId) => void;
   onGoToLogin?: () => void;
-  onBackToCatalog?: () => void;
 }
 
 export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({ 
-  selectedHustleId = "airbnb",
-  onGoToCalculator,
+  selectedHustleId,
   isLoggedIn = false,
   membershipTier = null,
+  isAdmin = false,
+  memberName = "",
+  memberUserId = "",
+  canReviewGuides = false,
+  canSetReviewedByDev = false,
   onGoToJoin,
   onGoToLogin,
-  onBackToCatalog,
 }) => {
-  const [activeGuideId, setActiveGuideId] = useState<string>(selectedHustleId);
+  const [activeGuideId, setActiveGuideId] = useState<string>(
+    () => selectedHustleId || FIRST_LIBRARY_GUIDE_ID,
+  );
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
-  const [stepsOpen, setStepsOpen] = useState(false);
+  /** ☐ lines inside a step — independent of marking the whole step done. */
+  const [stepChecklistItems, setStepChecklistItems] = useState<Record<string, boolean>>({});
+  const [catalogStates, setCatalogStates] = useState<GuideCatalogStateMap>({});
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkNeedSelectionOpen, setBulkNeedSelectionOpen] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [ageFilters, setAgeFilters] = useState<GuideNavAgeFilter[]>(["all"]);
+  const [membershipFilters, setMembershipFilters] = useState<GuideNavMembershipFilter[]>(["all"]);
+  const [statusFilters, setStatusFilters] = useState<GuideNavStatusFilter[]>(() =>
+    defaultLibraryStatusFilters(isAdmin || canReviewGuides),
+  );
+  const [assigneeFilters, setAssigneeFilters] = useState<GuideNavAssigneeFilter[]>(["all"]);
+  const [tipsOpen, setTipsOpen] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [pendingNotePrompt, setPendingNotePrompt] = useState<{
+    guideIds: string[];
+    status: GuideVisibilityStatus;
+  } | null>(null);
+  const [pendingNoteDraft, setPendingNoteDraft] = useState("");
+  /** Bump after Pending note saves so the Notes tab reloads without remounting. */
+  const [guideNotesRefreshKey, setGuideNotesRefreshKey] = useState(0);
+  /** Bump after catalog writes so Audit trail reloads. */
+  const [guideAuditRefreshKey, setGuideAuditRefreshKey] = useState(0);
+  /** Staff (Admin or QA) see Pending / Reviewed by QA / Inactive guides. */
+  const staffCatalog = isAdmin || canReviewGuides;
+  /** Admin or QA may edit kit tabs + status checkboxes in the library detail. */
+  const canEditGuideContent = staffCatalog;
   const effectiveTier = membershipTier ?? (isLoggedIn ? "free" : null);
-  const activeMinTier = adultGuideMinTier(activeGuideId);
-  const activeAccess = resolveGuideAccess({
-    isMember: isLoggedIn,
-    membershipTier: effectiveTier,
-    minTier: activeMinTier,
-  });
-  const guideIsFree = activeMinTier === "free";
-  const unlocked = activeAccess.unlocked;
+
+  const ageFilterKey = ageFilters.join(",");
+  const membershipFilterKey = membershipFilters.join(",");
+  const statusFilterKey = statusFilters.join(",");
+  const assigneeFilterKey = assigneeFilters.join(",");
+  const filterSelectionKey = `${ageFilterKey}|${membershipFilterKey}|${statusFilterKey}|${assigneeFilterKey}|${librarySearch}`;
+  /** Pin the open guide only after a status *save* refilters — not when the user picks filter chips. */
+  const allowPinOutsideFilter = useRef(true);
+  const filterKeyForPinRef = useRef(filterSelectionKey);
+  if (filterKeyForPinRef.current !== filterSelectionKey) {
+    allowPinOutsideFilter.current = false;
+    filterKeyForPinRef.current = filterSelectionKey;
+  }
+
+  const toggleAgeFilter = (id: GuideNavAgeFilter) => {
+    setAgeFilters((prev) => toggleLibraryFilterSelection(prev, id, "all"));
+  };
+  const toggleMembershipFilter = (id: GuideNavMembershipFilter) => {
+    setMembershipFilters((prev) => toggleLibraryFilterSelection(prev, id, "all"));
+  };
+  const toggleStatusFilter = (id: GuideNavStatusFilter) => {
+    setStatusFilters((prev) => toggleLibraryFilterSelection(prev, id, "all"));
+  };
+  const toggleAssigneeFilter = (id: GuideNavAssigneeFilter) => {
+    setAssigneeFilters((prev) => toggleLibraryFilterSelection(prev, id, "all"));
+  };
 
   useEffect(() => {
-    setActiveGuideId(selectedHustleId);
-    setStepsOpen(false);
+    if (selectedHustleId) setActiveGuideId(selectedHustleId);
+    else if (FIRST_LIBRARY_GUIDE_ID) setActiveGuideId(FIRST_LIBRARY_GUIDE_ID);
   }, [selectedHustleId]);
 
   useEffect(() => {
-    if (!unlocked) {
-      setCompletedSteps({});
-      return;
-    }
+    setTipsOpen(false);
+  }, [activeGuideId]);
+
+  useEffect(() => {
+    setBulkSelected(new Set());
+  }, [ageFilterKey, membershipFilterKey, statusFilterKey, assigneeFilterKey, librarySearch]);
+
+  useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const payload = await fetchMemberProgress<Record<string, boolean>>("launch_guide_steps");
-        if (!cancelled) setCompletedSteps(payload ?? {});
-      } catch {
-        /* keep empty; member can still check boxes and retry save */
-      }
-    })();
+    fetchGuideCatalogStates()
+      .then((states) => {
+        if (cancelled) return;
+        setCatalogStates((prev) => {
+          const merged = mergeGuideCatalogStateMapsPreferNewer(states, prev);
+          applyLiveGuideLibraryCountsFromStates(merged);
+          return merged;
+        });
+      })
+      .catch(() => {
+        /* keep defaults */
+      });
     return () => {
       cancelled = true;
     };
-  }, [unlocked]);
+  }, []);
+
+  const commitGuideStatus = async (
+    guideIds: string[],
+    status: GuideVisibilityStatus,
+    note?: string,
+  ) => {
+    const ids = [...new Set(guideIds.map((id) => String(id || "").trim()).filter(Boolean))];
+    if (!ids.length) return;
+    setStatusError(null);
+    if (guideStatusRequiresNote(status) && !guideStatusNoteMeetsRequirement(note)) {
+      setStatusError(
+        `A note is required for Pending / Needs Further Review (at least ${GUIDE_STATUS_NOTE_MIN_LENGTH} characters).`,
+      );
+      return;
+    }
+    const single = ids.length === 1;
+    if (single) setStatusBusyId(ids[0]!);
+    else {
+      setBulkBusy(true);
+      setBulkError(null);
+    }
+    allowPinOutsideFilter.current = true;
+    if (!single) {
+      setCatalogStates((prev) => {
+        const next = { ...prev };
+        for (const id of ids) {
+          next[id] = {
+            ...(next[id] ?? {
+              guideId: id,
+              status: "inactive",
+              published: false,
+              deleted: false,
+              custom: false,
+              patch: {},
+            }),
+            guideId: id,
+            status,
+            published: guideHoldsActive(status),
+            deleted: false,
+          };
+        }
+        return next;
+      });
+    }
+    try {
+      if (single) {
+        const next = await setGuideCatalogStatus(ids[0]!, status, note);
+        setCatalogStates((prev) => ({
+          ...prev,
+          [ids[0]!]: overlayGuideCatalogState(prev[ids[0]!], next),
+        }));
+        patchLiveGuideLibraryCatalogState(ids[0]!, next);
+      } else {
+        const saved = await setGuideCatalogStatusBulk(ids, status, note);
+        setCatalogStates((prev) => {
+          const merged = overlayGuideCatalogStateMap(prev, saved);
+          applyLiveGuideLibraryCountsFromStates(merged);
+          return merged;
+        });
+        setBulkSelected(effectiveGuideId ? new Set([effectiveGuideId]) : new Set());
+      }
+      setGuideAuditRefreshKey((k) => k + 1);
+      if (status === "pending" && guideStatusNoteMeetsRequirement(note)) {
+        setGuideNotesRefreshKey((k) => k + 1);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Guide status update failed.";
+      if (single) setStatusError(msg);
+      else {
+        setBulkError(msg);
+        try {
+          const fresh = await fetchGuideCatalogStates();
+          setCatalogStates(fresh);
+        } catch {
+          /* keep optimistic until refresh */
+        }
+      }
+    } finally {
+      if (single) setStatusBusyId(null);
+      else setBulkBusy(false);
+    }
+  };
+
+  const requestGuideStatus = (guideIds: string[], status: GuideVisibilityStatus) => {
+    if (guideStatusRequiresNote(status)) {
+      setPendingNoteDraft("");
+      setPendingNotePrompt({ guideIds, status });
+      setStatusError(null);
+      return;
+    }
+    void commitGuideStatus(guideIds, status);
+  };
+
+  const setGuideStatus = async (guideId: string, status: GuideVisibilityStatus) => {
+    requestGuideStatus([guideId], status);
+  };
+
+  const applyBulkStatus = async (status: GuideVisibilityStatus) => {
+    const ids = [...bulkSelected];
+    if (ids.length === 0) {
+      setBulkNeedSelectionOpen(true);
+      return;
+    }
+    if (bulkBusy) return;
+    requestGuideStatus(ids, status);
+  };
 
   // Keep IDs/names aligned with src/lib/launch-guides.ts (LAUNCH_GUIDES) so
   // Admin Task List auto-creates "Review Launch Guide: …" items for new hustles.
@@ -151,19 +427,21 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       name: "Digital Products",
       timeframe: "2 - 6 weeks",
       estEarnings: "$200 - $10,000 / month",
-      bestFor: "Creators who want to sell their own downloads — ebooks, printables, templates, and courses (not affiliate links).",
-      proTip: "Ship one small product fast (a 10-page printable or short ebook) before building a big course. Book publishing is a flagship Digital example — kids can start with storybooks with a parent.",
-      pitfall: "Mixing Digital Products with Affiliate Marketing. Your own downloads are Digital; promoting other brands’ products for commissions is Affiliate — keep the lanes separate.",
+      bestFor: "Teens, adults, and seniors / retirees who want to create one useful digital product — ebooks, printables, planners, templates, and mini-courses (not affiliate links).",
+      proTip: "Don't build the store before you prove the product. One useful $10 product that people actually buy beats a beautiful store of 50 products nobody wants.",
+      pitfall: "Mixing Digital Products with Affiliate Marketing. Your own downloads are Digital; promoting other brands’ products for commissions is Affiliate — keep the lanes separate. Do not copy another creator's product.",
       steps: [
-        {
-          title: "Pick One Digital Offer",
-          desc: "Ebook, printable pack, planner, template kit, or mini-course. Write a one-sentence promise for the buyer — one clear line naming who it’s for and the result they get (e.g. “A 10-page budget planner that helps busy parents track spending in 10 minutes a week”).",
-        },
-        { title: "Create the Asset", desc: "Draft in Canva/Google Docs/Notion. For books, follow the Book Publishing guide (KDP / print + ebook)." },
-        { title: "Package & Price", desc: "Export clean PDFs or file packs. Price a starter offer ($7–$27) so buyers can say yes quickly." },
-        { title: "Set Up Delivery", desc: "Use Gumroad, Payhip, Stan, or Shopify digital downloads so purchase → instant delivery works without you emailing files." },
-        { title: "Landing Page & Proof", desc: "One clear page: who it’s for, what’s inside, a sample preview, and a buy button. Add 2–3 testimonials when you have them." },
-        { title: "Launch & Iterate", desc: "Share with your list/community, note what questions buyers ask, then improve the product or add a sequel pack." },
+        { title: "Pick One Product", desc: "Solve one problem for one customer with one useful product." },
+        { title: "Research the Customer", desc: "Research for ideas and positioning. Do not copy another creator's product." },
+        { title: "Create the Product", desc: "Build the simplest useful version and save a master copy." },
+        { title: "Test & Price It", desc: "Test files, then set price using Suggested Pricing." },
+        { title: "Choose Your Marketing Channels", desc: "Pick only 2 or 3 channels this month." },
+        { title: "Make Your Marketing Materials", desc: "Cover, images, description, benefits, price, and CTA." },
+        { title: "Set Up Your Sales Page", desc: "Choose one selling platform first and test delivery." },
+        { title: "Carry Out Your Marketing Plan", desc: "Use only the selected channels. Track views, clicks, and sales." },
+        { title: "Make Sales & Learn", desc: "Learn from Product #1 before creating many more." },
+        { title: "Improve the Product", desc: "Use feedback to improve instructions, cover, description, or price." },
+        { title: "Grow", desc: "Related product, bundle, upsell, then repeat customers." },
       ],
     },
     {
@@ -263,11 +541,11 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       pitfall: "Building a full site before a signed deposit. Scope creep kills margins — sell a fixed package (audit → 5-page site → hosting) with clear revision limits.",
       steps: [
         { title: "Pick a ZipCode + Niche Lane", desc: "Choose 1–2 niches (dentists, HVAC, salons, contractors) within a 20-mile radius so your samples and outreach feel local." },
-        { title: "Build a Lead List", desc: "Use Google Maps / Bing Places to find businesses with no site, a 2015 WordPress theme, or no mobile layout. Log name, phone, URL, and pain notes." },
+        { title: "Build a Lead List", desc: "Use Google Maps / Bing Places to find businesses with no site, a dated DIY page, or no mobile layout. Log name, phone, URL, and pain notes. (Prospecting only — never recommend WordPress for the rebuild.)" },
         { title: "Run Quick Website Audits", desc: "Score speed, mobile, contact CTA, and booking path. Turn each into a 1-page PDF or Loom with 3 fixes and a package price." },
         { title: "Outreach Cadence", desc: "Call, text, or drop by with the audit. Aim for 20 touches/day. Offer a low-ticket audit ($150–$400) as the door opener." },
-        { title: "Build & Sell Packages", desc: "Deliver a clean Cloudflare/Framer/WordPress site with booking link, NAP consistency, and basic SEO. Collect 50% deposit up front." },
-        { title: "Stack Recurring Revenue", desc: "Add monthly hosting + edits ($49–$149). Ask every client for 2 referrals and one Google review." }
+        { title: "Build & Sell Packages", desc: "Kick off the site in Google Antigravity (https://antigravity.google/), deploy on Cloudflare Pages (https://pages.cloudflare.com/), use Supabase (https://supabase.com/) for any forms/auth/data, and send transactional email with Resend (https://resend.com/). Include booking link, NAP consistency, and basic SEO. Collect 50% deposit up front — no WordPress." },
+        { title: "Stack Recurring Revenue", desc: "Add monthly hosting + edits on Cloudflare ($49–$149). Ask every client for 2 referrals and one Google review." }
       ]
     },
     {
@@ -347,23 +625,24 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       timeframe: "1 - 5 days",
       estEarnings: "$400 - $2,500 / month",
       bestFor: "Anyone needing low-barrier income with a bike, scooter, or car.",
-      proTip: "Multi-app during dinner rush (Dash + Eats) and decline long deadhead trips. Hotspot parking near restaurant clusters beats chasing pins across town.",
-      pitfall: "Accepting every order. Long miles for low tips destroy hourly rate — learn your market's decline discipline early.",
+      proTip: "Think profit, not just payout — use Offer ÷ Miles as your gross $/mile floor, multi-app only when the path aligns, and track miles from Day 1.",
+      pitfall: "Accepting every order. Long deadhead miles and slow restaurants destroy hourly rate — learn decline discipline early.",
       steps: [
-        { title: "Pick Your Apps", desc: "Sign up for DoorDash and Uber Eats (add Grubhub if strong locally). Complete background checks." },
-        { title: "Gear Up", desc: "Insulated bag, phone mount, portable charger, and a simple mileage tracker." },
-        { title: "Zone Recon", desc: "Scout 2–3 restaurant-dense zones near you. Note parking rules and peak kitchen hours." },
-        { title: "Shift Schedule", desc: "Commit to dinner (5–9pm) + weekend lunch for 2 weeks before judging income." },
-        { title: "Acceptance Discipline", desc: "Set rules (e.g. $1.50+/mile, under 6 miles, stacked only if path aligns)." },
-        { title: "Pair with Timing Scout", desc: "Use AI Timing Scout notes for weather, events, and payday weekends to lift average hourly." }
+        { title: "Choose Your Platform", desc: "Start with DoorDash, Uber Eats, or both." },
+        { title: "Check Eligibility", desc: "Age, vehicle, license, insurance, and local rules." },
+        { title: "Apply & Complete Screening", desc: "Submit docs and finish background checks." },
+        { title: "Set Up Payment & Mileage Tracking", desc: "Bank payouts plus a mileage app from Day 1." },
+        { title: "Learn Your Zone", desc: "Restaurant clusters, parking, apartments, Hotspots." },
+        { title: "Short Sessions + Offer Discipline", desc: "2–3 hour blocks; evaluate pay, miles, time, return trip." },
+        { title: "Review Your Profit", desc: "Earnings − cash expenses = net; net ÷ hours = real hourly." },
       ]
     },
     {
       id: "ai-timing",
-      name: "AI Timing Scout",
+      name: "AI Rideshare Timing Scout",
       timeframe: "1 - 2 weeks",
-      estEarnings: "$300 - $3,000 / month",
-      bestFor: "Research-minded Side Hustlers who want to boost gig earnings or sell hotspot playbooks.",
+      estEarnings: "$300 – $3,000+ / month — examples only, not guarantees",
+      bestFor: "Adults, seniors/retirees, and licensed drivers who meet applicable platform requirements.",
       proTip: "Publish a weekly ZipCode brief (Fri for weekend, Sun for weekdays). Drivers pay for timely, local specificity — not generic national tips.",
       pitfall: "Overpromising guaranteed earnings. Frame guides as strategy + data, not income promises, and update them when markets shift.",
       steps: [
@@ -379,10 +658,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       id: "ai-agents",
       name: "AI Agents for Side Hustlers",
       timeframe: "2 - 4 weeks",
-      estEarnings: "$1,000 - $10,000 / month",
-      bestFor: "Builders who can productize agent setups (lead find, scheduling, research) for other Side Hustlers.",
-      proTip: "Sell outcomes, not tools: '20 local website leads every Monday' beats 'custom GPT.' Package agents with a short how-to and a care retainer.",
-      pitfall: "Building one-off snowflakes for every client. Standardize 3 agent products with clear inputs/outputs before custom work.",
+      estEarnings: "$1,000 – $10,000+ / month — examples only, not guarantees",
+      bestFor: "Adults, seniors/retirees, and experienced teens with adult-managed accounts who can sell one narrow supervised workflow.",
+      proTip: "Sell a solved business problem, not an AI agent. PROBLEM → WORKFLOW → NARROW AGENT → TEST → HUMAN REVIEW → DEPLOY → SUPPORT.",
+      pitfall: "Promising full autonomy or headcount savings. Keep human review, never collect passwords in plain text, and start with low-risk workflows.",
       steps: [
         { title: "Define 3 Agent Products", desc: "e.g. Local Lead Scout, Booking/Follow-up Agent, Research Brief Agent. Write I/O, tools, and success metrics for each." },
         { title: "Build Reference Agents", desc: "Use your Muntie Ev / Antigravity stack (or Cursor + APIs) to ship working demos with sample runs." },
@@ -397,9 +676,9 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       name: "Book Publishing",
       timeframe: "4 - 12 weeks",
       estEarnings: "$200 - $8,000 / month",
-      bestFor: "A Digital side hustle for writers and storytellers (Tina's lane); kids can publish storybooks with a parent.",
-      proTip: "Ship a minimum viable book first — clean formatting, strong cover, and a clear reader promise — then iterate with ads and a series plan. Don't wait for perfect.",
-      pitfall: "Spending months on a cover and zero weeks on distribution or launch. KDP + IngramSpark + a simple email/landing funnel beats a pretty unread manuscript.",
+      bestFor: "Adults and seniors/retirees who want to take a manuscript to KDP/IngramSpark; experienced teens only with guardian-approved accounts.",
+      proTip: "The publish button takes minutes. The business is a quality manuscript, professional package, accurate metadata, smart distribution, consistent marketing, and the next book.",
+      pitfall: "Never guarantee bestsellers, bookstore stocking, reviews, or income. “Available to bookstores” does not mean they will stock the book. Do not skip preview/proof or hard-code changing royalty rates.",
       steps: [
         {
           title: "Choose Format & Audience",
@@ -414,7 +693,270 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     }
   ];
 
-  const activeGuide = guides.find(g => g.id === activeGuideId) || guides[0];
+  const authoredById = new Map(guides.map((g) => [g.id, g]));
+  const libraryEntries = useMemo(
+    () => uniqueGuideLibraryEntries(catalogStates),
+    [catalogStates],
+  );
+  const libraryTierById = useMemo(() => {
+    const m = new Map<string, GuideMinTier>();
+    for (const e of libraryEntries) m.set(e.id, e.minTier);
+    return m;
+  }, [libraryEntries]);
+  const navGuidesAll = useMemo(
+    () =>
+      sortGuidesFreeFirst(
+        libraryEntries.map((e) => {
+          const authored = authoredById.get(e.id);
+          const data = resolveLaunchGuideData(e.id, guides);
+          const launch = LAUNCH_GUIDES.find((g) => g.id === e.id);
+          const patchedName = catalogStates[e.id]?.patch?.name?.trim();
+          return {
+            id: e.id,
+            name: presentableGuideTitle(
+              e.id,
+              patchedName || e.name || authored?.name || data.name,
+            ),
+            peek:
+              guideSideHustleDescription(e.id) ||
+              authored?.bestFor ||
+              launch?.peek ||
+              data.bestFor ||
+              "",
+            timeframe: authored?.timeframe || data.timeframe || "—",
+            estEarnings: authored?.estEarnings || data.estEarnings || "—",
+          };
+        }),
+        (id) =>
+          effectiveGuideMinTier(
+            id,
+            catalogStates,
+            libraryTierById.get(id) ?? libraryMinTierForGuideId(id, catalogStates),
+          ),
+      ),
+    [libraryEntries, libraryTierById, guides, catalogStates],
+  );
+
+  const audiencesOf = (id: string) =>
+    effectiveGuideAudiences(id, catalogStates, audiencesForLibraryGuideId(id, catalogStates));
+  const minTierOf = (id: string): GuideMinTier =>
+    effectiveGuideMinTier(
+      id,
+      catalogStates,
+      libraryTierById.get(id) ?? libraryMinTierForGuideId(id, catalogStates),
+    );
+
+  const ageCounts = useMemo(
+    () => countGuideNavByAge(navGuidesAll, audiencesOf),
+    [navGuidesAll, catalogStates],
+  );
+
+  const membershipCounts = useMemo(
+    () => countGuideNavByMembership(navGuidesAll, minTierOf),
+    [navGuidesAll, catalogStates],
+  );
+
+  const statusCounts = useMemo(
+    () => countGuideNavByStatus(navGuidesAll, catalogStates),
+    [navGuidesAll, catalogStates],
+  );
+
+  const guidePatchAssignees = useMemo(
+    () => Object.values(catalogStates).map((s) => s.patch?.assignee),
+    [catalogStates],
+  );
+
+  const assigneeCounts = useMemo(
+    () => countGuideNavByAssignee(navGuidesAll, catalogStates),
+    [navGuidesAll, catalogStates],
+  );
+
+  const assigneeFilterPeople = useMemo(
+    () => guideAssigneeRoster({ guidePatchAssignees }),
+    [guidePatchAssignees],
+  );
+
+  const navGuides = useMemo(() => {
+    const filtered = filterGuideNavItems(navGuidesAll, {
+      ageFilters,
+      membershipFilters,
+      statusFilters,
+      assigneeFilters,
+      catalogStates,
+      isAdmin: staffCatalog,
+      audiencesOf,
+      minTierOf,
+    });
+    const searched = !librarySearch.trim()
+      ? filtered
+      : filtered.filter((g) =>
+          guideMatchesLibrarySearch(
+            {
+              id: g.id,
+              name: g.name,
+              peek: g.peek,
+              guideNumber: formatGuideNumber(g.id),
+            },
+            librarySearch,
+          ),
+        );
+
+    /**
+     * Keep the open guide visible after a status *save* drops it out of the
+     * current filter (e.g. Not Reviewed → Reviewed). Do not pin when the user
+     * clicked a filter chip — the sidebar should match the bubbles.
+     */
+    if (
+      allowPinOutsideFilter.current &&
+      activeGuideId &&
+      !searched.some((g) => g.id === activeGuideId)
+    ) {
+      const pinned = navGuidesAll.find((g) => g.id === activeGuideId);
+      if (pinned) {
+        const keep = new Set(searched.map((g) => g.id));
+        keep.add(activeGuideId);
+        return navGuidesAll.filter((g) => keep.has(g.id));
+      }
+    }
+    return searched;
+  }, [
+    navGuidesAll,
+    ageFilters,
+    membershipFilters,
+    statusFilters,
+    assigneeFilters,
+    catalogStates,
+    staffCatalog,
+    isAdmin,
+    librarySearch,
+    activeGuideId,
+  ]);
+
+  const firstNavId = navGuides[0]?.id ?? "";
+  /** Open guide must stay inside the filtered sidebar list. */
+  const effectiveGuideId =
+    (activeGuideId && navGuides.some((g) => g.id === activeGuideId) && activeGuideId) ||
+    (selectedHustleId && navGuides.some((g) => g.id === selectedHustleId) && selectedHustleId) ||
+    firstNavId;
+  const librarySearchQuery = librarySearch.trim();
+  const noMatchingGuides = navGuides.length === 0;
+  const libraryNarrowed =
+    !guideNavFilterIsAll(ageFilters) ||
+    !guideNavFilterIsAll(membershipFilters) ||
+    !guideNavFilterIsAll(statusFilters) ||
+    !guideNavFilterIsAll(assigneeFilters) ||
+    Boolean(librarySearchQuery);
+  const notFoundCopy = libraryGuideNotFoundCopy(librarySearchQuery);
+
+  const activeMinTier = effectiveGuideMinTier(
+    effectiveGuideId,
+    catalogStates,
+    libraryMinTierForGuideId(effectiveGuideId, catalogStates),
+  );
+  const activeMembershipSelection = effectiveGuideMembershipSelection(
+    effectiveGuideId,
+    catalogStates,
+    libraryMinTierForGuideId(effectiveGuideId, catalogStates),
+  );
+  const activeAgeSelection = effectiveGuideAudiences(
+    effectiveGuideId,
+    catalogStates,
+    audiencesForLibraryGuideId(effectiveGuideId, catalogStates),
+  );
+  const activeAccess = resolveGuideAccess({
+    isMember: isLoggedIn,
+    membershipTier: effectiveTier,
+    minTier: activeMinTier,
+    isAdmin,
+    guideId: effectiveGuideId,
+  });
+  const guideIsFree = activeMinTier === "free";
+  const unlocked = activeAccess.unlocked;
+
+  useEffect(() => {
+    if (!unlocked) {
+      setCompletedSteps({});
+      setStepChecklistItems({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [stepsPayload, itemsPayload] = await Promise.all([
+          fetchMemberProgress<Record<string, boolean>>("launch_guide_steps"),
+          fetchMemberProgress<Record<string, boolean>>("launch_guide_step_items"),
+        ]);
+        if (!cancelled) {
+          setCompletedSteps(stepsPayload ?? {});
+          setStepChecklistItems(itemsPayload ?? {});
+        }
+      } catch {
+        /* keep empty; member can still check boxes and retry save */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [unlocked]);
+
+  const prevFilterSelectionKey = useRef(filterSelectionKey);
+
+  /** Only jump selection when the user changes filters/search — not when a status save refilters the list. */
+  useEffect(() => {
+    if (prevFilterSelectionKey.current === filterSelectionKey) return;
+    prevFilterSelectionKey.current = filterSelectionKey;
+    if (!navGuides.some((g) => g.id === activeGuideId) && navGuides[0]?.id) {
+      setActiveGuideId(navGuides[0].id);
+    }
+  }, [filterSelectionKey, navGuides, activeGuideId]);
+
+  /** Highlighted sidebar guide counts as selected — keep its bulk checkbox checked. */
+  useEffect(() => {
+    if (!isAdmin || !effectiveGuideId) return;
+    setBulkSelected((prev) => {
+      if (prev.has(effectiveGuideId)) return prev;
+      const next = new Set(prev);
+      next.add(effectiveGuideId);
+      return next;
+    });
+  }, [isAdmin, effectiveGuideId, ageFilterKey, membershipFilterKey, statusFilterKey, librarySearch]);
+
+  const activeGuideBase = resolveLaunchGuideData(effectiveGuideId, guides);
+  const catalogPatch = catalogStates[effectiveGuideId]?.patch;
+  const guideKit = resolveGuideKit(effectiveGuideId, catalogPatch);
+  const patchedBase = applyGuideCatalogPatch(
+    {
+      id: activeGuideBase.id,
+      name: activeGuideBase.name,
+      timeframe: activeGuideBase.timeframe,
+      estEarnings: activeGuideBase.estEarnings,
+      bestFor: activeGuideBase.bestFor,
+      steps: activeGuideBase.steps,
+      proTip: activeGuideBase.proTip,
+      pitfall: activeGuideBase.pitfall,
+    },
+    catalogPatch,
+  );
+  const activeGuide = {
+    ...activeGuideBase,
+    name: presentableGuideTitle(
+      effectiveGuideId,
+      String(patchedBase.name || activeGuideBase.name),
+    ),
+    timeframe: String(patchedBase.timeframe || activeGuideBase.timeframe),
+    estEarnings: String(patchedBase.estEarnings || activeGuideBase.estEarnings),
+    steps:
+      catalogPatch?.steps !== undefined
+        ? (guideKit.steps ?? []).map((s) => ({ title: s.title, desc: s.desc }))
+        : guideKit.steps?.length
+          ? guideKit.steps.map((s) => ({ title: s.title, desc: s.desc }))
+          : activeGuideBase.steps,
+  };
+  const activeGuideDescription =
+    guideSideHustleDescription(activeGuide.id) ||
+    kidsGuideById(activeGuide.id)?.summary?.trim() ||
+    activeGuide.bestFor;
+  const activeGuideStatus = getGuideVisibilityStatus(activeGuide.id, catalogStates);
 
   // Calculate completion percentage for the active guide
   const activeStepsCount = activeGuide.steps.length;
@@ -438,247 +980,1005 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     });
   };
 
-  if (!unlocked) {
-    return (
-      <div className="launch-guides-catalog" data-testid="launch-guides-locked">
-        {onBackToCatalog && (
-          <button type="button" className="btn btn-outline" onClick={onBackToCatalog} style={{ width: "fit-content", marginBottom: 12 }}>
-            ← Back to all guides
-          </button>
-        )}
-        <section className="glass launch-guides-catalog-banner">
-          <div>
-            <div className="free-guide-card-badges" style={{ marginBottom: 8 }}>
-              <span className={`glow-badge ${guideIsFree ? "free" : "pink"}`}>
-                {guideTierBadgeLabel(activeMinTier)}
-              </span>
-              <MembershipLockBadge
-                minTier={activeMinTier}
-                unlocked={false}
-                data-testid={`guide-lock-badge-${activeGuide.id}`}
-              />
-            </div>
-            <h2 style={{ fontSize: "1.35rem", color: "var(--charcoal)", margin: "0 0 6px" }}>
-              {activeGuide.name} guide
-            </h2>
-            <p style={{ margin: 0, color: "var(--text-primary)", fontSize: "1rem", maxWidth: 560 }}>
-              {activeGuide.bestFor} {guideTierMembershipNote(activeMinTier)}.
-              {guideIsFree ? ` ${FREE_GUIDE_SIGNUP_NOTE}.` : ""}
-            </p>
+  const toggleStepChecklistItem = (stepIdx: number, itemIdx: number) => {
+    if (!unlocked) return;
+    const key = guideStepChecklistItemKey(activeGuide.id, stepIdx, itemIdx);
+    setStepChecklistItems((prev) => {
+      const next = {
+        ...prev,
+        [key]: !prev[key],
+      };
+      void saveMemberProgress("launch_guide_step_items", next).catch(() => {
+        /* surface via next reload; avoid blocking UI */
+      });
+      return next;
+    });
+  };
+
+  const guideFiltersBar = (
+    <div className="launch-guide-detail__filters-bar" data-testid="launch-guide-filters-bar">
+      <div className="launch-guide-detail__filters-bar-top">
+        <div className="launch-guide-detail__filters" data-testid="launch-guide-sidebar-age-filters">
+          <span className="launch-guide-detail__filters-label">Filter Guides by Age Group</span>
+          <div
+            className="launch-guide-detail__filter-row"
+            role="group"
+            aria-label="Filter guides by age group (multi-select)"
+          >
+            {AGE_FILTERS.map((f) => {
+              const active = guideNavFilterIsAll(ageFilters)
+                ? f.id === "all"
+                : ageFilters.includes(f.id);
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={active}
+                  className={`launch-guide-detail__filter-btn${active ? " is-active" : ""}`}
+                  data-testid={`launch-guide-age-filter-${f.id}`}
+                  onClick={() => toggleAgeFilter(f.id)}
+                >
+                  <span className="launch-guide-detail__filter-check" aria-hidden>
+                    {active ? "✓" : ""}
+                  </span>
+                  <span>{f.label}</span>
+                  <span className="launch-guide-detail__filter-count">{ageCounts[f.id]}</span>
+                </button>
+              );
+            })}
           </div>
-          <div className="launch-guides-catalog-actions">
-            {onGoToLogin && (
-              <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
-                <LogIn size={16} /> Sign in
-              </button>
-            )}
-            <JoinToUnlockCta access={activeAccess} onJoin={onGoToJoin} onUpgrade={onGoToJoin} />
+        </div>
+        <div
+          className="launch-guide-detail__filters"
+          data-testid="launch-guide-sidebar-membership-filters"
+        >
+          <span className="launch-guide-detail__filters-label">Filter Guides by Membership</span>
+          <div
+            className="launch-guide-detail__filter-row"
+            role="group"
+            aria-label="Filter guides by membership (multi-select)"
+          >
+            {MEMBERSHIP_FILTERS.map((f) => {
+              const active = guideNavFilterIsAll(membershipFilters)
+                ? f.id === "all"
+                : membershipFilters.includes(f.id);
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={active}
+                  className={`launch-guide-detail__filter-btn is-tier-${f.id}${
+                    active ? " is-active" : ""
+                  }`}
+                  data-testid={`launch-guide-membership-filter-${f.id}`}
+                  onClick={() => toggleMembershipFilter(f.id)}
+                >
+                  <span className="launch-guide-detail__filter-check" aria-hidden>
+                    {active ? "✓" : ""}
+                  </span>
+                  <span>{f.label}</span>
+                  <span className="launch-guide-detail__filter-count">{membershipCounts[f.id]}</span>
+                </button>
+              );
+            })}
           </div>
-        </section>
+        </div>
       </div>
-    );
-  }
+      {staffCatalog ? (
+        <div
+          className="launch-guide-detail__filters launch-guide-detail__filters--status"
+          data-testid="launch-guide-sidebar-status-filters"
+        >
+          <div className="launch-guide-detail__filters-status-head">
+            <span className="launch-guide-detail__filters-label">
+              Filter Guides by Status
+              <span className="launch-guide-detail__filters-hint">
+                {" "}
+                (filters the Select Guide list)
+              </span>
+            </span>
+          </div>
+          <div
+            className="launch-guide-detail__filter-row"
+            role="group"
+            aria-label="Filter guides by status (multi-select)"
+          >
+            {STATUS_FILTERS.map((f) => {
+              const active = guideNavFilterIsAll(statusFilters)
+                ? f.id === "all"
+                : statusFilters.includes(f.id);
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={active}
+                  className={`launch-guide-detail__filter-btn is-status-${f.id}${
+                    active ? " is-active" : ""
+                  }`}
+                  data-testid={`launch-guide-status-filter-${f.id}`}
+                  onClick={() => toggleStatusFilter(f.id)}
+                >
+                  <span className="launch-guide-detail__filter-check" aria-hidden>
+                    {active ? "✓" : ""}
+                  </span>
+                  <span>{f.label}</span>
+                  <span className="launch-guide-detail__filter-count">{statusCounts[f.id]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {staffCatalog ? (
+        <div
+          className="launch-guide-detail__filters launch-guide-detail__filters--assignee"
+          data-testid="launch-guide-sidebar-assignee-filters"
+        >
+          <span className="launch-guide-detail__filters-label">
+            Filter Guides by Assignee
+            <span className="launch-guide-detail__filters-hint">
+              {" "}
+              (filters the Select Guide list)
+            </span>
+          </span>
+          <div
+            className="launch-guide-detail__filter-row"
+            role="group"
+            aria-label="Filter guides by assignee (multi-select)"
+          >
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={guideNavFilterIsAll(assigneeFilters)}
+              className={`launch-guide-detail__filter-btn${
+                guideNavFilterIsAll(assigneeFilters) ? " is-active" : ""
+              }`}
+              data-testid="launch-guide-assignee-filter-all"
+              onClick={() => toggleAssigneeFilter("all")}
+            >
+              <span className="launch-guide-detail__filter-check" aria-hidden>
+                {guideNavFilterIsAll(assigneeFilters) ? "✓" : ""}
+              </span>
+              <span>All</span>
+              <span className="launch-guide-detail__filter-count">{assigneeCounts.all}</span>
+            </button>
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={
+                !guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes("unassigned")
+              }
+              className={`launch-guide-detail__filter-btn${
+                !guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes("unassigned")
+                  ? " is-active"
+                  : ""
+              }`}
+              data-testid="launch-guide-assignee-filter-unassigned"
+              onClick={() => toggleAssigneeFilter("unassigned")}
+            >
+              <span className="launch-guide-detail__filter-check" aria-hidden>
+                {!guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes("unassigned")
+                  ? "✓"
+                  : ""}
+              </span>
+              <span>Unassigned</span>
+              <span className="launch-guide-detail__filter-count">{assigneeCounts.unassigned}</span>
+            </button>
+            {assigneeFilterPeople.map((t) => {
+              const count = assigneeCounts.byId[t.id] ?? 0;
+              const active =
+                !guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={active}
+                  className={`launch-guide-detail__filter-btn${active ? " is-active" : ""}`}
+                  data-testid={`launch-guide-assignee-filter-${t.id}`}
+                  onClick={() => toggleAssigneeFilter(t.id)}
+                >
+                  <span className="launch-guide-detail__filter-check" aria-hidden>
+                    {active ? "✓" : ""}
+                  </span>
+                  <span>{testOwnerLabel(t.id, assigneeFilterPeople)}</span>
+                  <span className="launch-guide-detail__filter-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {isAdmin ? (
+        <div
+          className="launch-guide-detail__bulk"
+          data-testid="launch-guide-bulk"
+          role="group"
+          aria-label="Bulk edit guide status"
+        >
+          <span className="launch-guide-detail__bulk-label">Bulk edit</span>
+          <button
+            type="button"
+            className="btn btn-outline"
+            data-testid="launch-guide-bulk-select-all"
+            disabled={bulkBusy || navGuides.length === 0}
+            onClick={() => setBulkSelected(new Set(navGuides.map((g) => g.id)))}
+          >
+            Select all ({navGuides.length})
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            data-testid="launch-guide-bulk-clear"
+            disabled={bulkBusy || bulkSelected.size === 0}
+            onClick={() =>
+              setBulkSelected(effectiveGuideId ? new Set([effectiveGuideId]) : new Set())
+            }
+          >
+            Clear
+          </button>
+          <span className="launch-guide-detail__bulk-count" data-testid="launch-guide-bulk-count">
+            {bulkSelected.size} selected
+          </span>
+          <div className="launch-guide-detail__bulk-statuses" role="group" aria-label="Set status">
+            {GUIDE_BULK_STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`btn btn-outline launch-guide-detail__bulk-status is-${opt.value}`}
+                data-testid={`launch-guide-bulk-status-${opt.value}`}
+                disabled={bulkBusy}
+                onClick={() => void applyBulkStatus(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {bulkError ? (
+            <p className="launch-guide-detail__bulk-error" role="alert" data-testid="launch-guide-bulk-error">
+              {bulkError}
+            </p>
+          ) : null}
+          {noMatchingGuides ? null : (
+            <p
+              className="launch-guide-detail__bulk-details-hint"
+              data-testid="launch-guide-bulk-details-hint"
+            >
+              See your Guide Details below.
+            </p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
-    <div className="launch-guide-detail" data-testid="launch-guide-detail">
-      {onBackToCatalog && (
-        <div className="launch-guide-detail__back">
-          <button type="button" className="btn btn-outline" onClick={onBackToCatalog}>
-            ← Back to all guides
-          </button>
+    <div
+      className="launch-guide-detail"
+      data-testid="launch-guide-detail"
+      data-library-title={sideHustleLibraryPageTitle({ isAdmin, isDetail: true })}
+    >
+      {bulkNeedSelectionOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="launch-guide-bulk-need-selection-title"
+          className="launch-guide-bulk-need-selection"
+          data-testid="launch-guide-bulk-need-selection"
+          onClick={() => setBulkNeedSelectionOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setBulkNeedSelectionOpen(false);
+          }}
+        >
+          <div
+            className="launch-guide-bulk-need-selection__card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="launch-guide-bulk-need-selection__head">
+              <span className="launch-guide-bulk-need-selection__icon" aria-hidden>
+                <CircleAlert size={22} />
+              </span>
+              <h3 id="launch-guide-bulk-need-selection-title">Select guides first</h3>
+              <button
+                type="button"
+                className="launch-guide-bulk-need-selection__close"
+                onClick={() => setBulkNeedSelectionOpen(false)}
+                aria-label="Close"
+                data-testid="launch-guide-bulk-need-selection-close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="launch-guide-bulk-need-selection__lead">
+              Pick 1 or more guides with the checkboxes, then choose a bulk action.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setBulkNeedSelectionOpen(false)}
+              data-testid="launch-guide-bulk-need-selection-got-it"
+            >
+              Got it
+            </button>
+          </div>
         </div>
-      )}
+      ) : null}
 
+      {pendingNotePrompt ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="launch-guide-pending-note-title"
+          className="launch-guide-bulk-need-selection"
+          data-testid="launch-guide-pending-note-dialog"
+          onClick={() => setPendingNotePrompt(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPendingNotePrompt(null);
+          }}
+        >
+          <div
+            className="launch-guide-bulk-need-selection__card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="launch-guide-bulk-need-selection__head">
+              <span className="launch-guide-bulk-need-selection__icon" aria-hidden>
+                <CircleAlert size={22} />
+              </span>
+              <h3 id="launch-guide-pending-note-title">Note required</h3>
+              <button
+                type="button"
+                className="launch-guide-bulk-need-selection__close"
+                onClick={() => setPendingNotePrompt(null)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="launch-guide-bulk-need-selection__lead">
+              Pending / Needs Further Review requires a note (at least {GUIDE_STATUS_NOTE_MIN_LENGTH}{" "}
+              characters). It is saved to this guide&apos;s Notes tab and copied to the associated
+              GUIDE-REV test as Failed.
+              {pendingNotePrompt.guideIds.length > 1
+                ? ` Applying to ${pendingNotePrompt.guideIds.length} guides.`
+                : ""}
+            </p>
+            <label className="launch-guide-pending-note-label">
+              <span className="sr-only">Pending reason</span>
+              <textarea
+                className="text-input"
+                rows={4}
+                value={pendingNoteDraft}
+                onChange={(e) => setPendingNoteDraft(e.target.value)}
+                placeholder="Describe what needs further review…"
+                data-testid="launch-guide-pending-note-input"
+                autoFocus
+              />
+            </label>
+            {statusError ? (
+              <p className="launch-guide-status-error" role="alert">
+                {statusError}
+              </p>
+            ) : null}
+            <div className="launch-guide-pending-note-actions">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setPendingNotePrompt(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!guideStatusNoteMeetsRequirement(pendingNoteDraft)}
+                data-testid="launch-guide-pending-note-save"
+                onClick={() => {
+                  const prompt = pendingNotePrompt;
+                  const draft = pendingNoteDraft.trim();
+                  if (!prompt || !guideStatusNoteMeetsRequirement(draft)) {
+                    setStatusError(
+                      `A note is required (at least ${GUIDE_STATUS_NOTE_MIN_LENGTH} characters).`,
+                    );
+                    return;
+                  }
+                  setPendingNotePrompt(null);
+                  void commitGuideStatus(prompt.guideIds, prompt.status, draft);
+                }}
+              >
+                Save & set Pending
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {isAdmin ? (
+        <p className="launch-guide-detail__admin-banner" data-testid="side-hustle-library-admin-title">
+          {sideHustleLibraryPageTitle({ isAdmin: true, isDetail: true })}
+        </p>
+      ) : null}
       {/* Sidebar Selector */}
       <nav className="launch-guide-detail__sidebar" aria-label="Select guide">
-        <span className="launch-guide-detail__sidebar-label">Select Guide</span>
-        {guides.map((g) => {
-          const gMin = adultGuideMinTier(g.id);
-          const gAccess = resolveGuideAccess({
-            isMember: isLoggedIn,
-            membershipTier: effectiveTier,
-            minTier: gMin,
-          });
-          const gFree = gMin === "free";
-          return (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => {
-                setActiveGuideId(g.id);
-                setStepsOpen(false);
-              }}
-              className={`nav-link-btn launch-guide-detail__nav-btn${activeGuideId === g.id ? " active" : ""}`}
-              style={{ opacity: gAccess.unlocked ? 1 : 0.75 }}
-            >
-              <span className="launch-guide-detail__nav-name">{g.name}</span>
-              <span className="launch-guide-detail__nav-meta">
-                <span className={`glow-badge ${gFree ? "free" : "pink"} launch-guide-detail__tier`}>
-                  {guideTierShortLabel(gMin)}
-                </span>
-                {!gAccess.unlocked && (
-                  <MembershipLockBadge
-                    minTier={gMin}
-                    unlocked={false}
-                    data-testid={`guide-lock-badge-nav-${g.id}`}
-                  />
-                )}
-              </span>
-            </button>
-          );
-        })}
+        <span className="launch-guide-detail__sidebar-label">
+          Select Guide
+          <span className="launch-guide-detail__sidebar-count" data-testid="launch-guide-sidebar-count">
+            {" "}
+            · {librarySidebarCountText({
+              count: navGuides.length,
+              narrowed: libraryNarrowed,
+              searchQuery: librarySearchQuery,
+            })}
+          </span>
+        </span>
+        <div className="launch-guide-detail__search" data-testid="launch-guide-library-search">
+          <Search size={16} className="launch-guide-detail__search-icon" aria-hidden />
+          <input
+            type="search"
+            className="text-input launch-guide-detail__search-input"
+            value={librarySearch}
+            onChange={(e) => setLibrarySearch(e.target.value)}
+            placeholder="Search guides (* and ? wildcards)"
+            aria-label="Search Side Hustle Library guides"
+            data-testid="launch-guide-library-search-input"
+          />
+        </div>
+        <div className="launch-guide-detail__sidebar-scroll" data-testid="launch-guide-sidebar-scroll">
+          {noMatchingGuides ? (
+            <p className="launch-guide-detail__sidebar-empty" data-testid="launch-guide-sidebar-empty">
+              {notFoundCopy.title}
+            </p>
+          ) : (
+          navGuides.map((g) => {
+            const gMin = libraryMinTierForGuideId(g.id, catalogStates);
+            const gAccess = resolveGuideAccess({
+              isMember: isLoggedIn,
+              membershipTier: effectiveTier,
+              minTier: gMin,
+              isAdmin,
+              guideId: g.id,
+            });
+            const gFree = gMin === "free";
+            const gStatus = getGuideVisibilityStatus(g.id, catalogStates);
+            const bulkChecked = bulkSelected.has(g.id) || g.id === effectiveGuideId;
+            return (
+              <div
+                key={g.id}
+                className={`launch-guide-detail__nav-item${effectiveGuideId === g.id ? " is-active" : ""}${
+                  isAdmin && bulkChecked ? " is-bulk-selected" : ""
+                }`}
+              >
+                <div className="launch-guide-detail__nav-item-main">
+                {isAdmin ? (
+                  <label
+                    className="launch-guide-detail__bulk-check"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={bulkChecked}
+                      disabled={bulkBusy || g.id === effectiveGuideId}
+                      data-testid={`launch-guide-bulk-check-${g.id}`}
+                      aria-label={
+                        g.id === effectiveGuideId
+                          ? `${g.name} selected (open in sidebar)`
+                          : `Select ${g.name} for bulk edit`
+                      }
+                      onChange={() => {
+                        if (g.id === effectiveGuideId) return;
+                        setBulkSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(g.id)) next.delete(g.id);
+                          else next.add(g.id);
+                          return next;
+                        });
+                      }}
+                    />
+                  </label>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveGuideId(g.id);
+                    if (isAdmin) {
+                      setBulkSelected((prev) => {
+                        if (prev.has(g.id)) return prev;
+                        const next = new Set(prev);
+                        next.add(g.id);
+                        return next;
+                      });
+                    }
+                  }}
+                  className={`nav-link-btn launch-guide-detail__nav-btn${effectiveGuideId === g.id ? " active" : ""}`}
+                  style={{ opacity: gAccess.unlocked ? 1 : 0.75 }}
+                  data-testid={`launch-guide-nav-${g.id}`}
+                >
+                  <span className="launch-guide-detail__nav-copy">
+                    <span className="launch-guide-detail__nav-name">
+                      <span className="free-guide-number" data-testid={`guide-number-nav-${g.id}`}>
+                        {guideNumberLabel(g.id)}
+                      </span>{" "}
+                      {g.name}
+                    </span>
+                    {staffCatalog
+                      ? (() => {
+                          const trail = formatAuditTrail(
+                            catalogStates[g.id]?.updatedAt,
+                            catalogStates[g.id]?.updatedBy,
+                          );
+                          return trail ? (
+                            <span
+                              className="launch-guide-detail__nav-audit"
+                              data-testid={`launch-guide-nav-audit-${g.id}`}
+                            >
+                              {trail}
+                            </span>
+                          ) : null;
+                        })()
+                      : null}
+                  </span>
+                  <span className="launch-guide-detail__nav-meta">
+                    <span className={`glow-badge ${gFree ? "free" : "pink"} launch-guide-detail__tier`}>
+                      {guideTierShortLabel(gMin)}
+                    </span>
+                    {staffCatalog ? (
+                      <span
+                        className="launch-guide-detail__status-pills"
+                        data-testid={`launch-guide-nav-status-${g.id}`}
+                      >
+                        {guideHeldVisibilityStatuses(gStatus).map((s) => (
+                          <span
+                            key={s}
+                            className={`launch-guide-detail__status-pill is-${s}`}
+                          >
+                            {guideVisibilityStatusLabel(s)}
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
+                    {!gAccess.unlocked && (
+                      <MembershipLockBadge
+                        minTier={gMin}
+                        unlocked={false}
+                        data-testid={`guide-lock-badge-nav-${g.id}`}
+                      />
+                    )}
+                  </span>
+                </button>
+                </div>
+              </div>
+            );
+          })
+          )}
+        </div>
       </nav>
 
       {/* Main Guide Content */}
+      {noMatchingGuides ? (
+        <div className="glass launch-guide-detail__main" data-testid="launch-guide-not-found">
+          <div className="launch-guide-detail__main-head">
+            <div className="launch-guide-detail__main-title-row">
+              <h2 className="launch-guide-detail__main-title">
+                <span
+                  className="launch-guide-detail__main-title-text"
+                  data-testid="launch-guide-not-found-title"
+                >
+                  {notFoundCopy.title}
+                </span>
+              </h2>
+              <p className="launch-guide-detail__main-lede" data-testid="launch-guide-not-found-lede">
+                {notFoundCopy.lede}
+              </p>
+            </div>
+          </div>
+          {guideFiltersBar}
+        </div>
+      ) : (
       <div className="glass launch-guide-detail__main">
         {/* Header summary */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "28px", borderBottom: "1px solid var(--border-color)", paddingBottom: "24px" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px 12px", marginBottom: "6px" }}>
-              <span className={`glow-badge ${guideIsFree ? "free" : "purple"}`} style={{ marginBottom: 0 }}>
-                {guideTierBadgeLabel(activeMinTier)}
-              </span>
-              <h2 style={{ fontSize: "1.75rem", color: "var(--charcoal)", margin: 0, lineHeight: 1.2 }}>
-                {activeGuide.name} Setup
-              </h2>
-            </div>
-            <p style={{ color: "var(--text-primary)", fontSize: "1rem", maxWidth: "600px" }}>{activeGuide.bestFor}</p>
-          </div>
-
-          <div style={{ 
-            background: "rgba(255,255,255,0.01)", 
-            padding: "16px", 
-            borderRadius: "12px", 
-            border: "1px solid var(--border-color)",
-            fontSize: "0.95rem",
-            minWidth: "220px"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "4px" }}><Coins size={14} /> Startup Time:</span>
-              <strong style={{ color: "var(--charcoal)" }}>{activeGuide.timeframe}</strong>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "4px" }}><TrendingUp size={14} /> Est. Return:</span>
-              <strong style={{ color: "var(--accent-emerald)" }}>{activeGuide.estEarnings}</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress Tracker */}
-        <div style={{ marginBottom: "32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: "8px" }}>
-            <span>Launch Roadmap Progress</span>
-            <span style={{ fontWeight: 700, color: progressPercent === 100 ? "var(--accent-emerald)" : "var(--charcoal)" }}>
-              {activeCompletedSteps} of {activeStepsCount} Completed ({Math.round(progressPercent)}%)
+        <div className="launch-guide-detail__main-head">
+          <div className="launch-guide-detail__main-title-row">
+            <span className={`glow-badge ${guideIsFree ? "free" : "purple"}`} style={{ marginBottom: 0 }}>
+              {guideTierBadgeLabel(activeMinTier)}
             </span>
-          </div>
-          <div style={{ width: "100%", height: "8px", background: "rgba(255,255,255,0.05)", borderRadius: "9999px", overflow: "hidden" }}>
-            <div style={{ 
-              width: `${progressPercent}%`, 
-              height: "100%", 
-              background: progressPercent === 100 ? "var(--grad-emerald)" : "var(--grad-primary)",
-              borderRadius: "9999px",
-              transition: "width var(--transition-normal)"
-            }} />
+            {!unlocked ? (
+              <MembershipLockBadge
+                minTier={activeMinTier}
+                unlocked={false}
+                data-testid={`guide-lock-badge-main-${activeGuide.id}`}
+              />
+            ) : null}
+            <h2 className="launch-guide-detail__main-title">
+              <span className="launch-guide-detail__main-title-text">
+                {activeGuide.name}
+                {guideNumberParenthetical(activeGuide.id)
+                  ? ` ${guideNumberParenthetical(activeGuide.id)}`
+                  : ""}
+              </span>
+              {staffCatalog
+                ? (() => {
+                    const reviewCaseId = guideReviewCaseIdForGuide(activeGuide.id);
+                    const testHref = testingPortalHrefForGuide(activeGuide.id);
+                    if (!reviewCaseId || !testHref) return null;
+                    return (
+                      <a
+                        href={testHref}
+                        className="launch-guide-detail__title-test-link"
+                        data-testid={`launch-guide-test-link-${activeGuide.id}`}
+                        title={`Open ${reviewCaseId} in Testing Portal`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigateAdminDeepLink({ tab: "testing", testId: reviewCaseId });
+                        }}
+                      >
+                        {guideNumberLabel(activeGuide.id)
+                          ? `${guideNumberLabel(activeGuide.id)} · ${reviewCaseId}`
+                          : reviewCaseId}
+                      </a>
+                    );
+                  })()
+                : null}
+            </h2>
+            {activeGuideDescription ? (
+              <p className="launch-guide-detail__main-lede" data-testid="launch-guide-description">
+                {activeGuideDescription}
+              </p>
+            ) : null}
+            {unlocked ? (
+              <ComplimentaryGiftNote guideId={activeGuide.id} minTier={activeMinTier} />
+            ) : null}
+            <div
+              className="launch-guide-detail__main-stats"
+              data-testid="launch-guide-hours-prices"
+            >
+              <span>
+                <Clock size={14} aria-hidden /> {activeGuide.timeframe}
+              </span>
+              <span>
+                <TrendingUp size={14} aria-hidden /> {activeGuide.estEarnings}
+              </span>
+            </div>
+            {staffCatalog ? (
+              <div
+                className="launch-guide-detail__update-panel"
+                data-testid={`launch-guide-main-status-${activeGuide.id}`}
+              >
+                <p
+                  className="launch-guide-detail__update-panel-heading"
+                  data-testid="launch-guide-status-heading"
+                >
+                  Update your Guide Status Here
+                </p>
+                <div className="launch-guide-detail__update-row">
+                  <span className="launch-guide-detail__update-row-label">Status</span>
+                  <span
+                    className="launch-guide-detail__status-pills"
+                    data-testid={`launch-guide-main-status-pills-${activeGuide.id}`}
+                  >
+                    {guideHeldVisibilityStatuses(activeGuideStatus).map((s) => (
+                      <span key={s} className={`launch-guide-detail__status-pill is-${s}`}>
+                        {guideVisibilityStatusLabel(s)}
+                      </span>
+                    ))}
+                  </span>
+                  {canEditGuideContent ? (
+                    <GuideActiveToggle
+                      guideId={activeGuide.id}
+                      status={activeGuideStatus}
+                      busy={statusBusyId === activeGuide.id}
+                      canSetReviewedByDev={canSetReviewedByDev}
+                      onChange={(next) => void setGuideStatus(activeGuide.id, next)}
+                    />
+                  ) : null}
+                </div>
+                {canEditGuideContent ? (
+                  <>
+                    <div className="launch-guide-detail__update-row launch-guide-detail__update-row--assignee">
+                      <GuideAssigneeField
+                        guideId={activeGuide.id}
+                        patchAssignee={catalogPatch?.assignee}
+                        guidePatchAssignees={guidePatchAssignees}
+                        onSaved={(state) => {
+                          setCatalogStates((prev) => ({
+                            ...prev,
+                            [activeGuide.id]: overlayGuideCatalogState(prev[activeGuide.id], state),
+                          }));
+                          patchLiveGuideLibraryCatalogState(activeGuide.id, state);
+                          setGuideAuditRefreshKey((k) => k + 1);
+                        }}
+                      />
+                    </div>
+                    <GuideMembershipAgeFields
+                      guideId={activeGuide.id}
+                      membershipSelected={activeMembershipSelection}
+                      ageSelected={activeAgeSelection}
+                      busy={statusBusyId === activeGuide.id}
+                      onError={setStatusError}
+                      onSaved={(state) => {
+                        setCatalogStates((prev) => ({
+                          ...prev,
+                          [activeGuide.id]: overlayGuideCatalogState(prev[activeGuide.id], state),
+                        }));
+                        patchLiveGuideLibraryCatalogState(activeGuide.id, state);
+                        setGuideAuditRefreshKey((k) => k + 1);
+                      }}
+                    />
+                    {statusError ? (
+                      <p
+                        className="launch-guide-status-error"
+                        role="alert"
+                        data-testid="launch-guide-status-error"
+                      >
+                        {statusError}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {/* Checklist Steps — collapsed by default */}
-        <div style={{ marginBottom: "32px" }}>
-          <button
-            type="button"
-            className="kids-guide-steps-toggle"
-            onClick={() => setStepsOpen((o) => !o)}
-            aria-expanded={stepsOpen}
-            data-testid="launch-guide-steps-toggle"
-          >
-            {stepsOpen
-              ? "Hide steps"
-              : `Show ${activeStepsCount} step${activeStepsCount === 1 ? "" : "s"}`}
-          </button>
-          {stepsOpen && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: 12 }}>
-              {activeGuide.steps.map((step, idx) => {
-                const isDone = !!completedSteps[`${activeGuide.id}-${idx}`];
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => toggleStep(idx)}
-                    className={`checklist-item ${isDone ? "completed" : ""}`}
-                  >
-                    <div className="checklist-checkbox">
-                      {isDone && <Check size={12} />}
-                    </div>
-                    <div className="checklist-text">
-                      <strong
-                        style={{
-                          color: isDone ? "var(--text-muted)" : "var(--charcoal)",
-                          fontSize: "0.95rem",
-                          display: "block",
-                          marginBottom: "4px",
-                        }}
-                      >
-                        {idx + 1}. {step.title}
-                      </strong>
-                      <span
-                        style={{
-                          color: isDone ? "var(--text-muted)" : "var(--text-secondary)",
-                          fontSize: "0.95rem",
-                        }}
-                      >
-                        {step.desc}
-                      </span>
+        {guideFiltersBar}
+
+        <GuidePrepSections
+          key={activeGuide.id}
+          guideId={activeGuide.id}
+          kit={guideKit}
+          testIdPrefix="launch-guide"
+          expandAllSections
+          guideUnlocked={unlocked}
+          lockCta={
+            <>
+              {onGoToLogin && !isLoggedIn ? (
+                <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
+                  <LogIn size={16} /> Log in
+                </button>
+              ) : null}
+              <JoinToUnlockCta
+                access={activeAccess}
+                onJoin={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
+                onUpgrade={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
+              />
+            </>
+          }
+          afterTabsOwnsPanel={guidePrepAfterTabsOwnsPanel(canEditGuideContent)}
+          afterTabs={(tab) => {
+            if (!canEditGuideContent) return null;
+            if (tab === "notes") {
+              return (
+                <section
+                  className="guide-admin-content-editor"
+                  data-testid={`guide-notes-editor-${activeGuide.id}`}
+                >
+                  <div className="guide-admin-content-editor__bar">
+                    <div>
+                      <h3 className="guide-admin-content-editor__heading">Edit Notes</h3>
+                      <p className="guide-admin-content-editor__lede">
+                        Add, edit, and attach files to notes for this Side Hustle.
+                      </p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  <GuideNotesTab
+                    guideId={activeGuide.id}
+                    isLoggedIn={isLoggedIn}
+                    isAdmin={canEditGuideContent}
+                    actorName={memberName}
+                    actorUserId={memberUserId}
+                    onGoToLogin={onGoToLogin}
+                    refreshKey={guideNotesRefreshKey}
+                  />
+                </section>
+              );
+            }
+            const focusSection =
+              tab === "prereqs"
+                ? "prereqs"
+                : tab === "tools"
+                  ? "tools"
+                  : tab === "steps"
+                    ? "steps"
+                    : tab === "pricing"
+                      ? "pricing"
+                      : tab === "supplies"
+                        ? "supplies"
+                        : tab === "all"
+                          ? "all"
+                          : null;
+            if (!focusSection) return null;
+            return (
+              <GuideAdminContentEditor
+                key={`editor-${activeGuide.id}`}
+                guideId={activeGuide.id}
+                name={activeGuide.name}
+                kit={guideKit}
+                focusSection={focusSection}
+                onStepsLocalChange={(steps) => {
+                  setCatalogStates((prev) => {
+                    const prior = prev[activeGuide.id];
+                    return {
+                      ...prev,
+                      [activeGuide.id]: {
+                        guideId: activeGuide.id,
+                        status: prior?.status ?? getGuideVisibilityStatus(activeGuide.id, prev),
+                        published: prior?.published ?? true,
+                        deleted: prior?.deleted === true,
+                        custom: prior?.custom === true,
+                        patch: { ...(prior?.patch ?? {}), steps },
+                        updatedAt: prior?.updatedAt,
+                        updatedBy: prior?.updatedBy,
+                      },
+                    };
+                  });
+                }}
+                onSaved={(state) => {
+                  setCatalogStates((prev) => ({
+                    ...prev,
+                    [activeGuide.id]: overlayGuideCatalogState(prev[activeGuide.id], state),
+                  }));
+                  setGuideAuditRefreshKey((k) => k + 1);
+                }}
+              />
+            );
+          }}
+          stepsTab={{
+            count: activeStepsCount,
+            content: (
+              <>
+                <div className="launch-guide-steps-progress">
+                  <div className="launch-guide-steps-progress__meta">
+                    <span>Launch Roadmap Progress</span>
+                    <span
+                      className={
+                        progressPercent === 100
+                          ? "launch-guide-steps-progress__done"
+                          : "launch-guide-steps-progress__count"
+                      }
+                    >
+                      {activeCompletedSteps} of {activeStepsCount} Completed (
+                      {Math.round(progressPercent)}%)
+                    </span>
+                  </div>
+                  <div className="launch-guide-steps-progress__track">
+                    <div
+                      className="launch-guide-steps-progress__fill"
+                      style={{
+                        width: `${progressPercent}%`,
+                        background:
+                          progressPercent === 100 ? "var(--grad-emerald)" : "var(--grad-primary)",
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="launch-guide-steps-list">
+                  {activeGuide.steps.map((step, idx) => {
+                    const isDone = !!completedSteps[`${activeGuide.id}-${idx}`];
+                    return (
+                      <div
+                        key={idx}
+                        className={`checklist-item ${isDone ? "completed" : ""}`}
+                        data-testid={`launch-guide-step-${idx}`}
+                      >
+                        <button
+                          type="button"
+                          className="checklist-checkbox"
+                          aria-pressed={isDone}
+                          aria-label={
+                            isDone
+                              ? `Mark step ${idx + 1} not done`
+                              : `Mark step ${idx + 1} done`
+                          }
+                          data-testid={`launch-guide-step-done-${idx}`}
+                          onClick={() => toggleStep(idx)}
+                        >
+                          {isDone && <Check size={12} />}
+                        </button>
+                        <div className="checklist-text">
+                          <strong
+                            style={{
+                              color: isDone ? "var(--text-muted)" : "var(--charcoal)",
+                              fontSize: "0.95rem",
+                              display: "block",
+                              marginBottom: 4,
+                            }}
+                          >
+                            {idx + 1}. {step.title}
+                          </strong>
+                          <GuideStepDesc
+                            guideId={activeGuide.id}
+                            stepIdx={idx}
+                            desc={step.desc}
+                            muted={isDone}
+                            checkedItems={stepChecklistItems}
+                            onToggleItem={(itemIdx) => toggleStepChecklistItem(idx, itemIdx)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ),
+          }}
+          calculatorTab={{
+            content: (
+              <GuideRevenueCalculator
+                guideId={activeGuide.id}
+                guideName={activeGuide.name}
+              />
+            ),
+          }}
+          notesTab={{
+            content: (
+              <GuideNotesTab
+                guideId={activeGuide.id}
+                isLoggedIn={isLoggedIn}
+                isAdmin={isAdmin}
+                actorName={memberName}
+                actorUserId={memberUserId}
+                onGoToLogin={onGoToLogin}
+                refreshKey={guideNotesRefreshKey}
+              />
+            ),
+          }}
+        />
 
-        {/* Pro Tip & Pitfall callouts */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-          <div style={{ 
-            padding: "20px", 
-            borderRadius: "12px", 
-            border: "1px solid rgba(16, 185, 129, 0.15)", 
-            background: "rgba(16, 185, 129, 0.015)" 
-          }}>
-            <h4 style={{ color: "var(--accent-emerald)", fontSize: "0.95rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-              <Award size={16} /> Professional Secret
-            </h4>
-            <p style={{ fontSize: "0.95rem", color: "var(--text-primary)", lineHeight: 1.6 }}>{activeGuide.proTip}</p>
-          </div>
-
-          <div style={{ 
-            padding: "20px", 
-            borderRadius: "12px", 
-            border: "1px solid rgba(239, 68, 68, 0.15)", 
-            background: "rgba(239, 68, 68, 0.015)" 
-          }}>
-            <h4 style={{ color: "#ef4444", fontSize: "0.95rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-              <AlertTriangle size={16} /> High-Risk Pitfall
-            </h4>
-            <p style={{ fontSize: "0.95rem", color: "var(--text-primary)", lineHeight: 1.6 }}>{activeGuide.pitfall}</p>
-          </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div style={{ marginTop: "32px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
-            Ready to calculate your customized returns?
-          </span>
-          <button 
-            onClick={() => onGoToCalculator(activeGuide.id)}
-            className="btn btn-outline"
-            style={{ fontSize: "0.95rem", gap: "6px" }}
+        <div className="launch-guide-detail__tips">
+          <button
+            type="button"
+            className="launch-guide-detail__tips-toggle"
+            aria-expanded={tipsOpen}
+            data-testid="launch-guide-tips-toggle"
+            onClick={() => setTipsOpen((o) => !o)}
           >
-            Launch Revenue Calculator <ArrowRight size={14} />
+            <span>{tipsOpen ? "▾" : "▸"} Tips & pitfalls</span>
           </button>
+          {tipsOpen ? (
+            <div className="launch-guide-detail__tips-grid">
+              <div className="launch-guide-detail__tip is-pro">
+                <h4>
+                  <Award size={16} aria-hidden /> Professional Secret
+                </h4>
+                <p>{activeGuide.proTip}</p>
+              </div>
+              <div className="launch-guide-detail__tip is-risk">
+                <h4>
+                  <AlertTriangle size={16} aria-hidden /> High-Risk Pitfall
+                </h4>
+                <p>{activeGuide.pitfall}</p>
+              </div>
+            </div>
+          ) : null}
         </div>
 
+        {staffCatalog ? (
+          <div
+            className="launch-guide-detail__audit-area"
+            data-testid={`launch-guide-audit-area-${activeGuide.id}`}
+          >
+            {(() => {
+              const trail = formatAuditTrail(
+                catalogStates[activeGuide.id]?.updatedAt,
+                catalogStates[activeGuide.id]?.updatedBy,
+              );
+              return trail ? (
+                <p
+                  className="launch-guide-detail__main-audit"
+                  data-testid={`launch-guide-main-audit-${activeGuide.id}`}
+                >
+                  {trail}
+                </p>
+              ) : null;
+            })()}
+            <GuideChangeLogPanel
+              guideId={activeGuide.id}
+              refreshKey={guideAuditRefreshKey}
+            />
+          </div>
+        ) : null}
       </div>
-
+      )}
     </div>
   );
 };

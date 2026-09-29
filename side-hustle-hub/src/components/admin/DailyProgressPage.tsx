@@ -15,7 +15,7 @@ import {
   formatProgressStatusesLabel,
   formatRangeLabel,
   listProgressSprintFilterOptions,
-  PROGRESS_REPORT_PEOPLE,
+  progressReportPeople,
   PROGRESS_SORT_OPTIONS,
   PROGRESS_STATUS_FILTERS,
   type DailyProgressReport as Report,
@@ -54,6 +54,15 @@ import {
   toIsoDate,
   type TimeEntry,
 } from "../../lib/gysh-time-entries";
+import { allQaTestersForProgress, fetchUsers } from "../../lib/gysh-roles";
+import {
+  emailCountForContact,
+  fetchQaEmailLog,
+  filterQaEmailLog,
+  progressQaContacts,
+  type ProgressEmailLogEntry,
+  type ProgressQaContact,
+} from "../../lib/daily-progress-emails";
 
 /** Always keep ~3 weeks of timesheet rows so week views / history chips see logged hours. */
 const TIME_LOOKBACK_DAYS = 21;
@@ -62,14 +71,22 @@ function todayIso(): string {
   return toIsoDate(new Date());
 }
 
-const PERSON_ACCENT: Record<ProgressReportPerson, string> = {
+const CORE_PERSON_ACCENT: Record<string, string> = {
   Tina: "var(--crimson)",
   Evelyn: "var(--bronze)",
   Lyriq: "var(--accent-emerald)",
   Candace: "#3d6b8c",
+  Brenda: "#8b5a2b",
+  Milford: "#5c6b7a",
+  Isaiah: "#6b4f8c",
+  Ruth: "#7a5c6e",
   Both: "var(--charcoal)",
   Unassigned: "#7a7064",
 };
+
+function personAccent(person: string): string {
+  return CORE_PERSON_ACCENT[person] ?? "#6B5344";
+}
 
 function peopleLabel(people: ProgressReportPerson[]): string {
   if (people.length === 0) return "All";
@@ -81,9 +98,10 @@ function peopleLabel(people: ProgressReportPerson[]): string {
 function togglePerson(
   prev: ProgressReportPerson[],
   person: ProgressReportPerson,
+  roster: readonly ProgressReportPerson[],
 ): ProgressReportPerson[] {
   if (prev.includes(person)) return prev.filter((p) => p !== person);
-  return PROGRESS_REPORT_PEOPLE.filter((p) => p === person || prev.includes(p));
+  return roster.filter((p) => p === person || prev.includes(p));
 }
 
 function toggleSprintFilter(
@@ -139,6 +157,12 @@ export function DailyProgressPage() {
   const [rangeMode, setRangeMode] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState<ProgressReportPerson[]>([]);
+  const [peopleRoster, setPeopleRoster] = useState<ProgressReportPerson[]>(() =>
+    progressReportPeople(allQaTestersForProgress()),
+  );
+  const [qaContacts, setQaContacts] = useState<ProgressQaContact[]>(() => progressQaContacts());
+  const [emailLog, setEmailLog] = useState<ProgressEmailLogEntry[]>([]);
+  const [emailLogError, setEmailLogError] = useState<string | null>(null);
   const [selectedSprints, setSelectedSprints] = useState<ProgressSprintFilter[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<ProgressStatusFilter[]>([]);
   const [sortBy, setSortBy] = useState<ProgressSortBy>("id");
@@ -166,8 +190,37 @@ export function DailyProgressPage() {
     }
   };
 
+  const refreshEmailLog = async () => {
+    try {
+      setEmailLogError(null);
+      setEmailLog(await fetchQaEmailLog());
+    } catch (err) {
+      setEmailLogError(err instanceof Error ? err.message : "Could not load emails sent to QA users.");
+    }
+  };
+
   useEffect(() => {
     void refreshAudit();
+    void refreshEmailLog();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchUsers()
+      .then((users) => {
+        if (cancelled) return;
+        const roster = progressReportPeople(allQaTestersForProgress(users));
+        setPeopleRoster(roster);
+        setQaContacts(progressQaContacts(users));
+        setSelectedPeople((prev) => prev.filter((p) => roster.includes(p)));
+      })
+      .catch(() => {
+        setPeopleRoster(progressReportPeople(allQaTestersForProgress()));
+        setQaContacts(progressQaContacts());
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -312,7 +365,13 @@ export function DailyProgressPage() {
     selectedPeople.length === 0 && selectedSprints.length === 0
       ? "Still open (all)"
       : "Still open (filtered)";
-  const exportUsersLabel = usersSummary === "All" ? "All users" : usersSummary;
+  const exportUsersLabel = usersSummary === "All" ? "All QA users" : usersSummary;
+  const qaPeople = peopleRoster.filter((p) => p !== "Both" && p !== "Unassigned");
+  const visibleEmailLog = filterQaEmailLog(emailLog, qaContacts, {
+    people: selectedPeople,
+    from: loadedFrom,
+    to: loadedTo,
+  });
 
   const activityDays =
     rawTasks && rawTests && rawTime
@@ -505,7 +564,7 @@ export function DailyProgressPage() {
             aria-label={`Filter report by users (currently ${usersSummary})`}
             data-testid="daily-progress-report-users"
           >
-            <span className="daily-progress-page__users-label">Users</span>
+            <span className="daily-progress-page__users-label">QA Users</span>
             <div
               className="daily-progress-page__user-bubbles"
               role="listbox"
@@ -523,9 +582,9 @@ export function DailyProgressPage() {
               >
                 All
               </button>
-              {PROGRESS_REPORT_PEOPLE.map((person) => {
+              {peopleRoster.map((person) => {
                 const active = selectedPeople.includes(person);
-                const accent = PERSON_ACCENT[person];
+                const accent = personAccent(person);
                 return (
                   <button
                     key={person}
@@ -535,7 +594,9 @@ export function DailyProgressPage() {
                     className="qa-tester-bubble"
                     data-active={active ? "true" : "false"}
                     data-testid={`daily-progress-users-${person.toLowerCase()}`}
-                    onClick={() => setSelectedPeople((prev) => togglePerson(prev, person))}
+                    onClick={() =>
+                      setSelectedPeople((prev) => togglePerson(prev, person, peopleRoster))
+                    }
                     style={{
                       borderColor: active ? accent : undefined,
                       boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
@@ -548,7 +609,7 @@ export function DailyProgressPage() {
               })}
             </div>
             <p className="daily-progress-report__users-hint">
-              Multi-select · filters by who updated the item (not Both assignee)
+              Multi-select · every QA user · filters activity and emails by who updated the item
             </p>
           </div>
 
@@ -794,6 +855,60 @@ export function DailyProgressPage() {
               </div>
             </div>
 
+            <section
+              className="daily-progress-report__section daily-progress-page__qa-users"
+              aria-label="All QA users"
+              data-testid="daily-progress-qa-users"
+            >
+              <h4>All QA users</h4>
+              <div className="daily-progress-page__qa-table-wrap">
+                <table className="daily-progress-page__qa-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">QA user</th>
+                      <th scope="col">Email</th>
+                      <th scope="col">Tasks</th>
+                      <th scope="col">Tests</th>
+                      <th scope="col">Time</th>
+                      <th scope="col">Emails sent</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {qaPeople.map((person) => {
+                      const contact = qaContacts.find((c) => c.shortName === person);
+                      const slice =
+                        rawTasks && rawTests && rawTime
+                          ? buildDailyProgressReport({
+                              from: loadedFrom,
+                              to: loadedTo,
+                              tasks: rawTasks,
+                              testPayload: rawTests,
+                              timeEntries: rawTime,
+                              people: [person],
+                              sprints: selectedSprints,
+                              statuses: selectedStatuses,
+                              sortBy,
+                            })
+                          : null;
+                      return (
+                        <tr key={person} data-testid={`daily-progress-qa-row-${person.toLowerCase()}`}>
+                          <td>
+                            <span className="qa-tester-dot" style={{ background: personAccent(person) }} />
+                            {person}
+                          </td>
+                          <td>{contact?.emails[0] || "—"}</td>
+                          <td>{slice?.tasks.length ?? 0}</td>
+                          <td>{slice?.tests.length ?? 0}</td>
+                          <td>{slice?.timeLabel || "0.00h"}</td>
+                          <td>{emailCountForContact(visibleEmailLog, person)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             {report.tasks.length > 0 && (
               <section className="daily-progress-report__section">
                 <h4>Task activity</h4>
@@ -841,6 +956,70 @@ export function DailyProgressPage() {
             )}
           </>
         )}
+
+        <section
+          className="daily-progress-page__audit"
+          aria-label="Emails sent to QA users"
+          data-testid="daily-progress-qa-emails"
+        >
+          <div className="daily-progress-page__audit-head">
+            <h3>Emails sent to QA users</h3>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => void refreshEmailLog()}
+              data-testid="daily-progress-qa-emails-refresh"
+            >
+              Refresh emails
+            </button>
+          </div>
+          {emailLogError && <p className="daily-progress-report__error">{emailLogError}</p>}
+          {visibleEmailLog.length === 0 && !emailLogError ? (
+            <p className="daily-progress-report__muted" style={{ marginTop: 8 }}>
+              No emails logged to QA users for this date range
+              {selectedPeople.length > 0 ? ` (${peopleLabel(selectedPeople)})` : ""}.
+              Daily digest, password reset, and other Resend sends appear here.
+            </p>
+          ) : (
+            <div className="daily-progress-page__qa-table-wrap">
+              <table className="daily-progress-page__qa-table">
+                <thead>
+                  <tr>
+                    <th scope="col">When</th>
+                    <th scope="col">QA user</th>
+                    <th scope="col">To</th>
+                    <th scope="col">Template</th>
+                    <th scope="col">Subject</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleEmailLog.map((row) => (
+                    <tr key={row.id} data-testid={`daily-progress-qa-email-${row.id}`}>
+                      <td>
+                        <time dateTime={row.createdAt}>{formatAuditWhen(row.createdAt)}</time>
+                      </td>
+                      <td>{row.toName}</td>
+                      <td>{row.toEmail}</td>
+                      <td>
+                        <code>{row.templateSlug}</code>
+                      </td>
+                      <td>{row.subject}</td>
+                      <td>
+                        <span
+                          className={`email-templates-admin__status-pill is-${row.status || "unknown"}`}
+                        >
+                          {row.status || "—"}
+                        </span>
+                        {row.error ? ` · ${row.error}` : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <section className="daily-progress-page__audit" aria-label="Export audit log">
           <div className="daily-progress-page__audit-head">

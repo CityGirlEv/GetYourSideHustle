@@ -133,4 +133,36 @@ describe("gysh-note-entries", () => {
       true,
     );
   });
+
+  it("heals Execute Fixes / Proposed Fix notes so author is Cursor, not the tester", () => {
+    const stored = serializeNoteEntries([
+      createNoteEntry(
+        "Candace",
+        "Cursor could not apply a safe code fix.\n\n[Proposed Fix]\n1. Tester note: “broken”\n2. Could not fix: no code change\n[/Proposed Fix]",
+        "2026-08-30T10:00:00.000Z",
+      ),
+    ]);
+    const entries = parseNoteEntries(stored);
+    expect(entries[0]!.author).toBe("Cursor");
+    expect(canEditNoteEntry(entries[0]!, "Candace")).toBe(false);
+    expect(canEditNoteEntry(entries[0]!, "Evelyn")).toBe(false);
+    expect(formatNoteEntryStamp(entries[0]!)).toMatch(/^Cursor ·/);
+  });
+
+  it("mergeNoteEntries stamps new Proposed Fix notes as Cursor even if actor is a tester", () => {
+    const merged = mergeNoteEntries(
+      "",
+      serializeNoteEntries([
+        createNoteEntry(
+          "Candace",
+          "Cursor fix from tester notes.\n\n[Proposed Fix]\n1. Fix applied: split greeting\n[/Proposed Fix]",
+        ),
+      ]),
+      "Candace",
+    );
+    expect(merged.ok).toBe(true);
+    if (!merged.ok) return;
+    const entries = parseNoteEntries(merged.notes);
+    expect(entries[0]!.author).toBe("Cursor");
+  });
 });

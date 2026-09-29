@@ -23,6 +23,17 @@ describe("kids team join copy", () => {
     expect(isKidsCornerMember("kids", true)).toBe(true);
     expect(isKidsCornerMember("junior", true)).toBe(true);
   });
+
+  it("does not promise that team join unlocks membership guides", () => {
+    for (const audience of ["kids", "junior"] as const) {
+      const blob = getTeamJoinCopy(audience)
+        .perks.map((p) => `${p.title} ${p.detail}`)
+        .join(" ");
+      expect(blob).toMatch(/Free Membership/i);
+      expect(blob).not.toMatch(/unlock the rest when you join the team/i);
+      expect(blob).not.toMatch(/complete playbooks unlock for Teens Team/i);
+    }
+  });
 });
 
 describe("kids team membership storage", () => {

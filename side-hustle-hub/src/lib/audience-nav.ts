@@ -48,12 +48,12 @@ export const MATCH_WIZARD_AGES: {
   },
   {
     id: "match-adult",
-    label: "Adults (18–54)",
+    label: "Adults (18–49)",
     blurb: "Budget, hours, strengths, goals",
   },
   {
     id: "match-senior",
-    label: "Seniors (55+)",
+    label: "Seniors (50+)",
     blurb: "Flexible pace & second careers",
   },
 ];

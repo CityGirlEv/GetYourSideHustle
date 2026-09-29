@@ -56,7 +56,7 @@ export function AdminHustleSchedulesPage() {
         </button>
       </div>
       <p>
-        All saved Schedule Suite plans across members (Pro+ reminders run from the daily digest
+        All saved Schedule Suite plans across members (Pro or higher reminders run from the daily digest
         cron). Admins can review every suite here.
       </p>
 

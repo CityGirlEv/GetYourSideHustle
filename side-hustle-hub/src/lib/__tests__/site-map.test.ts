@@ -56,7 +56,18 @@ describe("site-map stays in sync with nav sources", () => {
   });
 
   it("Guides menu manuals match MARKETING_GUIDE_MENU", () => {
+    const community = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-community");
+    expect(community?.children?.map((c) => c.label)).toEqual([
+      "Blog",
+      "Workshops",
+      "Newsletter",
+      "GEAR",
+    ]);
+    expect(hrefForSiteMapNode("nav-community-gear")).toEqual({ kind: "shop" });
+    expect(hrefForSiteMapNode("nav-gear")).toEqual({ kind: "shop" });
+    expect(hrefForSiteMapNode("nav-memberships")).toEqual({ kind: "join" });
     const guides = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-guides");
+    expect(guides?.label).toBe("Side Hustle Guides");
     const childIds = (guides?.children ?? []).map((c) => c.id);
     expect(childIds[0]).toBe("guides-library");
     expect(childIds.slice(1)).toEqual(

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ClipboardCheck, Clock, FileSignature, Trophy } from "lucide-react";
+import { ClipboardCheck, Clock, Coins, FileSignature, Trophy } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { BETA_NDA_VERSION } from "../lib/beta-tester-nda";
 import {
@@ -17,6 +17,8 @@ type BetaTesterDashboardProps = {
   memberName?: string | null;
   memberEmail?: string | null;
   onOpenNda?: () => void;
+  onOpenCredits?: () => void;
+  onOpenPoints?: () => void;
   onJoin?: () => void;
 };
 
@@ -25,6 +27,8 @@ export function BetaTesterDashboard({
   memberName = "",
   memberEmail = "",
   onOpenNda,
+  onOpenCredits,
+  onOpenPoints,
   onJoin,
 }: BetaTesterDashboardProps) {
   const [nda, setNda] = useState<BetaNdaReceipt | null>(preview);
@@ -137,6 +141,16 @@ export function BetaTesterDashboard({
               Create tester profile
             </button>
           ) : null}
+          {onOpenCredits ? (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={onOpenCredits}
+              data-testid="beta-dash-open-credits-locked"
+            >
+              How to earn credits
+            </button>
+          ) : null}
         </form>
       </div>
     );
@@ -157,6 +171,30 @@ export function BetaTesterDashboard({
             Accepted {nda.acceptedAt.slice(0, 10)}
             {nda.legalName ? ` · ${nda.legalName}` : ""}
             {nda.userId ? ` · ID ${nda.userId}` : ""}
+          </p>
+        ) : null}
+        {onOpenCredits || onOpenPoints ? (
+          <p className="beta-tester-dash__credits-link">
+            {onOpenCredits ? (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={onOpenCredits}
+                data-testid="beta-dash-open-credits"
+              >
+                <Coins size={16} aria-hidden /> How to earn credits
+              </button>
+            ) : null}
+            {onOpenPoints ? (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={onOpenPoints}
+                data-testid="beta-dash-open-points"
+              >
+                View points earned
+              </button>
+            ) : null}
           </p>
         ) : null}
       </section>

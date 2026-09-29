@@ -86,7 +86,7 @@ export function PasswordField({
           <ul className="password-strength-checks">
             {assessment.checks.map((c) => (
               <li key={c.id} data-ok={c.ok ? "1" : "0"}>
-                {c.ok ? "✓" : "○"} {c.label}
+                {c.label}
               </li>
             ))}
           </ul>

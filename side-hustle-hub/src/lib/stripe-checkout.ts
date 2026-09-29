@@ -5,7 +5,7 @@ import {
   membershipStripePrice,
   type MembershipBillingInterval,
 } from "./stripe-catalog";
-import type { AudienceGroup, TierId } from "./membership";
+import type { AudienceGroup, MerchItemId, TierId } from "./membership";
 
 export function supportsMembershipStripeCheckout(
   tierId: TierId,
@@ -14,16 +14,30 @@ export function supportsMembershipStripeCheckout(
   return membershipStripePrice(tierId, audience, "month") != null;
 }
 
+export type StripeCheckoutResult = {
+  url: string | null;
+  sessionId: string;
+  paid?: boolean;
+  label?: string;
+  amountUsd?: number;
+  creditsApplied?: number;
+  cashDueUsd?: number;
+  user?: AuthUser;
+};
+
 export async function startMembershipCheckout(input: {
   email: string;
   name?: string;
   tierId: TierId;
   audience: AudienceGroup;
   interval: MembershipBillingInterval;
-}): Promise<{ url: string; sessionId: string; label: string; amountUsd: number }> {
+  creditsToApply?: number;
+  merchChoices?: MerchItemId[];
+  merchTshirtSizes?: Array<string>;
+}): Promise<StripeCheckoutResult> {
   return api("stripe/checkout", {
     method: "POST",
-    auth: false,
+    auth: true,
     body: {
       kind: "membership",
       email: input.email,
@@ -31,6 +45,9 @@ export async function startMembershipCheckout(input: {
       tierId: input.tierId,
       audience: input.audience,
       interval: input.interval,
+      creditsToApply: input.creditsToApply ?? 0,
+      merchChoices: input.merchChoices,
+      merchTshirtSizes: input.merchTshirtSizes,
       returnOrigin: typeof window !== "undefined" ? window.location.origin : undefined,
     },
     timeoutMs: 60_000,
@@ -54,14 +71,15 @@ export async function startAlaCarteCheckout(input: {
   });
 }
 
-/** Multi-line a-la-carte cart → Stripe Checkout (one-time payment). */
+/** Multi-line a-la-carte cart → Stripe Checkout (one-time payment), with optional Kid Credits. */
 export async function startAlaCarteCartCheckout(input: {
   email: string;
   items: Array<{ itemId: string; quantity: number }>;
-}): Promise<{ url: string; sessionId: string; label?: string; amountUsd?: number }> {
+  creditsToApply?: number;
+}): Promise<StripeCheckoutResult> {
   return api("stripe/checkout", {
     method: "POST",
-    auth: false,
+    auth: true,
     body: {
       kind: "alacarte",
       email: input.email,
@@ -69,6 +87,7 @@ export async function startAlaCarteCartCheckout(input: {
         itemId: i.itemId,
         quantity: i.quantity,
       })),
+      creditsToApply: input.creditsToApply ?? 0,
       returnOrigin: typeof window !== "undefined" ? window.location.origin : undefined,
     },
     timeoutMs: 60_000,

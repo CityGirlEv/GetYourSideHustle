@@ -1,25 +1,51 @@
 ---
-description: Production deploy must update Cloudflare Pages and the standalone Worker
+description: Production deploy targets depend on which app workspace is active
 alwaysApply: true
 ---
 
-# Deploy (Pages + Worker)
+# Deploy
 
-When the user asks to **deploy**, always run the full production deploy — never Pages-only unless they explicitly say otherwise.
+When the user asks to **deploy**, choose the target from the **active workspace / cwd** — never guess across apps.
+
+## Get Your Side Hustle (`side-hustle-hub`)
+
+If the agent root or cwd is `side-hustle-hub` (or the user is working on GYSH):
+
+```bash
+cd C:\Users\evely\Documents\antigravity\eager-hypatia\side-hustle-hub
+npm run deploy:pages
+```
+
+- **Cloudflare Pages** → `getyoursidehustle` project
+- **Custom domain:** https://getyoursidehustle.com
+- **Preview:** `https://*.getyoursidehustle.pages.dev`
+
+Do **not** run eager-hypatia / mypartb `npm run deploy` for GYSH work.
+
+After deploy, report the Pages preview URL + https://getyoursidehustle.com.
+
+## Part B Optimizer (`eager-hypatia` / mypartb)
+
+Only when the user is clearly working on mypartb / Part B Optimizer:
 
 ```bash
 cd C:\Users\evely\Documents\antigravity\eager-hypatia
 npm run deploy
 ```
 
-This runs, in order:
+This runs Pages (`mypartb`) **and** the Worker (`mypartb.com` / `mypartb.evelyn3.workers.dev`). Never Pages-only unless they explicitly say otherwise.
 
-1. `npm run build` (includes `fix-pages-wrangler.mjs`)
-2. **Cloudflare Pages** → `mypartb` project (`mypartb.com` / `*.mypartb.pages.dev`)
-3. **Cloudflare Worker** → `mypartb.evelyn3.workers.dev` via `deploy:worker`
+After deploy, report latest Pages preview + Worker URL.
 
-`npm run deploy:pages` is an alias for `npm run deploy` (both targets).
+## My Plan, Not My Mood (`my-plan-not-my-mood` / nonnegotiation.com)
 
-Do **not** use `wrangler pages deploy` alone. Do **not** skip `deploy:worker` after a Pages deploy.
+When working in `my-plan-not-my-mood`:
 
-After deploy, report both URLs: latest Pages preview + Worker URL.
+```bash
+cd C:\Users\evely\Documents\antigravity\eager-hypatia\my-plan-not-my-mood
+bun run deploy
+```
+
+- **Live Production Domain**: https://nonnegotiation.com
+- **Cloudflare Pages URL**: https://my-plan-not-my-mood.pages.dev
+- **Local Dev Server**: http://localhost:3001 (`bun run dev`)

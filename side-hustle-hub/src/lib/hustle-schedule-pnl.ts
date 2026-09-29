@@ -1,6 +1,6 @@
 /**
  * Schedule Suite Profit & Loss — dated sales/expense line items with
- * daily / weekly / monthly rollups. Unlocks with Pro+ Schedule Suite.
+ * daily / weekly / monthly rollups. Unlocks with Pro & Above Schedule Suite.
  */
 
 export type PnLLineKind = "sale" | "expense";
@@ -250,6 +250,30 @@ export function summarizePnLLines(lines: SchedulePnLLine[]): {
     profitUsd: Math.round((salesUsd - expensesUsd) * 100) / 100,
     byCategory,
   };
+}
+
+/** How recorded sales sit against the blueprint target sales amount. */
+export function salesVsTarget(
+  actualSalesUsd: number,
+  targetSalesUsd: number,
+): {
+  targetUsd: number;
+  actualUsd: number;
+  remainingUsd: number;
+  overTargetUsd: number;
+  progressPct: number;
+} {
+  const targetUsd = money(Math.max(0, Number(targetSalesUsd) || 0));
+  const actualUsd = money(Math.max(0, Number(actualSalesUsd) || 0));
+  const remainingUsd = money(Math.max(0, targetUsd - actualUsd));
+  const overTargetUsd = money(Math.max(0, actualUsd - targetUsd));
+  const progressPct =
+    targetUsd <= 0
+      ? actualUsd > 0
+        ? 100
+        : 0
+      : Math.min(999, Math.round((actualUsd / targetUsd) * 100));
+  return { targetUsd, actualUsd, remainingUsd, overTargetUsd, progressPct };
 }
 
 /** Keep blueprint sprint short — target ≤ 10 calendar days. */

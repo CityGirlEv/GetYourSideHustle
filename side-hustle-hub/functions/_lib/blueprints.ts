@@ -9,6 +9,7 @@ import {
   requireDb,
 } from "./auth";
 import { error, json, randomToken } from "./crypto";
+import { claimedExtraGuideId } from "../../src/lib/wizard-comp-pick";
 
 export type BlueprintAgeGroup = "kids" | "junior" | "adult" | "senior";
 
@@ -170,6 +171,172 @@ function isAgeGroup(v: unknown): v is BlueprintAgeGroup {
   return v === "kids" || v === "junior" || v === "adult" || v === "senior";
 }
 
+/** Parsed Match Wizard payload from a guest pending result or register body. */
+export function parseWizardBlueprintPayload(input: {
+  ageGroup?: unknown;
+  answers?: unknown;
+  resultIds?: unknown;
+  resultPcts?: unknown;
+}): {
+  ageGroup: BlueprintAgeGroup;
+  answers: Record<string, unknown>;
+  resultIds: string[];
+  resultPcts: Record<string, number>;
+} | null {
+  if (!isAgeGroup(input.ageGroup)) return null;
+  const resultIds = Array.isArray(input.resultIds)
+    ? input.resultIds.map(String).map((id) => id.trim()).filter(Boolean)
+    : [];
+  if (resultIds.length === 0) return null;
+  const answers =
+    input.answers && typeof input.answers === "object" && !Array.isArray(input.answers)
+      ? (input.answers as Record<string, unknown>)
+      : {};
+  const resultPcts: Record<string, number> = {};
+  if (input.resultPcts && typeof input.resultPcts === "object" && !Array.isArray(input.resultPcts)) {
+    for (const [id, value] of Object.entries(input.resultPcts as Record<string, unknown>)) {
+      const n = Number(value);
+      if (id && Number.isFinite(n)) resultPcts[id] = n;
+    }
+  }
+  return { ageGroup: input.ageGroup, answers, resultIds, resultPcts };
+}
+
+/** Persist a completed wizard onto a brand-new account (no login session yet). */
+export async function saveWizardBlueprintForNewUser(
+  env: Env,
+  userId: string,
+  input: {
+    ageGroup?: unknown;
+    answers?: unknown;
+    resultIds?: unknown;
+    resultPcts?: unknown;
+  },
+  opts?: { childProfileId?: string | null; claimToken?: string | null },
+): Promise<{ id: string } | null> {
+  await ensureBlueprintTables(env);
+  const parsed = parseWizardBlueprintPayload(input);
+  if (!parsed) return null;
+  const claimToken = opts?.claimToken ? String(opts.claimToken) : "";
+  if (claimToken) {
+    const existing = await env.DB.prepare(
+      `SELECT id FROM side_hustle_blueprints WHERE user_id = ? AND claim_token = ? LIMIT 1`,
+    )
+      .bind(userId, claimToken)
+      .first<{ id: string }>();
+    if (existing?.id) return { id: existing.id };
+  }
+  const now = new Date().toISOString();
+  const id = `bp-${crypto.randomUUID()}`;
+  const childId = parsed.ageGroup === "kids" ? opts?.childProfileId ?? null : null;
+  await env.DB.prepare(
+    `INSERT INTO side_hustle_blueprints
+      (id, user_id, child_profile_id, age_group, answers_json, result_ids_json, result_pcts_json,
+       top_result_id, unlocked, source, claim_token, completed_at, unlocked_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'wizard', ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      id,
+      userId,
+      childId,
+      parsed.ageGroup,
+      JSON.stringify(parsed.answers),
+      JSON.stringify(parsed.resultIds),
+      JSON.stringify(parsed.resultPcts),
+      parsed.resultIds[0] ?? null,
+      claimToken || null,
+      now,
+      now,
+      now,
+      now,
+    )
+    .run();
+  return { id };
+}
+
+/** Explicit complimentary pick only — never auto-grant the highest % match. */
+export async function grantComplimentaryWizardExtra(
+  env: Env,
+  userId: string,
+  input: {
+    resultIds?: unknown;
+    resultPcts?: unknown;
+    blueprintId?: string | null;
+    claimedGuideId?: string | null;
+  },
+): Promise<string | null> {
+  let resultIds = Array.isArray(input.resultIds) ? input.resultIds.map(String).filter(Boolean) : [];
+  let resultPcts: Record<string, number> = {};
+  if (input.resultPcts && typeof input.resultPcts === "object" && !Array.isArray(input.resultPcts)) {
+    for (const [key, value] of Object.entries(input.resultPcts as Record<string, unknown>)) {
+      const n = Number(value);
+      if (Number.isFinite(n)) resultPcts[key] = n;
+    }
+  }
+  if (!resultIds.length && input.blueprintId) {
+    const row = await env.DB.prepare(
+      `SELECT result_ids_json, result_pcts_json FROM side_hustle_blueprints WHERE id = ? AND user_id = ? LIMIT 1`,
+    )
+      .bind(input.blueprintId, userId)
+      .first<{ result_ids_json: string; result_pcts_json: string }>();
+    if (row) {
+      try {
+        const ids = JSON.parse(row.result_ids_json) as unknown;
+        if (Array.isArray(ids)) resultIds = ids.map(String).filter(Boolean);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const pcts = JSON.parse(row.result_pcts_json) as unknown;
+        if (pcts && typeof pcts === "object" && !Array.isArray(pcts)) {
+          resultPcts = {};
+          for (const [key, value] of Object.entries(pcts as Record<string, unknown>)) {
+            const n = Number(value);
+            if (Number.isFinite(n)) resultPcts[key] = n;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  const extra = String(input.claimedGuideId || "").trim();
+  if (!extra) return null;
+  if (resultIds.length && !resultIds.includes(extra)) return null;
+
+  const existing = await env.DB.prepare(
+    `SELECT payload FROM member_progress WHERE user_id = ? AND kind = 'wizard_comp_guides' LIMIT 1`,
+  )
+    .bind(userId)
+    .first<{ payload: string }>();
+  if (existing?.payload) {
+    try {
+      const parsed = JSON.parse(existing.payload) as Record<string, string>;
+      const prior = claimedExtraGuideId(parsed);
+      if (prior) return prior;
+    } catch {
+      /* overwrite empty/invalid */
+    }
+  }
+  const now = new Date().toISOString();
+  const payload = JSON.stringify({ extra });
+  await env.DB.prepare(
+    `INSERT INTO member_progress (user_id, kind, payload, updated_at)
+     VALUES (?, 'wizard_comp_guides', ?, ?)
+     ON CONFLICT(user_id, kind) DO UPDATE SET
+       payload = CASE
+         WHEN json_extract(member_progress.payload, '$.extra') IS NOT NULL
+          AND trim(COALESCE(json_extract(member_progress.payload, '$.extra'), '')) != ''
+         THEN member_progress.payload
+         ELSE excluded.payload
+       END,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(userId, payload, now)
+    .run();
+  return extra;
+}
+
 /** Public: store logged-out wizard completion; returns opaque claim token (no PII in URL). */
 export async function createPendingBlueprint(env: Env, request: Request): Promise<Response> {
   const dbFail = requireDb(env);
@@ -263,7 +430,16 @@ export async function claimPendingBlueprintForUser(
   const row = await env.DB.prepare(`SELECT * FROM pending_blueprints WHERE claim_token = ?`)
     .bind(claimToken)
     .first<PendingRow>();
-  if (!row || row.claimed_by_user_id) return null;
+  if (!row) return null;
+  if (row.claimed_by_user_id) {
+    if (row.claimed_by_user_id !== userId) return null;
+    const existing = await env.DB.prepare(
+      `SELECT id FROM side_hustle_blueprints WHERE user_id = ? AND claim_token = ? LIMIT 1`,
+    )
+      .bind(userId, claimToken)
+      .first<{ id: string }>();
+    return existing?.id ? { id: existing.id } : null;
+  }
   if (new Date(row.expires_at).getTime() < Date.now()) {
     await env.DB.prepare(`DELETE FROM pending_blueprints WHERE claim_token = ?`).bind(claimToken).run();
     return null;
@@ -272,7 +448,12 @@ export async function claimPendingBlueprintForUser(
   const now = new Date().toISOString();
   const id = `bp-${crypto.randomUUID()}`;
   const resultIds = parseJsonArray(row.result_ids_json);
-  const ageGroup = opts?.ageGroup || (row.age_group as BlueprintAgeGroup);
+  const ageGroup = isAgeGroup(row.age_group)
+    ? row.age_group
+    : opts?.ageGroup && isAgeGroup(opts.ageGroup)
+      ? opts.ageGroup
+      : "adult";
+  const childId = ageGroup === "kids" ? opts?.childProfileId ?? null : null;
 
   await env.DB.prepare(
     `INSERT INTO side_hustle_blueprints
@@ -283,7 +464,7 @@ export async function claimPendingBlueprintForUser(
     .bind(
       id,
       userId,
-      opts?.childProfileId ?? null,
+      childId,
       ageGroup,
       row.answers_json,
       row.result_ids_json,
@@ -367,13 +548,23 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
   // Do not trust client scores as authoritative — store for display; IDs come from client ranking.
   const resultPcts = body.resultPcts && typeof body.resultPcts === "object" ? body.resultPcts : {};
   const now = new Date().toISOString();
-  const id = body.id && String(body.id).startsWith("bp-") ? String(body.id) : `bp-${crypto.randomUUID()}`;
+  let id = body.id && String(body.id).startsWith("bp-") ? String(body.id) : `bp-${crypto.randomUUID()}`;
 
-  const existing = await env.DB.prepare(
+  const claimToken = body.claimToken ? String(body.claimToken) : "";
+  let existing = await env.DB.prepare(
     `SELECT id, user_id, unlocked_at FROM side_hustle_blueprints WHERE id = ?`,
   )
     .bind(id)
     .first<{ id: string; user_id: string; unlocked_at: string | null }>();
+
+  if (!existing && claimToken) {
+    existing = await env.DB.prepare(
+      `SELECT id, user_id, unlocked_at FROM side_hustle_blueprints WHERE user_id = ? AND claim_token = ? LIMIT 1`,
+    )
+      .bind(user.id, claimToken)
+      .first<{ id: string; user_id: string; unlocked_at: string | null }>();
+    if (existing) id = existing.id;
+  }
 
   if (existing) {
     if (existing.user_id !== user.id) {
@@ -395,7 +586,7 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
         JSON.stringify(resultPcts),
         resultIds[0] ?? null,
         now,
-        body.claimToken ? String(body.claimToken) : null,
+        claimToken || null,
         now,
         id,
         user.id,
@@ -417,7 +608,7 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
         JSON.stringify(resultIds),
         JSON.stringify(resultPcts),
         resultIds[0] ?? null,
-        body.claimToken ? String(body.claimToken) : null,
+        claimToken || null,
         now,
         now,
         now,
@@ -426,11 +617,11 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
       .run();
   }
 
-  if (body.claimToken) {
+  if (claimToken) {
     await env.DB.prepare(
       `UPDATE pending_blueprints SET claimed_by_user_id = ?, claimed_at = ? WHERE claim_token = ? AND claimed_by_user_id IS NULL`,
     )
-      .bind(user.id, now, String(body.claimToken))
+      .bind(user.id, now, claimToken)
       .run();
   }
 
@@ -505,6 +696,49 @@ export async function listBlueprints(env: Env, user: DbUser): Promise<Response> 
     blueprints: [...byId.values()].map(publicBlueprint),
     user: publicUser(user),
   });
+}
+
+function blueprintCountsFromRows(
+  rows: Array<{ userId?: unknown; user_id?: unknown; n?: unknown }> | null | undefined,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const row of rows ?? []) {
+    const id = String(row.userId ?? row.user_id ?? "").trim();
+    const n = typeof row.n === "number" ? row.n : Number(row.n);
+    if (!id || !Number.isFinite(n) || n < 0) continue;
+    counts[id] = Math.floor(n);
+  }
+  return counts;
+}
+
+/** Admin Memberships: Blueprint counts per member without N act-as GETs. */
+export async function listBlueprintCountsByUser(env: Env): Promise<Response> {
+  const dbFail = requireDb(env);
+  if (dbFail) return dbFail;
+  await ensureBlueprintTables(env);
+
+  let rows: Array<{ userId: string; n: number | string }> | null = null;
+  try {
+    const q = await env.DB.prepare(
+      `SELECT uid AS userId, COUNT(DISTINCT bid) AS n FROM (
+         SELECT user_id AS uid, id AS bid FROM side_hustle_blueprints
+         UNION
+         SELECT c.linked_user_id AS uid, b.id AS bid
+         FROM side_hustle_blueprints b
+         INNER JOIN child_profiles c ON c.id = b.child_profile_id
+         WHERE c.linked_user_id IS NOT NULL AND trim(c.linked_user_id) != ''
+       )
+       GROUP BY uid`,
+    ).all<{ userId: string; n: number | string }>();
+    rows = q.results ?? [];
+  } catch {
+    const q = await env.DB.prepare(
+      `SELECT user_id AS userId, COUNT(*) AS n FROM side_hustle_blueprints GROUP BY user_id`,
+    ).all<{ userId: string; n: number | string }>();
+    rows = q.results ?? [];
+  }
+
+  return json({ ok: true, counts: blueprintCountsFromRows(rows) });
 }
 
 export async function getBlueprint(env: Env, user: DbUser, id: string): Promise<Response> {

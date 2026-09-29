@@ -42,7 +42,7 @@ export const PRIVACY_POLICY_SECTIONS: PrivacyPolicySection[] = [
       },
       {
         type: "p",
-        text: "Payment card information may be processed by third-party payment processors. GYSH does not intend to directly store full payment-card numbers on its own servers.",
+        text: "Payment card information may be processed by third-party payment processors. GYSH does not directly store full payment-card numbers on its own servers.",
       },
     ],
   },

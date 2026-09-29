@@ -5,11 +5,16 @@
 import {
   ADMIN_EMAIL,
   membershipDeepLink,
+  perkBulletsHtml,
   SITE_NAME,
   SITE_URL,
+  upgradesHtml,
   wrapBrandedEmail,
   type BrandedEmailParts,
+  type TierId,
 } from "./email-brand";
+import { GYSH_GEAR_COLLECTION_URL } from "../../src/lib/gysh-gear-store";
+import { merchEmailVars, membershipTierDisplayName } from "../../src/lib/membership-email-copy";
 
 export type EmailTemplateContent = {
   subject: string;
@@ -37,6 +42,18 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     name: "Registration confirmation",
     description: "Sent when someone registers — pending admin activation.",
     sampleSubject: `${SITE_NAME} — we got your signup!`,
+  },
+  {
+    slug: "workshop_registration_confirmation",
+    name: "Workshop registration confirmation",
+    description: "Sent to the attendee when they register or pre-register for a workshop.",
+    sampleSubject: `${SITE_NAME} — you're registered for a workshop`,
+  },
+  {
+    slug: "workshop_date_confirmed",
+    name: "Workshop date confirmed",
+    description: "Sent when the class date is set. Attaches the complete workshop guide PDF (Resend attachment).",
+    sampleSubject: `${SITE_NAME} — your workshop date is locked`,
   },
   {
     slug: "welcome_free",
@@ -108,7 +125,7 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     slug: "schedule_suite_reminder",
     name: "Schedule Suite reminder",
     description:
-      "Pro+ hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
+      "Pro or higher hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
     sampleSubject: `${SITE_NAME} — weekly schedule reminder`,
   },
   {
@@ -140,6 +157,32 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     name: "Membership upgraded",
     description: "Sent to the member when they upgrade from one paid plan to another (or Free → paid).",
     sampleSubject: `${SITE_NAME} — you're upgraded to Pro!`,
+  },
+  {
+    slug: "membership_renewal_reminder",
+    name: "Membership renewal reminder",
+    description:
+      "Sent about a week before membership expiration / the next 3-month Stripe charge.",
+    sampleSubject: `${SITE_NAME} — your membership renews soon`,
+  },
+  {
+    slug: "membership_merch_ready",
+    name: "GYSHFamily t-shirt discount · hat or tee",
+    description:
+      "Email to Starter and up with the t-shirt/hat discount: shop GYSH Gear, pick the complimentary hat or t-shirt count for their plan, enter GYSHFamily at checkout for 100% off.",
+    sampleSubject: `${SITE_NAME} — pick your complimentary GYSH hat or tee`,
+  },
+  {
+    slug: "alacarte_purchased",
+    name: "A la carte purchase",
+    description: "Sent after a-la-carte checkout (Stripe, GYSH credits, or mixed).",
+    sampleSubject: `${SITE_NAME} — your a-la-carte purchase is confirmed!`,
+  },
+  {
+    slug: "credit_pack_purchased",
+    name: "Kid Credit pack purchase",
+    description: "Sent after a parent-funded Kid Credit pack purchase (Stripe cash).",
+    sampleSubject: `${SITE_NAME} — your Kid Credit pack is confirmed!`,
   },
   {
     slug: "password_reset",
@@ -189,7 +232,60 @@ export const PREVIEW_SAMPLE_VARS: EmailTemplateVars = {
   attendeeCount: "1",
   digestBodyHtml:
     "<p style=\"margin:0;\">Preview of your personal Admin/QA digest body (live digests are generated per person).</p>",
+  itemsHtml:
+    "<ul style=\"margin:0;padding-left:18px;\"><li><strong>30-minute consult</strong> × 1 — $45</li></ul>",
+  itemLabel: "30-minute consult",
+  amountUsd: "$45",
+  expiresOn: "2026-12-21",
+  chargeLine:
+    "Stripe will attempt your every-3-month membership charge around 2026-12-21.",
+  workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
+  workshopWhen: "Date & time TBD",
+  workshopFormat: "Live Zoom",
+  workshopKind: "pre-registration",
+  workshopNextLine:
+    "We'll email you again when the date and time are locked. One seat is held for this email.",
 };
+
+const PREVIEW_TIER_BY_SLUG: Record<string, TierId> = {
+  welcome_free: "free",
+  welcome_starter: "starter",
+  welcome_pro: "pro",
+  welcome_elite: "elite",
+  membership_subscribed: "starter",
+  membership_upgraded: "pro",
+  membership_merch_ready: "starter",
+  membership_renewal_reminder: "starter",
+  registration_confirmation: "starter",
+};
+
+function previousPreviewTier(tier: TierId): TierId {
+  if (tier === "elite") return "pro";
+  if (tier === "pro") return "starter";
+  return "free";
+}
+
+/** Preview/test vars aligned to the membership page for the template's plan. */
+export function previewSampleVarsForSlug(slug: string): EmailTemplateVars {
+  const tier = PREVIEW_TIER_BY_SLUG[slug] ?? "free";
+  const vars: EmailTemplateVars = {
+    ...PREVIEW_SAMPLE_VARS,
+    tier: membershipTierDisplayName(tier),
+    previousTier: membershipTierDisplayName(previousPreviewTier(tier)),
+    perksHtml: perkBulletsHtml(tier, "adult"),
+    upgradesHtml: upgradesHtml(tier, "adult"),
+  };
+  if (slug === "membership_merch_ready" || tier === "starter" || tier === "pro" || tier === "elite") {
+    Object.assign(vars, merchEmailVars(tier === "free" ? "starter" : tier));
+  }
+  if (slug === "membership_merch_ready") {
+    vars.ctaUrl = GYSH_GEAR_COLLECTION_URL;
+  }
+  if (slug === "workshop_registration_confirmation" || slug === "workshop_date_confirmed") {
+    vars.ctaUrl = `${SITE_URL}/workshops?workshop=ai-marketing-video`;
+  }
+  return vars;
+}
 
 export function applyTemplateVars(input: string, vars: EmailTemplateVars): string {
   return String(input || "").replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => {
@@ -235,13 +331,32 @@ export function renderContent(
   return { subject: filled.subject, html: branded.html, text: branded.text };
 }
 
+/** Stored Admin copy from before the GYSH-family welcome headline. */
+export function isLegacyHustleFamilyHeadline(headline: string): boolean {
+  const normalized = String(headline || "").trim().toLowerCase();
+  return (
+    normalized === "welcome to the hustle family!" ||
+    normalized === "welcome to the side hustle family!"
+  );
+}
+
+/** Stored registration headline with a lowercase “welcome”. */
+export function isLegacyLowercaseGyshWelcomeHeadline(headline: string): boolean {
+  return String(headline || "").trim() === "{{name}}, welcome to the GYSH family!";
+}
+
+export {
+  isLegacyMerchDashboardClaimUrl,
+  isLegacyMerchReadyBody,
+} from "../../src/lib/gysh-gear-store";
+
 function welcomeDefault(tierLabelText: string): EmailTemplateContent {
   const joinUrl = membershipDeepLink();
   return {
     subject: `${SITE_NAME} — you're activated! Welcome aboard`,
     preheader: `You're activated on ${tierLabelText} — see your perks!`,
     eyebrow: "You're in · Account activated",
-    headline: "Welcome to the hustle family!",
+    headline: "Welcome to the GYSH family!",
     subhead: `Your account is LIVE on the {{tier}} plan.`,
     bodyHtml: `<p style="margin:0 0 14px;">This is your official green light. Log in and use every perk that comes with <strong>{{tier}}</strong>.</p>
         <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#947d64;">Your {{tier}} perks</p>
@@ -260,7 +375,7 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         subject: `${SITE_NAME} — we got your signup!`,
         preheader: "Welcome to the GYSH family — your membership details inside!",
         eyebrow: "Membership · Pending activation",
-        headline: "{{name}}, welcome to the GYSH family!",
+        headline: "{{name}}, Welcome to the GYSH family!",
         subhead: "You're on the {{tier}} plan. An admin will activate your login soon.",
         bodyHtml: `<p style="margin:0 0 12px;">We've saved your membership request. Here's what you unlocked on <strong>{{tier}}</strong>:</p>
         {{perksHtml}}{{certHtml}}{{upgradesHtml}}
@@ -270,6 +385,40 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         ctaLabel: "Explore membership upgrades",
         ctaUrl: membershipDeepLink(),
         footerNote: "Pending accounts can't sign in until an admin activates them.",
+      };
+    case "workshop_registration_confirmation":
+      return {
+        subject: `${SITE_NAME} — you're registered for {{workshopTitle}}`,
+        preheader: "Your workshop spot is saved — details inside",
+        eyebrow: "Workshops · Confirmation",
+        headline: "{{name}}, you're on the list!",
+        subhead: "{{workshopTitle}}",
+        bodyHtml: `<p style="margin:0 0 12px;">We saved your {{workshopKind}} for <strong>{{workshopTitle}}</strong>.</p>
+        <p style="margin:0 0 8px;"><strong>When:</strong> {{workshopWhen}}</p>
+        <p style="margin:0 0 12px;"><strong>Format:</strong> {{workshopFormat}}</p>
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          {{workshopNextLine}}
+        </p>`,
+        ctaLabel: "View workshop",
+        ctaUrl: "{{ctaUrl}}",
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    case "workshop_date_confirmed":
+      return {
+        subject: `${SITE_NAME} — {{workshopTitle}} date is locked`,
+        preheader: "Your class date is set — the complete workshop guide is attached",
+        eyebrow: "Workshops · Date confirmed",
+        headline: "{{name}}, the date is on the calendar!",
+        subhead: "{{workshopTitle}}",
+        bodyHtml: `<p style="margin:0 0 12px;">The class date for <strong>{{workshopTitle}}</strong> is now locked.</p>
+        <p style="margin:0 0 8px;"><strong>When:</strong> {{workshopWhen}}</p>
+        <p style="margin:0 0 12px;"><strong>Format:</strong> {{workshopFormat}}</p>
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          The complete workshop guide is attached as a PDF. Save it and bring it to class.
+        </p>`,
+        ctaLabel: "View workshop",
+        ctaUrl: "{{ctaUrl}}",
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
       };
     case "welcome_free":
       return welcomeDefault("Free");
@@ -299,8 +448,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "Your GYSH parent coach login is ready",
         eyebrow: "Family · Parent coach",
         headline: "Your parent coach login is ready",
-        subhead: "Hi {{name}}, you can sign in and manage linked kids from your Dashboard.",
-        bodyHtml: `<p style="margin:0;">Use the email and password you set during consent approval.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">You can sign in and manage linked kids from your Dashboard.</p>
+        <p style="margin:0;">Use the email and password you set during consent approval.</p>`,
         ctaLabel: "Open my Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -311,8 +461,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "Your GYSH kid login is ready",
         eyebrow: "Kids Corner",
         headline: "You're cleared to log in!",
-        subhead: "Hi {{name}}, your Get Your Side Hustle login is ready.",
-        bodyHtml: `<p style="margin:0;">Use the email and password your parent set up for you.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Your Get Your Side Hustle login is ready.</p>
+        <p style="margin:0;">Use the email and password your parent set up for you.</p>`,
         ctaLabel: "Log in to GYSH",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -323,8 +474,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "A linked kid login is ready",
         eyebrow: "Family · Parent coach",
         headline: "{{childName}} can log in",
-        subhead: "Hi {{name}}, a kid login is ready on your family account.",
-        bodyHtml: `<p style="margin:0;">They can sign in with the kid email and password you created.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">A kid login is ready on your family account.</p>
+        <p style="margin:0;">They can sign in with the kid email and password you created.</p>`,
         ctaLabel: "Open Family Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -335,8 +487,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "{{childName}} just signed in to GYSH",
         eyebrow: "Family · Login alert",
         headline: "{{childName}} signed in",
-        subhead: "Hi {{name}}, a linked kid/teen just signed in.",
-        bodyHtml: `<p style="margin:0;">Open your Dashboard anytime to review progress and Blueprints.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">A linked kid/teen just signed in.</p>
+        <p style="margin:0;">Open your Dashboard anytime to review progress and Blueprints.</p>`,
         ctaLabel: "Open my Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -349,8 +502,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: `${cadence} kid progress for your family`,
         eyebrow: `Family · ${cadence} progress`,
         headline: `${cadence} kid progress`,
-        subhead: "Hi {{name}}, here's a quick look at linked kids for {{periodKey}}.",
-        bodyHtml: `{{digestBodyHtml}}`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Here's a quick look at linked kids for {{periodKey}}.</p>
+        {{digestBodyHtml}}`,
         ctaLabel: "Open my Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "Change daily/weekly reports anytime under Dashboard → Family.",
@@ -362,10 +516,10 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         subject: `${SITE_NAME} — {{cadence}} schedule: {{hustleLabel}}`,
         preheader: "{{cadence}} Schedule Suite reminder for {{hustleLabel}}",
         eyebrow: "Schedule Suite · {{cadence}}",
-        headline: "Your hustle plan is waiting",
-        subhead:
-          "Hi {{name}}, here's your {{cadence}} reminder for {{periodKey}} — plan, progress, and Kid Credits.",
-        bodyHtml: `{{digestBodyHtml}}`,
+        headline: "Your side hustle plan is waiting",
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Here's your {{cadence}} reminder for {{periodKey}} — plan, progress, and Kid Credits.</p>
+        {{digestBodyHtml}}`,
         ctaLabel: "Open Schedule Suite",
         ctaUrl: `${SITE_URL}/my-dashboard`,
         footerNote:
@@ -397,7 +551,7 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         <div style="margin:0 0 12px;padding:16px;border-radius:12px;background:#f7f0df;border:1px solid #e2d5bc;">{{message}}</div>
         <p style="margin:0;">Open Admin to follow up, or reply if a sender email is included.</p>`,
         ctaLabel: "Open GYSH Admin",
-        ctaUrl: "{{ctaUrl}}",
+        ctaUrl: `${SITE_URL}/admin?tab=users`,
         footerNote: "This alert was sent because a GYSH public form was completed.",
       };
     case "workshop_registration_confirmation":
@@ -450,15 +604,87 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         ctaUrl: membershipDeepLink(),
         footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
       };
+    case "membership_merch_ready":
+      return {
+        subject: `${SITE_NAME} — pick your complimentary GYSH hat or tee`,
+        preheader:
+          "Your paid GYSH plan includes complimentary gear. Shop the GYSH Gear collection and enter GYSHFamily at checkout.",
+        eyebrow: "Membership · GYSH Gear",
+        headline: "{{name}}, your GYSH gear is live",
+        subhead: "Your {{tier}} plan includes {{merchPerkTitle}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Complimentary GYSH gear is for <strong>Starter and up</strong> — not Free. Your <strong>{{tier}}</strong> plan includes <strong>{{merchPerkTitle}}</strong> ({{merchCell}} on the membership page).</p>
+        <p style="margin:0 0 12px;">That’s {{merchItemPhrase}}. {{merchPerkDetail}}</p>
+        <p style="margin:0 0 12px;">Open the GYSH Gear collection, add your complimentary item(s), then enter discount code <strong>{{merchCheckoutCode}}</strong> at checkout for {{merchCheckoutPercent}}% off.</p>
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Your plan:</strong> {{tier}} · <strong>{{merchPerkTitle}}</strong> · code {{merchCheckoutCode}}
+        </p>`,
+        ctaLabel: "Shop GYSH Gear",
+        ctaUrl: GYSH_GEAR_COLLECTION_URL,
+        footerNote: `Questions? Reply to this email or use Contact Us on getyoursidehustle.com.`,
+      };
+    case "membership_renewal_reminder":
+      return {
+        subject: `${SITE_NAME} — your {{tier}} membership renews soon`,
+        preheader: "A heads-up before your next GYSH membership date",
+        eyebrow: "Membership · Renewal",
+        headline: "{{name}}, your plan is coming up",
+        subhead: "{{tier}} · expires {{expiresOn}}",
+        bodyHtml: `<p style="margin:0 0 12px;">This is a reminder that your <strong>{{tier}}</strong> membership date is <strong>{{expiresOn}}</strong>.</p>
+        <p style="margin:0 0 12px;">{{chargeLine}}</p>
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Need to change plans?</strong> Open Join to subscribe, upgrade, or review billing. Complimentary first-5 Starter returns to Free when the 3-month window ends unless you subscribe.
+        </p>`,
+        ctaLabel: "Review membership",
+        ctaUrl: `${SITE_URL}/join`,
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    case "alacarte_purchased":
+      return {
+        subject: `${SITE_NAME} — your a-la-carte purchase is confirmed!`,
+        preheader: "We confirmed {{itemLabel}} · {{amountUsd}}",
+        eyebrow: "A la carte · Purchase confirmed",
+        headline: "{{name}}, your purchase is confirmed!",
+        subhead: "{{itemLabel}} · {{amountUsd}}",
+        bodyHtml: `<p style="margin:0 0 12px;">We've confirmed your GYSH a-la-carte checkout. Here's what you bought:</p>
+        <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#947d64;">Your items</p>
+        {{itemsHtml}}
+        <p style="margin:16px 0 12px;"><strong>Total paid:</strong> {{amountUsd}}</p>
+        {{paymentHtml}}
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Next:</strong> Sign in to My Dashboard to review billing, or open Join anytime to add another session or Kid Credit pack.
+        </p>`,
+        ctaLabel: "Open Join",
+        ctaUrl: `${SITE_URL}/join`,
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    case "credit_pack_purchased":
+      return {
+        subject: `${SITE_NAME} — your Kid Credit pack is confirmed!`,
+        preheader: "We confirmed {{itemLabel}} · {{amountUsd}}",
+        eyebrow: "Parent packs · Purchase confirmed",
+        headline: "{{name}}, your Kid Credit pack is confirmed!",
+        subhead: "{{itemLabel}} · {{amountUsd}}",
+        bodyHtml: `<p style="margin:0 0 12px;">We've confirmed your parent-funded Kid Credit pack. Here's what you bought:</p>
+        <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#947d64;">Your packs</p>
+        {{itemsHtml}}
+        <p style="margin:16px 0 12px;"><strong>Total paid:</strong> {{amountUsd}}</p>
+        {{paymentHtml}}
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Next:</strong> Keep this email as your receipt. Sign in to My Dashboard to review billing, or open Join anytime to add another pack.
+        </p>`,
+        ctaLabel: "Open Join",
+        ctaUrl: `${SITE_URL}/join`,
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
     case "password_reset":
       return {
         subject: `${SITE_NAME} — reset your password`,
         preheader: "Reset your Get Your Side Hustle password.",
         eyebrow: "Account security",
         headline: "Reset your password",
-        subhead:
-          "Hi {{name}}, we received a request to reset a GYSH password for this email.",
-        bodyHtml: `<p style="margin:0 0 12px;">If an account exists for this email address, tap the button below to choose a new password. This link expires in <strong>1 hour</strong> and can only be used once.</p>
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">We received a request to reset a GYSH password for this email.</p>
+        <p style="margin:0 0 12px;">If an account exists for this email address, tap the button below to choose a new password. This link expires in <strong>1 hour</strong> and can only be used once.</p>
         <p style="margin:0 0 12px;">If you didn’t ask for this, you can ignore this email — your password stays the same.</p>`,
         ctaLabel: "Reset my password",
         ctaUrl: "{{resetUrl}}",
@@ -470,8 +696,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "Your GYSH password was just updated.",
         eyebrow: "Account security",
         headline: "Password updated — you're locked in.",
-        subhead: "Hi {{name}}, your Get Your Side Hustle password changed successfully.",
-        bodyHtml: `<p style="margin:0 0 12px;">If <strong>you</strong> made this change, you're all set — keep building that Side Hustle momentum.</p>
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Your Get Your Side Hustle password changed successfully.</p>
+        <p style="margin:0 0 12px;">If <strong>you</strong> made this change, you're all set — keep building that Side Hustle momentum.</p>
         <p style="margin:0 0 12px;">If you <em>didn't</em> change it, contact us immediately at <a href="mailto:${ADMIN_EMAIL}" style="color:#9B2F28;">${ADMIN_EMAIL}</a>.</p>`,
         ctaLabel: "Open GYSH",
         ctaUrl: SITE_URL,

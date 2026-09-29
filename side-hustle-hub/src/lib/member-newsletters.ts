@@ -1,8 +1,8 @@
 import { api } from "./api";
 import { SOFT_LAUNCH_ROLLOUT } from "./gysh-soft-launch-rollout";
 
-export const NEWSLETTER_CADENCE = "weekly" as const;
-export const NEWSLETTER_CADENCE_LABEL = "Weekly Newsletter";
+export const NEWSLETTER_CADENCE = "biweekly" as const;
+export const NEWSLETTER_CADENCE_LABEL = "Bi-Weekly Newsletter";
 export const NEWSLETTER_SEND_DAY = "Friday";
 
 export type MemberNewsletterIssue = {

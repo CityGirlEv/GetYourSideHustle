@@ -1,6 +1,6 @@
 /**
- * Member Hustle Schedule Suite — Pro+ multi-schedule plans by family member + hustle.
- * Due dates drive / promote the weekly plan blocks.
+ * Member Hustle Schedule Suite — Pro & Above multi-schedule plans by family member + hustle.
+ * Start date drives / shifts the weekly plan blocks.
  */
 import { SCHEDULE_SUITE_FEATURE_IDS, tierHasFeature, type TierId } from "./membership";
 import { normalizeTierId } from "./member-credits";
@@ -13,20 +13,23 @@ import {
   sumPnLSales,
   type SchedulePnLLedger,
 } from "./hustle-schedule-pnl";
+import {
+  guideStepBlockId,
+  isGuideStepBlockId,
+  minutesForGuideStep,
+  playbookStepsForSchedule,
+  type ScheduleGuideStep,
+  guideStepIndexFromBlockId,
+  launchGuideStepProgressKey,
+} from "./schedule-guide-plan";
 
 export const HUSTLE_SCHEDULE_PROGRESS_KIND = "hustle_schedule" as const;
 
 /** Logged-in member (“self”) or a family child profile id. */
 export type ScheduleOwnerId = "self" | string;
 
-export type ScheduleBlockId =
-  | "mon"
-  | "tue"
-  | "wed"
-  | "thu"
-  | "fri"
-  | "sat"
-  | "sun";
+/** Weekday ids (legacy weekly template) or `gs-1`… Launch Guide step ids. */
+export type ScheduleBlockId = string;
 
 /** Day-block workflow status in Schedule Suite tracker. */
 export type ScheduleBlockStatus =
@@ -91,6 +94,8 @@ export type ScheduleBlock = {
   hoursLogged: number;
   /** Per-block due date (YYYY-MM-DD), derived from plan due date. */
   dueDate: string;
+  /** Optional day notes on Plan tracker (dropdown textarea). */
+  notes?: string;
 };
 
 export type ScheduleReminderCadence =
@@ -112,7 +117,7 @@ export const SCHEDULE_REMINDER_CADENCE_OPTIONS: {
 ];
 
 export type ScheduleBlueprintGoals = {
-  /** Marketing plan for this hustle / blueprint week. */
+  /** Marketing plan for this side-hustle / blueprint week. */
   marketingPlan: string;
   /** Target sales for the current week (USD). */
   targetSalesUsd: number;
@@ -185,13 +190,14 @@ export type HustleSchedulePlan = {
   hustleLabel: string;
   ageGroup: BlueprintAgeGroup;
   blueprintId: string | null;
-  /** Target completion date — editing this promotes/rebuilds the weekly plan. */
+  /** Target completion date — derived from start date + last block. */
   dueDate: string;
+  /** First day of the weekly plan. Editing this shifts every block due date. */
   weekStart: string;
   blocks: ScheduleBlock[];
   /** Blueprint execution plan: marketing + sales targets. */
   blueprintGoals: ScheduleBlueprintGoals;
-  /** Profit & Loss ledger (dated sales/expense lines) — Pro+. */
+  /** Profit & Loss ledger (dated sales/expense lines) — Elite. */
   pnl: SchedulePnLLedger;
   /** Weekly roundups keyed by weekStart (Monday). */
   roundups: ScheduleWeekRoundup[];
@@ -242,6 +248,8 @@ const DAY_ORDER: { id: ScheduleBlockId; dayLabel: string }[] = [
   { id: "sun", dayLabel: "Sun" },
 ];
 
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
 const DEFAULT_FOCI = [
   "Research & niche check",
   "Setup / tooling",
@@ -252,6 +260,13 @@ const DEFAULT_FOCI = [
   "Rest & plan next week",
 ];
 
+/** My Dashboard → Schedule Suite (hash opens the Schedule Suite tab). */
+export const SCHEDULE_SUITE_DASHBOARD_HREF = "/my-dashboard#schedule";
+
+export function isScheduleSuiteDashboardHash(hash: string): boolean {
+  return String(hash || "").replace(/^#/, "").toLowerCase() === "schedule";
+}
+
 /** True when membership unlocks the schedule suite (Pro/Elite), or caller is an admin. */
 export function canAccessScheduleSuite(
   tier: string | null | undefined,
@@ -260,6 +275,15 @@ export function canAccessScheduleSuite(
   if (opts?.isAdmin) return true;
   const id = normalizeTierId(tier);
   return SCHEDULE_SUITE_FEATURE_IDS.some((fid) => tierHasFeature(id, fid));
+}
+
+/** P&L calculator is an Elite Schedule Suite feature — not Free, Starter, or Pro. */
+export function canAccessPnl(
+  tier: string | null | undefined,
+  opts?: { isAdmin?: boolean },
+): boolean {
+  if (opts?.isAdmin) return true;
+  return tierHasFeature(normalizeTierId(tier), "pnl");
 }
 
 export function normalizeReminderCadence(raw: unknown): ScheduleReminderCadence {
@@ -324,7 +348,7 @@ export function shouldSendReminderToday(
   return false;
 }
 
-/** Schedule Suite sub-views (Plan tracker, Blueprint, P&L, Roundup, Progress). */
+/** Schedule Suite sub-views (Blueprint, Plan tracker, Roundup, P&L, Progress). */
 export type ScheduleSuiteView =
   | "tracker"
   | "blueprint"
@@ -332,27 +356,81 @@ export type ScheduleSuiteView =
   | "roundup"
   | "progress";
 
+export const SCHEDULE_SUITE_VIEW_TABS: { id: ScheduleSuiteView; label: string }[] = [
+  { id: "blueprint", label: "Blueprint plan" },
+  { id: "tracker", label: "Plan tracker" },
+  { id: "roundup", label: "Weekly roundup" },
+  { id: "pnl", label: "P&L calculator" },
+  { id: "progress", label: "Progress" },
+];
+
+/** Tabs a member may open. P&L stays hidden unless the Elite pnl feature is on. */
+export function scheduleSuiteTabsForAccess(opts: {
+  pnlUnlocked: boolean;
+}): { id: ScheduleSuiteView; label: string }[] {
+  return SCHEDULE_SUITE_VIEW_TABS.filter((tab) => {
+    if (tab.id === "pnl") return opts.pnlUnlocked;
+    return true;
+  });
+}
+
+/** Opening a schedule lands on the first tab (Blueprint plan). */
+export const SCHEDULE_SUITE_DEFAULT_VIEW: ScheduleSuiteView = "blueprint";
+
 /** DOM id / anchor for the Email reminders block (Email Me link target). */
 export const SCHEDULE_EMAIL_SECTION_ID = "schedule-email-section";
 
 /**
- * Stats-bar Grade me is hidden on Weekly Roundup so the Roundup-head button
- * is the only Grade me on that view.
+ * Grade me lives in the stats bar on every Schedule Suite tab, including
+ * Weekly Roundup, so the letter can show in that same button everywhere.
  */
-export function scheduleStatsBarShowsGradeMe(suiteView: ScheduleSuiteView): boolean {
-  return suiteView !== "roundup";
+export function scheduleStatsBarShowsGradeMe(_suiteView: ScheduleSuiteView): boolean {
+  return true;
 }
 
-/** Grade me always lands on Weekly Roundup where the grade panel lives. */
-export function suiteViewAfterGradeMe(): ScheduleSuiteView {
-  return "roundup";
+/** Grade me stays on the tab you clicked from; the button shows the letter. */
+export function suiteViewAfterGradeMe(current: ScheduleSuiteView): ScheduleSuiteView {
+  return current;
+}
+
+export function scheduleGradeMeButtonLabel(
+  grade:
+    | {
+        mark?: ScheduleGradeMark | null;
+        letter: ScheduleGradeLetter;
+        score: number;
+      }
+    | null
+    | undefined,
+): string {
+  if (!grade) return "Grade me";
+  const mark = grade.mark ?? grade.letter;
+  return `Current Grade: ${mark} (${grade.score}%)`;
+}
+
+/**
+ * After Grade me has run once, show a live grade from current day blocks so
+ * Plan tracker clicks update Current Grade without clicking Grade me again.
+ */
+export function liveScheduleWeekGrade(
+  plan: HustleSchedulePlan,
+  storedGrade: ScheduleWeekGrade | null | undefined,
+): ScheduleWeekGrade | null {
+  if (!storedGrade) return null;
+  return gradeScheduleWeek(plan);
+}
+
+/** Keep a stored week grade in sync after Plan tracker Done / status clicks. */
+export function withRefreshedWeekGrade(plan: HustleSchedulePlan): HustleSchedulePlan {
+  if (!getWeekRoundup(plan).grade) return plan;
+  return applyScheduleWeekGrade(plan, plan.weekStart);
 }
 
 export function scheduleSuiteLockedReason(tier: TierId): string {
   if (tier === "free" || tier === "starter") {
-    return "Schedule Suite unlocks on Pro and Elite. Upgrade to plan weekly work for each family member’s hustle.";
+    return "Schedule Suite unlocks on Pro or higher (Pro and Elite). Upgrade to plan weekly work for each family member’s hustle.";
   }
-  return "Schedule Suite is included with Pro and Elite.";
+  return "Schedule Suite is included with Pro or higher.";
 }
 
 export function schedulePlanId(ownerId: ScheduleOwnerId, hustleId: string): string {
@@ -399,11 +477,263 @@ export function parseYmd(ymd: string): Date | null {
   return dt;
 }
 
+export function addDaysYmd(ymd: string, days: number): string {
+  const d = parseYmd(ymd);
+  if (!d) return ymd;
+  d.setDate(d.getDate() + days);
+  return formatYmd(d);
+}
+
+export function daysBetweenYmd(fromYmd: string, toYmd: string): number {
+  const a = parseYmd(fromYmd);
+  const b = parseYmd(toYmd);
+  if (!a || !b) return 0;
+  const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((utcB - utcA) / 86_400_000);
+}
+
+export function weekdayShortLabel(ymd: string): string {
+  const d = parseYmd(ymd);
+  if (!d) return "";
+  return WEEKDAY_SHORT[d.getDay()] ?? "";
+}
+
+/** Default start date: Monday of the current week. */
+export function defaultStartDate(ref: Date = new Date()): string {
+  return weekStartMonday(ref);
+}
+
 /** Default due date: Sunday of the current week (end of week). */
 export function defaultDueDate(ref: Date = new Date()): string {
-  const start = parseYmd(weekStartMonday(ref))!;
-  start.setDate(start.getDate() + 6);
-  return formatYmd(start);
+  return addDaysYmd(defaultStartDate(ref), 6);
+}
+
+function isWeekendYmd(ymd: string): boolean {
+  const d = parseYmd(ymd);
+  if (!d) return false;
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+
+/** Next Mon–Fri on or after ymd (Launch Guide steps skip weekends). */
+export function nextScheduleWorkday(ymd: string): string {
+  let cur = ymd;
+  for (let i = 0; i < 14; i++) {
+    if (!isWeekendYmd(cur)) return cur;
+    cur = addDaysYmd(cur, 1);
+  }
+  return ymd;
+}
+
+function hydrateBlockFromPrev(
+  def: ScheduleBlock,
+  prev?: ScheduleBlock,
+): ScheduleBlock {
+  const status = normalizeScheduleBlockStatus(prev?.status, prev?.done);
+  const minutes = prev?.minutes ?? def.minutes;
+  const defaultHours = Math.round((minutes / 60) * 10) / 10;
+  return {
+    ...def,
+    focus: isGuideStepBlockId(def.id) ? def.focus : prev?.focus?.trim() ? prev.focus : def.focus,
+    minutes,
+    status,
+    done: status === "done",
+    hoursLogged:
+      prev?.hoursLogged != null && prev.hoursLogged > 0 ? prev.hoursLogged : defaultHours,
+    notes: typeof prev?.notes === "string" ? prev.notes : def.notes ?? "",
+  };
+}
+
+/**
+ * One Plan tracker row per Launch Guide step, one step per weekday (skip Sat/Sun).
+ */
+export function promoteGuideStepBlocks(
+  steps: ScheduleGuideStep[],
+  startDateYmd: string,
+  prevBlocks?: ScheduleBlock[],
+): { weekStart: string; blocks: ScheduleBlock[]; dueDate: string } {
+  const start = parseYmd(startDateYmd) ?? parseYmd(defaultStartDate())!;
+  const startYmd = formatYmd(start);
+  const prevById = new Map((prevBlocks ?? []).map((b) => [b.id, b]));
+  let cursor = nextScheduleWorkday(startYmd);
+  const blocks = steps.map((step, i) => {
+    const dueDate = cursor;
+    cursor = nextScheduleWorkday(addDaysYmd(cursor, 1));
+    const n = i + 1;
+    const id = guideStepBlockId(n);
+    const isLast = i === steps.length - 1;
+    const minutes = minutesForGuideStep(step.title, isLast);
+    const def: ScheduleBlock = {
+      id,
+      dayLabel: `Step ${n} · ${weekdayShortLabel(dueDate) || "Day"}`,
+      focus: step.title,
+      minutes,
+      status: "not_started",
+      done: false,
+      hoursLogged: Math.round((minutes / 60) * 10) / 10,
+      dueDate,
+      notes: "",
+    };
+    return hydrateBlockFromPrev(def, prevById.get(id));
+  });
+  const weekStart = blocks[0]?.dueDate ?? startYmd;
+  const dueDate = blocks[blocks.length - 1]?.dueDate ?? weekStart;
+  return { weekStart, blocks, dueDate };
+}
+
+/** Map saved weekday / stale rows onto current Launch Guide Steps-tab order. */
+export function previousBlocksForGuideAlign(
+  stored: ScheduleBlock[] | undefined,
+  steps: ScheduleGuideStep[],
+): ScheduleBlock[] {
+  if (!stored?.length || !steps.length) return [];
+  const byId = new Map(stored.map((b) => [b.id, b]));
+  const byTitle = new Map<string, ScheduleBlock>();
+  for (const b of stored) {
+    const k = b.focus.trim().toLowerCase();
+    if (k && !byTitle.has(k)) byTitle.set(k, b);
+  }
+  return steps.map((step, i) => {
+    const id = guideStepBlockId(i + 1);
+    const prev =
+      byId.get(id) ?? byTitle.get(step.title.trim().toLowerCase()) ?? stored[i];
+    return prev ? { ...prev, id } : undefined;
+  }).filter((b): b is ScheduleBlock => Boolean(b));
+}
+
+/**
+ * Keep Plan tracker rows in lockstep with the Launch Guide Steps tab
+ * (count, order, titles). Status, hours, and notes carry over.
+ */
+export function alignSchedulePlanWithGuideSteps(
+  plan: HustleSchedulePlan,
+  steps: ScheduleGuideStep[] = playbookStepsForSchedule(plan.hustleId),
+): HustleSchedulePlan {
+  if (!steps.length) return plan;
+  const ids = steps.map((_, i) => guideStepBlockId(i + 1));
+  const sameShape =
+    plan.blocks.length === steps.length && plan.blocks.every((b, i) => b.id === ids[i]);
+  if (sameShape) {
+    let changed = false;
+    const blocks = plan.blocks.map((b, i) => {
+      const title = steps[i]!.title;
+      const dayLabel = `Step ${i + 1} · ${weekdayShortLabel(b.dueDate) || "Day"}`;
+      if (b.focus === title && b.dayLabel === dayLabel) return b;
+      changed = true;
+      return { ...b, focus: title, dayLabel };
+    });
+    return changed ? { ...plan, blocks } : plan;
+  }
+  const start = plan.weekStart || plan.blocks[0]?.dueDate || defaultStartDate();
+  const promoted = promoteGuideStepBlocks(
+    steps,
+    start,
+    previousBlocksForGuideAlign(plan.blocks, steps),
+  );
+  return {
+    ...plan,
+    weekStart: promoted.weekStart,
+    dueDate: promoted.dueDate,
+    blocks: promoted.blocks,
+  };
+}
+
+/** Apply Launch Guide Steps-tab checks onto matching `gs-N` Plan tracker rows. */
+export function applyLaunchGuideChecksToPlan(
+  plan: HustleSchedulePlan,
+  completed: Record<string, boolean> | null | undefined,
+): HustleSchedulePlan {
+  if (!completed || typeof completed !== "object") return plan;
+  let changed = false;
+  const blocks = plan.blocks.map((b) => {
+    const idx = guideStepIndexFromBlockId(b.id);
+    if (idx == null) return b;
+    const key = launchGuideStepProgressKey(plan.hustleId, idx);
+    if (!Object.prototype.hasOwnProperty.call(completed, key)) return b;
+    const checked = Boolean(completed[key]);
+    const isDone = isScheduleBlockComplete(b);
+    if (checked === isDone) return b;
+    changed = true;
+    if (checked) return { ...b, status: "done" as const, done: true };
+    if (b.status === "blocked" || b.status === "in_progress") return b;
+    return { ...b, status: "not_started" as const, done: false };
+  });
+  return changed ? { ...plan, blocks } : plan;
+}
+
+export function applyLaunchGuideChecksToStore(
+  store: HustleScheduleStore,
+  completed: Record<string, boolean> | null | undefined,
+): HustleScheduleStore {
+  if (!completed || typeof completed !== "object") return store;
+  let changed = false;
+  const schedules = store.schedules.map((plan) => {
+    const next = applyLaunchGuideChecksToPlan(plan, completed);
+    if (next !== plan) changed = true;
+    return next;
+  });
+  return changed ? { ...store, schedules } : store;
+}
+
+/** Write a Plan tracker check back onto the Launch Guide Steps-tab progress map. */
+export function mergePlanCheckIntoLaunchGuideProgress(
+  completed: Record<string, boolean>,
+  hustleId: string,
+  blockId: string,
+  checked: boolean,
+): Record<string, boolean> {
+  const idx = guideStepIndexFromBlockId(blockId);
+  if (idx == null) return completed;
+  const key = launchGuideStepProgressKey(hustleId, idx);
+  if (Boolean(completed[key]) === checked) return completed;
+  return { ...completed, [key]: checked };
+}
+
+function buildWeekBlocks(
+  hustleLabel: string,
+  startYmd: string,
+  prevBlocks?: ScheduleBlock[],
+): ScheduleBlock[] {
+  const start = parseYmd(startYmd) ?? parseYmd(defaultStartDate())!;
+  const prevById = new Map((prevBlocks ?? []).map((b) => [b.id, b]));
+  return DAY_ORDER.map((d, i) => {
+    const blockDue = formatYmd(
+      new Date(start.getFullYear(), start.getMonth(), start.getDate() + i),
+    );
+    const prev = prevById.get(d.id);
+    const status = normalizeScheduleBlockStatus(prev?.status, prev?.done);
+    const minutes = prev?.minutes ?? (i === 6 ? 30 : 60);
+    const defaultHours = Math.round((minutes / 60) * 10) / 10;
+    return {
+      id: d.id,
+      dayLabel: weekdayShortLabel(blockDue) || d.dayLabel,
+      focus: prev?.focus?.trim()
+        ? prev.focus
+        : `${DEFAULT_FOCI[i] ?? "Hustle work"} · ${hustleLabel}`,
+      minutes,
+      status,
+      done: status === "done",
+      hoursLogged: prev?.hoursLogged != null && prev.hoursLogged > 0 ? prev.hoursLogged : defaultHours,
+      dueDate: blockDue,
+      notes: typeof prev?.notes === "string" ? prev.notes : "",
+    };
+  });
+}
+
+/**
+ * Promote a plan from a start date: day 1 is that date, then six more days.
+ * Block ids stay positional (mon = first day) so Done / hours carry over.
+ */
+export function promoteBlocksFromStartDate(
+  hustleLabel: string,
+  startDateYmd: string,
+  prevBlocks?: ScheduleBlock[],
+): { weekStart: string; blocks: ScheduleBlock[]; dueDate: string } {
+  const start = parseYmd(startDateYmd) ?? parseYmd(defaultStartDate())!;
+  const weekStart = formatYmd(start);
+  const blocks = buildWeekBlocks(hustleLabel, weekStart, prevBlocks);
+  return { weekStart, blocks, dueDate: blocks[blocks.length - 1]?.dueDate ?? addDaysYmd(weekStart, 6) };
 }
 
 /**
@@ -417,36 +747,11 @@ export function promoteBlocksFromDueDate(
 ): { weekStart: string; blocks: ScheduleBlock[]; dueDate: string } {
   const due = parseYmd(dueDateYmd) ?? parseYmd(defaultDueDate())!;
   const dueYmd = formatYmd(due);
-  const weekStart = weekStartMonday(due);
-  const start = parseYmd(weekStart)!;
-  const prevById = new Map((prevBlocks ?? []).map((b) => [b.id, b]));
-
-  const blocks = DAY_ORDER.map((d, i) => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + i);
-    const blockDue = formatYmd(day);
-    const prev = prevById.get(d.id);
-    const status = normalizeScheduleBlockStatus(prev?.status, prev?.done);
-    const minutes = prev?.minutes ?? (i === 6 ? 30 : 60);
-    const defaultHours = Math.round((minutes / 60) * 10) / 10;
-    return {
-      id: d.id,
-      dayLabel: d.dayLabel,
-      focus: prev?.focus?.trim()
-        ? prev.focus
-        : `${DEFAULT_FOCI[i] ?? "Hustle work"} · ${hustleLabel}`,
-      minutes,
-      status,
-      done: status === "done",
-      hoursLogged: prev?.hoursLogged != null && prev.hoursLogged > 0 ? prev.hoursLogged : defaultHours,
-      dueDate: blockDue,
-    };
-  });
-
-  return { weekStart, blocks, dueDate: dueYmd };
+  const promoted = promoteBlocksFromStartDate(hustleLabel, weekStartMonday(due), prevBlocks);
+  return { ...promoted, dueDate: dueYmd };
 }
 
-export function emptyBlueprintGoals(hustleLabel = "this hustle"): ScheduleBlueprintGoals {
+export function emptyBlueprintGoals(hustleLabel = "this side-hustle"): ScheduleBlueprintGoals {
   return {
     marketingPlan: [
       `Audience: who buys ${hustleLabel}?`,
@@ -730,11 +1035,19 @@ export function formatEstimateMinutes(minutes: number): string {
   return rem ? `${h}h ${rem}m` : `${h}h`;
 }
 
+/**
+ * D floor for Grade me (% of day blocks Done).
+ * A 7-day week only hits 0, 14, 29, 43, 57, 71, 86, 100 — so a classic 60–69%
+ * D band can never occur (4/7 ≈ 57% would skip from F to C). Floor at 50% so
+ * 4 Done is D, 3 Done stays F.
+ */
+export const SCHEDULE_GRADE_D_MIN = 50;
+
 function letterFromScore(score: number): ScheduleGradeLetter {
   if (score >= 90) return "A";
   if (score >= 80) return "B";
   if (score >= 70) return "C";
-  if (score >= 60) return "D";
+  if (score >= SCHEDULE_GRADE_D_MIN) return "D";
   return "F";
 }
 
@@ -745,7 +1058,7 @@ export function gradeMarkFromScore(score: number): ScheduleGradeMark {
   if (score >= 80) return "B";
   if (score >= 77) return "C+";
   if (score >= 70) return "C";
-  if (score >= 60) return "D";
+  if (score >= SCHEDULE_GRADE_D_MIN) return "D";
   return "F";
 }
 
@@ -758,7 +1071,7 @@ export function celebrationFromMark(mark: ScheduleGradeMark): ScheduleGradeCeleb
 const PEP_TALKS: Record<ScheduleGradeMark, string[]> = {
   "A+": [
     "A+?! Did you invent a side hustle AND a time machine? Absolute legend energy.",
-    "Chef’s kiss. The hustle gods just high-fived you. Don’t trip on your cape.",
+    "Chef’s kiss. The side hustle gods just high-fived you. Don’t trip on your cape.",
     "A+: you’re not grinding — you’re gliding. Keep that magic illegal-in-most-states.",
   ],
   A: [
@@ -773,7 +1086,7 @@ const PEP_TALKS: Record<ScheduleGradeMark, string[]> = {
   ],
   B: [
     "B for Boss-in-progress. One more push and you’re stealing A’s lunch money.",
-    "Respectable B. Your hustle didn’t ghost you — it just left on read a little.",
+    "Respectable B. Your side hustle didn’t ghost you — it just left on read a little.",
     "B means Building. Rome wasn’t side-hustled in a day either.",
   ],
   "C+": [
@@ -784,7 +1097,7 @@ const PEP_TALKS: Record<ScheduleGradeMark, string[]> = {
   C: [
     "C for Could-be. Plot a comeback arc; villains hate a second-act glow-up.",
     "Average? Nah — this is your “training montage starts now” soundtrack cue.",
-    "C means Continue. The hustle isn’t mad — it’s just waiting for you to text back.",
+    "C means Continue. The side hustle isn’t mad — it’s just waiting for you to text back.",
   ],
   D: [
     "D for Drama… and also Do-better. Shake it off; Monday doesn’t know your secrets.",
@@ -913,16 +1226,34 @@ export function createSchedulePlan(input: {
   hustleLabel: string;
   ageGroup: BlueprintAgeGroup;
   blueprintId: string | null;
+  startDate?: string;
   dueDate?: string;
   ref?: Date;
   /**
    * Always allocate a new schedule id (even if this owner+hustle already has one).
-   * Use for “Make new schedule” so Open Existing is not the only option.
+   * Use for “Make new schedule” so a second week of the same hustle can sit beside the first.
    */
   distinct?: boolean;
+  /**
+   * Launch Guide steps to place on Plan tracker. Omit to load the side hustle’s playbook.
+   * Pass `[]` to keep the legacy 7-day weekly template.
+   */
+  guideSteps?: ScheduleGuideStep[];
 }): HustleSchedulePlan {
-  const dueDate = input.dueDate ?? defaultDueDate(input.ref);
-  const promoted = promoteBlocksFromDueDate(input.hustleLabel, dueDate);
+  const startParsed = input.startDate ? parseYmd(input.startDate) : null;
+  const dueFallback = input.dueDate ?? defaultDueDate(input.ref);
+  const startYmd = startParsed
+    ? formatYmd(startParsed)
+    : weekStartMonday(parseYmd(dueFallback) ?? new Date());
+  const steps =
+    input.guideSteps !== undefined
+      ? input.guideSteps
+      : playbookStepsForSchedule(input.hustleId);
+  const promoted = steps.length
+    ? promoteGuideStepBlocks(steps, startYmd)
+    : startParsed
+      ? promoteBlocksFromStartDate(input.hustleLabel, startYmd)
+      : promoteBlocksFromDueDate(input.hustleLabel, dueFallback);
   const ref = input.ref ?? new Date();
   const id = input.distinct
     ? distinctSchedulePlanId(input.ownerId, input.hustleId, ref)
@@ -946,19 +1277,49 @@ export function createSchedulePlan(input: {
   };
 }
 
+/** Editing the start date shifts every block due date by the same number of days. */
+export function updatePlanStartDate(
+  plan: HustleSchedulePlan,
+  startDateYmd: string,
+): HustleSchedulePlan {
+  const nextStart = parseYmd(startDateYmd);
+  if (!nextStart) return plan;
+  const newStart = formatYmd(nextStart);
+  const oldStart =
+    parseYmd(plan.weekStart) ? plan.weekStart : plan.blocks[0]?.dueDate || newStart;
+  if (oldStart === newStart) {
+    return { ...plan, weekStart: newStart, updatedAt: new Date().toISOString() };
+  }
+  const delta = daysBetweenYmd(oldStart, newStart);
+  const blocks = plan.blocks.map((b) => {
+    const dueDate = addDaysYmd(b.dueDate || oldStart, delta);
+    return {
+      ...b,
+      dueDate,
+      dayLabel: weekdayShortLabel(dueDate) || b.dayLabel,
+    };
+  });
+  const latest = blocks.reduce(
+    (max, b) => (b.dueDate > max ? b.dueDate : max),
+    blocks[0]?.dueDate ?? addDaysYmd(newStart, 6),
+  );
+  return {
+    ...plan,
+    weekStart: newStart,
+    dueDate: latest,
+    blocks,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 /** Editing the plan due date rebuilds week start + per-day due dates (keeps done/hours). */
 export function updatePlanDueDate(
   plan: HustleSchedulePlan,
   dueDateYmd: string,
 ): HustleSchedulePlan {
-  const promoted = promoteBlocksFromDueDate(plan.hustleLabel, dueDateYmd, plan.blocks);
-  return {
-    ...plan,
-    dueDate: promoted.dueDate,
-    weekStart: promoted.weekStart,
-    blocks: promoted.blocks,
-    updatedAt: new Date().toISOString(),
-  };
+  const due = parseYmd(dueDateYmd);
+  if (!due) return plan;
+  return updatePlanStartDate(plan, weekStartMonday(due));
 }
 
 export function updateBlockDueDate(
@@ -970,16 +1331,18 @@ export function updateBlockDueDate(
   if (!parsed) return plan;
   const ymd = formatYmd(parsed);
   const blocks = plan.blocks.map((b) =>
-    b.id === blockId ? { ...b, dueDate: ymd } : b,
+    b.id === blockId ? { ...b, dueDate: ymd, dayLabel: weekdayShortLabel(ymd) || b.dayLabel } : b,
   );
-  // Plan due date = latest block due date
   const latest = blocks.reduce((max, b) => (b.dueDate > max ? b.dueDate : max), blocks[0]!.dueDate);
-  const weekStart = weekStartMonday(parseYmd(latest)!);
+  const earliest = blocks.reduce(
+    (min, b) => (b.dueDate < min ? b.dueDate : min),
+    blocks[0]!.dueDate,
+  );
   return {
     ...plan,
     blocks,
     dueDate: latest,
-    weekStart,
+    weekStart: earliest,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -1016,6 +1379,57 @@ export function familyMemberOptions(
       ageBand: c.ageBand,
     })),
   ];
+}
+
+type ScheduleFamilyChildLike = {
+  displayName?: string;
+  needsRegistration?: boolean;
+  source?: string;
+};
+
+/**
+ * Kids still waiting on Register My Kid (Join signup rows) do not belong in Schedule Suite.
+ * They look like a mystery “Register” chip and cannot keep a saved plan yet.
+ */
+export function scheduleEligibleFamilyChildren<T extends ScheduleFamilyChildLike>(
+  children: T[],
+): T[] {
+  return children.filter((c) => {
+    if (!String(c.displayName ?? "").trim()) return false;
+    if (c.needsRegistration) return false;
+    if (c.source === "signup") return false;
+    return true;
+  });
+}
+
+/** Save is clickable only after a real edit — not after opening a saved schedule. */
+export function scheduleSaveEnabled(dirty: boolean, saving = false): boolean {
+  return dirty && !saving;
+}
+
+/** Switch the open tab without treating it as an unsaved edit. */
+export function activateSchedule(
+  store: HustleScheduleStore,
+  scheduleId: string | null,
+): HustleScheduleStore {
+  if (store.activeScheduleId === scheduleId) return store;
+  return { ...store, activeScheduleId: scheduleId };
+}
+
+/**
+ * Clicking a family-member name shows that person’s saved list.
+ * Do not auto-open someone else’s leftover schedule.
+ */
+export function activeScheduleAfterOwnerFilter(
+  schedules: HustleSchedulePlan[],
+  ownerFilter: ScheduleOwnerFilter,
+  activeScheduleId: string | null,
+): string | null {
+  const visible = filterSchedulesByOwner(schedules, ownerFilter);
+  if (activeScheduleId && visible.some((s) => s.id === activeScheduleId)) {
+    return activeScheduleId;
+  }
+  return null;
 }
 
 /** Hustles available for an owner from Blueprints assigned to them (self = unassigned). */
@@ -1055,6 +1469,25 @@ export function scheduleProgressPercent(blocks: ScheduleBlock[]): number {
   return Math.round(
     (blocks.filter((b) => isScheduleBlockComplete(b)).length / blocks.length) * 100,
   );
+}
+
+export type ScheduleTaskCounts = {
+  complete: number;
+  remaining: number;
+  total: number;
+};
+
+/** Day-block tasks: Done counts as complete; everything else is remaining. */
+export function scheduleTaskCounts(blocks: ScheduleBlock[]): ScheduleTaskCounts {
+  const total = blocks.length;
+  const complete = blocks.filter((b) => isScheduleBlockComplete(b)).length;
+  return { complete, remaining: Math.max(0, total - complete), total };
+}
+
+export function scheduleTaskCountLabel(counts: ScheduleTaskCounts): string {
+  const taskWord = counts.complete === 1 ? "task" : "tasks";
+  const remainWord = counts.remaining === 1 ? "task" : "tasks";
+  return `${counts.complete} ${taskWord} complete · ${counts.remaining} ${remainWord} remaining`;
 }
 
 export function totalHoursLogged(blocks: ScheduleBlock[]): number {
@@ -1164,7 +1597,45 @@ export function summarizeScheduleSuites(
 }
 
 function isBlockId(v: unknown): v is ScheduleBlockId {
-  return typeof v === "string" && DAY_ORDER.some((d) => d.id === v);
+  if (typeof v !== "string" || !v.trim()) return false;
+  if (DAY_ORDER.some((d) => d.id === v)) return true;
+  return isGuideStepBlockId(v);
+}
+
+function normalizeStoredBlock(
+  raw: Record<string, unknown>,
+  fallbackDue: string,
+): ScheduleBlock | null {
+  const id = raw.id;
+  if (!isBlockId(id)) return null;
+  const dueDate =
+    typeof raw.dueDate === "string" && parseYmd(raw.dueDate) ? raw.dueDate : fallbackDue;
+  const status = normalizeScheduleBlockStatus(raw.status, Boolean(raw.done));
+  const minutes =
+    typeof raw.minutes === "number" && Number.isFinite(raw.minutes)
+      ? Math.max(0, Math.round(raw.minutes))
+      : typeof raw.minutes === "string" && Number.isFinite(Number(raw.minutes))
+        ? Math.max(0, Math.round(Number(raw.minutes)))
+        : 45;
+  const hoursLogged = (() => {
+    const coerced = coerceHoursLogged(raw.hoursLogged);
+    if (coerced > 0) return coerced;
+    return Math.round((minutes / 60) * 10) / 10;
+  })();
+  return {
+    id,
+    dayLabel:
+      typeof raw.dayLabel === "string" && raw.dayLabel.trim()
+        ? raw.dayLabel
+        : weekdayShortLabel(dueDate) || id,
+    focus: typeof raw.focus === "string" && raw.focus.trim() ? raw.focus : "Hustle work",
+    minutes,
+    status,
+    done: status === "done",
+    hoursLogged,
+    dueDate,
+    notes: typeof raw.notes === "string" ? raw.notes : "",
+  };
 }
 
 function normalizePlan(raw: unknown): HustleSchedulePlan | null {
@@ -1191,39 +1662,15 @@ function normalizePlan(raw: unknown): HustleSchedulePlan | null {
     dueDate,
   });
   const rawBlocks = Array.isArray(o.blocks) ? o.blocks : [];
-  const byId = new Map<string, Record<string, unknown>>();
-  for (const b of rawBlocks) {
-    if (b && typeof b === "object" && isBlockId((b as { id?: unknown }).id)) {
-      byId.set((b as { id: string }).id, b as Record<string, unknown>);
-    }
-  }
-  const blocks = base.blocks.map((def) => {
-    const prev = byId.get(def.id);
-    if (!prev) return def;
-    const status = normalizeScheduleBlockStatus(prev.status, Boolean(prev.done));
-    return {
-      ...def,
-      focus: typeof prev.focus === "string" && prev.focus.trim() ? prev.focus : def.focus,
-      minutes:
-        typeof prev.minutes === "number" && Number.isFinite(prev.minutes)
-          ? Math.max(0, Math.round(prev.minutes))
-          : typeof prev.minutes === "string" && Number.isFinite(Number(prev.minutes))
-            ? Math.max(0, Math.round(Number(prev.minutes)))
-            : def.minutes,
-      status,
-      done: status === "done",
-      hoursLogged: (() => {
-        const coerced = coerceHoursLogged(prev.hoursLogged);
-        if (coerced > 0) return coerced;
-        return def.hoursLogged;
-      })(),
-      dueDate:
-        typeof prev.dueDate === "string" && parseYmd(prev.dueDate)
-          ? prev.dueDate
-          : def.dueDate,
-    };
-  });
-  return {
+  const storedBlocks = rawBlocks
+    .map((b) =>
+      b && typeof b === "object"
+        ? normalizeStoredBlock(b as Record<string, unknown>, base.dueDate)
+        : null,
+    )
+    .filter((b): b is ScheduleBlock => Boolean(b));
+  const blocks = storedBlocks.length > 0 ? storedBlocks : base.blocks;
+  const assembled: HustleSchedulePlan = {
     ...base,
     id: typeof o.id === "string" && o.id ? o.id : schedulePlanId(ownerId, hustleId),
     weekStart:
@@ -1254,6 +1701,7 @@ function normalizePlan(raw: unknown): HustleSchedulePlan | null {
     ),
     updatedAt: typeof o.updatedAt === "string" && o.updatedAt ? o.updatedAt : base.updatedAt,
   };
+  return alignSchedulePlanWithGuideSteps(assembled);
 }
 
 /**
@@ -1583,6 +2031,7 @@ export function setBlockFocus(
   blockId: ScheduleBlockId,
   focus: string,
 ): HustleSchedulePlan {
+  if (isGuideStepBlockId(blockId)) return plan;
   return {
     ...plan,
     blocks: plan.blocks.map((b) =>
@@ -1590,4 +2039,23 @@ export function setBlockFocus(
     ),
     updatedAt: new Date().toISOString(),
   };
+}
+
+export function setBlockNotes(
+  plan: HustleSchedulePlan,
+  blockId: ScheduleBlockId,
+  notes: string,
+): HustleSchedulePlan {
+  return {
+    ...plan,
+    blocks: plan.blocks.map((b) => (b.id === blockId ? { ...b, notes } : b)),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** One-line preview for collapsed roundup / notes fields. */
+export function scheduleCollapsePreview(text: string, emptyLabel = "Tap to add"): string {
+  const t = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return emptyLabel;
+  return t.length > 80 ? `${t.slice(0, 79)}…` : t;
 }

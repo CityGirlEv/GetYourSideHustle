@@ -1,5 +1,25 @@
 import { MEMBERSHIP_TIERS, TIER_LADDER, type TierId } from "./membership";
 
+/** Plan shown in the signup / upgrade dropdown. */
+export function membershipSignupDropdownTier(opts: {
+  initialTier: TierId | null | undefined;
+  currentTier: TierId | null | undefined;
+  isLoggedIn?: boolean;
+}): TierId {
+  const initial = opts.initialTier ?? "free";
+  const current = opts.currentTier;
+  if (
+    opts.isLoggedIn &&
+    current &&
+    TIER_LADDER.includes(current) &&
+    initial === "free" &&
+    current !== "free"
+  ) {
+    return current;
+  }
+  return initial;
+}
+
 /** Primary CTA label on register / upgrade steps (includes selected plan name). */
 export function membershipSignupSubmitLabel(
   tierName: string,
@@ -87,6 +107,38 @@ export function membershipAlaCarteCheckoutNote(): string {
 /** Guest browse CTA vs subscriber Member Guides. */
 export function browseGuidesButtonLabel(isSubscriber: boolean): string {
   return isSubscriber ? "Browse Member Guides" : "Browse free guides";
+}
+
+/** Logged-in Free members who just joined (or reopened signup on Free). */
+export function isFreeMemberSignupNextStepsVisible(opts: {
+  isLoggedIn?: boolean;
+  currentTier?: TierId | null;
+  initialTier?: TierId | null;
+}): boolean {
+  if (!opts.isLoggedIn) return false;
+  const current = opts.currentTier ?? "free";
+  if (current !== "free") return false;
+  const initial = opts.initialTier ?? "free";
+  return initial === "free";
+}
+
+/** Copy + labels for the post-Free-signup next-steps panel. */
+export function freeMemberSignupNextStepsCopy(): {
+  heading: string;
+  body: string;
+  upgradeHint: string;
+  dashboardLabel: string;
+  guidesLabel: string;
+  wizardLabel: string;
+} {
+  return {
+    heading: "You're in — next steps",
+    body: "Your Free membership is ready. Open My Dashboard to get started, browse Unique Free guides, or take the Match Wizard.",
+    upgradeHint: "Want more later? Upgrade anytime below.",
+    dashboardLabel: "Open Dashboard",
+    guidesLabel: "Browse free guides",
+    wizardLabel: "Take Match Wizard",
+  };
 }
 
 /** Rename Free Guides button copy for subscribers; leave guest wording alone. */

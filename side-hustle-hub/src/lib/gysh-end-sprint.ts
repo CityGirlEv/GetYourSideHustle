@@ -50,6 +50,33 @@ export type EndSprintApplyResult = {
   testBatch: EndSprintTestBatchItem[];
 };
 
+/** Incomplete test = not pass / conditional_approval (same as End Sprint modal). */
+export function isEndSprintTestIncomplete(status: TestStatus | string | undefined): boolean {
+  return status !== "pass" && status !== "conditional_approval";
+}
+
+/**
+ * Case IDs on `sprint` that End Sprint should consider.
+ * Catalog tests plus any D1 rows in `testSprints` (orphans / renamed IDs still roll).
+ */
+export function listEndSprintTestIds(input: {
+  sprint: number;
+  tests: Array<{ id: string }>;
+  testSprints: Record<string, number | undefined>;
+  testStatuses: Record<string, TestStatus | string | undefined>;
+}): string[] {
+  const ids = new Set<string>();
+  for (const t of input.tests) {
+    if (Number(input.testSprints[t.id]) === input.sprint) ids.add(t.id);
+  }
+  for (const [id, sp] of Object.entries(input.testSprints)) {
+    if (Number(sp) !== input.sprint) continue;
+    if (!isEndSprintTestIncomplete(input.testStatuses[id])) continue;
+    ids.add(id);
+  }
+  return [...ids];
+}
+
 /**
  * Build next task list + test status batch for End Sprint confirm.
  * Incomplete = tasks not done; tests not pass / conditional_approval (same as modal).
@@ -59,6 +86,9 @@ export function applyEndSprintActions(input: EndSprintApplyInput): EndSprintAppl
   const nextSprint = sprint + 1;
   const nextDue = dueDateForSprint(nextSprint);
   const taskDelta: GyshTask[] = [];
+  const stepsById = new Map(
+    input.tests.map((t) => [t.id, Array.isArray(t.steps) ? t.steps : []] as const),
+  );
 
   const nextTasks = input.tasks.map((t) => {
     if (Number(t.sprint) !== sprint || t.status === "done") return t;
@@ -84,24 +114,28 @@ export function applyEndSprintActions(input: EndSprintApplyInput): EndSprintAppl
   });
 
   const testBatch: EndSprintTestBatchItem[] = [];
-  for (const t of input.tests) {
-    const rowSprint = Number(input.testSprints[t.id]);
-    if (rowSprint !== sprint) continue;
-    const st = input.testStatuses[t.id] ?? "not_run";
-    if (st === "pass" || st === "conditional_approval") continue;
-    const action = input.actions[`test:${t.id}`] ?? "rollover";
+  for (const caseId of listEndSprintTestIds({
+    sprint,
+    tests: input.tests,
+    testSprints: input.testSprints,
+    testStatuses: input.testStatuses,
+  })) {
+    const st = (input.testStatuses[caseId] ?? "not_run") as TestStatus;
+    if (!isEndSprintTestIncomplete(st)) continue;
+    const action = input.actions[`test:${caseId}`] ?? "rollover";
     const assignee =
-      input.testAssignees[t.id] || input.defaultAssignees?.[t.id] || "";
-    const note = input.testNotes[t.id] ?? "";
+      input.testAssignees[caseId] || input.defaultAssignees?.[caseId] || "";
+    const note = input.testNotes[caseId] ?? "";
     if (action === "complete") {
-      const stepCount = Array.isArray(t.steps) ? t.steps.length : 0;
+      const steps = stepsById.get(caseId) ?? [];
+      const stepCount = steps.length;
       testBatch.push({
-        caseId: t.id,
+        caseId,
         status: "pass",
         note: note.trim() || "Completed at sprint end",
         assignee,
         sprint,
-        dueDate: input.testDueDates[t.id],
+        dueDate: input.testDueDates[caseId],
         ...(stepCount > 0
           ? { stepCount, checkedSteps: Array.from({ length: stepCount }, () => true) }
           : {}),
@@ -109,12 +143,12 @@ export function applyEndSprintActions(input: EndSprintApplyInput): EndSprintAppl
     } else {
       const workStatus = st === "rolled_over" ? "not_run" : st;
       testBatch.push({
-        caseId: t.id,
+        caseId,
         status: workStatus,
         note: appendActorNote(note, input.actorLabel, rolloverNoteText(sprint)),
         assignee,
         sprint: nextSprint,
-        dueDate: nextDue || input.testDueDates[t.id],
+        dueDate: nextDue || input.testDueDates[caseId],
       });
     }
   }

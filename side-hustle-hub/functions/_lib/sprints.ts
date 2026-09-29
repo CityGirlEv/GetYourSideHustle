@@ -6,7 +6,8 @@
 
 export const BACKLOG_SPRINT = -1;
 export const SPRINT_ZERO_START = new Date(2026, 6, 14);
-export const DEFAULT_SPRINT_COUNT = 8;
+export const DEFAULT_SPRINT_COUNT = 11;
+export const LAST_SPRINT_INDEX = DEFAULT_SPRINT_COUNT - 1;
 export const SPRINT_PAUSE_WEEKS_AFTER_S2 = 2;
 export const SPRINT_PAUSE_AFTER_INDEX = 2;
 

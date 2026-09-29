@@ -1,7 +1,9 @@
 /**
  * Kids / Teens Match Wizard scoring + relative match % (top score = 100%).
- * Shared by the wizard UI and D1 backfill scripts.
+ * Tag catalog derived from shared side-hustle catalog (M2M audiences).
  */
+
+import { kidsScoreEntries } from "./side-hustle-catalog";
 
 export type KidsAudienceMode = "kids" | "junior";
 
@@ -18,89 +20,17 @@ export type KidsScoreHustle = {
   tags: KidsHustleTags;
 };
 
-/** Tag catalog only — display copy lives in KidsCorner. */
-export const KIDS_SCORE_HUSTLES: KidsScoreHustle[] = [
-  {
-    id: "dog-walk",
-    audiences: ["kids", "junior"],
-    tags: {
-      ages: ["mid", "older"],
-      interests: ["animals", "outdoors"],
-      place: ["outdoor"],
-      time: ["short", "medium"],
-    },
-  },
-  {
-    id: "yard-help",
-    audiences: ["kids", "junior"],
-    tags: {
-      ages: ["mid", "older"],
-      interests: ["outdoors", "helping"],
-      place: ["outdoor"],
-      time: ["medium", "long"],
-    },
-  },
-  {
-    id: "crafts",
-    audiences: ["kids", "junior"],
-    tags: {
-      ages: ["young", "mid", "older"],
-      interests: ["creative"],
-      place: ["indoor", "either"],
-      time: ["short", "medium", "long"],
-    },
-  },
-  {
-    id: "tech-helper",
-    audiences: ["kids", "junior"],
-    tags: {
-      ages: ["mid", "older"],
-      interests: ["tech", "helping"],
-      place: ["indoor", "either"],
-      time: ["short", "medium"],
-    },
-  },
-  {
-    id: "homework",
-    audiences: ["kids", "junior"],
-    tags: {
-      ages: ["older"],
-      interests: ["helping"],
-      place: ["indoor", "either"],
-      time: ["short", "medium"],
-    },
-  },
-  {
-    id: "book-publishing-kids",
-    audiences: ["kids", "junior"],
-    tags: {
-      ages: ["young", "mid", "older"],
-      interests: ["creative"],
-      place: ["indoor", "either"],
-      time: ["medium", "long"],
-    },
-  },
-  {
-    id: "create-games-kids",
-    audiences: ["kids"],
-    tags: {
-      ages: ["young", "mid"],
-      interests: ["creative", "tech", "ai"],
-      place: ["indoor"],
-      time: ["short", "medium", "long"],
-    },
-  },
-  {
-    id: "create-games-junior",
-    audiences: ["junior"],
-    tags: {
-      ages: ["mid", "older"],
-      interests: ["creative", "tech", "ai"],
-      place: ["indoor"],
-      time: ["medium", "long"],
-    },
-  },
-];
+const kidsEntries = kidsScoreEntries("kids");
+const juniorOnly = kidsScoreEntries("junior").filter(
+  (h) => !kidsEntries.some((k) => k.id === h.id),
+);
+
+/** Tag catalog — display copy lives in KidsCorner / shared catalog. */
+export const KIDS_SCORE_HUSTLES: KidsScoreHustle[] = [...kidsEntries, ...juniorOnly].map((h) => ({
+  id: h.id,
+  audiences: h.audiences,
+  tags: h.tags as KidsHustleTags,
+}));
 
 export function scoreKidsHustle(
   h: KidsScoreHustle,
@@ -149,15 +79,13 @@ export function kidsResultPcts(input: {
       const h = byId.get(id);
       return { id, score: h ? scoreKidsHustle(h, answers) : 0 };
     });
-    const maxScore = Math.max(...scores.map((s) => s.score), 1);
-    return Object.fromEntries(
-      scores.map((s) => [s.id, Math.round((s.score / maxScore) * 100)]),
-    );
+    const max = Math.max(...scores.map((s) => s.score), 1);
+    return Object.fromEntries(scores.map((s) => [s.id, Math.round((s.score / max) * 100)]));
   }
 
-  // Rank fallback when answers are missing — preserves saved order.
-  const n = ids.length;
-  return Object.fromEntries(
-    ids.map((id, i) => [id, Math.max(40, Math.round(100 - (i * 60) / Math.max(n - 1, 1)))]),
-  );
+  const out: Record<string, number> = {};
+  ids.forEach((id, i) => {
+    out[id] = Math.max(40, 100 - i * 8);
+  });
+  return out;
 }

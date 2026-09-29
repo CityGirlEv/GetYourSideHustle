@@ -7,6 +7,7 @@ import {
   softLaunchItemById,
   softLaunchItemRef,
 } from "./gysh-soft-launch-rollout";
+import { formatTestCrossLinkLabel } from "./guide-review-link";
 
 export type AdminEntityKind = "task" | "test" | "cf";
 
@@ -94,8 +95,9 @@ export function labelAndOptsForEntity(
   }
   if (target.kind === "test") {
     const title = titleFromMap(titles, "test", target.id);
+    const base = formatTestCrossLinkLabel(target.id);
     return {
-      label: title ? `Test ${target.id} · ${title}` : `Test ${target.id}`,
+      label: title ? `${base} · ${title}` : base,
       opts: { tab: "testing", testId: target.id },
     };
   }
@@ -132,13 +134,14 @@ function otherEnd(self: AdminEntityRef, row: AdminEntityLinkRow): AdminEntityRef
 export function mergeEntityCrossLinks(
   self: AdminEntityRef,
   catalog: AdminCrossLinkBase[],
-  rows: AdminEntityLinkRow[],
+  rows: AdminEntityLinkRow[] | null | undefined,
   titles?: AdminEntityTitleMap,
 ): MergedAdminCrossLink[] {
   const suppressed = new Set<string>();
   const manuals: AdminEntityRef[] = [];
+  const edgeRows = Array.isArray(rows) ? rows : [];
 
-  for (const row of rows) {
+  for (const row of edgeRows) {
     const other = otherEnd(self, row);
     if (!other) continue;
     const key = entityEdgeKey(self, other);

@@ -1,0 +1,59 @@
+import { describe, expect, it } from "vitest";
+import { formatGuideNumber } from "../guide-numbers";
+import { getLaunchGuidePeekSections } from "../launch-guide-peeks";
+import { libraryGuideDisplayName, uniqueGuideLibraryEntries } from "../guide-library-pool";
+import { kidsGuideById } from "../kids-guides";
+import { hustleById } from "../side-hustle-catalog";
+
+describe("Open Guide routing", () => {
+  it("keeps #008 / #009 / #018 as openable library guides (not hub-only)", () => {
+    expect(formatGuideNumber("kids-kindness-share")).toBe("008");
+    expect(formatGuideNumber("junior-give-back-teach")).toBe("009");
+    expect(formatGuideNumber("rideshare")).toBe("018");
+
+    expect(kidsGuideById("kids-kindness-share")?.id).toBe("kids-kindness-share");
+    expect(kidsGuideById("junior-give-back-teach")?.id).toBe("junior-give-back-teach");
+    expect(hustleById("rideshare")?.id).toBe("rideshare");
+
+    const libraryIds = new Set(uniqueGuideLibraryEntries().map((e) => e.id));
+    expect(libraryIds.has("kids-kindness-share")).toBe(true);
+    expect(libraryIds.has("junior-give-back-teach")).toBe(true);
+    expect(libraryIds.has("rideshare")).toBe(true);
+  });
+
+  it("shows #008 / #009 / #099 user-facing titles on library cards, not the slug", () => {
+    const byId = Object.fromEntries(uniqueGuideLibraryEntries().map((e) => [e.id, e.name]));
+    expect(byId["kids-kindness-share"]).toBe("Give Back: Share a Skill for Free");
+    expect(byId["junior-give-back-teach"]).toBe("Give Back: Teach What You Know");
+    expect(byId["junior-reinvest-ceo"]).toBe("Reinvest Like a CEO (Age-Appropriate)");
+    expect(libraryGuideDisplayName("kids-kindness-share")).toBe(
+      "Give Back: Share a Skill for Free",
+    );
+    expect(libraryGuideDisplayName("junior-give-back-teach")).toBe(
+      "Give Back: Teach What You Know",
+    );
+    expect(libraryGuideDisplayName("junior-reinvest-ceo")).toBe(
+      "Reinvest Like a CEO (Age-Appropriate)",
+    );
+    expect(libraryGuideDisplayName("kids-kindness-share")).not.toBe("kids-kindness-share");
+  });
+
+  it("checklist peeks for #008 / #009 / #018 open guide detail, not age hubs", () => {
+    const sections = getLaunchGuidePeekSections();
+    const byId = (id: string) =>
+      sections.flatMap((s) => s.guides).find((g) => g.id === id || g.nav.view === "guides" && g.nav.hustleId === id);
+
+    const kindness = byId("kids-kindness-share");
+    expect(kindness?.nav).toEqual({ view: "guides", hustleId: "kids-kindness-share" });
+
+    const giveBack = byId("junior-give-back-teach");
+    expect(giveBack?.nav).toEqual({ view: "guides", hustleId: "junior-give-back-teach" });
+
+    const ridesharePeek =
+      sections.flatMap((s) => s.guides).find((g) => g.id === "rideshare") ||
+      sections.flatMap((s) => s.guides).find(
+        (g) => g.nav.view === "guides" && g.nav.hustleId === "rideshare",
+      );
+    expect(ridesharePeek?.nav).toEqual({ view: "guides", hustleId: "rideshare" });
+  });
+});

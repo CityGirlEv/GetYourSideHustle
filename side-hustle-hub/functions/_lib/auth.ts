@@ -16,6 +16,7 @@ import {
 } from "./crypto";
 import {
   canAccessAdminPortal,
+  canAccessTestingPortal,
   parseRoles,
   primaryRole,
   rolesForPublicRegister,
@@ -24,6 +25,18 @@ import {
 } from "./roles";
 import { BETA_NDA_VERSION, betaNdaRegisterError, formatBetaNdaAcceptanceNote } from "./beta-tester-nda";
 import { acceptBetaNdaForUser } from "./beta-nda-store";
+import { ensureUsersRoleCheckAllowsAllRoles } from "./ensure-users-role-check";
+import { LOGIN_D1_ATTEMPTS, TRANSIENT_DB_USER_MESSAGE, D1_QUOTA_USER_MESSAGE, isD1QuotaExceededError, isTransientD1Error, withD1Retry } from "./d1-retry";
+import {
+  merchChoicesError,
+  merchItemCount,
+  mergeMerchNote,
+  parseMerchChoices,
+  parseMerchTshirtSizes,
+  type TierId,
+} from "../../src/lib/membership";
+import { heardAboutFromNotes, mergeHeardAboutNote, parseHeardAboutInput } from "../../src/lib/heard-about";
+import { pendingFreeAccountMaySignIn, registerUserStatus } from "../../src/lib/register-activation";
 
 export type Env = {
   DB: D1Database;
@@ -43,6 +56,7 @@ export type DbUser = {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   role: string;
   /** JSON array of roles, e.g. `["admin","qa"]`. Null = derive from `role`. */
   roles?: string | null;
@@ -54,14 +68,20 @@ export type DbUser = {
   membership_tier?: string | null;
   audience?: string | null;
   parent_user_id?: string | null;
+  membership_expires_at?: string | null;
+  membership_last_paid_at?: string | null;
+  membership_renewal_reminded_for?: string | null;
 };
 
 const USER_SELECT =
-  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id`;
+  `id, name, email, phone, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id`;
+
+const USER_SELECT_NO_PHONE =
+  `id, name, email, '' AS phone, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id`;
 
 /** Legacy select for DBs where migration 0004 (roles column) has not run yet. */
 const USER_SELECT_LEGACY =
-  `id, name, email, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt, NULL AS membership_tier, NULL AS audience, NULL AS parent_user_id`;
+  `id, name, email, '' AS phone, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt, NULL AS membership_tier, NULL AS audience, NULL AS parent_user_id`;
 
 function isMissingRolesColumn(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
@@ -76,8 +96,13 @@ function isMissingMembershipColumns(e: unknown): boolean {
   );
 }
 
+function isMissingPhoneColumn(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.includes("no such column") && msg.includes("phone");
+}
+
 const USER_SELECT_NO_MEMBERSHIP =
-  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, NULL AS parent_user_id`;
+  `id, name, email, '' AS phone, role, roles, status, joined_at, notes, password_hash, password_salt, NULL AS parent_user_id`;
 
 const SESSION_DAYS = 14;
 import { MIN_PASSWORD_LENGTH, passwordPolicyError } from "./password-policy";
@@ -93,12 +118,14 @@ export function userRoles(u: Pick<DbUser, "role" | "roles">): GyshRole[] {
   return parseRoles(u.role, u.roles);
 }
 
-export function publicUser(u: DbUser) {
+export function publicUser(u: DbUser & { last_login_at?: string | null }) {
   const roles = userRoles(u);
+  const lastLoginAt = u.last_login_at ? String(u.last_login_at).trim() : "";
   return {
     id: u.id,
     name: u.name,
     email: u.email,
+    phone: String(u.phone || "").trim(),
     role: roles[0] ?? u.role,
     roles,
     status: u.status,
@@ -107,33 +134,54 @@ export function publicUser(u: DbUser) {
     canLogin: Boolean(u.password_hash && u.password_salt),
     membershipTier: (u.membership_tier || "free").toLowerCase(),
     audience: (u.audience || "adult").toLowerCase(),
+    heardAbout: heardAboutFromNotes(u.notes),
+    lastLoginAt: lastLoginAt || null,
+    membershipExpiresAt: String(u.membership_expires_at || "").trim().slice(0, 10),
+    membershipLastPaidAt: String(u.membership_last_paid_at || "").trim(),
   };
+}
+
+function rejectIfSoftDeletedUser(user: DbUser | null): DbUser | null {
+  if (!user) return null;
+  const status = String(user.status || "").trim().toLowerCase();
+  if (status === "deleted") return null;
+  const email = String(user.email || "").trim().toLowerCase();
+  if (email.endsWith("@users.deleted.local")) return null;
+  return user;
 }
 
 export async function getUserByEmail(db: D1Database, email: string): Promise<DbUser | null> {
   const primary = canonicalizeEmail(email);
   try {
-    return (
+    return rejectIfSoftDeletedUser(
       (await db
         .prepare(`SELECT ${USER_SELECT} FROM users WHERE email = ?`)
         .bind(primary)
-        .first<DbUser>()) ?? null
+        .first<DbUser>()) ?? null,
     );
   } catch (e) {
+    if (isMissingPhoneColumn(e)) {
+      return rejectIfSoftDeletedUser(
+        (await db
+          .prepare(`SELECT ${USER_SELECT_NO_PHONE} FROM users WHERE email = ?`)
+          .bind(primary)
+          .first<DbUser>()) ?? null,
+      );
+    }
     if (isMissingMembershipColumns(e)) {
-      return (
+      return rejectIfSoftDeletedUser(
         (await db
           .prepare(`SELECT ${USER_SELECT_NO_MEMBERSHIP} FROM users WHERE email = ?`)
           .bind(primary)
-          .first<DbUser>()) ?? null
+          .first<DbUser>()) ?? null,
       );
     }
     if (!isMissingRolesColumn(e)) throw e;
-    return (
+    return rejectIfSoftDeletedUser(
       (await db
         .prepare(`SELECT ${USER_SELECT_LEGACY} FROM users WHERE email = ?`)
         .bind(primary)
-        .first<DbUser>()) ?? null
+        .first<DbUser>()) ?? null,
     );
   }
 }
@@ -147,6 +195,14 @@ export async function getUserById(db: D1Database, id: string): Promise<DbUser | 
         .first<DbUser>()) ?? null
     );
   } catch (e) {
+    if (isMissingPhoneColumn(e)) {
+      return (
+        (await db
+          .prepare(`SELECT ${USER_SELECT_NO_PHONE} FROM users WHERE id = ?`)
+          .bind(id)
+          .first<DbUser>()) ?? null
+      );
+    }
     if (isMissingMembershipColumns(e)) {
       return (
         (await db
@@ -177,6 +233,20 @@ export async function appendAudit(
     .run();
 }
 
+/** Audit writes must never turn a sign-in into a 500. */
+async function safeAppendAudit(
+  db: D1Database,
+  action: string,
+  email: string,
+  detail: string,
+): Promise<void> {
+  try {
+    await withD1Retry(() => appendAudit(db, action, email, detail), 2);
+  } catch {
+    /* ignore */
+  }
+}
+
 function requestWantsSecureCookie(request: Request): boolean {
   const proto = (request.headers.get("x-forwarded-proto") || "").split(",")[0]?.trim();
   if (proto === "https") return true;
@@ -204,10 +274,12 @@ export async function createSession(
     )
     .bind(id, userId, tokenHash, expires.toISOString(), now.toISOString())
     .run();
-  // Session cookie (no Max-Age): browser close clears it. Tab close is enforced
-  // client-side so a leftover cookie cannot reopen /admin after the page was closed.
+  // Production: session cookie (no Max-Age) — browser close clears it; tab close is
+  // enforced client-side. Localhost (secureCookie=false): durable Max-Age so Dev
+  // stays signed in across restarts.
   const secureCookie = opts?.secureCookie !== false;
-  return { token, cookie: sessionCookie(token, undefined, secureCookie) };
+  const maxAgeSec = secureCookie ? undefined : SESSION_DAYS * 24 * 60 * 60;
+  return { token, cookie: sessionCookie(token, maxAgeSec, secureCookie) };
 }
 
 export async function destroySession(db: D1Database, request: Request): Promise<string> {
@@ -297,7 +369,7 @@ export async function requireSession(
   return error(sawExpired ? "Session expired." : "Session invalid or expired.", 401);
 }
 
-/** Admin Studio + partner tooling — admin or QA only. */
+/** Admin Studio + Admin menu — admin role only. */
 export async function requireAdminSession(
   env: Env,
   request: Request,
@@ -310,17 +382,22 @@ export async function requireAdminSession(
   return auth;
 }
 
+/** Testing Portal APIs — Admin or QA. */
+export async function requireTestingPortalSession(
+  env: Env,
+  request: Request,
+): Promise<{ user: DbUser } | Response> {
+  const auth = await requireSession(env, request);
+  if (auth instanceof Response) return auth;
+  if (!canAccessTestingPortal(userRoles(auth.user))) {
+    return error("Testing Portal access required.", 403);
+  }
+  return auth;
+}
+
 export async function handleLogin(env: Env, request: Request): Promise<Response> {
   const dbFail = requireDb(env);
   if (dbFail) return dbFail;
-
-  // Ensure partner admins exist before auth lookup (idempotent).
-  try {
-    const { ensurePartnerAdmins } = await import("./partners");
-    await ensurePartnerAdmins(env);
-  } catch {
-    /* table may not exist yet — migrate first */
-  }
 
   let body: { email?: string; password?: string };
   try {
@@ -332,63 +409,102 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
   const email = canonicalizeEmail(body.email || "");
   const password = String(body.password || "");
   if (!email || !password) {
-    await appendAudit(env.DB, "login_failed", email || "(empty)", "missing credentials");
+    await safeAppendAudit(env.DB, "login_failed", email || "(empty)", "missing credentials");
     return error("Email and password are required.", 400);
   }
 
-  const user = await getUserByEmail(env.DB, email);
-  if (!user || !user.password_hash || !user.password_salt) {
-    await appendAudit(env.DB, "login_failed", email, "unknown account");
-    return error("Invalid email or password.", 401);
-  }
-  if (user.status !== "active") {
-    await appendAudit(env.DB, "login_failed", email, `inactive account · ${user.status}`);
-    if (user.status === "pending") {
-      return error(
-        "Your account is awaiting admin activation. Check your email for confirmation — you'll get a welcome message when you're cleared to sign in.",
-        403,
-      );
-    }
-    if (user.status === "disabled") {
-      return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
-    }
-    return error("Invalid email or password.", 401);
-  }
-
-  const ok = await verifyPassword(password, user.password_salt, user.password_hash);
-  if (!ok) {
-    await appendAudit(env.DB, "login_failed", email, "bad password");
-    return error("Invalid email or password.", 401);
-  }
-
-  const roles = userRoles(user);
-  const isAdmin = canAccessAdminPortal(roles);
-  const { token, cookie } = await createSession(env.DB, user.id, {
-    secureCookie: requestWantsSecureCookie(request),
-  });
-  await appendAudit(env.DB, "login_ok", email, isAdmin ? "admin login success" : "member login success");
-
-  // Parent coach alert whenever a linked kid/teen account signs in.
   try {
-    const audience = String(user.audience || "").toLowerCase();
-    const isYouth =
-      roles.includes("kid") ||
-      roles.includes("junior") ||
-      audience === "kids" ||
-      audience === "junior";
-    if (isYouth) {
-      const { notifyParentOfKidLogin } = await import("./family");
-      await notifyParentOfKidLogin(env, user);
+    let user = await withD1Retry(() => getUserByEmail(env.DB, email), LOGIN_D1_ATTEMPTS);
+    if (!user || !user.password_hash || !user.password_salt) {
+      await safeAppendAudit(env.DB, "login_failed", email, "unknown account");
+      return error("Invalid email or password.", 401);
     }
-  } catch {
-    /* never block login */
-  }
+    if (user.status !== "active") {
+      if (
+        pendingFreeAccountMaySignIn({
+          status: user.status,
+          membershipTier: user.membership_tier,
+        })
+      ) {
+        const activatedAt = new Date().toISOString();
+        try {
+          await env.DB.prepare(`UPDATE users SET status = 'active', updated_at = ? WHERE id = ?`)
+            .bind(activatedAt, user.id)
+            .run();
+          user = { ...user, status: "active" };
+        } catch {
+          return error(
+            "Your Free account is almost ready. Try signing in again in a moment.",
+            503,
+          );
+        }
+      } else {
+        await safeAppendAudit(env.DB, "login_failed", email, `inactive account · ${user.status}`);
+        if (user.status === "pending") {
+          return error(
+            "Your account is awaiting admin activation. Check your email for confirmation — you'll get a welcome message when you're cleared to sign in.",
+            403,
+          );
+        }
+        if (user.status === "disabled") {
+          return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
+        }
+        return error("Invalid email or password.", 401);
+      }
+    }
 
-  return json(
-    { ok: true, user: publicUser(user), token, isAdmin },
-    200,
-    { "set-cookie": cookie },
-  );
+    const ok = await verifyPassword(password, user.password_salt, user.password_hash);
+    if (!ok) {
+      await safeAppendAudit(env.DB, "login_failed", email, "bad password");
+      return error("Invalid email or password.", 401);
+    }
+
+    const roles = userRoles(user);
+    const isAdmin = canAccessAdminPortal(roles);
+    const { token, cookie } = await withD1Retry(
+      () =>
+        createSession(env.DB, user.id, {
+          secureCookie: requestWantsSecureCookie(request),
+        }),
+      LOGIN_D1_ATTEMPTS,
+    );
+    await safeAppendAudit(
+      env.DB,
+      "login_ok",
+      email,
+      isAdmin ? "admin login success" : "member login success",
+    );
+
+    // Parent coach alert whenever a linked kid/teen account signs in.
+    try {
+      const audience = String(user.audience || "").toLowerCase();
+      const isYouth =
+        roles.includes("kid") ||
+        roles.includes("junior") ||
+        audience === "kids" ||
+        audience === "junior";
+      if (isYouth) {
+        const { notifyParentOfKidLogin } = await import("./family");
+        await notifyParentOfKidLogin(env, user);
+      }
+    } catch {
+      /* never block login */
+    }
+
+    return json(
+      { ok: true, user: publicUser(user), token, isAdmin },
+      200,
+      { "set-cookie": cookie },
+    );
+  } catch (e) {
+    if (isD1QuotaExceededError(e)) {
+      return error(D1_QUOTA_USER_MESSAGE, 503);
+    }
+    if (isTransientD1Error(e)) {
+      return error(TRANSIENT_DB_USER_MESSAGE, 503);
+    }
+    throw e;
+  }
 }
 
 type RegisterAgeGroup = "kids" | "junior" | "adult" | "senior";
@@ -396,10 +512,22 @@ type RegisterAgeGroup = "kids" | "junior" | "adult" | "senior";
 /**
  * Public free-account registration for Side Hustle Blueprint unlock.
  * Kids (4–12): parent/guardian email only — creates parent account + child profile (no child email).
+ *
+ * @param waitUntil — Cloudflare Pages `context.waitUntil` to finish email/credits after the 201.
  */
-export async function handleRegister(env: Env, request: Request): Promise<Response> {
+export async function handleRegister(
+  env: Env,
+  request: Request,
+  waitUntil?: (promise: Promise<unknown>) => void,
+): Promise<Response> {
   const dbFail = requireDb(env);
   if (dbFail) return dbFail;
+
+  try {
+    await ensureUsersRoleCheckAllowsAllRoles(env.DB);
+  } catch {
+    /* best-effort — insert may still succeed if already migrated */
+  }
 
   let body: {
     email?: string;
@@ -408,7 +536,16 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     ageGroup?: RegisterAgeGroup;
     childDisplayName?: string;
     claimToken?: string;
+    pendingBlueprint?: {
+      ageGroup?: string;
+      answers?: Record<string, unknown>;
+      resultIds?: string[];
+      resultPcts?: Record<string, number>;
+    };
+    claimedExtraGuideId?: string;
     membershipTier?: string;
+    merchChoices?: unknown;
+    merchTshirtSizes?: unknown;
     /** Public applicants may add the Beta Tester role; admin/QA/Dev stay admin-assigned. */
     applyBetaTester?: boolean;
     betaNda?: {
@@ -432,10 +569,18 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const ageGroup = (body.ageGroup || "adult") as RegisterAgeGroup;
   const childDisplayName = String(body.childDisplayName || "").trim();
   const claimToken = String(body.claimToken || "").trim();
+  const pendingBlueprint = body.pendingBlueprint;
   const requestedTier = String(body.membershipTier || "free").toLowerCase();
   const membershipTier = ["free", "starter", "pro", "elite"].includes(requestedTier)
-    ? requestedTier
+    ? (requestedTier as TierId)
     : "free";
+  const merchErr = merchChoicesError(membershipTier, body.merchChoices, body.merchTshirtSizes);
+  if (merchErr) return error(merchErr);
+  const merchChoices =
+    parseMerchChoices(body.merchChoices, merchItemCount(membershipTier)) ?? [];
+  const merchTshirtSizes = parseMerchTshirtSizes(merchChoices, body.merchTshirtSizes);
+  const heardAbout = parseHeardAboutInput(body);
+  if (!heardAbout.ok) return error(heardAbout.error);
   const applyBetaTester = body.applyBetaTester === true;
   const ndaErr = betaNdaRegisterError(applyBetaTester, body.betaNda, email);
   if (ndaErr) return error(ndaErr);
@@ -481,16 +626,22 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
         ? "Parent family account (Kids Side Hustle Blueprint)"
         : "Free GYSH member"
       : `Requested ${membershipTier} plan · Stripe checkout for Adult/Senior · ${ageGroup}`;
-  const notes = applyBetaTester
-    ? `${notesBase} · Applied as Beta Tester · ${BETA_NDA_VERSION}`
-    : notesBase;
+  const notes = mergeHeardAboutNote(
+    mergeMerchNote(
+      applyBetaTester ? `${notesBase} · Applied as Beta Tester · ${BETA_NDA_VERSION}` : notesBase,
+      merchChoices,
+      merchTshirtSizes,
+    ),
+    heardAbout.stamp,
+  );
 
-  // New members start pending — admins must activate before login.
-  // Paid Adult/Senior plans continue to Stripe Checkout; activation still needs admin review.
+  // Free members are active immediately so they can sign in and save profile.
+  // Paid Adult/Senior plans stay pending until Stripe / staff activation.
+  const accountStatus = registerUserStatus(membershipTier);
   try {
     await env.DB.prepare(
       `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(
         userId,
@@ -498,6 +649,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
         email,
         assignedPrimary,
         rolesJson,
+        accountStatus,
         now.slice(0, 10),
         notes,
         hash,
@@ -513,7 +665,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     if (msg.includes("no such column")) {
       await env.DB.prepare(
         `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           userId,
@@ -521,6 +673,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
           email,
           assignedPrimary,
           rolesJson,
+          accountStatus,
           now.slice(0, 10),
           notes,
           hash,
@@ -629,49 +782,83 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     env.DB,
     "register_ok",
     email,
-    `${membershipTier} register pending · ${ageGroup}${applyBetaTester ? ` · beta · NDA ${BETA_NDA_VERSION}` : ""}`,
+    `${membershipTier} register pending · ${ageGroup} · ${heardAbout.stamp}${applyBetaTester ? ` · beta · NDA ${BETA_NDA_VERSION}` : ""}`,
   );
 
-  // Kids/Teens (and Kids parent) paid plans: seed plan Kid Credits on signup.
-  // Adult/Senior paid plans wait for Stripe confirm before granting the family pool.
-  if (
-    membershipTier !== "free" &&
-    (ageGroup === "kids" || ageGroup === "junior")
-  ) {
-    try {
-      const { grantMembershipPlanCredits } = await import("./member-credits");
-      const creditAudience = ageGroup === "kids" ? "parent" : "junior";
-      await grantMembershipPlanCredits(env, userId, membershipTier, creditAudience);
-    } catch {
-      /* credits are best-effort; wallet can be topped up later */
-    }
-  }
-
-  // Keep pending Blueprint claimable after admin activation
-  if (claimToken) {
-    try {
-      const { claimPendingBlueprintForUser } = await import("./blueprints");
-      await claimPendingBlueprintForUser(env, userId, claimToken, {
-        childProfileId,
-        ageGroup,
-      });
-    } catch {
-      /* claim is best-effort; client can retry after activation */
-    }
-  }
-
-  let emailSent = false;
+  // Attach the Match Wizard they just finished — keep on the critical path so the UI can deep-link.
+  let claimedBlueprintId: string | null = null;
   try {
-    const { sendRegistrationConfirmation } = await import("./email");
-    emailSent = await sendRegistrationConfirmation(env, {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      audience: String(audience),
-      membership_tier: membershipTier,
-    });
+    const { claimPendingBlueprintForUser, saveWizardBlueprintForNewUser, grantComplimentaryWizardExtra } =
+      await import("./blueprints");
+    if (claimToken) {
+      const claimed = await claimPendingBlueprintForUser(env, userId, claimToken, {
+        childProfileId,
+      });
+      claimedBlueprintId = claimed?.id ?? null;
+    }
+    if (!claimedBlueprintId && pendingBlueprint) {
+      const saved = await saveWizardBlueprintForNewUser(env, userId, pendingBlueprint, {
+        childProfileId,
+        claimToken: claimToken || null,
+      });
+      claimedBlueprintId = saved?.id ?? null;
+    }
+    const claimedExtraGuideId = String(body.claimedExtraGuideId || "").trim() || null;
+    if (
+      claimedBlueprintId ||
+      (Array.isArray(pendingBlueprint?.resultIds) && pendingBlueprint.resultIds.length) ||
+      claimedExtraGuideId
+    ) {
+      await grantComplimentaryWizardExtra(env, userId, {
+        resultIds: pendingBlueprint?.resultIds,
+        resultPcts: pendingBlueprint?.resultPcts,
+        blueprintId: claimedBlueprintId,
+        claimedGuideId: claimedExtraGuideId,
+      });
+    }
   } catch {
-    emailSent = false;
+    /* client can retry after activation / login */
+  }
+
+  // Email (no cert PDF) + credit sync run after the response so signup feels fast.
+  const postRegisterWork = (async () => {
+    try {
+      const { syncMemberEntitlementsFromPurchases } = await import("./member-credits");
+      const synced = await syncMemberEntitlementsFromPurchases(env, user);
+      if (synced.packCreditsGranted > 0 || synced.planCreditsGranted > 0) {
+        await appendAudit(
+          env.DB,
+          "credits_granted",
+          email,
+          `+${synced.packCreditsGranted + synced.planCreditsGranted} Kid Credits from checkout / plan`,
+        );
+      }
+    } catch {
+      /* credit packs purchased before the account existed */
+    }
+    try {
+      const { sendRegistrationConfirmation } = await import("./email");
+      await sendRegistrationConfirmation(
+        env,
+        {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          audience: String(audience),
+          membership_tier: membershipTier,
+        },
+        { includeCertificate: false, heardAbout: heardAbout.label },
+      );
+    } catch {
+      /* non-fatal — admin can resend on activation */
+    }
+  })();
+
+  if (typeof waitUntil === "function") {
+    waitUntil(postRegisterWork);
+  } else {
+    // Local/tests without waitUntil — still skip certificate; don't block longer than needed.
+    void postRegisterWork;
   }
 
   const kidsLinkedMsg =
@@ -679,27 +866,39 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
       ? ` Child account for ${childDisplayName} was created and linked to your parent account.`
       : "";
 
+  let token: string | null = null;
+  const extraHeaders: Record<string, string> = {};
+  if (accountStatus === "active") {
+    const session = await createSession(env.DB, userId, {
+      secureCookie: requestWantsSecureCookie(request),
+    });
+    token = session.token;
+    extraHeaders["set-cookie"] = session.cookie;
+  }
+
   return json(
     {
       ok: true,
-      pendingActivation: true,
-      emailSent,
+      pendingActivation: accountStatus !== "active",
+      emailSent: true,
+      emailQueued: true,
       membershipTier,
-      user: publicUser(user),
+      user: publicUser({ ...user, status: accountStatus }),
       betaNda: betaNdaReceipt,
       testingUnlocked: Boolean(betaNdaReceipt),
-      token: null,
+      token,
       isAdmin: false,
       childProfileId,
       kidUserId,
       kidLoginEmail,
-      claimedBlueprintId: null,
+      claimedBlueprintId,
       message:
-        membershipTier === "free"
-          ? `Account created and awaiting admin activation.${kidsLinkedMsg} Check your email for confirmation — we'll send a welcome with your perks once you're activated.`
+        accountStatus === "active"
+          ? `Your Free account is ready.${kidsLinkedMsg} You can save your profile and open My Dashboard now.`
           : `Account created for the ${membershipTier} plan and awaiting admin activation.${kidsLinkedMsg} Adult/Senior paid plans continue to Stripe Checkout.`,
     },
     201,
+    extraHeaders,
   );
 }
 
@@ -713,7 +912,28 @@ export async function handleLogout(env: Env, request: Request): Promise<Response
 export async function handleMe(env: Env, request: Request): Promise<Response> {
   const auth = await requireSession(env, request);
   if (auth instanceof Response) return auth;
-  return json({ user: publicUser(auth.user) });
+  let user = auth.user;
+  try {
+    const { syncMemberEntitlementsFromPurchases } = await import("./member-credits");
+    const synced = await syncMemberEntitlementsFromPurchases(env, user);
+    if (
+      synced.membershipTier !== String(user.membership_tier || "free").toLowerCase() ||
+      synced.audience !== String(user.audience || "adult").toLowerCase()
+    ) {
+      const refreshed = await getUserById(env.DB, user.id);
+      if (refreshed) user = refreshed;
+      else {
+        user = {
+          ...user,
+          membership_tier: synced.membershipTier,
+          audience: synced.audience,
+        };
+      }
+    }
+  } catch {
+    /* entitlements optional */
+  }
+  return json({ user: publicUser(user) });
 }
 
 const MEMBERSHIP_TIERS = ["free", "starter", "pro", "elite"] as const;
@@ -745,7 +965,13 @@ export async function handleUpdateMembershipPlan(
   const dbFail = requireDb(env);
   if (dbFail) return dbFail;
 
-  let body: { membershipTier?: string; audience?: string };
+  let body: {
+    membershipTier?: string;
+    audience?: string;
+    merchChoices?: unknown;
+    merchTshirtSizes?: unknown;
+    adminSimulatePayment?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
@@ -755,13 +981,42 @@ export async function handleUpdateMembershipPlan(
   const parsed = parseMembershipPlanUpdate(body);
   if (!parsed.ok) return error(parsed.error, 400);
 
+  const adminSimulateRequested = body.adminSimulatePayment === true;
+  const actorIsAdmin = canAccessAdminPortal(userRoles(actor));
+  if (adminSimulateRequested && !actorIsAdmin) {
+    return error("Only admins can simulate membership payment.", 403);
+  }
+  const adminSimulatePayment = adminSimulateRequested && actorIsAdmin;
+
+  const merchErr = merchChoicesError(parsed.membershipTier as TierId, body.merchChoices, body.merchTshirtSizes);
+  if (merchErr) return error(merchErr, 400);
+  const merchChoices =
+    parseMerchChoices(body.merchChoices, merchItemCount(parsed.membershipTier as TierId)) ?? [];
+  const merchTshirtSizes = parseMerchTshirtSizes(merchChoices, body.merchTshirtSizes);
+
   const before = (await getUserById(env.DB, actor.id)) ?? actor;
   const previousTier = String(before.membership_tier || "free").toLowerCase();
   const previousAudience = String(before.audience || "adult").toLowerCase();
+  const samePlan =
+    previousTier === parsed.membershipTier && previousAudience === parsed.audience;
 
-  const stamp = `Membership set to ${parsed.membershipTier} (${parsed.audience}) ${new Date().toISOString()}`;
+  const { membershipPlanRequiresCreditCheckout } = await import("../../src/lib/credit-checkout");
+  if (
+    !adminSimulatePayment &&
+    !samePlan &&
+    membershipPlanRequiresCreditCheckout(parsed.audience, parsed.membershipTier)
+  ) {
+    return error(
+      "Kids and Teens paid plans use Kid Credit checkout. Pay with credits from Join or My Dashboard.",
+      402,
+    );
+  }
+
+  const stamp = adminSimulatePayment
+    ? `Admin simulated payment → ${parsed.membershipTier} (${parsed.audience}) ${new Date().toISOString()}`
+    : `Membership set to ${parsed.membershipTier} (${parsed.audience}) ${new Date().toISOString()}`;
   const prev = String(before.notes || "");
-  const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+  const notes = mergeMerchNote(`${prev}${prev ? " · " : ""}${stamp}`, merchChoices, merchTshirtSizes);
   const now = new Date().toISOString();
 
   try {
@@ -779,7 +1034,7 @@ export async function handleUpdateMembershipPlan(
 
   await appendAudit(
     env.DB,
-    "membership_plan_update",
+    adminSimulatePayment ? "membership_plan_admin_simulate" : "membership_plan_update",
     actor.email,
     `${parsed.membershipTier}:${parsed.audience}`,
   );
@@ -795,6 +1050,7 @@ export async function handleUpdateMembershipPlan(
   );
 
   // Adult/Senior paid plans email + credits after Stripe; Kids/Teens credit plans here.
+  // Admin simulate applies the paid plan immediately (no Stripe wait).
   const planChanged =
     previousTier !== parsed.membershipTier || previousAudience !== parsed.audience;
   if (planChanged && parsed.membershipTier !== "free") {
@@ -803,10 +1059,9 @@ export async function handleUpdateMembershipPlan(
         defersMembershipEmailUntilStripe,
         sendMembershipSubscriptionEmails,
       } = await import("./email");
-      const waitForStripe = defersMembershipEmailUntilStripe(
-        parsed.membershipTier,
-        parsed.audience,
-      );
+      const waitForStripe =
+        !adminSimulatePayment &&
+        defersMembershipEmailUntilStripe(parsed.membershipTier, parsed.audience);
       if (!waitForStripe) {
         try {
           const { grantMembershipPlanCredits } = await import("./member-credits");
@@ -839,7 +1094,9 @@ export async function handleUpdateMembershipPlan(
   return json({
     ok: true,
     user: publicUpdated,
-    message: `Your profile is now on the ${parsed.membershipTier} plan.`,
+    message: adminSimulatePayment
+      ? `Admin simulated payment — your profile is now on the ${parsed.membershipTier} plan.`
+      : `Your profile is now on the ${parsed.membershipTier} plan.`,
   });
 }
 

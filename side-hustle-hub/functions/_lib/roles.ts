@@ -85,17 +85,22 @@ export function normalizeRolesInput(
   return null;
 }
 
-/** Portal login / Admin Studio: admin, QA, or Dev. */
+/** Admin Studio / Admin menu — admin role only (QA and Dev do not get Admin). */
 export function canAccessAdminPortal(roles: GyshRole[]): boolean {
-  return roles.includes("admin") || roles.includes("qa") || roles.includes("dev");
+  return roles.includes("admin");
+}
+
+/** Testing Portal APIs — Admin or QA. */
+export function canAccessTestingPortal(roles: GyshRole[]): boolean {
+  return roles.includes("admin") || roles.includes("qa");
 }
 
 /**
  * Testing Portal status updates (Pass / Fail / etc.).
- * Same gate as Admin Studio — QA / Dev / admin. Blocked is gated by canSetTestBlocked.
+ * Admin, QA, or Dev. Blocked is gated by canSetTestBlocked.
  */
 export function canChangeTestStatus(roles: GyshRole[]): boolean {
-  return canAccessAdminPortal(roles);
+  return roles.includes("admin") || roles.includes("qa") || roles.includes("dev");
 }
 
 /** Canonical + known typo emails for Evelyn (Blocked status allowlist). */
@@ -113,6 +118,13 @@ export function canSetTestBlocked(
   if (EVELYN_BLOCKED_EMAILS.has(email)) return true;
   const name = String(user.name || "").trim().toLowerCase();
   return name === "evelyn" || name.startsWith("evelyn ");
+}
+
+/** Only Evelyn may mark a guide Reviewed by Dev (her approval). */
+export function canSetGuideReviewedByDev(
+  user: { email?: string; name?: string } | null | undefined,
+): boolean {
+  return canSetTestBlocked(user);
 }
 
 /** Evelyn may edit items in a closed/locked sprint; everyone else is blocked. */

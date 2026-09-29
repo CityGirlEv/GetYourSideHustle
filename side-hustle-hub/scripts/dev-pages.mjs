@@ -16,11 +16,18 @@
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
  */
 import { spawn, spawnSync, execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  applyD1HealthWatchEvent,
+  d1HealthWatchConfig,
+  shouldSkipHealthProbe,
+  wranglerExitAction,
+  wranglerRestartRequestAction,
+} from "./d1-health-watch.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const wrangler = path.resolve(
@@ -72,6 +79,23 @@ function ensureD1RemoteFlag(wantRemote) {
 
 ensureD1RemoteFlag(!wantLocalD1);
 
+/**
+ * Wrangler walks up for `.wrangler/deploy/config.json`. A leftover file in the
+ * monorepo parent (eager-hypatia) points at mypartb and blocks `pages dev`.
+ * Write a GYSH-local redirect so wrangler.toml and deploy config share a base path.
+ */
+function ensureGyshDeployConfig() {
+  const deployDir = path.join(root, ".wrangler", "deploy");
+  mkdirSync(deployDir, { recursive: true });
+  const deployConfig = path.join(deployDir, "config.json");
+  const desired = `${JSON.stringify({ configPath: "../../wrangler.toml" })}\n`;
+  if (!existsSync(deployConfig) || readFileSync(deployConfig, "utf8") !== desired) {
+    writeFileSync(deployConfig, desired);
+  }
+}
+
+ensureGyshDeployConfig();
+
 /** Load `.dev.vars` into the child env so Wrangler picks up Resend secrets even if a long-lived session is restarted. */
 function loadDevVars() {
   const file = path.join(root, ".dev.vars");
@@ -113,6 +137,12 @@ if (!existsSync(wrangler)) {
 }
 
 const children = [];
+let shuttingDown = false;
+let wranglerChild = null;
+let wranglerRestarting = false;
+let wranglerStartedAt = 0;
+let healthFailStreak = 0;
+let healthProbeInFlight = false;
 
 function killTree(pid) {
   if (!pid) return;
@@ -132,6 +162,7 @@ function killTree(pid) {
 }
 
 function shutdown(code = 0) {
+  shuttingDown = true;
   for (const child of children) {
     killTree(child.pid);
   }
@@ -194,12 +225,136 @@ function spawnInherit(cmd, args, label, extraEnv = {}) {
     detached: !isWin,
   });
   child.on("exit", (code, signal) => {
+    if (shuttingDown) return;
     if (signal) return;
     console.error(`[${label}] exited with code ${code ?? 1}`);
     shutdown(code ?? 1);
   });
   children.push(child);
   return child;
+}
+
+function startWrangler() {
+  const proc = spawn(
+    "node",
+    [
+      "--use-system-ca",
+      wrangler,
+      "pages",
+      "dev",
+      "public",
+      "--port",
+      String(API_PORT),
+      "--ip",
+      "127.0.0.1",
+      "--persist-to",
+      ".wrangler/state",
+      "--show-interactive-dev-session",
+      "false",
+    ],
+    {
+      cwd: root,
+      stdio: "inherit",
+      shell: isWin,
+      env: { ...process.env, ...devVars },
+      detached: !isWin,
+    },
+  );
+  wranglerChild = proc;
+  wranglerStartedAt = Date.now();
+  children.push(proc);
+  proc.on("exit", (code, signal) => {
+    const idx = children.indexOf(proc);
+    if (idx >= 0) children.splice(idx, 1);
+    if (wranglerChild === proc) wranglerChild = null;
+    if (wranglerExitAction({ shuttingDown }) === "ignore") return;
+    const planned = wranglerRestarting;
+    wranglerRestarting = true;
+    healthProbeInFlight = false;
+    const delay = planned ? 400 : 1200;
+    console.warn(
+      `[wrangler] exited (${signal || code || 0}) — restarting Pages Functions in ${delay}ms`,
+    );
+    setTimeout(() => {
+      if (shuttingDown) return;
+      freePort(API_PORT, "Pages Functions");
+      startWrangler();
+      wranglerRestarting = false;
+    }, delay);
+  });
+  return proc;
+}
+
+function requestWranglerRestart(reason) {
+  const action = wranglerRestartRequestAction({
+    shuttingDown,
+    restarting: wranglerRestarting,
+    hasChild: Boolean(wranglerChild?.pid),
+  });
+  if (action === "ignore") return;
+  wranglerRestarting = true;
+  healthFailStreak = 0;
+  healthProbeInFlight = false;
+  console.warn(`[d1-watch] ${reason} — restarting Pages Functions on :${API_PORT}`);
+  if (action === "kill-child") {
+    killTree(wranglerChild.pid);
+    return;
+  }
+  startWrangler();
+  wranglerRestarting = false;
+}
+
+function watchRemoteD1Health() {
+  const cfg = d1HealthWatchConfig(useRemoteD1);
+  const timer = setInterval(() => {
+    if (
+      shouldSkipHealthProbe({
+        shuttingDown,
+        restarting: wranglerRestarting,
+        probeInFlight: healthProbeInFlight,
+        startedAt: wranglerStartedAt,
+        graceMs: cfg.graceMs,
+      })
+    ) {
+      return;
+    }
+    healthProbeInFlight = true;
+    const req = http.get(`http://127.0.0.1:${API_PORT}/api/health`, (res) => {
+      healthProbeInFlight = false;
+      res.resume();
+      const event = res.statusCode && res.statusCode < 500 ? "ok" : "http_error";
+      const next = applyD1HealthWatchEvent(
+        { failStreak: healthFailStreak, shuttingDown, restarting: wranglerRestarting },
+        event,
+        cfg,
+      );
+      healthFailStreak = next.failStreak;
+      if (next.restart) requestWranglerRestart(`health HTTP ${res.statusCode}`);
+    });
+    req.on("error", () => {
+      healthProbeInFlight = false;
+      const next = applyD1HealthWatchEvent(
+        { failStreak: healthFailStreak, shuttingDown, restarting: wranglerRestarting },
+        "unreachable",
+        cfg,
+      );
+      healthFailStreak = next.failStreak;
+      if (next.restart) requestWranglerRestart("health unreachable");
+    });
+    req.setTimeout(cfg.reqTimeoutMs, () => {
+      req.destroy();
+      healthProbeInFlight = false;
+      const next = applyD1HealthWatchEvent(
+        { failStreak: healthFailStreak, shuttingDown, restarting: wranglerRestarting },
+        "timeout",
+        cfg,
+      );
+      healthFailStreak = next.failStreak;
+      if (next.restart) requestWranglerRestart("health timeout");
+    });
+  }, cfg.intervalMs);
+  timer.unref?.();
+  console.log("✓ Watching /api/health — dead D1 proxy auto-restarts Pages Functions");
 }
 
 function waitForHealth(timeoutMs = useRemoteD1 ? 180_000 : 90_000) {
@@ -350,25 +505,7 @@ if (await portInUse(VITE_PORT)) {
 
 // Serve public/ as static assets so Pages Functions load; Vite owns the real UI on 5173.
 // (Pages does not support --config; D1 remote flag is set on wrangler.toml above.)
-spawnInherit(
-  "node",
-  [
-    "--use-system-ca",
-    wrangler,
-    "pages",
-    "dev",
-    "public",
-    "--port",
-    String(API_PORT),
-    "--ip",
-    "127.0.0.1",
-    "--persist-to",
-    ".wrangler/state",
-    "--show-interactive-dev-session",
-    "false",
-  ],
-  "wrangler",
-);
+startWrangler();
 
 try {
   await waitForHealth();
@@ -381,6 +518,7 @@ try {
 
 spawnInherit("npx", ["vite", "--port", String(VITE_PORT), "--strictPort", "--host"], "vite");
 console.log(`✓ Vite starting on :${VITE_PORT} — login uses proxied /api/auth/login`);
+watchRemoteD1Health();
 
 // Background prod→local re-sync only applies to sandbox (local D1) mode.
 if (!useRemoteD1 && process.env.GYSH_SKIP_D1_SYNC !== "1") {

@@ -199,7 +199,7 @@ export async function sendDueScheduleReminders(env: Env): Promise<{ sent: number
   return { sent };
 }
 
-/** Admin list of all hustle_schedule stores (Pro+ members + any with data). */
+/** Admin list of all hustle_schedule stores (Pro & Above members + any with data). */
 export async function listAllHustleSchedules(env: Env): Promise<Response> {
   const { json, error } = await import("./crypto");
   try {

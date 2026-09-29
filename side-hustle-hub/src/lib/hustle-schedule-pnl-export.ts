@@ -18,8 +18,8 @@ import {
   PDF_PAGE_W,
   applyPdfPageBranding,
   drawPdfPageChrome,
-  loadPdfLogoDataUrl,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 
 const SITE_HOST = ROOT_DOMAIN;
 
@@ -147,7 +147,7 @@ export function buildProfitAndLossHtml(plan: HustleSchedulePlan): string {
     <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
     <tbody>${lineRows}</tbody>
   </table>
-  <p class="footer">${escapeHtml(SITE_NAME)} · ${escapeHtml(SITE_HOST)} · Generated for your hustle blueprint</p>
+  <p class="footer">${escapeHtml(SITE_NAME)} · ${escapeHtml(SITE_HOST)} · Generated for your side hustle blueprint</p>
 </body></html>`;
 }
 

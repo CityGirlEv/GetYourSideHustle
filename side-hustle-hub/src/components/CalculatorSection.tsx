@@ -10,6 +10,78 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+function CalcLine({
+  label,
+  detail,
+  value,
+  emphasize,
+  negative,
+}: {
+  label: string;
+  detail?: string;
+  value: string;
+  emphasize?: boolean;
+  negative?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 12,
+        alignItems: "flex-start",
+        paddingBottom: emphasize ? 8 : 0,
+        borderBottom: emphasize ? "1px solid rgba(255,255,255,0.08)" : undefined,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <span
+          style={{
+            color: emphasize ? "white" : "var(--text-primary)",
+            fontWeight: emphasize ? 700 : 500,
+            display: "block",
+          }}
+        >
+          {label}
+        </span>
+        {detail ? (
+          <span style={{ fontSize: "0.8rem", color: "var(--text-primary)", opacity: 0.85, display: "block", marginTop: 2 }}>
+            {detail}
+          </span>
+        ) : null}
+      </div>
+      <strong
+        style={{
+          color: negative ? "#fca5a5" : "white",
+          whiteSpace: "nowrap",
+          fontWeight: emphasize ? 800 : 700,
+        }}
+      >
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+type AirbnbBudgetLine = { id: string; label: string; amount: number };
+
+const DEFAULT_AIRBNB_BUDGET: AirbnbBudgetLine[] = [
+  { id: "mortgage", label: "Mortgage / rent", amount: 800 },
+  { id: "utilities", label: "Utilities (electric, water, gas)", amount: 150 },
+  { id: "insurance", label: "Insurance / STR coverage", amount: 80 },
+  { id: "supplies", label: "Supplies & restocking", amount: 60 },
+  { id: "cleaning_labor", label: "Cleaning labor (host-paid)", amount: 0 },
+  { id: "internet", label: "Internet / Wi‑Fi", amount: 50 },
+  { id: "software", label: "Software & channel tools", amount: 30 },
+  { id: "taxes", label: "Taxes / HOA / permits", amount: 30 },
+  { id: "other", label: "Other monthly costs", amount: 0 },
+];
+
+function parseMoneyInput(raw: string): number {
+  const n = Number(String(raw).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
 interface CalculatorSectionProps {
   initialActiveTab?: string;
   onGoToGuide: (hustleId: string) => void;
@@ -26,7 +98,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
   const [airbnbNightlyRate, setAirbnbNightlyRate] = useState(150);
   const [airbnbOccupancy, setAirbnbOccupancy] = useState(70); // %
   const [airbnbCleaningFee, setAirbnbCleaningFee] = useState(100);
-  const [airbnbExpenses, setAirbnbExpenses] = useState(1200); // mortgage, utilities, etc.
+  const [airbnbBudget, setAirbnbBudget] = useState<AirbnbBudgetLine[]>(DEFAULT_AIRBNB_BUDGET);
 
   // E-Commerce (POD/Dropshipping) State
   const [ecomUnits, setEcomUnits] = useState(250);
@@ -41,10 +113,18 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
   const [sponsorPosts, setSponsorPosts] = useState(3);
   const [platform, setPlatform] = useState("instagram");
 
+  const setAirbnbBudgetAmount = (id: string, amount: number) => {
+    setAirbnbBudget((prev) => prev.map((line) => (line.id === id ? { ...line, amount } : line)));
+  };
+
   // Calculations
   // 1. Airbnb
-  const airbnbBookingsCount = Math.round((30 * (airbnbOccupancy / 100)) / 3); // Average stay of 3 days
-  const airbnbRevenue = (airbnbNightlyRate * 30 * (airbnbOccupancy / 100)) + (airbnbCleaningFee * airbnbBookingsCount);
+  const airbnbExpenses = airbnbBudget.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+  const airbnbNightsBooked = 30 * (airbnbOccupancy / 100);
+  const airbnbBookingsCount = Math.round(airbnbNightsBooked / 3); // Average stay of 3 days
+  const airbnbRoomRevenue = airbnbNightlyRate * airbnbNightsBooked;
+  const airbnbCleaningRevenue = airbnbCleaningFee * airbnbBookingsCount;
+  const airbnbRevenue = airbnbRoomRevenue + airbnbCleaningRevenue;
   const airbnbPlatformFeeAmt = airbnbRevenue * 0.03; // Airbnb fee is 3%
   const airbnbNetProfit = airbnbRevenue - airbnbPlatformFeeAmt - airbnbExpenses;
   const airbnbMargin = airbnbRevenue > 0 ? (airbnbNetProfit / airbnbRevenue) * 100 : 0;
@@ -99,7 +179,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
           GYSH Earnings & Profitability Calculator
         </h2>
         <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>
-          Adjust the sliders to estimate startup viability and monthly earnings.
+          Adjust rates and the editable budget to estimate startup viability and monthly earnings.
         </p>
 
         <button
@@ -146,10 +226,10 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
               <>
                 <p style={{ marginBottom: 8, color: "white", fontWeight: 600 }}>Airbnb Hosting</p>
                 <ul style={{ margin: "0 0 8px 18px", padding: 0 }}>
-                  <li><strong style={{ color: "white" }}>Inputs:</strong> nightly rate, occupancy %, cleaning fee per booking, monthly operating expenses.</li>
+                  <li><strong style={{ color: "white" }}>Inputs:</strong> nightly rate, occupancy %, cleaning fee per booking, and each monthly budget line (mortgage/rent, utilities, insurance, supplies, cleaning labor, internet, software, taxes/HOA, other).</li>
                   <li><strong style={{ color: "white" }}>Assumptions:</strong> 30-day month; average stay = 3 nights; Airbnb platform fee = 3% of gross revenue.</li>
-                  <li><strong style={{ color: "white" }}>Formulas:</strong> bookings ≈ round((30 × occupancy) ÷ 3); revenue = (nightly × 30 × occupancy) + (cleaning × bookings); fees = revenue × 3%; net = revenue − fees − expenses.</li>
-                  <li><strong style={{ color: "white" }}>Outputs:</strong> estimated net monthly profit, profit margin %, gross revenue, platform fees, operating expenses.</li>
+                  <li><strong style={{ color: "white" }}>Formulas:</strong> bookings ≈ round((30 × occupancy) ÷ 3); revenue = (nightly × 30 × occupancy) + (cleaning × bookings); fees = revenue × 3%; expenses = sum of budget lines; net = revenue − fees − expenses.</li>
+                  <li><strong style={{ color: "white" }}>Outputs:</strong> estimated net monthly profit, profit margin %, gross revenue, platform fees, and every budget line that feeds the total.</li>
                 </ul>
               </>
             )}
@@ -231,15 +311,28 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                 <span>Nightly Rate ($)</span>
                 <span className="form-label-value">{formatCurrency(airbnbNightlyRate)}</span>
               </label>
-              <input 
-                type="range" 
-                min="50" 
-                max="1000" 
-                step="10"
-                value={airbnbNightlyRate}
-                onChange={(e) => setAirbnbNightlyRate(Number(e.target.value))}
-                className="range-slider"
-              />
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input
+                  type="range"
+                  min="50"
+                  max="1000"
+                  step="10"
+                  value={airbnbNightlyRate}
+                  onChange={(e) => setAirbnbNightlyRate(Number(e.target.value))}
+                  className="range-slider"
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={airbnbNightlyRate}
+                  onChange={(e) => setAirbnbNightlyRate(parseMoneyInput(e.target.value))}
+                  className="text-input"
+                  style={{ width: 96 }}
+                  aria-label="Nightly rate dollars"
+                />
+              </div>
             </div>
 
             <div className="form-group">
@@ -247,15 +340,31 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                 <span>Occupancy Rate (%)</span>
                 <span className="form-label-value">{airbnbOccupancy}%</span>
               </label>
-              <input 
-                type="range" 
-                min="10" 
-                max="100" 
-                step="5"
-                value={airbnbOccupancy}
-                onChange={(e) => setAirbnbOccupancy(Number(e.target.value))}
-                className="range-slider"
-              />
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  step="5"
+                  value={airbnbOccupancy}
+                  onChange={(e) => setAirbnbOccupancy(Number(e.target.value))}
+                  className="range-slider"
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={airbnbOccupancy}
+                  onChange={(e) =>
+                    setAirbnbOccupancy(Math.min(100, Math.max(0, parseMoneyInput(e.target.value))))
+                  }
+                  className="text-input"
+                  style={{ width: 96 }}
+                  aria-label="Occupancy percent"
+                />
+              </div>
               <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: "4px", display: "block" }}>
                 Estimated {airbnbBookingsCount} bookings/month (averaging 3 nights per stay).
               </span>
@@ -266,34 +375,72 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                 <span>Cleaning Fee ($ per booking)</span>
                 <span className="form-label-value">{formatCurrency(airbnbCleaningFee)}</span>
               </label>
-              <input 
-                type="range" 
-                min="20" 
-                max="300" 
-                step="5"
-                value={airbnbCleaningFee}
-                onChange={(e) => setAirbnbCleaningFee(Number(e.target.value))}
-                className="range-slider"
-              />
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input
+                  type="range"
+                  min="20"
+                  max="300"
+                  step="5"
+                  value={airbnbCleaningFee}
+                  onChange={(e) => setAirbnbCleaningFee(Number(e.target.value))}
+                  className="range-slider"
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={airbnbCleaningFee}
+                  onChange={(e) => setAirbnbCleaningFee(parseMoneyInput(e.target.value))}
+                  className="text-input"
+                  style={{ width: 96 }}
+                  aria-label="Cleaning fee per booking"
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                <span>Monthly Expenses ($)</span>
-                <span className="form-label-value">{formatCurrency(airbnbExpenses)}</span>
-              </label>
-              <input 
-                type="range" 
-                min="200" 
-                max="5000" 
-                step="50"
-                value={airbnbExpenses}
-                onChange={(e) => setAirbnbExpenses(Number(e.target.value))}
-                className="range-slider"
-              />
-              <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: "4px", display: "block" }}>
-                Includes mortgage/rent, utilities, restocking, and cleaning services.
-              </span>
+            <div
+              className="form-group"
+              style={{
+                padding: "14px 16px",
+                borderRadius: 12,
+                border: "1px solid var(--border-color)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <span style={{ color: "white", fontWeight: 700, display: "block" }}>Monthly budget</span>
+                  <span style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
+                    Edit every line — totals roll into net profit
+                  </span>
+                </div>
+                <strong style={{ color: "white", whiteSpace: "nowrap" }}>{formatCurrency(airbnbExpenses)}</strong>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {airbnbBudget.map((line) => (
+                  <label
+                    key={line.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(0, 1fr) 110px",
+                      gap: 10,
+                      alignItems: "center",
+                    }}
+                  >
+                    <span style={{ color: "var(--text-primary)", fontSize: "0.92rem" }}>{line.label}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={line.amount}
+                      onChange={(e) => setAirbnbBudgetAmount(line.id, parseMoneyInput(e.target.value))}
+                      className="text-input"
+                      aria-label={`${line.label} monthly amount`}
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -510,29 +657,149 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
             </div>
 
             {/* Detailed line items */}
-            <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.95rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-primary)" }}>Gross Revenue</span>
-                <strong style={{ color: "white" }}>
-                  {formatCurrency(activeTab === "airbnb" ? airbnbRevenue : activeTab === "ecom" ? ecomRevenue : socialRevenue)}
-                </strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-primary)" }}>
-                  {activeTab === "airbnb" ? "Platform Fees (3%)" : activeTab === "ecom" ? `Platform Fees (${ecomPlatformFee}%)` : "Platform Fees (0%)"}
-                </span>
-                <strong style={{ color: "white" }}>
-                  {formatCurrency(activeTab === "airbnb" ? airbnbPlatformFeeAmt : activeTab === "ecom" ? ecomFeeAmt : 0)}
-                </strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-primary)" }}>
-                  {activeTab === "airbnb" ? "Operating Expenses" : activeTab === "ecom" ? "Product COGS & Ads" : "Tool Expenses"}
-                </span>
-                <strong style={{ color: "white" }}>
-                  {formatCurrency(activeTab === "airbnb" ? airbnbExpenses : activeTab === "ecom" ? (ecomCogs + ecomAdSpend) : socialExpenses)}
-                </strong>
-              </div>
+            <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.95rem" }}>
+              {activeTab === "airbnb" && (
+                <>
+                  <p style={{ margin: "0 0 4px", fontSize: "0.85rem", fontWeight: 700, color: "white", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                    How we got here
+                  </p>
+                  <CalcLine
+                    label="Nights booked / month"
+                    detail={`30 days × ${airbnbOccupancy}% occupancy`}
+                    value={`${airbnbNightsBooked.toFixed(1)} nights`}
+                  />
+                  <CalcLine
+                    label="Bookings / month"
+                    detail={`${airbnbNightsBooked.toFixed(1)} nights ÷ 3-night avg stay (rounded)`}
+                    value={`${airbnbBookingsCount}`}
+                  />
+                  <CalcLine
+                    label="Room revenue"
+                    detail={`${formatCurrency(airbnbNightlyRate)} × ${airbnbNightsBooked.toFixed(1)} nights`}
+                    value={formatCurrency(airbnbRoomRevenue)}
+                  />
+                  <CalcLine
+                    label="Cleaning fee revenue"
+                    detail={`${formatCurrency(airbnbCleaningFee)} × ${airbnbBookingsCount} bookings`}
+                    value={formatCurrency(airbnbCleaningRevenue)}
+                  />
+                  <CalcLine
+                    label="Gross revenue"
+                    detail="Room revenue + cleaning fee revenue"
+                    value={formatCurrency(airbnbRevenue)}
+                    emphasize
+                  />
+                  <CalcLine
+                    label="Airbnb platform fee (3%)"
+                    detail={`3% × ${formatCurrency(airbnbRevenue)}`}
+                    value={`− ${formatCurrency(airbnbPlatformFeeAmt)}`}
+                    negative
+                  />
+                  <p style={{ margin: "8px 0 2px", fontSize: "0.85rem", fontWeight: 700, color: "white" }}>
+                    Monthly budget
+                  </p>
+                  {airbnbBudget.map((line) => (
+                    <CalcLine
+                      key={line.id}
+                      label={line.label}
+                      value={`− ${formatCurrency(line.amount)}`}
+                      negative={line.amount > 0}
+                    />
+                  ))}
+                  <CalcLine
+                    label="Total operating expenses"
+                    detail="Sum of budget lines above"
+                    value={`− ${formatCurrency(airbnbExpenses)}`}
+                    negative
+                    emphasize
+                  />
+                  <div
+                    style={{
+                      marginTop: 6,
+                      paddingTop: 12,
+                      borderTop: "1px solid var(--border-color)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                      <span style={{ color: "white", fontWeight: 700 }}>Net monthly profit</span>
+                      <strong
+                        style={{
+                          color: airbnbNetProfit >= 0 ? "var(--accent-pink)" : "#f87171",
+                          fontSize: "1.15rem",
+                        }}
+                      >
+                        {formatCurrency(airbnbNetProfit)}
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>
+                      Gross revenue − platform fee − budget total
+                    </span>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                      <span style={{ color: "var(--text-primary)" }}>Profit margin</span>
+                      <strong style={{ color: "white" }}>{airbnbMargin.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {activeTab === "ecom" && (
+                <>
+                  <CalcLine label="Gross Revenue" value={formatCurrency(ecomRevenue)} emphasize />
+                  <CalcLine
+                    label={`Platform Fees (${ecomPlatformFee}%)`}
+                    value={`− ${formatCurrency(ecomFeeAmt)}`}
+                    negative
+                  />
+                  <CalcLine
+                    label="Product COGS"
+                    detail={`${ecomUnits} units × ${formatCurrency(ecomCost)}`}
+                    value={`− ${formatCurrency(ecomCogs)}`}
+                    negative
+                  />
+                  <CalcLine
+                    label="Ad spend"
+                    value={`− ${formatCurrency(ecomAdSpend)}`}
+                    negative
+                  />
+                  <CalcLine
+                    label="Net monthly profit"
+                    detail="Revenue − fees − COGS − ads"
+                    value={formatCurrency(ecomNetProfit)}
+                    emphasize
+                  />
+                </>
+              )}
+
+              {activeTab === "social" && (
+                <>
+                  <CalcLine
+                    label="Fee per sponsored post"
+                    detail={`Based on ${followers.toLocaleString()} followers · ${engagement}% engagement · ${platform} CPM $${cpm}`}
+                    value={formatCurrency(sponsorFeePerPost)}
+                  />
+                  <CalcLine
+                    label="Gross sponsor revenue"
+                    detail={`${formatCurrency(sponsorFeePerPost)} × ${sponsorPosts} posts`}
+                    value={formatCurrency(socialRevenue)}
+                    emphasize
+                  />
+                  <CalcLine
+                    label="Tool expenses"
+                    detail="$150 base + 5% of sponsor revenue"
+                    value={`− ${formatCurrency(socialExpenses)}`}
+                    negative
+                  />
+                  <CalcLine
+                    label="Net monthly profit"
+                    detail="Revenue − tool expenses"
+                    value={formatCurrency(socialNetProfit)}
+                    emphasize
+                  />
+                </>
+              )}
             </div>
           </div>
 

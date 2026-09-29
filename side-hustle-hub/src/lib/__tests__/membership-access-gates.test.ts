@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { canAccessScheduleSuite } from "../hustle-schedule";
+import { canAccessPnl, canAccessScheduleSuite } from "../hustle-schedule";
 import {
   MEMBERSHIP_FEATURES,
   MEMBERSHIP_TIERS,
+  canAccessCommunity,
+  canAccessMemberGuides,
+  canAccessNewsletter,
   featuresForTier,
   tierHasFeature,
   type TierId,
@@ -38,11 +41,28 @@ describe("membership access gatekeeping", () => {
     expect(tierHasFeature("elite", "member_guides")).toBe(true);
   });
 
-  it("gates the weekly newsletter behind Starter+ (admins bypass)", () => {
+  it("gates the bi-weekly newsletter behind Starter & Above (admins bypass)", () => {
     expect(tierHasFeature("free", "newsletter")).toBe(false);
     expect(tierHasFeature("starter", "newsletter")).toBe(true);
     expect(tierHasFeature("pro", "newsletter")).toBe(true);
     expect(tierHasFeature("elite", "newsletter")).toBe(true);
+    expect(canAccessNewsletter("free")).toBe(false);
+    expect(canAccessNewsletter("starter")).toBe(true);
+  });
+
+  it("gates community and paid member guides behind Starter — not Free, not team join", () => {
+    expect(canAccessCommunity("free")).toBe(false);
+    expect(canAccessCommunity("starter")).toBe(true);
+    expect(canAccessCommunity("pro")).toBe(true);
+    expect(canAccessMemberGuides("free")).toBe(false);
+    expect(canAccessMemberGuides("starter")).toBe(true);
+  });
+
+  it("keeps P&L on Pro/Elite only (Starter is paid but does not include it)", () => {
+    expect(canAccessPnl("free")).toBe(false);
+    expect(canAccessPnl("starter")).toBe(false);
+    expect(canAccessPnl("pro")).toBe(true);
+    expect(canAccessPnl("elite")).toBe(true);
   });
 
   it("featuresForTier never returns features outside the tier ladder", () => {
@@ -85,9 +105,9 @@ describe("membership access gatekeeping", () => {
   it("plan Kid Credit allowances stay tier-gated (no free stipend)", () => {
     expect(monthlyKidCreditAllowance("free", "kids")).toBe(0);
     expect(monthlyKidCreditAllowance("free", "adult")).toBe(0);
-    expect(monthlyKidCreditAllowance("starter", "kids")).toBe(60);
-    expect(monthlyKidCreditAllowance("starter", "adult")).toBe(30);
-    expect(monthlyKidCreditAllowance("pro", "junior")).toBe(140);
-    expect(monthlyKidCreditAllowance("elite", "senior")).toBe(120);
+    expect(monthlyKidCreditAllowance("starter", "kids")).toBe(2.5);
+    expect(monthlyKidCreditAllowance("starter", "adult")).toBe(2.5);
+    expect(monthlyKidCreditAllowance("pro", "junior")).toBe(5);
+    expect(monthlyKidCreditAllowance("elite", "senior")).toBe(10);
   });
 });

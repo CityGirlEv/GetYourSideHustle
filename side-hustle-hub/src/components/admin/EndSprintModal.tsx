@@ -61,21 +61,26 @@ export function listIncompleteSprintWork(input: {
       assignee: t.assignedTo || "Unassigned",
     }));
 
-  const tests: EndSprintWorkItem[] = input.tests
-    .filter((t) => {
-      const sprint = Number(input.testSprints[t.id]);
-      if (sprint !== sprintIndex) return false;
-      return isTestIncomplete(input.testStatuses[t.id]);
-    })
-    .map((t) => {
-      const st = input.testStatuses[t.id] ?? "not_run";
+  const titleById = new Map(input.tests.map((t) => [t.id, t.title]));
+  const testIds = new Set<string>();
+  for (const t of input.tests) {
+    if (Number(input.testSprints[t.id]) === sprintIndex) testIds.add(t.id);
+  }
+  for (const [id, sp] of Object.entries(input.testSprints)) {
+    if (Number(sp) === sprintIndex) testIds.add(id);
+  }
+
+  const tests: EndSprintWorkItem[] = [...testIds]
+    .filter((id) => isTestIncomplete(input.testStatuses[id]))
+    .map((id) => {
+      const st = input.testStatuses[id] ?? "not_run";
       return {
-        key: `test:${t.id}`,
+        key: `test:${id}`,
         source: "test" as const,
-        sourceId: t.id,
-        title: t.title,
+        sourceId: id,
+        title: titleById.get(id) || id,
         statusLabel: TEST_STATUS_LABELS[st] ?? st,
-        assignee: input.testAssignees[t.id]?.trim() || "Unassigned",
+        assignee: input.testAssignees[id]?.trim() || "Unassigned",
       };
     });
 

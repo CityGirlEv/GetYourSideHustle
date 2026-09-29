@@ -13,7 +13,7 @@ describe("sprint progress helpers", () => {
   it("clamps current sprint index to the plan range", () => {
     expect(currentSprintIndex(new Date(2026, 6, 14))).toBe(0);
     expect(currentSprintIndex(new Date(2025, 0, 1))).toBe(0);
-    expect(currentSprintIndex(new Date(2030, 0, 1))).toBe(7);
+    expect(currentSprintIndex(new Date(2030, 0, 1))).toBe(10);
   });
 
   it("summarizes current sprint and overall project excluding backlog and Plan", () => {
@@ -95,7 +95,7 @@ describe("sprint progress helpers", () => {
     expect(summary.overall.done).toBe(1);
     expect(summary.overall.total).toBe(2);
     expect(summary.overall.percent).toBe(50);
-    expect(summary.sprints).toHaveLength(8);
+    expect(summary.sprints).toHaveLength(11);
     expect(summary.sprints[0]?.label).toBe(summary.current.label);
     expect(summary.sprints[0]?.tasks).toBe(2);
     expect(summary.sprints[0]?.tests).toBe(0);

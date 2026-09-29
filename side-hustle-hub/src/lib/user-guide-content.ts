@@ -1,4 +1,4 @@
-﻿/** Shared copy for online User Guides + PDF export. Always say Side Hustle / Side Hustler. */
+/** Shared copy for online User Guides + PDF export. Always say Side Hustle / Side Hustler. */
 
 export type GuideCheckItem = { id: string; text: string };
 
@@ -107,15 +107,15 @@ export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "tier-starter",
-        text: "Starter — Member guides, community, workshop discounts, one 45-minute session (3-mo commit). Kids/Teens use credits.",
+        text: "Starter — Member guides, community, workshop discounts, one 60-minute or two 30-minute sessions (3-mo commit). Kids/Teens use credits.",
       },
       {
         id: "tier-pro",
-        text: "Pro — Schedule suite (plan, tracker, reports, email) + three 60-minute sessions + more credits.",
+        text: "Pro — Schedule suite (plan, tracker, reports, email) + two 60-minute sessions + more credits.",
       },
       {
         id: "tier-elite",
-        text: "Elite — Deepest support + three 90-minute sessions + highest credit pool.",
+        text: "Elite — Deepest support + three 60-minute sessions + highest credit pool.",
       },
     ],
   },
@@ -198,7 +198,7 @@ export function memberChapters(images: {
       id: "adults",
       number: "2.3",
       title: "Adults",
-      ages: "Ages 18–54",
+      ages: "Ages 18–49",
       image: images.adult,
       imageAlt: "GYSH Adults Match Wizard — budget, hours, strengths, goals",
       items: [
@@ -216,7 +216,7 @@ export function memberChapters(images: {
         },
         {
           id: "adult-membership",
-          text: "Membership Free → Elite adds guides, consulting time, and (Pro+) the schedule suite.",
+          text: "Membership Free → Elite adds guides, consulting time, and (Pro or higher) the schedule suite.",
         },
       ],
     },
@@ -224,7 +224,7 @@ export function memberChapters(images: {
       id: "seniors",
       number: "2.4",
       title: "Seniors",
-      ages: "Ages 55+",
+      ages: "Ages 50+",
       image: images.senior,
       imageAlt: "GYSH Seniors Match Wizard — flexible pacing",
       items: [
@@ -275,7 +275,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     number: "1",
     title: "Admin Studio overview",
     intro:
-      "Partner ops workspace for schedule, tasks, QA, users, content, money (admin-only), growth notes, site map, and these guides. Sign in with Admin and/or QA — the Admin menu appears in the header and opens on Schedule & Plan.",
+      "Partner ops workspace for schedule, tasks, QA, users, content, money (admin-only), growth notes, site map, and these guides. Sign in with an Admin account — the Admin menu appears in the header and usually opens on Testing Portal (Tina/Lyriq may land on Agenda first if meeting times are still required).",
     subsections: [
       {
         id: "roles",
@@ -283,15 +283,26 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         title: "Roles",
         intro: "Users can hold multiple roles. Primary portal home follows the highest-priority audience/ops role.",
         items: [
-          { id: "r-admin", text: "Admin — full Admin Studio, including Financials." },
-          { id: "r-qa", text: "QA — Admin Studio for Testing/ops; Financials hidden (admin role required)." },
+          { id: "r-admin", text: "Admin — full Admin Studio, including Financials and Content Factory." },
+          {
+            id: "r-qa",
+            text: "QA — Admin Studio for Testing/ops (Financials and Content Factory stay Admin-only). Anyone with the QA role (active or pending) appears on Testing Portal and Schedule test assignee lists.",
+          },
+          {
+            id: "r-dev",
+            text: "Dev — portal access for Fail triage / Lead Dev tools; Evelyn is Lead Dev for failed tests.",
+          },
           { id: "r-kid", text: "Kid (3–12) — Kids Side Hustle Corner (parent-coached)." },
           { id: "r-teen", text: "Teens (13–17) — Teens mode in Kids/Teens Corner." },
           { id: "r-adult", text: "Adult (18+) — Adult hub, GYSH Match Wizard, guides, calculators." },
-          { id: "r-senior", text: "Senior (55+) — Seniors Corner and senior pricing on Join." },
+          { id: "r-senior", text: "Senior (50+) — Seniors Corner and senior pricing on Join." },
+          {
+            id: "r-beta",
+            text: "Beta Tester — applies at signup with NDA; still needs Admin activation before login; does not grant Admin Studio by itself.",
+          },
           {
             id: "r-shell",
-            text: "Admin shell opens only when the account includes Admin and/or QA. Audience-only members use Portal, not Admin.",
+            text: "Admin shell opens only when the account includes the Admin role. QA-only or Dev-only accounts do not see the Admin menu. Audience-only members use Portal, not Admin.",
           },
         ],
       },
@@ -302,7 +313,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "ps-me",
-            text: "Admin (me) — return to your partner session; lands on Schedule & Plan.",
+            text: "Admin (me) — return to your partner session; lands on Testing Portal (or Agenda when the Tina/Lyriq meeting gate applies).",
           },
           {
             id: "ps-guest",
@@ -322,15 +333,15 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "due-login",
-            text: "On fresh Admin login, overdue / due-today tasks and overdue tests for your assignee can open a modal — with days left in the current sprint and a nudge to finish before Monday.",
+            text: "Login due-task / overdue-test popups are disabled — Admin opens straight to your landing tab. Use Task List and Testing Portal to review work.",
           },
           {
             id: "due-daily",
-            text: "Optional once-per-day reminder when opening Admin if overdue tasks or tests remain.",
+            text: "Daily overdue reminders on Admin open are also off.",
           },
           {
             id: "due-jump",
-            text: "Jump to Task List or Testing Portal from the modal to work the items.",
+            text: "Open Task List or Testing Portal anytime from Admin nav to work items.",
           },
         ],
       },
@@ -345,7 +356,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     items: [
       {
         id: "sch-bars",
-        text: "Sprint status bars show progress for the selected sprint.",
+        text: "Sprint chips cover Sprint 0 through Sprint 10 (Tue–Mon windows, including the two-week pause after Sprint 2). Dates show on each bubble.",
       },
       {
         id: "sch-filter",
@@ -409,19 +420,20 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     id: "testing",
     number: "4",
     title: "Testing Portal",
-    intro: "Manual and automated QA case tracking with assignees, sprints, and notes.",
+    intro:
+      "Manual and automated QA case tracking with assignees, sprints, notes, and evidence. Open Testing Manual from the portal for statuses and Fail / Conditional Pass flows.",
     items: [
       {
         id: "qa-filter",
-        text: "Top filter: External (live site) vs Internal (admin / QA). Then filter by search, area, category, status, QA tester, suite (manual / Vitest / Playwright), and sprint.",
+        text: "Top filter: External (live site) vs Internal (admin / QA). Then filter by search, area, category, status, QA tester, suite (manual / Vitest / Playwright), and sprint. Sprint defaults to All sprints.",
       },
       {
         id: "qa-status",
-        text: "Set status: not started, in progress, pass, conditional approval, fail, blocked — notes required for fail/blocked/conditional approval. Untouched cases stay Not Started. Use Save everything to persist notes.",
+        text: "Each card shows the current status as text (not a dropdown). Expand the card and use the status buttons at the bottom to set Not Started, In Progress, Rolled Over, Pass, Conditional Pass, Fail, Blocked, Fixed/Re-Test, Failed/Re-Test, Fixed/Cursor, Fixed/Lighthouse, or Fixed/Foresight. Notes required for fail / blocked / conditional pass / Fixed/* writers. Untouched cases stay Not Started.",
       },
       {
         id: "qa-assign",
-        text: "Assign manual cases to Tina, Evelyn / Lyriq; Vitest/Playwright cases stay on suite owners; set sprint; expand case detail. Each card shows last updated by and date.",
+        text: "Assignee dropdowns and QA Testors chips list everyone with the QA role from Users Area (active or pending) — not only the seed catalog. Vitest/Playwright cases stay on suite owners. Fail triage assigns to Evelyn (Lead Dev). Each card shows last updated by and date.",
       },
       {
         id: "qa-bulk",
@@ -433,11 +445,15 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-evidence",
-        text: "Attach evidence on a case: image, video, PDF, Word, or Excel (safety scanned).",
+        text: "Attach evidence on a case: image, video (mp4/webm/mov), PDF, Word, or Excel (safety scanned; images/docs ~8MB, videos ~20MB).",
+      },
+      {
+        id: "qa-manual",
+        text: "Testing Manual (screen + PDF) covers quick start, access/assignees, status definitions, and Fail / Conditional Pass paths.",
       },
       {
         id: "qa-bars",
-        text: "Sprint status bars mirror completion across the suite.",
+        text: "Filter row order on load: Assignees (expanded), Sprint, Other (collapsed). Other groups Status, Test Suites, All Test Cases, External vs Internal, and Categories. Sprint chips show each sprint’s date range. QA Testors progress bars and sprint chips mirror completion across the filtered suite.",
       },
     ],
   },
@@ -449,7 +465,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     items: [
       {
         id: "u-filter",
-        text: "Role count tiles filter the list (Admin, QA, Kids, Teens, Adult, Senior); also filter by status.",
+        text: "Role count tiles filter the list (Admin, QA, Dev, Kids, Teens, Adult, Senior, Beta); also filter by status.",
       },
       {
         id: "u-add",
@@ -457,11 +473,11 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "u-bubbles",
-        text: "On each card: highlighted role bubbles toggle roles; + adds a missing role (saves immediately).",
+        text: "On each card: highlighted role bubbles toggle roles; + adds a missing role (saves immediately). Adding QA puts them on Testing Portal / Schedule assignee lists.",
       },
       {
         id: "u-edit",
-        text: "Edit name, email, status, notes, and optional new password (never displayed).",
+        text: "Edit name, email, status, notes, and optional new password (never displayed). Activate pending accounts before they can sign in.",
       },
       {
         id: "u-rule",
@@ -544,7 +560,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "fin-contract",
-        text: "Upload partnership contract file (T + E labeling).",
+        text: "Upload partnership contract file (Tina & Evelyn labeling).",
       },
       {
         id: "fin-save",
@@ -687,7 +703,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     number: "12",
     title: "End-user site",
     intro:
-      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Join · About · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
+      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Sign-Up · About Us · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
     subsections: [
       {
         id: "eu-home",
@@ -700,7 +716,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "eu-h2",
-            text: "Open Profit Estimator or a launch guide from a hustle card when available.",
+            text: "Open Profit Estimator or a launch guide from a side hustle card when available.",
           },
         ],
       },
@@ -745,7 +761,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "eu-s1",
-            text: "Tabs: Match · Opportunities · Guides · Join — flexible pacing for 55+.",
+            text: "Tabs: Match · Opportunities · Guides · Join — flexible pacing for 50+.",
           },
           {
             id: "eu-s2",
@@ -813,11 +829,11 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "eu-nl1",
-            text: "Members-only Weekly Newsletter page at /newsletter — Friday dual-audience issue (kids glow + adult hustle tip).",
+            text: "Members-only Bi-Weekly Newsletter page at /newsletter — two issues a month (kids glow + adult hustle tip).",
           },
           {
             id: "eu-nl2",
-            text: "Starter+ perk. Guests and Free accounts see titles; published Content Factory newsletter drafts unlock in the archive.",
+            text: "Starter or higher perk. Guests and Free accounts see titles; published Content Factory newsletter drafts unlock in the archive.",
           },
         ],
       },
@@ -832,15 +848,15 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "eu-j2",
-            text: "Free — open free guides. Starter — member guides, community, weekly newsletter, workshop discount, one 45-minute session (credits for Kids/Teens).",
+            text: "Free — open free guides. Starter — member guides, community, bi-weekly newsletter (2× per month), workshop discount, one 60-minute or two 30-minute sessions (credits for Kids/Teens).",
           },
           {
             id: "eu-j3",
-            text: "Pro — schedule suite + three 60-minute sessions + more credits. Elite — deepest support + three 90-minute sessions + highest credit pool.",
+            text: "Pro — schedule suite + two 60-minute sessions + more credits. Elite — deepest support + three 60-minute sessions + highest credit pool.",
           },
           {
             id: "eu-j4",
-            text: "Consulting rates align across ages; Kids/Teens often pay with parent-funded GYSH credits. Adult/Senior Pro+ include kid-credit pools.",
+            text: "Consulting rates align across ages; Kids/Teens often pay with parent-funded GYSH credits. Adult/Senior Pro or higher include kid-credit pools.",
           },
         ],
       },

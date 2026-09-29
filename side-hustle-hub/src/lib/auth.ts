@@ -1,36 +1,73 @@
 /** GYSH login / register — production D1. */
 
 import { api, ApiError, setSessionToken } from "./api";
+import { clearAlaCarteCart } from "./alacarte-cart";
+import {
+  D1_QUOTA_USER_MESSAGE,
+  isD1QuotaExceededMessage,
+  isLocalDevHost,
+  isRetryableD1ApiError,
+  loginUnavailableMessage,
+} from "./d1-errors";
+import {
+  sessionRestoreTimeoutMs,
+  shouldClearSessionOnMeFailure,
+} from "./first-load";
 import type { BlueprintAgeGroup } from "./gysh-analytics";
+import {
+  readCachedAuthUser,
+  readSessionToken,
+  readTabAlive,
+  shouldPersistSessionLocally,
+  writeCachedAuthUser,
+  writeTabAlive,
+} from "./session-storage";
+import { clearLocalComplimentaryClaim } from "./wizard-comp-guide";
 
-/** Marks this browser tab as an active signed-in session (dies when the tab closes). */
-const TAB_ALIVE_KEY = "gysh_tab_alive";
+/** Button label whenever GYSH requires an existing member to authenticate. */
+export const LOGIN_BUTTON_LABEL = "Log in";
 
 function markTabAlive(): void {
-  try {
-    sessionStorage.setItem(TAB_ALIVE_KEY, "1");
-  } catch {
-    /* ignore */
-  }
+  writeTabAlive(true);
 }
 
 function clearTabAlive(): void {
-  try {
-    sessionStorage.removeItem(TAB_ALIVE_KEY);
-  } catch {
-    /* ignore */
-  }
+  writeTabAlive(false);
 }
 
 function tabIsAlive(): boolean {
-  try {
-    return sessionStorage.getItem(TAB_ALIVE_KEY) === "1";
-  } catch {
-    return false;
-  }
+  return readTabAlive();
+}
+
+/** True when this tab already restored a session (refresh). Used so a slow /auth/me doesn't kick Admin to Login. */
+export function hasActiveTabSession(): boolean {
+  return tabIsAlive();
 }
 
 export type LoginOutcome = "admin" | "member" | "invalid" | "unavailable";
+
+export function loginFailureFromApiError(
+  e: ApiError,
+  opts?: { localDev?: boolean },
+): { outcome: LoginOutcome; error: string } {
+  if (isD1QuotaExceededMessage(e.message)) {
+    return { outcome: "unavailable", error: D1_QUOTA_USER_MESSAGE };
+  }
+  if (
+    e.status === 0 ||
+    e.status === 503 ||
+    (e.status >= 500 && isRetryableD1ApiError(e.message))
+  ) {
+    return {
+      outcome: "unavailable",
+      error: loginUnavailableMessage({
+        localDev: opts?.localDev,
+        quota: isD1QuotaExceededMessage(e.message),
+      }),
+    };
+  }
+  return { outcome: "invalid", error: e.message || "Invalid email or password." };
+}
 
 export type AuthAuditEntry = {
   at: string;
@@ -43,6 +80,7 @@ export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: string;
   roles?: string[];
   status: string;
@@ -87,19 +125,17 @@ export async function login(email: string, password: string): Promise<{
     });
     setSessionToken(data.token ?? null);
     markTabAlive();
+    writeCachedAuthUser(data.user);
     const isAdmin =
       data.isAdmin === true ||
       data.user.role === "admin" ||
-      data.user.role === "qa" ||
-      data.user.role === "dev" ||
-      (data.user.roles ?? []).some((r) => r === "admin" || r === "qa" || r === "dev");
+      (data.user.roles ?? []).includes("admin");
     return { outcome: isAdmin ? "admin" : "member", user: data.user };
   } catch (e) {
     if (e instanceof ApiError) {
-      if (e.status === 0 || e.status === 503) {
-        return { outcome: "unavailable", error: e.message };
-      }
-      return { outcome: "invalid", error: e.message || "Invalid email or password." };
+      const localDev =
+        typeof window !== "undefined" && isLocalDevHost(window.location.hostname);
+      return loginFailureFromApiError(e, { localDev });
     }
     return { outcome: "unavailable", error: "Database unavailable." };
   }
@@ -112,8 +148,21 @@ export async function registerFreeMember(input: {
   ageGroup: BlueprintAgeGroup;
   childDisplayName?: string;
   claimToken?: string;
+  pendingBlueprint?: {
+    ageGroup: BlueprintAgeGroup;
+    answers: Record<string, unknown>;
+    resultIds: string[];
+    resultPcts?: Record<string, number>;
+  };
+  /** Sticky lifetime extra already claimed in the browser (first wizard wins). */
+  claimedExtraGuideId?: string | null;
   /** Requested membership plan (free / starter / pro / elite). Paid plans still need activation. */
   membershipTier?: "free" | "starter" | "pro" | "elite";
+  /** Complimentary GYSH merch (hat / T-shirt) chosen at signup. */
+  merchChoices?: Array<"tshirt" | "hat">;
+  merchTshirtSizes?: Array<string>;
+  /** How they heard about GYSH. */
+  heardAbout?: { sourceId: string; detail?: string };
   /** Applicant selected the Beta Tester role at signup. */
   applyBetaTester?: boolean;
   betaNda?: {
@@ -168,13 +217,19 @@ export async function registerFreeMember(input: {
         ageGroup: input.ageGroup,
         childDisplayName: input.childDisplayName,
         claimToken: input.claimToken,
+        pendingBlueprint: input.pendingBlueprint,
         membershipTier: input.membershipTier ?? "free",
+        merchChoices: input.merchChoices,
+        merchTshirtSizes: input.merchTshirtSizes,
+        heardAbout: input.heardAbout,
         applyBetaTester: input.applyBetaTester === true,
         betaNda: input.applyBetaTester === true ? input.betaNda : undefined,
       },
     });
     setSessionToken(data.token ?? null);
     markTabAlive();
+    writeCachedAuthUser(data.user);
+    clearLocalComplimentaryClaim();
     return {
       ok: true,
       user: data.user,
@@ -194,43 +249,115 @@ export async function registerFreeMember(input: {
 }
 
 export async function logout(): Promise<void> {
+  setSessionToken(null);
+  clearTabAlive();
+  clearAlaCarteCart();
   try {
     await api("auth/logout", { method: "POST" });
   } catch {
-    /* still clear local session marker */
+    /* cookie clear is best-effort — local session is already gone */
   }
-  setSessionToken(null);
-  clearTabAlive();
 }
 
 /**
- * Restore auth for this window. Refresh keeps you signed in (sessionStorage survives).
- * If this tab has no local marker, still try the httpOnly cookie so a member who
- * already signed in (Starter/Free+) can open Workshops without signing in again.
- * We do NOT call logout() on a miss — that would wipe other open tabs.
+ * Restore auth after refresh / new tab.
+ * Production: same-tab refresh only (sessionStorage). Closing the tab requires sign-in.
+ * Localhost: localStorage + durable cookie so Dev stays signed in across tabs/restarts/HMR.
+ * We do NOT call logout() when the marker is missing — that would wipe other open tabs.
  */
 export async function restoreSession(): Promise<AuthUser | null> {
-  const user = await fetchMe();
-  if (user) {
-    markTabAlive();
-    return user;
-  }
+  const localPersist =
+    typeof window !== "undefined" && shouldPersistSessionLocally(window.location.hostname);
+  const timeoutMs = sessionRestoreTimeoutMs(localPersist);
+  const cached = localPersist ? readCachedAuthUser() : null;
+  const hasToken = Boolean(readSessionToken());
+
   if (!tabIsAlive()) {
-    setSessionToken(null);
-    return null;
+    if (!localPersist) {
+      setSessionToken(null);
+      clearTabAlive();
+      return null;
+    }
+    // Localhost: try cookie / persisted bearer / cached user even after a cold start.
+  } else {
+    markTabAlive();
   }
-  setSessionToken(null);
-  clearTabAlive();
+
+  const attempts = localPersist ? 2 : 1;
+  let lastError: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const data = await api<{ user: AuthUser }>("auth/me", { timeoutMs });
+      if (data.user) {
+        markTabAlive();
+        writeCachedAuthUser(data.user);
+        return data.user;
+      }
+      setSessionToken(null);
+      clearTabAlive();
+      writeCachedAuthUser(null);
+      return null;
+    } catch (e) {
+      lastError = e;
+      if (e instanceof ApiError && shouldClearSessionOnMeFailure(e.status)) {
+        setSessionToken(null);
+        clearTabAlive();
+        writeCachedAuthUser(null);
+        return null;
+      }
+      // Timeout / 5xx / network — retry once on localhost, then keep cached user.
+      if (localPersist && i + 1 < attempts) {
+        await new Promise((r) => setTimeout(r, 1_200));
+        continue;
+      }
+    }
+  }
+
+  if (localPersist && (hasToken || tabIsAlive()) && cached) {
+    markTabAlive();
+    return cached as AuthUser;
+  }
+
+  if (lastError instanceof ApiError && shouldClearSessionOnMeFailure(lastError.status)) {
+    setSessionToken(null);
+    clearTabAlive();
+    writeCachedAuthUser(null);
+  }
   return null;
 }
 
 export async function fetchMe(): Promise<AuthUser | null> {
   try {
     const data = await api<{ user: AuthUser }>("auth/me");
-    if (data.user) markTabAlive();
-    return data.user;
+    if (data.user) {
+      markTabAlive();
+      writeCachedAuthUser(data.user);
+      return data.user;
+    }
+    return null;
   } catch {
     return null;
+  }
+}
+
+/** Update name, email, and phone on the logged-in member's profile. */
+export async function updateMemberProfile(input: {
+  name: string;
+  email: string;
+  phone: string;
+}): Promise<{ ok: boolean; user?: AuthUser; error?: string; message?: string }> {
+  try {
+    const data = await api<{ ok: boolean; user: AuthUser; message?: string }>("auth/profile", {
+      method: "POST",
+      body: input,
+    });
+    if (data.user) writeCachedAuthUser(data.user);
+    return { ok: true, user: data.user, message: data.message };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof ApiError ? e.message : "Could not save your profile.",
+    };
   }
 }
 
@@ -238,6 +365,10 @@ export async function fetchMe(): Promise<AuthUser | null> {
 export async function updateMembershipPlan(input: {
   membershipTier: "free" | "starter" | "pro" | "elite";
   audience: "kids" | "junior" | "adult" | "senior";
+  merchChoices?: Array<"tshirt" | "hat">;
+  merchTshirtSizes?: Array<string>;
+  /** Admin-only: apply paid tier without Stripe / Kid Credit checkout. */
+  adminSimulatePayment?: boolean;
 }): Promise<{ ok: boolean; user?: AuthUser; error?: string; message?: string }> {
   try {
     const data = await api<{ ok: boolean; user: AuthUser; message?: string }>(
@@ -247,6 +378,9 @@ export async function updateMembershipPlan(input: {
         body: {
           membershipTier: input.membershipTier,
           audience: input.audience,
+          merchChoices: input.merchChoices,
+          merchTshirtSizes: input.merchTshirtSizes,
+          adminSimulatePayment: input.adminSimulatePayment === true,
         },
       },
     );
@@ -254,6 +388,25 @@ export async function updateMembershipPlan(input: {
   } catch (e) {
     if (e instanceof ApiError) return { ok: false, error: e.message };
     return { ok: false, error: "Could not update membership plan." };
+  }
+}
+
+export async function saveMemberMerch(input: {
+  merchChoices: Array<"tshirt" | "hat">;
+  merchTshirtSizes?: Array<string>;
+}): Promise<{ ok: boolean; user?: AuthUser; error?: string; message?: string }> {
+  try {
+    const data = await api<{ ok: boolean; user: AuthUser; message?: string }>("auth/merch", {
+      method: "POST",
+      body: {
+        merchChoices: input.merchChoices,
+        merchTshirtSizes: input.merchTshirtSizes,
+      },
+    });
+    return { ok: true, user: data.user, message: data.message };
+  } catch (e) {
+    if (e instanceof ApiError) return { ok: false, error: e.message };
+    return { ok: false, error: "Could not save merch choice." };
   }
 }
 

@@ -5,13 +5,14 @@
 import { pathForView, type AppRouteView } from "./app-routes";
 import { adminTabById, type AdminTab } from "./admin-nav";
 import { readAdminDeepLink } from "./admin-deep-links";
+import { formatGuideCrossLinkLabel, formatTestCrossLinkLabel, guideReviewCaseIdForGuide } from "./guide-review-link";
 
 /** Short labels used in “Open [Label](href)” steps. */
 export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   dashboard: "Home",
   quiz: "GYSH Match Wizard",
   calculators: "Calculators",
-  guides: "Guides",
+  guides: "Side Hustle Guides",
   checklist: "Side Hustle Checklist",
   community: "Community",
   newsletter: "Newsletter",
@@ -21,13 +22,16 @@ export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   login: "Login",
   user_portal: "Member Portal",
   admin: "Admin Studio",
-  about: "About",
+  about: "About Us",
   contact: "Contact Us",
   privacy: "Privacy Policy",
   beta_nda: "Beta Tester NDA",
   beta_testing: "Beta Tester Dashboard",
-  join: "Join",
+  beta_credits: "Beta Tester Credit Guide",
+  beta_points: "Beta Tester Points",
+  join: "Join Free",
   membership_signup: "Membership Sign-up",
+  shop: "Shop",
 };
 
 /** Alternate phrases that appear in existing step text for a view. */
@@ -35,23 +39,26 @@ const VIEW_ALIASES: Partial<Record<AppRouteView, string[]>> = {
   dashboard: ["Home", "homepage", "Homepage", "the homepage"],
   quiz: ["GYSH Match Wizard", "Find Mine", "Match Wizard", "Find My Side Hustle"],
   calculators: ["Calculators", "GYSH Profit Estimator"],
-  guides: ["Guides", "Guides library", "Free Guides"],
+  guides: ["Side Hustle Guides", "Side Hustle Library", "Guides", "Guides library", "Free Guides"],
   checklist: ["Side Hustle Checklist", "Checklist"],
   community: ["Community", "GYSH Community"],
-  newsletter: ["Newsletter", "Weekly Newsletter", "GYSH Newsletter"],
+  newsletter: ["Newsletter", "Bi-Weekly Newsletter", "Weekly Newsletter", "GYSH Newsletter"],
   workshops: ["Workshops"],
   kids: ["Kids & Teens Corner", "Kids/Teens Corner", "Kids / Teens Corner", "Kids Corner", "Kids & Teens", "Kids/Juniors Corner"],
   seniors: ["Seniors Corner", "Seniors", "Senior Side Hustles"],
   login: ["Login", "Sign In", "GYSH Sign In"],
   user_portal: ["Member Portal", "My Dashboard", "User Portal"],
   admin: ["Admin Studio", "Admin", "GYSH Admin Studio"],
-  about: ["About"],
+  about: ["About Us", "About"],
   contact: ["Contact Us", "Contact"],
   privacy: ["Privacy Policy", "Privacy"],
   beta_nda: ["Beta Tester NDA", "Beta NDA", "NDA"],
   beta_testing: ["Beta Tester Dashboard", "Beta Testing"],
-  join: ["Join", "Join GYSH", "Membership"],
-  membership_signup: ["Membership Sign-up", "Membership Signup", "Sign-up"],
+  beta_credits: ["Beta Tester Credit Guide", "Beta Credits", "Credit Guide"],
+  beta_points: ["Beta Tester Points", "Beta Points"],
+  join: ["Join Free", "Sign-Up", "Join", "Join GYSH", "Membership"],
+  shop: ["Shop", "GYSH Shop", "Merch", "GEAR"],
+  membership_signup: ["Membership Sign-up", "Membership Signup", "Sign-up", "Join Free"],
 };
 
 const VIEW_SET = new Set<string>(Object.keys(QA_PAGE_LABELS));
@@ -93,6 +100,19 @@ export function resolveQaPage(path: string | undefined | null): QaPageRef | null
         return { href: raw, label: tabLabel, view: "admin" };
       }
       return { href: pathForView("admin"), label: QA_PAGE_LABELS.admin, view: "admin" };
+    }
+    // Guide deep links: /guides?hustle=handyman
+    if (raw === "/guides" || raw.startsWith("/guides?")) {
+      const q = raw.includes("?") ? raw.slice(raw.indexOf("?")) : "";
+      const hustle = new URLSearchParams(q).get("hustle")?.trim();
+      if (hustle) {
+        return {
+          href: `/guides?hustle=${encodeURIComponent(hustle)}`,
+          label: formatGuideCrossLinkLabel(hustle),
+          view: "guides",
+        };
+      }
+      return { href: pathForView("guides"), label: QA_PAGE_LABELS.guides, view: "guides" };
     }
     for (const [key, label] of Object.entries(QA_PAGE_LABELS) as [AppRouteView, string][]) {
       if (pathForView(key) === raw) {
@@ -268,7 +288,19 @@ export function pageRefForTask(task: {
     return resolveQaPage("seniors");
   }
   if (id.startsWith("T-LG-") || notes.includes("guide-review:") || /^Review Launch Guide:/i.test(desc)) {
-    return resolveQaPage("guides");
+    const fromId = id.startsWith("T-LG-") ? id.slice("T-LG-".length).trim() : "";
+    const fromNotes = notes.match(/guide-review:([^\s\n]+)/i)?.[1]?.trim() ?? "";
+    const guideId = fromId || fromNotes;
+    const caseId = guideId ? guideReviewCaseIdForGuide(guideId) : null;
+    // Guide review tasks link to the associated GUIDE-REV test only — not the library guide.
+    if (caseId) {
+      return {
+        href: `/admin?tab=testing&test=${encodeURIComponent(caseId)}`,
+        label: formatTestCrossLinkLabel(caseId),
+        view: "admin",
+      };
+    }
+    return resolveQaPage("admin");
   }
   if (
     id.startsWith("T-MEM-") ||

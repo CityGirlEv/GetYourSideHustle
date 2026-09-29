@@ -82,7 +82,7 @@ describe("gysh-test-plan", () => {
 
   it("classifies public pages and wizards as External", () => {
     expect(facingForCase({ id: "ABOUT-001", area: "About", suite: "manual" })).toBe("external");
-    expect(facingForCase({ id: "GUIDE-001", area: "Free Guides", suite: "manual" })).toBe("external");
+    expect(facingForCase({ id: "GUIDE-001", area: "Guides", suite: "manual" })).toBe("external");
     expect(facingForCase({ id: "NAV-001", area: "Navigation", suite: "manual" })).toBe("external");
     expect(facingForCase({ id: "AUTH-002", area: "Auth", suite: "manual" })).toBe("external");
   });

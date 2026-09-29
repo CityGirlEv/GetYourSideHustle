@@ -1,5 +1,7 @@
 /** Beta Tester testing dashboard — stats, reward level, unlock gate. */
 
+import { betaRewardLevelLabelFor } from "./beta-tester-credits";
+
 export const BETA_REWARD_NOT_QUALIFIED = "Not yet qualified";
 
 export type BetaTesterStats = {
@@ -36,8 +38,8 @@ export function formatBetaRecordedTime(ms: number): string {
 }
 
 export function betaRewardLevelFor(testsCompleted: number, recordedMs: number): string {
-  if (testsCompleted <= 0 || recordedMs < 0) return BETA_REWARD_NOT_QUALIFIED;
-  return BETA_REWARD_NOT_QUALIFIED;
+  if (recordedMs < 0) return BETA_REWARD_NOT_QUALIFIED;
+  return betaRewardLevelLabelFor(testsCompleted, recordedMs);
 }
 
 export function betaTesterStatsFromCounts(

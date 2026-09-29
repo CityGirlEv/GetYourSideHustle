@@ -1,0 +1,67 @@
+---
+description: GYSH individual Guide Upgrades — full 7-tab COMPLETE replace, assign Evelyn, no kit overlays
+alwaysApply: true
+---
+
+# GYSH Guide Upgrades
+
+When working in `side-hustle-hub` / Get Your Side Hustle and the user asks to upgrade a Launch Guide (COMPLETE spec, keep id/title):
+
+## Always replace the whole guide
+
+Do **not** upgrade only the tabs named in the chat. Even if they say “just tools” or “just steps,” apply the **entire COMPLETE spec**:
+
+- Prerequisites
+- Suggested Pricing (REPLACE the old section)
+- Supply List
+- Tools (including beginner stack + Tools-tab intro)
+- Exactly 11 authored core steps (marketing stages as the spec says: usually 3–5, **6–8 for Elite AI/affiliate-style guides**)
+- Revenue Calculator (dedicated inputs/labels from the spec)
+- Notes (reality check + worksheet)
+- Catalog polish: exact title, category, audiences, time, displayed earning potential, summary/tagline
+
+Keep the existing 7-tab UI. Never rename the guide. Unique Unique Free stays **20** — do not D1-patch `minTier` on those 20. For Pro/Elite, leave D1 `minTier` unpatched if code already has the tier.
+
+Never use `✓` in marketing/sample lines (`parseGuideStepDesc` treats `✓` as checked). Use `-` or `☐`.
+
+Authored core steps = **exactly 11**. GYSH prepends foundation + closing via `finalizeGuidePlaybookSteps` (UI often shows ~16). COMPLETE “11 steps” means authored core.
+
+## After the code kit is wired
+
+1. **Strip kit overlays** on that `guide_id` (`$.steps`, `$.tools`, `$.supplies`, `$.suggestedPricing`, `$.prerequisites`) so D1 cannot freeze old tab content. Never leave COMPLETE content hidden behind a staff Save overlay.
+2. **Always assign that guide to Evelyn** in production D1 (`gysh-db` remote). Do this without being asked.
+
+Preserve other `patch_json` fields. Do **not** change `published` / Guide Status unless the spec says to.
+
+```sql
+UPDATE guide_catalog_state
+SET patch_json = json_set(
+      json_remove(
+        CASE WHEN patch_json IS NULL OR trim(patch_json) = '' THEN '{}' ELSE patch_json END,
+        '$.steps',
+        '$.tools',
+        '$.supplies',
+        '$.suggestedPricing',
+        '$.prerequisites'
+      ),
+      '$.assignee',
+      json_quote('evelyn')
+    ),
+    updated_at = '<ISO now>',
+    updated_by = 'Evelyn Irving'
+WHERE guide_id = '<guide-id>';
+
+UPDATE test_case_status
+SET assignee = 'evelyn',
+    updated_at = '<ISO now>',
+    updated_by = 'Evelyn Irving',
+    assigned_by = CASE WHEN assigned_by IS NULL OR trim(assigned_by) = '' THEN 'Evelyn Irving' ELSE assigned_by END,
+    date_assigned = CASE WHEN date_assigned IS NULL OR trim(date_assigned) = '' THEN date('now') ELSE date_assigned END
+WHERE case_id GLOB 'GUIDE-REV-*-<guide-id>';
+```
+
+Run via `node --use-system-ca ../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js d1 execute gysh-db --remote --file <sql>` from `side-hustle-hub`. PowerShell `--command` quoting breaks Wrangler; use `--file` for writes. `--file` SELECT does **not** print row results — confirm with `--command` SELECT.
+
+Assignee id is `evelyn` (not email). Confirm with a SELECT that `json_extract(patch_json,'$.assignee')` is `evelyn` and kit overlay keys are null.
+
+Remove the finished id from `GUIDES_PENDING_AFTER_PREP_TAB_BACKFILL`.

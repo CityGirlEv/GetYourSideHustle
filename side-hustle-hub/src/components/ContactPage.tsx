@@ -43,7 +43,7 @@ export function ContactPage() {
       <BusyOverlay active={submitting} message="Sending message…" />
       <section className="glass static-page-hero">
         <span className="flat-label flat-label--accent">Contact Us</span>
-        <h2>Reach T + E</h2>
+        <h2>Reach Tina & Evelyn</h2>
         <p>
           Questions about workshops, partnerships, or the {SITE_NAME} platform? Send a note — we read every
           message routed to our GYSH inbox.

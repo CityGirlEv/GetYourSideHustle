@@ -77,6 +77,7 @@ export function drawBenchmarkPageHeader(
   pageW: number,
   margin: number,
   logoDataUrl?: string | null,
+  isCoverPage?: boolean,
 ): void {
   const headerTop = PDF_PAGE_TOP_MARGIN;
   const headerBottom = headerTop + PDF_HEADER_HEIGHT;
@@ -97,10 +98,11 @@ export function drawBenchmarkPageHeader(
   doc.setTextColor(...MUTED);
   doc.text(BENCHMARK_TOOL_NAME, pageW - margin, headerTop + 52, { align: "right" });
 
-  const logoW = 200;
+  const isCover = isCoverPage ?? (doc.getNumberOfPages() <= 1);
+  const logoW = isCover ? 180 : 115;
   const logoH = Math.round(logoW * (308 / 1024));
   const logoX = margin;
-  const logoY = headerTop + 8;
+  const logoY = isCover ? headerTop + 8 : headerTop + 14;
 
   if (logoDataUrl) {
     try {

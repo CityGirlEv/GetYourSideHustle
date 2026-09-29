@@ -7,10 +7,10 @@ import {
   PDF_CONTENT_TOP,
   PDF_CONTENT_BOTTOM,
   PDF_BRAND_COLORS,
-  loadPdfLogoDataUrl,
   drawPdfPageChrome,
   applyPdfPageBranding,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 
 const COLORS = {
   ...PDF_BRAND_COLORS,
@@ -156,6 +156,9 @@ export async function downloadQaTestingManualPdf(reservedTab?: Window | null): P
   heading(ctx, "Quick start");
   numbered(ctx, m.quickStart);
 
+  heading(ctx, "Access & assignees");
+  bullets(ctx, m.access);
+
   heading(ctx, "Testing paths");
   for (const flow of m.flows) {
     heading(ctx, flow.title);
@@ -196,7 +199,7 @@ export async function downloadQaTestingManualPdf(reservedTab?: Window | null): P
     m.retestCompare.map((r) => [r.status, r.meaning, r.after]),
   );
 
-  heading(ctx, "Progress counts (Tina chip)");
+  heading(ctx, "Progress counts (your QA chip)");
   bullets(
     ctx,
     m.progressColors.map(
@@ -217,7 +220,7 @@ export async function downloadQaTestingManualPdf(reservedTab?: Window | null): P
   heading(ctx, "Sprint Board vs Testing Portal");
   bullets(ctx, m.boardVsPortal);
 
-  heading(ctx, "Checklist for Tina");
+  heading(ctx, "Checklist for QA testers");
   bullets(
     ctx,
     m.checklist.map((c) => `[ ] ${c}`),

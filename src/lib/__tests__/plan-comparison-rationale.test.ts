@@ -88,7 +88,7 @@ describe("plan-comparison-rationale", () => {
     const reasons = buildHighlyRatedPlanReasons(maPlan!);
     expect(reasons.length).toBeGreaterThanOrEqual(3);
     expect(reasons[0]).toMatch(/CMS Star Rating/);
-    expect(reasons[0]).toMatch(/4\.0\+/);
+    expect(reasons[0]).toMatch(/4\.5\.0\+|4\.5\+/);
     expect(reasons.some((r) => /member experience|preventive care/i.test(r))).toBe(true);
   });
 
@@ -97,7 +97,7 @@ describe("plan-comparison-rationale", () => {
     expect(reasons.length).toBeGreaterThanOrEqual(2);
     expect(reasons[0]).toMatch(/Medigap/);
     expect(reasons[0]).toMatch(/Part D/);
-    expect(reasons[0]).toMatch(/4\.0\+/);
+    expect(reasons[0]).toMatch(/4\.5\.0\+|4\.5\+/);
     expect(reasons[1]).toMatch(/annual total/i);
   });
 });

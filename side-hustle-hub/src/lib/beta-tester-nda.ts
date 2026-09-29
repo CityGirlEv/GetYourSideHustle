@@ -4,7 +4,7 @@ export const BETA_NDA_TITLE = "GYSH Beta Tester Confidentiality and Non-Disclosu
 export const BETA_NDA_PROGRAM = "Beta Testing Program";
 export const BETA_NDA_EFFECTIVE_LABEL = "Date accepted by Beta Tester";
 /** Immutable version stamp stored with each acceptance so later revisions stay auditable. */
-export const BETA_NDA_VERSION = "GYSH-BETA-NDA-v1.0";
+export const BETA_NDA_VERSION = "GYSH-BETA-NDA-v1.1";
 
 export type BetaNdaBlock = { type: "p"; text: string } | { type: "list"; items: string[] };
 
@@ -259,7 +259,7 @@ export const BETA_NDA_SECTIONS: BetaNdaSection[] = [
     blocks: [
       {
         type: "p",
-        text: "The Beta Tester’s confidentiality obligations continue during participation in the beta program and for **three (3) years following the end of participation**.",
+        text: "The Beta Tester’s confidentiality obligations continue during participation in the beta program and for **five (5) years following the end of participation**.",
       },
       {
         type: "p",

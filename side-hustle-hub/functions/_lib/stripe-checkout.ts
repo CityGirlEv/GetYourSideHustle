@@ -16,10 +16,31 @@ import {
 import { STRIPE_CATALOG } from "./stripe-catalog.generated";
 import {
   createStripeCheckoutSession,
+  createStripeOnceCoupon,
   checkoutReturnOrigin,
   requireStripeSecret,
   retrieveStripeCheckoutSession,
+  stripeSubscriptionIdFromSession,
 } from "./stripe";
+import { setUserStripeSubscriptionId } from "./membership-cancel";
+import { joinCartCatalogItem } from "../../src/lib/alacarte-cart";
+import {
+  quoteMixedCartPayment,
+  quoteMixedUsdPayment,
+  usdToCents,
+  type MixedCartLine,
+} from "../../src/lib/credit-checkout";
+import {
+  merchChoicesError,
+  merchItemCount,
+  mergeMerchNote,
+  parseMerchChoices,
+  parseMerchTshirtSizes,
+  type TierId,
+} from "../../src/lib/membership";
+import {
+  MEMBERSHIP_COMMITMENT_MONTHS,
+} from "../../src/lib/membership-commitment-billing";
 
 export type CheckoutKind = "membership" | "alacarte" | "credit_pack";
 
@@ -83,6 +104,33 @@ export function resolveCheckoutPrice(input: {
   return { ok: false, error: "Unknown checkout kind." };
 }
 
+function lookupJoinCartSku(itemId: string): {
+  priceId: string;
+  label: string;
+  amountUsd: number;
+  skuKind: "alacarte" | "credit_pack";
+} | null {
+  const ala = STRIPE_CATALOG.alaCarte[itemId];
+  if (ala?.priceId) {
+    return {
+      priceId: ala.priceId,
+      label: ala.label,
+      amountUsd: ala.amountUsd,
+      skuKind: "alacarte",
+    };
+  }
+  const pack = STRIPE_CATALOG.creditPacks[itemId];
+  if (pack?.priceId) {
+    return {
+      priceId: pack.priceId,
+      label: pack.label,
+      amountUsd: pack.amountUsd,
+      skuKind: "credit_pack",
+    };
+  }
+  return null;
+}
+
 export function resolveAlaCarteCheckoutLines(
   rawItems: Array<{ itemId?: string; quantity?: number }> | undefined,
   fallbackItemId?: string,
@@ -92,7 +140,15 @@ export function resolveAlaCarteCheckoutLines(
       mode: "payment";
       label: string;
       amountUsd: number;
-      lines: Array<{ priceId: string; quantity: number; itemId: string; label: string; amountUsd: number }>;
+      checkoutKind: "alacarte" | "credit_pack";
+      lines: Array<{
+        priceId: string;
+        quantity: number;
+        itemId: string;
+        label: string;
+        amountUsd: number;
+        skuKind: "alacarte" | "credit_pack";
+      }>;
     }
   | { ok: false; error: string } {
   const source =
@@ -110,13 +166,14 @@ export function resolveAlaCarteCheckoutLines(
     itemId: string;
     label: string;
     amountUsd: number;
+    skuKind: "alacarte" | "credit_pack";
   }> = [];
   for (const raw of source) {
     const itemId = String(raw.itemId || "").trim();
     const quantity = Math.max(1, Math.min(99, Math.floor(Number(raw.quantity) || 1)));
-    const row = STRIPE_CATALOG.alaCarte[itemId];
-    if (!row?.priceId) {
-      return { ok: false, error: `A-la-carte item "${itemId || "?"}" is not configured in Stripe.` };
+    const row = lookupJoinCartSku(itemId);
+    if (!row) {
+      return { ok: false, error: `Item "${itemId || "?"}" is not configured in Stripe.` };
     }
     lines.push({
       priceId: row.priceId,
@@ -124,14 +181,51 @@ export function resolveAlaCarteCheckoutLines(
       itemId,
       label: row.label,
       amountUsd: row.amountUsd * quantity,
+      skuKind: row.skuKind,
     });
   }
   const amountUsd = Math.round(lines.reduce((n, l) => n + l.amountUsd, 0) * 100) / 100;
+  const allPacks = lines.every((l) => l.skuKind === "credit_pack");
+  const checkoutKind = allPacks ? "credit_pack" : "alacarte";
   const label =
     lines.length === 1
       ? `${lines[0]!.label}${lines[0]!.quantity > 1 ? ` × ${lines[0]!.quantity}` : ""}`
-      : `A-la-carte cart (${lines.length} items)`;
-  return { ok: true, mode: "payment", label, amountUsd, lines };
+      : allPacks
+        ? `Credit pack cart (${lines.length} items)`
+        : `A-la-carte cart (${lines.length} items)`;
+  return { ok: true, mode: "payment", label, amountUsd, checkoutKind, lines };
+}
+
+function mixedLinesFromCartSku(
+  lines: Array<{ itemId: string; quantity: number; label: string; amountUsd: number; skuKind: "alacarte" | "credit_pack" }>,
+): MixedCartLine[] {
+  return lines.map((line) => {
+    const catalog = joinCartCatalogItem(line.itemId);
+    return {
+      itemId: line.itemId,
+      name: catalog?.name || line.label,
+      quantity: line.quantity,
+      priceUsd: catalog?.priceUsd ?? line.amountUsd / Math.max(1, line.quantity),
+      kind: line.skuKind,
+      credits: line.skuKind === "credit_pack" ? null : catalog?.credits ?? null,
+    };
+  });
+}
+
+function writeStripeLineItems(
+  form: Record<string, string | number | undefined | null>,
+  lines: Array<{ priceId?: string; quantity: number; unitAmountCents?: number; name?: string }>,
+) {
+  lines.forEach((line, index) => {
+    form[`line_items[${index}][quantity]`] = line.quantity;
+    if (line.unitAmountCents != null) {
+      form[`line_items[${index}][price_data][currency]`] = "usd";
+      form[`line_items[${index}][price_data][unit_amount]`] = line.unitAmountCents;
+      form[`line_items[${index}][price_data][product_data][name]`] = line.name || "GYSH checkout";
+    } else if (line.priceId) {
+      form[`line_items[${index}][price]`] = line.priceId;
+    }
+  });
 }
 
 /** True when Adult/Senior paid tier can use Stripe membership Checkout. */
@@ -166,6 +260,10 @@ export async function handleStripeCheckoutCreate(
     packId?: string;
     /** Multi-item a-la-carte cart. */
     items?: Array<{ itemId?: string; quantity?: number }>;
+    /** Kid Credits to apply toward this charge (logged-in members). */
+    creditsToApply?: number;
+    merchChoices?: unknown;
+    merchTshirtSizes?: unknown;
     /** Browser app origin (e.g. http://localhost:5173) for success/cancel URLs. */
     returnOrigin?: string;
   };
@@ -175,15 +273,16 @@ export async function handleStripeCheckoutCreate(
     return error("Invalid JSON body.");
   }
 
-  const kind = (body.kind || "membership") as CheckoutKind;
+  let kind = (body.kind || "membership") as CheckoutKind;
   const email = canonicalizeEmail(String(body.email || ""));
   if (!email.includes("@")) return error("A valid email is required for checkout.");
 
   let mode: "subscription" | "payment";
   let label: string;
   let amountUsd: number;
-  let lineItems: Array<{ priceId: string; quantity: number }>;
+  let catalogLineItems: Array<{ priceId: string; quantity: number }>;
   let cartMeta = "";
+  let mixedLines: MixedCartLine[] = [];
 
   if (kind === "alacarte") {
     const cart = resolveAlaCarteCheckoutLines(body.items, body.itemId);
@@ -191,8 +290,10 @@ export async function handleStripeCheckoutCreate(
     mode = cart.mode;
     label = cart.label;
     amountUsd = cart.amountUsd;
-    lineItems = cart.lines.map((l) => ({ priceId: l.priceId, quantity: l.quantity }));
+    catalogLineItems = cart.lines.map((l) => ({ priceId: l.priceId, quantity: l.quantity }));
     cartMeta = cart.lines.map((l) => `${l.itemId}x${l.quantity}`).join(",");
+    kind = cart.checkoutKind;
+    mixedLines = mixedLinesFromCartSku(cart.lines);
   } else {
     const resolved = resolveCheckoutPrice({
       kind,
@@ -206,14 +307,259 @@ export async function handleStripeCheckoutCreate(
     mode = resolved.mode;
     label = resolved.label;
     amountUsd = resolved.amountUsd;
-    lineItems = [{ priceId: resolved.priceId, quantity: 1 }];
+    catalogLineItems = [{ priceId: resolved.priceId, quantity: 1 }];
     cartMeta = String(body.itemId || body.packId || "");
+    if (kind === "credit_pack") {
+      mixedLines = mixedLinesFromCartSku([
+        {
+          itemId: String(body.packId || ""),
+          quantity: 1,
+          label: resolved.label,
+          amountUsd: resolved.amountUsd,
+          skuKind: "credit_pack",
+        },
+      ]);
+    }
   }
 
-  const user = await getUserByEmail(env.DB, email);
+  const sessionAuth = await requireSession(env, request);
+  const loggedIn = sessionAuth instanceof Response ? null : sessionAuth.user;
+  let user = await getUserByEmail(env.DB, email);
+  if (loggedIn && canonicalizeEmail(loggedIn.email) === email) {
+    user = (await getUserById(env.DB, loggedIn.id)) ?? loggedIn;
+  }
+
+  let creditBalance = 0;
+  if (loggedIn && canonicalizeEmail(loggedIn.email) === email) {
+    try {
+      const { reconcileWalletToLedger } = await import("./member-credits");
+      const wallet = await reconcileWalletToLedger(env, loggedIn.id);
+      creditBalance = wallet.balance;
+    } catch {
+      creditBalance = 0;
+    }
+  }
+
+  const quote =
+    mode === "subscription"
+      ? quoteMixedUsdPayment({
+          amountUsd,
+          balance: creditBalance,
+          creditsToApply: body.creditsToApply,
+        })
+      : quoteMixedCartPayment({
+          lines: mixedLines,
+          balance: creditBalance,
+          creditsToApply: body.creditsToApply,
+        });
+
+  if (quote.creditsApplied > 0 && (!loggedIn || canonicalizeEmail(loggedIn.email) !== email)) {
+    return error("Sign in with this email to apply Kid Credits.", 401);
+  }
+
+  // Credits can pay anything except credit packs (packs stay cash-only in the quote).
+  // Membership + a-la-carte: when cash due is $0, finish here — never send the member to Stripe.
+  if (quote.cashDueCents === 0 && quote.creditsApplied > 0) {
+    if (!user) return error("Sign in to pay with Kid Credits.", 401);
+    if (kind === "credit_pack") {
+      return error("Credit packs must be purchased with a card — credits cannot buy more credits.", 400);
+    }
+
+    let merchChoicesPaid: string[] = [];
+    let merchTshirtSizesPaid: string[] = [];
+    if (kind === "membership") {
+      const merchTier = String(body.tierId || "").toLowerCase() as TierId;
+      const merchErr = merchChoicesError(merchTier, body.merchChoices, body.merchTshirtSizes);
+      if (merchErr) return error(merchErr, 400);
+      merchChoicesPaid = parseMerchChoices(body.merchChoices, merchItemCount(merchTier)) ?? [];
+      merchTshirtSizesPaid = parseMerchTshirtSizes(
+        merchChoicesPaid as ("tshirt" | "hat")[],
+        body.merchTshirtSizes,
+      );
+    }
+
+    const creditSessionId = `cred-${user.id}-${Date.now().toString(36)}`;
+    try {
+      const { spendCheckoutCredits } = await import("./member-credits");
+      await spendCheckoutCredits(
+        env,
+        user.id,
+        quote.creditsApplied,
+        `${label} · ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not apply Kid Credits.";
+      return error(msg, 402);
+    }
+
+    const { publicUser: toPublic, getUserById } = await import("./auth");
+    let paidUser = user;
+    const now = new Date().toISOString();
+    let membershipTierPaid: string | undefined;
+    let membershipAudiencePaid: string | undefined;
+
+    if (kind === "membership") {
+      const tier = String(body.tierId || "").toLowerCase();
+      const audience = String(body.audience || "").toLowerCase();
+      membershipTierPaid = ["starter", "pro", "elite"].includes(tier) ? tier : undefined;
+      membershipAudiencePaid = ["kids", "junior", "adult", "senior"].includes(audience)
+        ? audience
+        : undefined;
+      const prevNotes = String(user.notes || "");
+      const stamp = `Credit checkout ${tier || "plan"} (${audience || "audience"}) ${now}`;
+      let notes = `${prevNotes}${prevNotes ? " · " : ""}${stamp}`.slice(0, 1900);
+      if (merchChoicesPaid.length) {
+        notes = mergeMerchNote(notes, merchChoicesPaid as ("tshirt" | "hat")[], merchTshirtSizesPaid);
+      }
+      if (membershipTierPaid && membershipAudiencePaid) {
+        await env.DB.prepare(
+          `UPDATE users SET membership_tier = ?, audience = ?, notes = ?, updated_at = ? WHERE id = ?`,
+        )
+          .bind(membershipTierPaid, membershipAudiencePaid, notes, now, user.id)
+          .run();
+      } else if (membershipTierPaid) {
+        await env.DB.prepare(
+          `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
+        )
+          .bind(membershipTierPaid, notes, now, user.id)
+          .run();
+      } else {
+        await env.DB.prepare(`UPDATE users SET notes = ?, updated_at = ? WHERE id = ?`)
+          .bind(notes, now, user.id)
+          .run();
+      }
+      const refreshed = await getUserById(env.DB, user.id);
+      if (refreshed) paidUser = refreshed;
+      await appendAudit(
+        env.DB,
+        "membership_plan_update",
+        paidUser.email,
+        `${membershipTierPaid || tier}:${membershipAudiencePaid || audience} paid with ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
+      );
+      try {
+        const { sendMembershipSubscriptionEmails } = await import("./email");
+        await sendMembershipSubscriptionEmails(env, {
+          user: {
+            id: paidUser.id,
+            email: paidUser.email,
+            name: paidUser.name,
+            membership_tier: membershipTierPaid || String(paidUser.membership_tier || ""),
+            audience: membershipAudiencePaid || String(paidUser.audience || ""),
+          },
+          previousTier: String(user.membership_tier || "free"),
+          source: "credits",
+          amountLabel: `${quote.creditsApplied} Kid Credits`,
+          creditsApplied: quote.creditsApplied,
+          amountCents: 0,
+        });
+      } catch {
+        /* email optional */
+      }
+    } else {
+      try {
+        const { upsertGyshPayment } = await import("./stripe-payments");
+        await upsertGyshPayment(env, {
+          sessionId: creditSessionId,
+          email: user.email,
+          userId: user.id,
+          kind,
+          item: cartMeta,
+          amountCents: 0,
+          paidAt: now,
+          source: "credits",
+          memberName: user.name,
+        });
+      } catch {
+        /* ledger optional */
+      }
+      await appendAudit(
+        env.DB,
+        "purchase_alacarte",
+        user.email,
+        `${label} · ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
+      );
+      try {
+        const { sendAlaCartePurchaseEmails } = await import("./email");
+        await sendAlaCartePurchaseEmails(env, {
+          email: user.email,
+          name: user.name,
+          userId: user.id,
+          itemMeta: cartMeta,
+          amountCents: 0,
+          sessionId: creditSessionId,
+          kind,
+          source: "credits",
+          creditsApplied: quote.creditsApplied,
+        });
+      } catch {
+        /* email optional */
+      }
+    }
+
+    try {
+      const { upsertGyshPayment } = await import("./stripe-payments");
+      if (kind === "membership") {
+        await upsertGyshPayment(env, {
+          sessionId: creditSessionId,
+          email: paidUser.email,
+          userId: paidUser.id,
+          kind: "membership",
+          tier: membershipTierPaid || String(body.tierId || ""),
+          audience: membershipAudiencePaid || String(body.audience || ""),
+          interval: body.interval === "year" ? "year" : "month",
+          amountCents: 0,
+          paidAt: now,
+          source: "credits",
+          memberName: paidUser.name,
+        });
+      }
+    } catch {
+      /* ledger optional */
+    }
+
+    return json({
+      ok: true,
+      paid: true,
+      url: null,
+      sessionId: creditSessionId,
+      mode,
+      label,
+      amountUsd: 0,
+      creditsApplied: quote.creditsApplied,
+      cashDueUsd: 0,
+      catalogMode: STRIPE_CATALOG.mode,
+      user: toPublic(paidUser),
+    });
+  }
+
   const origin = checkoutReturnOrigin(request, { preferredOrigin: body.returnOrigin });
   const successUrl = `${origin}/membership?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${origin}/membership?checkout=canceled`;
+
+  const merchTier = String(body.tierId || "").toLowerCase() as TierId;
+  let merchChoices: string[] = [];
+  let merchTshirtSizes: string[] = [];
+  if (kind === "membership") {
+    const merchErr = merchChoicesError(merchTier, body.merchChoices, body.merchTshirtSizes);
+    if (merchErr) return error(merchErr, 400);
+    merchChoices = parseMerchChoices(body.merchChoices, merchItemCount(merchTier)) ?? [];
+    merchTshirtSizes = parseMerchTshirtSizes(merchChoices as ("tshirt" | "hat")[], body.merchTshirtSizes);
+    if (user && merchChoices.length) {
+      const now = new Date().toISOString();
+      const notes = mergeMerchNote(
+        String(user.notes || ""),
+        merchChoices as ("tshirt" | "hat")[],
+        merchTshirtSizes,
+      );
+      try {
+        await env.DB.prepare(`UPDATE users SET notes = ?, updated_at = ? WHERE id = ?`)
+          .bind(notes, now, user.id)
+          .run();
+      } catch {
+        /* notes are best-effort for merch fulfillment */
+      }
+    }
+  }
 
   const metadata: Record<string, string> = {
     gysh_kind: kind,
@@ -223,6 +569,12 @@ export async function handleStripeCheckoutCreate(
     gysh_interval: String(body.interval || "month"),
     gysh_item: cartMeta,
     gysh_previous_tier: String(user?.membership_tier || "free").toLowerCase(),
+    gysh_credits_applied: String(quote.creditsApplied),
+    gysh_merch: merchChoices
+      .map((id, i) =>
+        id === "tshirt" && merchTshirtSizes[i] ? `tshirt:${merchTshirtSizes[i]}` : id,
+      )
+      .join(","),
   };
 
   const form: Record<string, string | number | undefined | null> = {
@@ -231,7 +583,6 @@ export async function handleStripeCheckoutCreate(
     cancel_url: cancelUrl,
     client_reference_id: user?.id || email,
     customer_email: email,
-    allow_promotion_codes: "true",
     "metadata[gysh_kind]": metadata.gysh_kind,
     "metadata[gysh_email]": metadata.gysh_email,
     "metadata[gysh_tier]": metadata.gysh_tier,
@@ -239,17 +590,49 @@ export async function handleStripeCheckoutCreate(
     "metadata[gysh_interval]": metadata.gysh_interval,
     "metadata[gysh_item]": metadata.gysh_item,
     "metadata[gysh_previous_tier]": metadata.gysh_previous_tier,
+    "metadata[gysh_credits_applied]": metadata.gysh_credits_applied,
+    "metadata[gysh_merch]": metadata.gysh_merch,
   };
 
-  lineItems.forEach((line, index) => {
-    form[`line_items[${index}][price]`] = line.priceId;
-    form[`line_items[${index}][quantity]`] = line.quantity;
-  });
+  if (quote.creditsApplied > 0) {
+    form.allow_promotion_codes = undefined;
+  } else {
+    form.allow_promotion_codes = "true";
+  }
+
+  if (mode === "payment" && quote.creditsApplied > 0 && quote.cashDueCents > 0) {
+    writeStripeLineItems(form, [
+      {
+        quantity: 1,
+        unitAmountCents: quote.cashDueCents,
+        name: `${label} (after ${quote.creditsApplied} Kid Credits)`,
+      },
+    ]);
+    amountUsd = quote.cashDueUsd;
+  } else {
+    writeStripeLineItems(form, catalogLineItems);
+    if (mode === "subscription" && quote.creditsApplied > 0 && quote.creditValueUsd > 0) {
+      const coupon = await createStripeOnceCoupon(secret, {
+        amountOffCents: usdToCents(quote.creditValueUsd),
+        name: `${quote.creditsApplied} Kid Credits`,
+      });
+      if (!coupon.ok) return error(coupon.error, 502);
+      form["discounts[0][coupon]"] = coupon.id;
+      amountUsd = quote.cashDueUsd;
+    }
+  }
 
   if (mode === "subscription") {
     form["subscription_data[metadata][gysh_email]"] = email;
     form["subscription_data[metadata][gysh_tier]"] = metadata.gysh_tier;
     form["subscription_data[metadata][gysh_audience]"] = metadata.gysh_audience;
+    form["subscription_data[metadata][gysh_credits_applied]"] = metadata.gysh_credits_applied;
+    form["subscription_data[metadata][gysh_merch]"] = metadata.gysh_merch;
+    form["subscription_data[metadata][gysh_interval]"] = metadata.gysh_interval;
+    form["subscription_data[metadata][gysh_commitment_months]"] = String(
+      MEMBERSHIP_COMMITMENT_MONTHS,
+    );
+    form["metadata[gysh_commitment_months]"] = String(MEMBERSHIP_COMMITMENT_MONTHS);
   }
 
   const created = await createStripeCheckoutSession(secret, form);
@@ -259,16 +642,19 @@ export async function handleStripeCheckoutCreate(
     env.DB,
     "stripe_checkout_create",
     email,
-    `${kind}:${label}:${created.session.id}`,
+    `${kind}:${label}:${created.session.id}${quote.creditsApplied ? `:${quote.creditsApplied}cr` : ""}`,
   );
 
   return json({
     ok: true,
+    paid: false,
     url: created.session.url,
     sessionId: created.session.id,
     mode,
     label,
     amountUsd,
+    creditsApplied: quote.creditsApplied,
+    cashDueUsd: quote.cashDueUsd,
     catalogMode: STRIPE_CATALOG.mode,
   });
 }
@@ -358,12 +744,72 @@ export async function handleStripeCheckoutConfirm(
           .run();
       }
 
+      if (kind === "membership" && nextTier) {
+        const interval = String(session.metadata?.gysh_interval || "month") === "year" ? "year" : "month";
+        try {
+          const { stampPaidMembershipTerm } = await import("./membership-lifecycle");
+          await stampPaidMembershipTerm(env, user.id, { interval, paidAt: now });
+        } catch {
+          /* billing columns optional */
+        }
+      }
+
+      const subscriptionId = stripeSubscriptionIdFromSession(session);
+      if (subscriptionId && kind === "membership") {
+        try {
+          await setUserStripeSubscriptionId(env, user.id, subscriptionId);
+        } catch {
+          /* column may be missing until migration — best-effort */
+        }
+      }
+
       await appendAudit(
         env.DB,
-        "stripe_checkout_paid",
+        (await import("../../src/lib/credit-pack-purchase")).purchaseAuditAction(kind),
         user.email,
-        `${kind}:${sessionId}:${tier}:${audience}`,
+        (await import("../../src/lib/credit-pack-purchase")).purchaseAuditDetail({
+          kind,
+          itemMeta: String(session.metadata?.gysh_item || ""),
+          amountCents: Number(session.amount_total || 0),
+          sessionId,
+        }),
       );
+
+      try {
+        const { grantCreditPackPurchase, spendCheckoutCredits } = await import("./member-credits");
+        const paidAt = session.created
+          ? new Date(session.created * 1000).toISOString()
+          : new Date().toISOString();
+        const pack = await grantCreditPackPurchase(env, {
+          userId: user.id,
+          sessionId,
+          itemMeta: String(session.metadata?.gysh_item || ""),
+          paidAt,
+        });
+        if (pack.granted > 0) {
+          await appendAudit(
+            env.DB,
+            "credits_granted",
+            user.email,
+            `+${pack.granted} Kid Credits · ${sessionId}`,
+          );
+        }
+        const creditsApplied = Math.max(
+          0,
+          Math.floor(Number(session.metadata?.gysh_credits_applied) || 0),
+        );
+        if (creditsApplied > 0 && !alreadyRecorded) {
+          await spendCheckoutCredits(
+            env,
+            user.id,
+            creditsApplied,
+            `Checkout · ${creditsApplied} Kid Credits · ${sessionId}`,
+            paidAt,
+          );
+        }
+      } catch {
+        /* credit wallet optional */
+      }
 
       const refreshed = await getUserById(env.DB, user.id);
       updatedUser = publicUser(
@@ -375,11 +821,41 @@ export async function handleStripeCheckoutConfirm(
         },
       );
 
+      if (
+        !alreadyRecorded &&
+        (kind === "alacarte" || kind === "credit_pack") &&
+        (updatedUser.email || email).includes("@")
+      ) {
+        try {
+          const { sendAlaCartePurchaseEmails } = await import("./email");
+          await sendAlaCartePurchaseEmails(env, {
+            email: updatedUser.email || email,
+            name: updatedUser.name,
+            userId: updatedUser.id,
+            itemMeta: String(session.metadata?.gysh_item || ""),
+            amountCents: Number(session.amount_total || 0),
+            sessionId,
+            kind,
+            source: "stripe",
+            creditsApplied: Math.max(
+              0,
+              Math.floor(Number(session.metadata?.gysh_credits_applied) || 0),
+            ),
+          });
+        } catch {
+          /* email is best-effort */
+        }
+      }
+
       // Member + admin emails on first successful membership payment for this session.
       if (!alreadyRecorded && nextTier && kind === "membership") {
         try {
           const { sendMembershipSubscriptionEmails } = await import("./email");
           const interval = String(session.metadata?.gysh_interval || "month");
+          const creditsApplied = Math.max(
+            0,
+            Math.floor(Number(session.metadata?.gysh_credits_applied) || 0),
+          );
           await sendMembershipSubscriptionEmails(env, {
             user: {
               id: updatedUser.id,
@@ -389,8 +865,12 @@ export async function handleStripeCheckoutConfirm(
               audience: updatedUser.audience,
             },
             previousTier,
-            source: "stripe",
-            amountLabel: interval === "year" ? "Yearly membership (Stripe)" : "Monthly membership (Stripe)",
+            source: creditsApplied > 0 && Number(session.amount_total || 0) === 0 ? "credits" : "stripe",
+            amountCents: Number(session.amount_total || 0),
+            creditsApplied,
+            sessionId,
+            amountLabel:
+              interval === "year" ? "Yearly membership" : "Monthly membership",
           });
         } catch {
           /* email is best-effort */
@@ -436,6 +916,13 @@ export async function handleStripeCheckoutConfirm(
         }
       }
     } else if (email.includes("@")) {
+      let guestAlreadyRecorded = false;
+      try {
+        const { gyshPaymentExistsForSession } = await import("./stripe-payments");
+        guestAlreadyRecorded = await gyshPaymentExistsForSession(env, sessionId);
+      } catch {
+        guestAlreadyRecorded = false;
+      }
       try {
         const { upsertGyshPayment } = await import("./stripe-payments");
         await upsertGyshPayment(env, {
@@ -457,6 +944,43 @@ export async function handleStripeCheckoutConfirm(
         });
       } catch {
         /* ledger is best-effort */
+      }
+      try {
+        const { purchaseAuditAction, purchaseAuditDetail } = await import(
+          "../../src/lib/credit-pack-purchase"
+        );
+        await appendAudit(
+          env.DB,
+          purchaseAuditAction(kind),
+          email,
+          purchaseAuditDetail({
+            kind,
+            itemMeta: String(session.metadata?.gysh_item || ""),
+            amountCents: Number(session.amount_total || 0),
+            sessionId,
+          }),
+        );
+      } catch {
+        /* audit is best-effort */
+      }
+      if (!guestAlreadyRecorded && (kind === "alacarte" || kind === "credit_pack")) {
+        try {
+          const { sendAlaCartePurchaseEmails } = await import("./email");
+          await sendAlaCartePurchaseEmails(env, {
+            email,
+            itemMeta: String(session.metadata?.gysh_item || ""),
+            amountCents: Number(session.amount_total || 0),
+            sessionId,
+            kind,
+            source: "stripe",
+            creditsApplied: Math.max(
+              0,
+              Math.floor(Number(session.metadata?.gysh_credits_applied) || 0),
+            ),
+          });
+        } catch {
+          /* email is best-effort */
+        }
       }
     }
   }

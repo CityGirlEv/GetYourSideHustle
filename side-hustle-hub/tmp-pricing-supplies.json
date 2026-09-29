@@ -1,0 +1,383 @@
+{
+  "total": 117,
+  "empty": 0,
+  "authoredOnlyS": 31,
+  "authoredOnlyP": 30,
+  "samples": [
+    {
+      "id": "cleaning-service",
+      "name": "Cleaning Service",
+      "authoredS": true,
+      "authoredP": false,
+      "sCount": 8,
+      "pCount": 5,
+      "defKindHint": "About $40–120 for a portable starter kit (less if client provides vacuum/mop)",
+      "p0": {
+        "id": "studio",
+        "label": "Studio / 1-bed standard clean",
+        "price": "$90–140"
+      },
+      "s0": "Disposable or reusable cleaning gloves"
+    },
+    {
+      "id": "airbnb",
+      "name": "Airbnb Hosting",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $20–60 for turnover / showing essentials",
+      "p0": {
+        "id": "night",
+        "label": "Nightly rate (market comps)",
+        "price": "Match mid-tier comps ±10%"
+      },
+      "s0": "Printed turnover / showing checklist"
+    },
+    {
+      "id": "food-delivery",
+      "name": "DoorDash / Uber Eats",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 3,
+      "pCount": 3,
+      "defKindHint": "About $10–35 for a hot bag and phone mount",
+      "p0": {
+        "id": "drop",
+        "label": "Single drop (base + tip expectation)",
+        "price": "$6–14 total typical"
+      },
+      "s0": "Insulated delivery bag"
+    },
+    {
+      "id": "property-mgmt",
+      "name": "Property Management",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $20–60 for turnover / showing essentials",
+      "p0": {
+        "id": "visit",
+        "label": "Property Management site visit / check",
+        "price": "$25–60"
+      },
+      "s0": "Printed turnover / showing checklist"
+    },
+    {
+      "id": "book-publishing",
+      "name": "Book Publishing",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "hour",
+        "label": "Book Publishing hourly",
+        "price": "$25–55 / hr"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "bookkeeping",
+      "name": "Bookkeeping & Admin Support",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "month",
+        "label": "Monthly bookkeeping (simple books)",
+        "price": "$150–400 / mo"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "etsy-store",
+      "name": "Build an Etsy Store",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $15–50 for packing / sample materials",
+      "p0": {
+        "id": "item",
+        "label": "Build an Etsy Store starter product price",
+        "price": "2–3× materials + platform fees"
+      },
+      "s0": "Poly mailers or boxes"
+    },
+    {
+      "id": "consulting",
+      "name": "Career & Industry Consulting",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "call",
+        "label": "Discovery / strategy call (45–60 min)",
+        "price": "$75–150"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "nonprofit-social-helper",
+      "name": "Church/Nonprofit Social Media Helper",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 3,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for printables and name tags",
+      "p0": {
+        "id": "setup",
+        "label": "Church/Nonprofit Social Media Helper setup fee",
+        "price": "$40–120"
+      },
+      "s0": "Printed agendas / flyers"
+    },
+    {
+      "id": "community-newsletter-creator",
+      "name": "Community Newsletter Creator",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 3,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for printables and name tags",
+      "p0": {
+        "id": "setup",
+        "label": "Community Newsletter Creator setup fee",
+        "price": "$40–120"
+      },
+      "s0": "Printed agendas / flyers"
+    },
+    {
+      "id": "teaching",
+      "name": "Community Teaching & Workshops",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 3,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for printables and name tags",
+      "p0": {
+        "id": "class",
+        "label": "Group class seat",
+        "price": "$15–40 / person"
+      },
+      "s0": "Printed agendas / flyers"
+    },
+    {
+      "id": "review-response-assistant",
+      "name": "Customer Review Response Assistant",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "hour",
+        "label": "Customer Review Response Assistant hourly",
+        "price": "$25–55 / hr"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "google-business-helper",
+      "name": "Google Business Profile Helper",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $10–40 for shoot / delivery extras (phone is Tools)",
+      "p0": {
+        "id": "asset",
+        "label": "Google Business Profile Helper single asset / clip",
+        "price": "$25–75"
+      },
+      "s0": "Extra SD card or USB for client delivery"
+    },
+    {
+      "id": "notary",
+      "name": "Part-Time Notary",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "stamp",
+        "label": "Standard notarization (where fee-capped)",
+        "price": "State max or $10–25"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "resume-linkedin-helper",
+      "name": "Resume & LinkedIn Helper",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "hour",
+        "label": "Resume & LinkedIn Helper hourly",
+        "price": "$25–55 / hr"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "rideshare",
+      "name": "Rideshare (Uber / Lyft)",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $15–40 for car comfort extras (phone mount often already owned)",
+      "p0": {
+        "id": "hour",
+        "label": "Target net after gas (peak windows)",
+        "price": "$18–30 / hr equivalent"
+      },
+      "s0": "Phone mount"
+    },
+    {
+      "id": "short-form-video-editor",
+      "name": "Short-Form Video Editor",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $10–40 for shoot / delivery extras (phone is Tools)",
+      "p0": {
+        "id": "asset",
+        "label": "Short-Form Video Editor single asset / clip",
+        "price": "$25–75"
+      },
+      "s0": "Extra SD card or USB for client delivery"
+    },
+    {
+      "id": "social",
+      "name": "Social Influencer & Creator",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $15–50 for packing / sample materials",
+      "p0": {
+        "id": "item",
+        "label": "Social Influencer starter product price",
+        "price": "2–3× materials + platform fees"
+      },
+      "s0": "Poly mailers or boxes"
+    },
+    {
+      "id": "ugc-creator",
+      "name": "UGC Creator",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $10–40 for shoot / delivery extras (phone is Tools)",
+      "p0": {
+        "id": "asset",
+        "label": "UGC Creator single asset / clip",
+        "price": "$25–75"
+      },
+      "s0": "Extra SD card or USB for client delivery"
+    },
+    {
+      "id": "virtual-assistant",
+      "name": "Virtual Assistant",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "hour",
+        "label": "General VA hourly",
+        "price": "$25–45 / hr"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "virtual-receptionist",
+      "name": "Virtual Receptionist",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "hour",
+        "label": "Virtual Receptionist hourly",
+        "price": "$25–55 / hr"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "affiliate",
+      "name": "Affiliate Marketing",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $15–50 for packing / sample materials",
+      "p0": {
+        "id": "item",
+        "label": "Affiliate Marketing starter product price",
+        "price": "2–3× materials + platform fees"
+      },
+      "s0": "Poly mailers or boxes"
+    },
+    {
+      "id": "ai-agents",
+      "name": "AI Agents for Side Hustlers",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $5–25 for delivery / client-facing printables",
+      "p0": {
+        "id": "hour",
+        "label": "AI Agents for Side Hustlers hourly",
+        "price": "$25–55 / hr"
+      },
+      "s0": "Client notes notebook"
+    },
+    {
+      "id": "ai-assets",
+      "name": "AI Asset Studio",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $10–40 for shoot / delivery extras (phone is Tools)",
+      "p0": {
+        "id": "asset",
+        "label": "AI Asset Studio single asset / clip",
+        "price": "$25–75"
+      },
+      "s0": "Extra SD card or USB for client delivery"
+    },
+    {
+      "id": "ai-timing",
+      "name": "AI Timing Scout",
+      "authoredS": false,
+      "authoredP": false,
+      "sCount": 4,
+      "pCount": 3,
+      "defKindHint": "About $15–40 for car/phone comfort gear",
+      "p0": {
+        "id": "hour",
+        "label": "AI Timing Scout busy-window goal",
+        "price": "$18–30 / hr gross before expenses"
+      },
+      "s0": "Phone mount"
+    }
+  ]
+}

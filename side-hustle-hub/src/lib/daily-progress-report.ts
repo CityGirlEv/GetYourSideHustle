@@ -10,6 +10,7 @@ import {
   assigneeIncludes,
   mmddyyToIso,
   parseAssigneePeople,
+  partnerAssigneesWithExtras,
   PARTNER_ASSIGNEES,
   TASK_STATUS_LABELS,
   type GyshTask,
@@ -17,9 +18,12 @@ import {
   type TaskStatus,
 } from "./gysh-tasks";
 import {
+  isAutomatedSuiteOwner,
   isHumanQaTester,
+  isHumanQaTesterId,
   qaTesterIdForUser,
   testOwnerLabel,
+  type QaTester,
 } from "./gysh-roles";
 import {
   STATUS_LABELS,
@@ -53,11 +57,23 @@ export type StatusBucket = { status: string; label: string; count: number };
 /** People selectable in the Daily Progress Report user filter. Empty = All. */
 export type ProgressReportPerson = PartnerAssignee | "Both" | "Unassigned";
 
+/** Core partners + Both + Unassigned (offline / tests). Prefer {@link progressReportPeople}. */
 export const PROGRESS_REPORT_PEOPLE: ProgressReportPerson[] = [
   ...PARTNER_ASSIGNEES,
   "Both",
   "Unassigned",
 ];
+
+/**
+ * Full Users chip list: live QA short names (Brenda, Milford, …) merged onto core partners,
+ * then Both + Unassigned.
+ */
+export function progressReportPeople(
+  extras: readonly string[] | readonly QaTester[] = [],
+): ProgressReportPerson[] {
+  const names = extras.map((e) => (typeof e === "string" ? e : e.shortName));
+  return [...partnerAssigneesWithExtras(names), "Both", "Unassigned"];
+}
 
 /** Sprint filter keys. Empty selection = All sprints. */
 export type ProgressSprintFilter = number | "backlog";
@@ -192,7 +208,8 @@ export type DailyProgressReport = {
 
 /**
  * Normalize task assignees ("Tina") and Testing Portal owner ids ("tina")
- * so individual user filters match both systems.
+ * so individual user filters match both systems. Also maps full names
+ * ("Brenda Marene Russell") and emails onto first-name chips.
  */
 export function normalizeProgressAssignee(
   assignedTo: string | null | undefined,
@@ -201,15 +218,28 @@ export function normalizeProgressAssignee(
   if (!raw || /^unassigned$/i.test(raw)) return "Unassigned";
   if (/^both$/i.test(raw)) return "Both";
 
-  // Testing Portal stores lowercase owner ids: tina | evelyn | lyriq | vitest | playwright
+  // Testing Portal stores lowercase owner ids: tina | evelyn | lyriq | brenda | vitest | …
+  // Only single-token ids — never full display names with spaces.
   const lower = raw.toLowerCase();
-  if (isHumanQaTester(lower) || lower === "vitest" || lower === "playwright") {
+  const isOwnerIdToken = /^[a-z0-9][a-z0-9_-]*$/i.test(raw) && !/\s/.test(raw);
+  if (
+    isOwnerIdToken &&
+    (isHumanQaTester(lower) || lower === "vitest" || lower === "playwright")
+  ) {
     return testOwnerLabel(lower);
   }
 
   // Task-style labels / composites (Tina, Tina+Evelyn, Both)
   const partner = PARTNER_ASSIGNEES.find((p) => p.toLowerCase() === lower);
   if (partner) return partner;
+
+  const fromIdentity = qaTesterIdForUser({
+    name: raw.includes("@") ? undefined : raw,
+    email: raw.includes("@") ? raw : undefined,
+  });
+  if (fromIdentity && isHumanQaTesterId(fromIdentity) && !isAutomatedSuiteOwner(fromIdentity)) {
+    return testOwnerLabel(fromIdentity);
+  }
 
   return raw;
 }
@@ -233,9 +263,6 @@ export function assigneeMatchesPeople(
       const parts = parseAssigneePeople(raw);
       return parts.includes("Tina") && parts.includes("Evelyn") && parts.length === 2;
     }
-    if (person === "Lyriq") return raw === "Lyriq" || assigneeIncludes(raw, "Lyriq");
-    if (person === "Candace") return raw === "Candace" || assigneeIncludes(raw, "Candace");
-    // Tina/Evelyn: include task "Both" and composites via assigneeIncludes
     return raw === person || assigneeIncludes(raw, person);
   });
 }
@@ -268,9 +295,6 @@ export function resolveTaskActivityPerson(task: GyshTask): string {
     if (/^cursor$/i.test(by) || /^system$/i.test(by)) return "Cursor";
     const normalized = normalizeProgressAssignee(by);
     if (normalized !== "Unassigned" && normalized !== by) return normalized;
-    if (/lyriq/i.test(by)) return "Lyriq";
-    if (/tina/i.test(by)) return "Tina";
-    if (/evelyn/i.test(by)) return "Evelyn";
     return by;
   }
   // Legacy rows with no updated_by: only attribute singly-owned tasks.
@@ -440,9 +464,6 @@ export function resolveTestActivityPerson(
     if (/^cursor$/i.test(by) || /^system$/i.test(by)) return "Cursor";
     const asOwner = normalizeProgressAssignee(by);
     if (asOwner !== "Unassigned" && asOwner !== by) return asOwner;
-    if (/lyriq/i.test(by)) return "Lyriq";
-    if (/tina/i.test(by)) return "Tina";
-    if (/evelyn/i.test(by)) return "Evelyn";
     return by;
   }
   return resolveTestAssigneeDisplay(id, testPayload, caseById);
@@ -450,7 +471,7 @@ export function resolveTestActivityPerson(
 
 /**
  * Resolve a timesheet row to a Daily Progress person chip.
- * Uses the same identity rules as Testing Portal (name/email → Tina/Evelyn/Lyriq).
+ * Uses the same identity rules as Testing Portal (name/email → Tina/Evelyn/Brenda/…).
  */
 export function progressPersonFromTimeEntry(
   entry: Pick<TimeEntry, "userName" | "userEmail">,
@@ -459,10 +480,9 @@ export function progressPersonFromTimeEntry(
     name: entry.userName,
     email: entry.userEmail,
   });
-  if (id === "tina") return "Tina";
-  if (id === "evelyn") return "Evelyn";
-  if (id === "lyriq") return "Lyriq";
-  if (id === "candace") return "Candace";
+  if (id && isHumanQaTesterId(id) && !isAutomatedSuiteOwner(id)) {
+    return testOwnerLabel(id);
+  }
 
   const hay = `${entry.userName ?? ""} ${entry.userEmail ?? ""}`.toLowerCase();
   if (!hay.trim()) return null;
@@ -479,6 +499,8 @@ export function progressPersonFromTimeEntry(
   if (hay.includes("tina") || hay.includes("barham")) return "Tina";
   if (hay.includes("lyriq") || hay.includes("gaulden")) return "Lyriq";
   if (hay.includes("candace")) return "Candace";
+  if (hay.includes("brenda") || hay.includes("russell")) return "Brenda";
+  if (hay.includes("milford") || hay.includes("hutsell")) return "Milford";
   return null;
 }
 

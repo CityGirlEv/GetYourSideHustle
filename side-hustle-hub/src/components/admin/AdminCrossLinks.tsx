@@ -20,24 +20,57 @@ import {
   softLaunchItemRef,
   type SoftLaunchItem,
 } from "../../lib/gysh-soft-launch-rollout";
+import { siblingTestCases, type SiblingCatalogIndex } from "../../lib/gysh-test-case-dupes";
+import { testOwnerLabel } from "../../lib/gysh-roles";
+import { TEST_CASES, type TestCase } from "../../lib/gysh-test-plan";
+import {
+  guideHrefFromGuideReviewCaseId,
+  guideIdFromGuideReviewCaseId,
+  formatGuideCrossLinkLabel,
+  formatTestCrossLinkLabel,
+  guideReviewCaseIdForGuide,
+} from "../../lib/guide-review-link";
+import { libraryGuideDisplayName } from "../../lib/guide-library-pool";
 
 export type { AdminLinkCandidate };
 
 export type AdminCrossLink = {
   label: string;
-  opts: AdminDeepLinkOpts;
+  /** Admin Studio focus (task / test / CF). Omit when using href. */
+  opts?: AdminDeepLinkOpts;
+  /** App path outside Admin Studio (e.g. /guides?hustle=handyman). */
+  href?: string;
 };
 
 function CrossLinkButton({ link }: { link: AdminCrossLink }) {
-  const href = adminStudioPath(link.opts);
+  const href =
+    link.href ||
+    (link.opts ? adminStudioPath(link.opts) : "#");
+  const sameTest = Boolean(link.opts?.testId) && /^Same test\b/i.test(link.label);
   return (
     <a
       href={href}
       className="admin-cross-link"
+      data-same-test={sameTest ? "true" : undefined}
+      title={
+        link.href
+          ? link.label
+          : sameTest && link.opts?.testId
+            ? `Open sibling test ${link.opts.testId}`
+            : undefined
+      }
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        navigateAdminDeepLink(link.opts);
+        if (link.href) {
+          if (typeof window !== "undefined") {
+            const next = link.href.startsWith("/") ? link.href : `/${link.href}`;
+            window.history.pushState({}, "", next);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }
+          return;
+        }
+        if (link.opts) navigateAdminDeepLink(link.opts);
       }}
     >
       {link.label}
@@ -78,20 +111,31 @@ export function AdminCrossLinks({
   const [query, setQuery] = useState("");
   const [pending, setPending] = useState(false);
 
+  const hrefOnlyLinks = useMemo(
+    () => links.filter((l) => Boolean(l.href) && !l.opts),
+    [links],
+  );
+
   const merged = useMemo(() => {
-    if (entity && edges) return mergeEntityCrossLinks(entity, links, edges, titles);
-    return links
+    const adminLinks = links.filter((l) => l.opts) as Parameters<typeof mergeEntityCrossLinks>[1];
+    // Always pass an array for edges — undefined/non-array used to crash Admin Studio after login
+    // (`rows is not iterable` in mergeEntityCrossLinks) and leave the Suspense tree stuck on Loading.
+    const edgeRows = Array.isArray(edges) ? edges : [];
+    if (entity) return mergeEntityCrossLinks(entity, adminLinks, edgeRows, titles);
+    return adminLinks
       .map((link) => {
-        const target: AdminEntityRef | null = link.opts.taskId
-          ? { kind: "task", id: link.opts.taskId }
-          : link.opts.testId
-            ? { kind: "test", id: link.opts.testId }
-            : link.opts.itemId
-              ? { kind: "cf", id: link.opts.itemId }
+        const opts = link.opts;
+        if (!opts) return null;
+        const target: AdminEntityRef | null = opts.taskId
+          ? { kind: "task", id: opts.taskId }
+          : opts.testId
+            ? { kind: "test", id: opts.testId }
+            : opts.itemId
+              ? { kind: "cf", id: opts.itemId }
               : null;
         if (!target) return null;
         return {
-          ...withLiveEntityTitle(link, titles),
+          ...withLiveEntityTitle({ label: link.label, opts }, titles),
           target,
           source: "catalog" as const,
         };
@@ -119,7 +163,7 @@ export function AdminCrossLinks({
     }).slice(0, 40);
   }, [candidates, entity, linkedKeys, pickKind, query]);
 
-  const show = merged.length > 0 || editable;
+  const show = merged.length > 0 || hrefOnlyLinks.length > 0 || editable;
   if (!show) return null;
 
   const run = async (fn: () => void | Promise<void>) => {
@@ -145,6 +189,15 @@ export function AdminCrossLinks({
       }}
       onClick={(e) => e.stopPropagation()}
     >
+      {hrefOnlyLinks.map((link) => (
+        <span
+          key={`href:${link.href}:${link.label}`}
+          className="admin-cross-link-chip"
+          data-source="catalog"
+        >
+          <CrossLinkButton link={link} />
+        </span>
+      ))}
       {merged.map((link) => (
         <span
           key={`${link.target.kind}:${link.target.id}`}
@@ -257,7 +310,7 @@ export function crossLinksForSoftLaunchItem(item: SoftLaunchItem): AdminCrossLin
   ];
   for (const testId of links.testIds) {
     out.push({
-      label: `Test ${testId}`,
+      label: formatTestCrossLinkLabel(testId),
       opts: { tab: "testing", testId },
     });
   }
@@ -265,18 +318,30 @@ export function crossLinksForSoftLaunchItem(item: SoftLaunchItem): AdminCrossLin
 }
 
 export function crossLinksForTaskId(taskId: string): AdminCrossLink[] {
-  const item = softLaunchItemFromTaskId(taskId);
-  if (!item) return [];
+  const out: AdminCrossLink[] = [];
+  const id = String(taskId || "").trim();
+  // Guide-review backlog tasks → associated GUIDE-REV test only (never the library guide page).
+  if (id.startsWith("T-LG-")) {
+    const guideId = id.slice("T-LG-".length).trim();
+    const caseId = guideId ? guideReviewCaseIdForGuide(guideId) : null;
+    if (caseId) {
+      out.push({
+        label: formatTestCrossLinkLabel(caseId),
+        opts: { tab: "testing", testId: caseId },
+      });
+    }
+  }
+  const item = softLaunchItemFromTaskId(id);
+  if (!item) return out;
   const links = softLaunchCrossLinks(item);
-  const out: AdminCrossLink[] = [
-    {
-      label: `${links.itemRef} · ${item.title}`,
-      opts: { tab: "factory", panel: "launch-plan", itemId: item.id },
-    },
-  ];
+  out.push({
+    label: `${links.itemRef} · ${item.title}`,
+    opts: { tab: "factory", panel: "launch-plan", itemId: item.id },
+  });
   for (const testId of links.testIds) {
+    if (out.some((l) => l.opts?.testId === testId)) continue;
     out.push({
-      label: `Test ${testId}`,
+      label: formatTestCrossLinkLabel(testId),
       opts: { tab: "testing", testId },
     });
   }
@@ -286,8 +351,23 @@ export function crossLinksForTaskId(taskId: string): AdminCrossLink[] {
 export function crossLinksForTestId(
   testId: string,
   relatedTaskIds?: string[] | null,
+  opts?: {
+    /** Full portal catalog (includes generated cases). Defaults to TEST_CASES. */
+    catalog?: ReadonlyArray<Pick<TestCase, "id" | "title" | "assignees" | "expected">>;
+    /** Precomputed sibling map — use in Testing Portal list to avoid O(n²) per row. */
+    siblingIndex?: SiblingCatalogIndex;
+  },
 ): AdminCrossLink[] {
   const out: AdminCrossLink[] = [];
+  const guideHref = guideHrefFromGuideReviewCaseId(testId);
+  const guideId = guideIdFromGuideReviewCaseId(testId);
+  if (guideHref && guideId) {
+    const name = libraryGuideDisplayName(guideId);
+    out.push({
+      label: formatGuideCrossLinkLabel(guideId, name),
+      href: guideHref,
+    });
+  }
   const item = softLaunchItemFromTestId(testId);
   if (item) {
     const links = softLaunchCrossLinks(item);
@@ -303,18 +383,32 @@ export function crossLinksForTestId(
   for (const taskId of relatedTaskIds ?? []) {
     const id = String(taskId || "").trim();
     if (!id) continue;
-    if (out.some((l) => l.opts.taskId === id)) continue;
+    // Guide library reviews link only to the guide — never to T-LG-* task backlog rows.
+    if (id.startsWith("T-LG-") || guideIdFromGuideReviewCaseId(testId)) continue;
+    if (out.some((l) => l.opts?.taskId === id)) continue;
     out.push({
       label: `Task ${id}`,
       opts: { tab: "tasks", taskId: id },
     });
     const fromTask = softLaunchItemFromTaskId(id);
-    if (fromTask && !out.some((l) => l.opts.itemId === fromTask.id)) {
+    if (fromTask && !out.some((l) => l.opts?.itemId === fromTask.id)) {
       out.push({
         label: `${softLaunchItemRef(fromTask.id)} · ${fromTask.title}`,
         opts: { tab: "factory", panel: "launch-plan", itemId: fromTask.id },
       });
     }
+  }
+
+  const catalog = opts?.catalog ?? TEST_CASES;
+  for (const sib of siblingTestCases(testId, catalog, opts?.siblingIndex)) {
+    if (out.some((l) => l.opts?.testId === sib.id)) continue;
+    const who =
+      sib.assignees.map((a) => testOwnerLabel(a)).filter(Boolean).join("/") ||
+      sib.id.replace(/^.*-/, "");
+    out.push({
+      label: `Same test · ${who}`,
+      opts: { tab: "testing", testId: sib.id },
+    });
   }
   return out;
 }

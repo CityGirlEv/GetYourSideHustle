@@ -26,18 +26,154 @@ export type QaProgressRow = {
   tally: StatusTally;
 };
 
-const SEGMENTS: Array<{ key: Exclude<keyof StatusTally, "total">; color: string; label: string }> = [
-  { key: "pass", color: "#3f6b2e", label: "Pass" },
-  { key: "conditional_approval", color: "#0f766e", label: "Cond. Pass" },
-  { key: "fail", color: "#9B2F28", label: "Fail" },
-  { key: "blocked", color: "#a16207", label: "Blocked" },
-  { key: "fixed_retest", color: "#2563eb", label: "Fixed/Re-Test" },
-  { key: "failed_retest", color: "#f97316", label: "Failed/Re-Test" },
-  { key: "fixed_cursor", color: "#7c3aed", label: "Fixed/Cursor" },
-  { key: "rolled_over", color: "#0e7490", label: "Rolled Over" },
-  { key: "in_progress", color: "#b8860b", label: "In Progress" },
-  { key: "not_run", color: "#6b5344", label: "Not Started" },
+const SEGMENTS: Array<{
+  key: Exclude<keyof StatusTally, "total">;
+  color: string;
+  label: string;
+  abbrev: string;
+  /** Short definition for tester-bubble tooltips. */
+  tip: string;
+}> = [
+  { key: "pass", color: "#3f6b2e", label: "Pass", abbrev: "P", tip: "Passed QA" },
+  {
+    key: "conditional_approval",
+    color: "#0f766e",
+    label: "Conditional Pass",
+    abbrev: "CP",
+    tip: "Passed with conditions / notes",
+  },
+  { key: "fail", color: "#9B2F28", label: "Failed", abbrev: "F", tip: "Failed QA" },
+  { key: "blocked", color: "#a16207", label: "Blocked", abbrev: "B", tip: "Blocked — cannot run yet" },
+  {
+    key: "fixed_retest",
+    color: "#2563eb",
+    label: "Fixed/Re-Test",
+    abbrev: "FXR",
+    tip: "Fixed — ready for QA re-test",
+  },
+  {
+    key: "fixed_cursor",
+    color: "#7c3aed",
+    label: "Fixed/Cursor",
+    abbrev: "FC",
+    tip: "Fixed by Cursor — awaiting approve / re-test",
+  },
+  {
+    key: "failed_retest",
+    color: "#f97316",
+    label: "Failed/Re-Test",
+    abbrev: "FD/R",
+    tip: "Failed/Re-Test — not a real fail (clarify & re-test)",
+  },
+  { key: "rolled_over", color: "#0e7490", label: "Rolled Over", abbrev: "RO", tip: "Rolled to next sprint" },
+  { key: "in_progress", color: "#b8860b", label: "In Progress", abbrev: "IP", tip: "In progress" },
+  { key: "not_run", color: "#6b5344", label: "Not Started", abbrev: "NS", tip: "Not started" },
 ];
+
+/** Short labels for Testing Portal status tiles / bubbles (full name stays in title tooltips). */
+export const STATUS_ABBREV: Record<TestStatus, string> = {
+  pass: "P",
+  conditional_approval: "CP",
+  fail: "F",
+  blocked: "B",
+  fixed_retest: "FXR",
+  failed_retest: "FD/R",
+  fixed_cursor: "FC",
+  fixed_lighthouse: "Fx/LH",
+  fixed_foresight: "Fx/FS",
+  rolled_over: "RO",
+  in_progress: "IP",
+  not_run: "NS",
+};
+
+export const STATUS_TOOLTIP: Record<TestStatus, string> = {
+  pass: "P = Pass — Passed QA",
+  conditional_approval: "CP = Conditional Pass — Passed with conditions / notes",
+  fail: "F = Failed — Failed QA",
+  blocked: "B = Blocked — Cannot run yet",
+  fixed_retest: "FXR = Fixed/Re-Test — Fixed; ready for QA re-test",
+  failed_retest: "FD/R = Failed/Re-Test — Not a real fail; clarify & re-test",
+  fixed_cursor: "FC = Fixed/Cursor — Fixed by Cursor; awaiting approve / re-test",
+  fixed_lighthouse: "Fx/LH = Fixed/Lighthouse",
+  fixed_foresight: "Fx/FS = Fixed/Foresight",
+  rolled_over: "RO = Rolled Over — Carried to next sprint",
+  in_progress: "IP = In Progress",
+  not_run: "NS = Not Started",
+};
+
+export function testStatusAbbrev(status: TestStatus | string): string {
+  return STATUS_ABBREV[status as TestStatus] ?? String(status);
+}
+
+export function testStatusTooltip(status: TestStatus | string, count?: number): string {
+  const base = STATUS_TOOLTIP[status as TestStatus] ?? String(status);
+  return count === undefined ? base : `${base} (${count})`;
+}
+
+/** Tester / Schedule / progress chip counts — every work status (incl. RO · IP · NS). */
+const TESTER_CHIP_SEGMENTS = SEGMENTS;
+
+export function testerStatusCountItems(tally: StatusTally) {
+  return TESTER_CHIP_SEGMENTS.map((seg) => ({ ...seg, count: tally[seg.key] }));
+}
+
+/** Legend entries for QA Testors chip abbreviations (no counts). */
+export function testerStatusLegendItems() {
+  return TESTER_CHIP_SEGMENTS.map((seg) => ({
+    key: seg.key,
+    abbrev: seg.abbrev,
+    label: seg.label,
+    tip: seg.tip,
+    color: seg.color,
+  }));
+}
+
+/** Inline definition grid for Tot / P / CP / … / NS under Assignees. */
+export function TesterStatusAbbrevLegend({
+  testId = "qa-tester-status-legend",
+}: {
+  testId?: string;
+}) {
+  const items = testerStatusLegendItems();
+  return (
+    <div
+      className="qa-tester-status-legend"
+      data-testid={testId}
+      role="group"
+      aria-label="Status abbreviation legend"
+    >
+      <span className="qa-tester-status-legend__heading">Legend</span>
+      <ul className="qa-tester-status-legend__grid">
+        <li
+          className="qa-tester-status-legend__item"
+          title="Tot = total assigned"
+          data-status="total"
+        >
+          <span className="qa-tester-status-legend__abbrev" style={{ color: "var(--charcoal)" }}>
+            Tot
+          </span>
+          <span className="qa-tester-status-legend__label">Total</span>
+        </li>
+        {items.map((item) => (
+          <li
+            key={item.key}
+            className="qa-tester-status-legend__item"
+            title={`${item.abbrev} = ${item.label}: ${item.tip}`}
+            data-status={item.key}
+          >
+            <span
+              className="qa-tester-status-legend__abbrev"
+              style={{ color: item.color }}
+            >
+              {item.abbrev}
+            </span>
+            <span className="qa-tester-status-legend__label">{item.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function emptyTally(): StatusTally {
   return {
@@ -88,8 +224,97 @@ export function tallyStatuses(
   return t;
 }
 
+/** Pass + Conditional Pass — what QA Testor chips mean by “passed”. */
+export function testerPassedCount(tally: Pick<StatusTally, "pass" | "conditional_approval">): number {
+  return tally.pass + tally.conditional_approval;
+}
+
+/** Chip subtitle — total + every status abbrev with counts. */
+export function formatTesterResultMeta(tally: StatusTally): string {
+  const items = testerStatusCountItems(tally);
+  if (tally.total === 0 && items.every((i) => i.count === 0)) return "Tot=0";
+  const breakdown = items.map((item) => `${item.abbrev}=${item.count}`).join(" · ");
+  return `Tot=${tally.total} · ${breakdown}`;
+}
+
+/** Shared hover glossary for assignee / schedule status count chips. */
+export function testerStatusCountsTitle(): string {
+  return [
+    "Tot=total assigned",
+    ...TESTER_CHIP_SEGMENTS.map((seg) => `${seg.abbrev}=${seg.label}`),
+  ].join(" · ");
+}
+
+/** Tester bubble status counts — full status set + total (Testing Portal + Schedule). */
+export function TesterChipStatusCounts({
+  tally,
+  rolled,
+  rolledFrom,
+  rolledTo,
+  rolloverLabel,
+}: {
+  tally: StatusTally;
+  /** @deprecated Prefer rolledFrom / rolledTo */
+  rolled?: number;
+  rolledFrom?: number;
+  rolledTo?: number;
+  /** Preformatted from/to label; wins over rolledFrom/rolledTo when set. */
+  rolloverLabel?: string;
+}) {
+  const items = testerStatusCountItems(tally);
+  const from = rolledFrom ?? 0;
+  const to = rolledTo ?? 0;
+  const label =
+    rolloverLabel?.trim() ||
+    (from > 0 || to > 0
+      ? [from > 0 ? `from prev: ${from}` : "", to > 0 ? `→ next: ${to}` : ""]
+          .filter(Boolean)
+          .join(" · ")
+      : rolled != null && rolled > 0
+        ? `Rolled over: ${rolled}`
+        : "");
+  return (
+    <span className="qa-tester-meta">
+      <span
+        className="qa-tester-status-counts"
+        data-testid="qa-tester-status-counts"
+        title={testerStatusCountsTitle()}
+      >
+        <span
+          className="qa-tester-status-count qa-tester-status-count--total"
+          data-status="total"
+          data-zero={tally.total === 0 ? "true" : "false"}
+          title={`Tot = total assigned: ${tally.total}`}
+        >
+          Tot={tally.total}
+        </span>
+        {items.map((item) => (
+          <span
+            key={item.key}
+            className="qa-tester-status-count"
+            data-status={item.key}
+            data-zero={item.count === 0 ? "true" : "false"}
+            title={`${item.abbrev} = ${item.label}: ${item.count} — ${item.tip}`}
+          >
+            {item.abbrev}={item.count}
+          </span>
+        ))}
+      </span>
+      {label ? (
+        <span
+          className="status-bubble__rolled"
+          data-testid="qa-tester-rollover-from-to"
+          title="from prev = rolled into this sprint · → next = rolled out to the next sprint"
+        >
+          {label}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function passPercent(t: StatusTally): number {
-  return t.total === 0 ? 0 : Math.round((t.pass / t.total) * 100);
+  return t.total === 0 ? 0 : Math.round((testerPassedCount(t) / t.total) * 100);
 }
 
 function aggregateTally(rows: QaProgressRow[]): StatusTally {
@@ -380,7 +605,7 @@ export function QaProgressBars({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
         >
-          <span className="qa-progress-bars__toggle-title">{title}</span>
+          <span className="qa-progress-bars__toggle-title qa-heading-title-case">{title}</span>
           <span className="qa-progress-bars__toggle-summary">{summary}</span>
         </button>
         <ShowHideToggle open={open} onOpenChange={setOpen} label={title} />

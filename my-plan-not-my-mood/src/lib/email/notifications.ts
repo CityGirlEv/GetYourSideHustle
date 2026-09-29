@@ -1,0 +1,238 @@
+import {
+  CONTACT_EMAIL_API_PATH,
+  CONTACT_INBOX_EMAIL,
+  CONTACT_TEMPLATE_ID,
+  CONTACT_TEMPLATE_NAME,
+  buildContactNoteHtml,
+  buildContactNoteSubject,
+  validateContactForm,
+  type ContactFormInput,
+} from '../contactForm';
+import type { AppUser } from '../userAuth';
+import { getEmailTemplate } from './templateStore';
+import { buildTemplateTestPayload, emailVarsForRecipient, renderManagedEmail } from './previewTemplate';
+import { shouldAutoSendSignupConfirmation } from './sendSettings';
+import {
+  SIGNUP_CONFIRMATION_TEMPLATE_ID,
+  BETA_TESTER_CONFIRMATION_TEMPLATE_ID,
+  buildOutboundSubject,
+  validateSendEmailBody,
+} from './sendPayload';
+import { buildLoginUrl, buildSignupConfirmationHtml, buildSignupConfirmationSubject, buildBetaTesterConfirmationHtml, buildBetaTesterConfirmationSubject } from './templates';
+
+export interface EmailApiResult {
+  ok: boolean;
+  skipped?: boolean;
+  error?: string;
+}
+
+const DEFAULT_APP_URL = 'https://nonnegotiation.com';
+
+function getAppUrl(): string {
+  const viteAppUrl = typeof import.meta !== 'undefined'
+    ? (import.meta as ImportMeta & { env?: { VITE_APP_URL?: string } }).env?.VITE_APP_URL
+    : undefined;
+  if (viteAppUrl) {
+    return viteAppUrl;
+  }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return DEFAULT_APP_URL;
+}
+
+async function postEmailEndpoint(path: string, body: Record<string, unknown>): Promise<EmailApiResult> {
+  try {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 503 || response.status === 404 || response.status === 405) {
+      return { ok: true, skipped: true };
+    }
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      return { ok: false, error: data.error || `Email API failed (${response.status})` };
+    }
+
+    return { ok: true };
+  } catch {
+    // Local dev without Pages Functions — do not block signup UX
+    return { ok: true, skipped: true };
+  }
+}
+
+export async function sendRenderedEmail(payload: {
+  to: string;
+  subject: string;
+  html: string;
+  test?: boolean;
+  templateId?: string;
+  templateName?: string;
+}): Promise<EmailApiResult> {
+  const parsed = validateSendEmailBody(payload);
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error };
+  }
+
+  return postEmailEndpoint('/api/email/send', {
+    to: parsed.to,
+    subject: buildOutboundSubject(parsed.subject, Boolean(payload.test)),
+    html: parsed.html,
+    test: Boolean(payload.test),
+    templateId: payload.templateId || '',
+    templateName: payload.templateName || '',
+    appUrl: getAppUrl(),
+  });
+}
+
+export async function sendTestEmail(payload: {
+  to: string;
+  subject: string;
+  html: string;
+  templateId?: string;
+  templateName?: string;
+}): Promise<EmailApiResult> {
+  return sendRenderedEmail({ ...payload, test: true });
+}
+
+export async function sendTemplateTestEmail(
+  template: { subject: string; html: string },
+  to: string,
+  actorName = 'Admin',
+): Promise<EmailApiResult> {
+  const rendered = buildTemplateTestPayload(template, { name: actorName, email: to }, getAppUrl());
+  return sendTestEmail({
+    to,
+    subject: rendered.subject,
+    html: rendered.html,
+  });
+}
+
+export async function sendSignupConfirmationEmail(
+  user: Pick<AppUser, 'name' | 'email' | 'wantsBeta'> & { phone?: string },
+): Promise<EmailApiResult> {
+  const templateId = user.wantsBeta ? BETA_TESTER_CONFIRMATION_TEMPLATE_ID : SIGNUP_CONFIRMATION_TEMPLATE_ID;
+  const template = getEmailTemplate(templateId) || getEmailTemplate(SIGNUP_CONFIRMATION_TEMPLATE_ID);
+  const rendered = template
+    ? renderManagedEmail(template, emailVarsForRecipient(user, getAppUrl()))
+    : user.wantsBeta
+      ? {
+          subject: buildBetaTesterConfirmationSubject(),
+          html: buildBetaTesterConfirmationHtml({
+            name: user.name,
+            email: user.email,
+            wantsBeta: true,
+            phone: user.phone,
+          }),
+        }
+      : {
+          subject: buildSignupConfirmationSubject(),
+          html: buildSignupConfirmationHtml({
+            name: user.name,
+            email: user.email,
+            wantsBeta: user.wantsBeta,
+            phone: user.phone,
+          }),
+        };
+
+  return sendRenderedEmail({
+    to: user.email,
+    subject: rendered.subject,
+    html: rendered.html,
+    templateId,
+    templateName: template?.name || (user.wantsBeta ? 'Beta Tester confirmation' : 'Signup confirmation'),
+  });
+}
+
+export { shouldAutoSendSignupConfirmation };
+
+export async function sendSignupPendingEmail(
+  user: Pick<AppUser, 'name' | 'email' | 'wantsBeta'> & { phone?: string },
+): Promise<EmailApiResult> {
+  return postEmailEndpoint('/api/email/signup-pending', {
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    wantsBeta: user.wantsBeta,
+    appUrl: getAppUrl(),
+  });
+}
+
+export async function sendPasswordResetEmail(payload: {
+  name: string;
+  email: string;
+  resetUrl: string;
+}): Promise<EmailApiResult> {
+  return postEmailEndpoint('/api/email/password-reset', {
+    name: payload.name,
+    email: payload.email,
+    resetUrl: payload.resetUrl,
+    appUrl: getAppUrl(),
+  });
+}
+
+export async function sendUserApprovedEmail(user: Pick<AppUser, 'name' | 'email'>): Promise<EmailApiResult> {
+  const appUrl = getAppUrl();
+  return postEmailEndpoint('/api/email/user-approved', {
+    name: user.name,
+    email: user.email,
+    loginUrl: buildLoginUrl(appUrl, user.email),
+    appUrl,
+  });
+}
+
+export function shouldSendApprovalEmail(previousStatus: string | undefined, nextStatus: string | undefined): boolean {
+  return previousStatus === 'pending' && nextStatus === 'active';
+}
+
+/** Pages asset server returns 405 when a Function is not deployed yet. */
+export function isMissingEmailRoute(status: number): boolean {
+  return status === 404 || status === 405;
+}
+
+export async function sendContactFormEmail(input: ContactFormInput): Promise<EmailApiResult> {
+  const parsed = validateContactForm(input);
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error };
+  }
+
+  try {
+    const response = await fetch(CONTACT_EMAIL_API_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parsed.values),
+    });
+    const data = (await response.json().catch(() => ({}))) as { error?: string; skipped?: boolean };
+
+    if (response.ok) {
+      return { ok: true };
+    }
+    if (response.status === 503) {
+      return { ok: false, skipped: true, error: data.error || 'Email service not configured' };
+    }
+    if (isMissingEmailRoute(response.status)) {
+      const fallback = await sendRenderedEmail({
+        to: CONTACT_INBOX_EMAIL,
+        subject: buildContactNoteSubject(parsed.values.subject),
+        html: buildContactNoteHtml(parsed.values),
+        templateId: CONTACT_TEMPLATE_ID,
+        templateName: CONTACT_TEMPLATE_NAME,
+      });
+      if (fallback.skipped) {
+        return {
+          ok: false,
+          skipped: true,
+          error: fallback.error || 'Could not send your note from this page.',
+        };
+      }
+      return fallback;
+    }
+    return { ok: false, error: data.error || `Email API failed (${response.status})` };
+  } catch {
+    return { ok: false, error: 'Could not send your note. Check your connection and try again.' };
+  }
+}

@@ -27,11 +27,11 @@ import {
   PDF_CONTENT_TOP,
   PDF_CONTENT_BOTTOM,
   PDF_BRAND_COLORS,
-  loadPdfLogoDataUrl,
   drawPdfPageChrome,
   applyPdfPageBranding,
   drawPdfLinkedWrappedText,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 
 const COLORS = {
   ...PDF_BRAND_COLORS,
@@ -136,7 +136,7 @@ function marketingSectionStartsNewPage(guideId: MarketingGuideId, n: number): bo
     return n === 3 || n === 5;
   }
   if (guideId === "teens") {
-    // §1–2 · §3–4 together · §5 Membership alone · §6 with §7
+    // §1–2 · §3–4 together · §5 Membership (no photo so Pro stays with its bullets) · §6 with §7
     return n === 3 || n === 5 || n === 6;
   }
   // Adult (and similar): §1–3 · §4–5 · §6 with §7–8 continuing
@@ -585,17 +585,18 @@ function drawSectionHeading(ctx: PdfCtx, title: string, destinationId?: string) 
 function drawChecklist(
   ctx: PdfCtx,
   items: GuideCheckItem[],
-  opts?: { compact?: boolean },
+  opts?: { compact?: boolean; showBoxes?: boolean },
 ) {
   // Same body size everywhere; compact only tightens gaps for perk packing.
   const compact = opts?.compact === true;
+  const showBoxes = opts?.showBoxes !== false;
   const fontSize = FONT.body;
   const lineH = FONT.lineBody;
   const itemGap = compact ? 3 : 5;
   const box = 9;
   const boxLift = 7;
-  const textW = CONTENT_W - 26;
-  const textX = MARGIN + 18;
+  const textW = showBoxes ? CONTENT_W - 26 : CONTENT_W;
+  const textX = showBoxes ? MARGIN + 18 : MARGIN;
 
   for (const item of items) {
     ctx.doc.setFont("helvetica", "normal");
@@ -604,7 +605,7 @@ function drawChecklist(
     for (let li = 0; li < lines.length; li++) {
       ensureSpace(ctx, lineH + 3 + boxLift);
       if (ctx.y < CONTENT_FLOW_TOP) ctx.y = CONTENT_FLOW_TOP;
-      if (li === 0) {
+      if (li === 0 && showBoxes) {
         ctx.doc.setDrawColor(...COLORS.bronze);
         ctx.doc.setLineWidth(0.9);
         ctx.doc.roundedRect(MARGIN, ctx.y - boxLift, box, box, 2, 2, "S");
@@ -622,10 +623,27 @@ function drawChecklist(
   }
 }
 
-/** Membership perk tiers — same h3 + body scale as the rest of the manual. */
+/** Membership perk tiers — keep each plan (especially Pro) on one page when it fits. */
+function perkTierHeight(ctx: PdfCtx, tier: MarketingPerkTier): number {
+  ctx.doc.setFont("helvetica", "normal");
+  ctx.doc.setFontSize(FONT.body);
+  let h = FONT.lineH3 + 4;
+  for (const text of tier.bullets) {
+    const lines = ctx.doc.splitTextToSize(text, CONTENT_W) as string[];
+    h += lines.length * FONT.lineBody + 3;
+  }
+  return h;
+}
+
 function drawPerkTiers(ctx: PdfCtx, perks: MarketingPerkTier[]) {
-  for (const tier of perks) {
-    ensureSpace(ctx, 32);
+  const pageRoom = PDF_CONTENT_BOTTOM - CONTENT_FLOW_TOP - 8;
+  for (let i = 0; i < perks.length; i++) {
+    const tier = perks[i]!;
+    if (i > 0) {
+      // Extra blank line between membership levels (Free → Starter → Pro → Elite).
+      ctx.y += FONT.lineH3;
+    }
+    ensureSpace(ctx, Math.min(perkTierHeight(ctx, tier), pageRoom));
     if (ctx.y < CONTENT_FLOW_TOP) ctx.y = CONTENT_FLOW_TOP;
     ctx.doc.setFont("helvetica", "bold");
     ctx.doc.setFontSize(FONT.h3);
@@ -635,7 +653,7 @@ function drawPerkTiers(ctx: PdfCtx, perks: MarketingPerkTier[]) {
     drawChecklist(
       ctx,
       tier.bullets.map((text, i) => ({ id: `${tier.tierId}-${i}`, text })),
-      { compact: true },
+      { compact: true, showBoxes: false },
     );
     ctx.y += 4;
   }
@@ -845,8 +863,8 @@ export async function downloadMarketingGuidePdf(
     drawMarketingSection(ctx, section, images, {
       startOnNewPage,
       padBefore,
-      // Complete Guide + Kids §5 page: text-forward (cover already has the hero).
-      skipImages: guideId === "master" || guideId === "kids",
+      // Complete / Kids / Teens membership pages stay text-forward so perk tiers (esp. Pro) don't split.
+      skipImages: guideId === "master" || guideId === "kids" || guideId === "teens",
     });
   }
 

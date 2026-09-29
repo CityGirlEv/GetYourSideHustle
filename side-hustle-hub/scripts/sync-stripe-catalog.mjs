@@ -1,6 +1,11 @@
 /**
  * Sync GYSH memberships, a-la-carte items, and credit packs to Stripe (test or live).
  *
+ * Membership lookup keys ending in `_month` are billed every 3 months
+ * (`recurring.interval_count: 3`) at 3× the monthly sticker — not monthly.
+ * Yearly prices stay yearly. Existing monthly subscriptions are moved onto the
+ * new quarterly Price with no immediate proration.
+ *
  * Usage:
  *   node --use-system-ca scripts/sync-stripe-catalog.mjs
  *
@@ -90,22 +95,21 @@ const MEMBERSHIP_TIERS = [
 const ALA_CARTE = [
   { id: "story-time", name: "Kevina Starr Story Time (1 session)", priceUsd: 15 },
   { id: "junior-lab", name: "Teens Glow Lab seat", priceUsd: 25 },
-  { id: "workshop-general", name: "Adult / Senior workshop ticket", priceUsd: 35 },
+  { id: "workshop-general", name: "Workshops (Starter & Above Workshops Free)", priceUsd: 40 },
   { id: "training-group", name: "Group training session", priceUsd: 45 },
-  { id: "consult-30", name: "1-on-1 consulting (30 min)", priceUsd: 75 },
-  { id: "consult-60", name: "1-on-1 consulting (60 min)", priceUsd: 120 },
-  { id: "consult-90", name: "1-on-1 consulting (90 min)", priceUsd: 165 },
-  { id: "custom-schedule", name: "Custom hustle schedule build", priceUsd: 45 },
+  { id: "consult-30", name: "1-on-1 consulting (30 min)", priceUsd: 45 },
+  { id: "consult-60", name: "1-on-1 consulting (60 min)", priceUsd: 65 },
+  { id: "consult-90", name: "1-on-1 consulting (90 min)", priceUsd: 75 },
+  { id: "consult-120", name: "1-on-1 consulting (2 hours)", priceUsd: 145 },
   { id: "progress-pdf", name: "Progress report PDF (one-off)", priceUsd: 12 },
   { id: "zip-timing", name: "Best-times ZipCode scout (month)", priceUsd: 29 },
-  { id: "parent-brief", name: "Parent safety brief", priceUsd: 10 },
 ];
 
 const CREDIT_PACKS = [
-  { id: "boost", name: "Boost Pack (25 credits)", priceUsd: 5 },
-  { id: "builder", name: "Builder Pack (60 credits)", priceUsd: 10 },
-  { id: "launcher", name: "Launcher Pack (140 credits)", priceUsd: 20 },
-  { id: "family", name: "Family Pack (300 credits)", priceUsd: 40 },
+  { id: "boost", name: "Boost Pack (5 credits)", priceUsd: 5 },
+  { id: "builder", name: "Builder Pack (10 credits)", priceUsd: 10 },
+  { id: "launcher", name: "Launcher Pack (20 credits)", priceUsd: 20 },
+  { id: "family", name: "Family Pack (40 credits)", priceUsd: 40 },
 ];
 
 function dollarsToCents(n) {
@@ -145,21 +149,29 @@ async function ensurePrice({
   recurring,
   metadata,
 }) {
+  let previousPriceId = null;
   try {
     const byKey = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1, expand: ["data.product"] });
     const existing = byKey.data[0];
     if (existing) {
-      if (existing.unit_amount === unitAmountCents && existing.active) {
-        return existing;
+      const sameAmount = existing.unit_amount === unitAmountCents && existing.active;
+      const existingCount = existing.recurring?.interval_count || 1;
+      const wantCount = recurring?.interval_count || 1;
+      const sameRecurring =
+        !recurring ||
+        (existing.recurring?.interval === recurring.interval && existingCount === wantCount);
+      if (sameAmount && sameRecurring) {
+        return { price: existing, previousPriceId: null };
       }
-      // Stripe prices are immutable for amount — deactivate and create a new one with same lookup_key.
+      // Stripe prices are immutable for amount/interval — deactivate and create a new one with same lookup_key.
+      previousPriceId = existing.id;
       await stripe.prices.update(existing.id, { active: false, lookup_key: null });
     }
   } catch {
     // fall through to create
   }
 
-  return stripe.prices.create({
+  const price = await stripe.prices.create({
     product: productId,
     currency: "usd",
     unit_amount: unitAmountCents,
@@ -168,6 +180,47 @@ async function ensurePrice({
     ...(recurring ? { recurring } : {}),
     metadata,
   });
+  return { price, previousPriceId };
+}
+
+/** Move active monthly subscriptions onto the new every-3-months Price (no immediate proration). */
+async function migrateSubscriptionsToQuarterlyPrice(oldPriceId, newPriceId) {
+  if (!oldPriceId || !newPriceId || oldPriceId === newPriceId) return;
+  let startingAfter;
+  let moved = 0;
+  for (;;) {
+    const page = await stripe.subscriptions.list({
+      price: oldPriceId,
+      status: "all",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    for (const sub of page.data) {
+      if (!["active", "trialing", "past_due"].includes(sub.status)) continue;
+      const item = sub.items?.data?.[0];
+      if (!item?.id) continue;
+      const rec = item.price?.recurring;
+      if (rec?.interval === "month" && rec.interval_count === 3) continue;
+      try {
+        await stripe.subscriptions.update(sub.id, {
+          items: [{ id: item.id, price: newPriceId }],
+          proration_behavior: "none",
+          metadata: {
+            ...(sub.metadata || {}),
+            gysh_interval: "quarter",
+            gysh_commitment_months: "3",
+          },
+        });
+        moved += 1;
+        console.log(`  ↻ subscription ${sub.id} → every 3 months (${newPriceId})`);
+      } catch (err) {
+        console.warn(`  ! could not migrate ${sub.id}: ${err?.message || err}`);
+      }
+    }
+    if (!page.has_more || page.data.length === 0) break;
+    startingAfter = page.data[page.data.length - 1].id;
+  }
+  if (moved) console.log(`  migrated ${moved} subscription(s) off ${oldPriceId}`);
 }
 
 const catalog = {
@@ -185,47 +238,50 @@ for (const tier of MEMBERSHIP_TIERS) {
   for (const audience of ["adult", "senior"]) {
     catalog.memberships[tier.id][audience] = {};
     for (const interval of ["month", "year"]) {
-      const usd =
-        audience === "senior"
-          ? interval === "month"
-            ? tier.priceMonthlyUsdSenior
-            : tier.priceYearlyUsdSenior
-          : interval === "month"
-            ? tier.priceMonthlyUsd
-            : tier.priceYearlyUsd;
-      const audienceLabel = audience === "senior" ? "Seniors (55+)" : "Adults";
-      const intervalLabel = interval === "month" ? "Monthly" : "Yearly";
+      const monthly =
+        audience === "senior" ? tier.priceMonthlyUsdSenior : tier.priceMonthlyUsd;
+      const yearly =
+        audience === "senior" ? tier.priceYearlyUsdSenior : tier.priceYearlyUsd;
+      const usd = interval === "month" ? Math.round(monthly * 3 * 100) / 100 : yearly;
+      const audienceLabel = audience === "senior" ? "Seniors (50+)" : "Adults";
+      const intervalLabel = interval === "month" ? "Every 3 months" : "Yearly";
       const productLookup = `gysh_membership_${tier.id}_${audience}`;
       const priceLookup = `gysh_membership_${tier.id}_${audience}_${interval}`;
       const product = await ensureProduct({
         lookupKey: productLookup,
         name: `GYSH ${tier.name} — ${audienceLabel}`,
-        description: `${tier.name} membership for ${audienceLabel}. 3-month commitment on paid plans.`,
+        description: `${tier.name} membership for ${audienceLabel}. Billed every 3 months (or yearly).`,
         metadata: {
           gysh_kind: "membership",
           gysh_tier: tier.id,
           gysh_audience: audience,
         },
       });
-      const price = await ensurePrice({
+      const { price, previousPriceId } = await ensurePrice({
         productId: product.id,
         lookupKey: priceLookup,
         unitAmountCents: dollarsToCents(usd),
-        recurring: { interval },
+        recurring:
+          interval === "year"
+            ? { interval: "year" }
+            : { interval: "month", interval_count: 3 },
         metadata: {
           gysh_kind: "membership",
           gysh_tier: tier.id,
           gysh_audience: audience,
-          gysh_interval: interval,
+          gysh_interval: interval === "month" ? "quarter" : interval,
         },
       });
+      if (interval === "month") {
+        await migrateSubscriptionsToQuarterlyPrice(previousPriceId, price.id);
+      }
       catalog.memberships[tier.id][audience][interval] = {
         productId: product.id,
         priceId: price.id,
         amountUsd: usd,
         label: `${tier.name} ${audienceLabel} ${intervalLabel}`,
       };
-      console.log(`  ✓ ${priceLookup} → ${price.id} ($${usd}/${interval})`);
+      console.log(`  ✓ ${priceLookup} → ${price.id} ($${usd} / ${interval === "month" ? "3 months" : "year"})`);
     }
   }
 }
@@ -239,7 +295,7 @@ for (const item of ALA_CARTE) {
     description: "A-la-carte GYSH purchase",
     metadata: { gysh_kind: "alacarte", gysh_id: item.id },
   });
-  const price = await ensurePrice({
+  const { price } = await ensurePrice({
     productId: product.id,
     lookupKey: priceLookup,
     unitAmountCents: dollarsToCents(item.priceUsd),
@@ -264,7 +320,7 @@ for (const pack of CREDIT_PACKS) {
     description: "Kid / Teen credit top-up pack",
     metadata: { gysh_kind: "credit_pack", gysh_id: pack.id },
   });
-  const price = await ensurePrice({
+  const { price } = await ensurePrice({
     productId: product.id,
     lookupKey: priceLookup,
     unitAmountCents: dollarsToCents(pack.priceUsd),

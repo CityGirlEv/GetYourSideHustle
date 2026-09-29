@@ -4,10 +4,12 @@ import { api } from "./api";
 export type ProgressKind =
   | "launch_checklist"
   | "launch_guide_steps"
+  | "launch_guide_step_items"
   | "kids_team"
   | "junior_team"
   | "senior_team"
-  | "hustle_schedule";
+  | "hustle_schedule"
+  | "wizard_comp_guides";
 
 export async function fetchMemberProgress<T = Record<string, unknown>>(
   kind: ProgressKind,

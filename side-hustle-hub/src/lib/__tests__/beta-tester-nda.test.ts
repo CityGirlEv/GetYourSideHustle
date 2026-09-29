@@ -19,12 +19,13 @@ const valid = {
 };
 
 describe("beta tester NDA content", () => {
-  it("uses GYSH-BETA-NDA-v1.0 and 15 sections", () => {
-    expect(BETA_NDA_VERSION).toBe("GYSH-BETA-NDA-v1.0");
+  it("uses GYSH-BETA-NDA-v1.1 and 15 sections", () => {
+    expect(BETA_NDA_VERSION).toBe("GYSH-BETA-NDA-v1.1");
     expect(BETA_NDA_TITLE).toMatch(/Confidentiality and Non-Disclosure/);
     expect(BETA_NDA_SECTIONS).toHaveLength(15);
     const text = betaNdaPlainText();
-    expect(text).toContain("three (3) years following the end of participation");
+    expect(text).toContain("five (5) years following the end of participation");
+    expect(text).not.toContain("three (3) years following the end of participation");
     expect(text).toContain("I Agree");
     expect(text).toContain("getyoursidehustle.com");
   });
@@ -68,7 +69,7 @@ describe("beta tester NDA acceptance", () => {
 });
 
 describe("beta tester routes", () => {
-  it("maps /beta-nda and /beta-testing", () => {
+  it("maps /beta-nda, /beta-testing, /beta-credits, and /beta-points", () => {
     expect(parseAppRoute("/beta-nda")).toEqual({ view: "beta_nda", guidesManualId: null });
     expect(parseAppRoute("/beta-tester-nda")).toEqual({ view: "beta_nda", guidesManualId: null });
     expect(pathForView("beta_nda")).toBe("/beta-nda");
@@ -76,5 +77,10 @@ describe("beta tester routes", () => {
     expect(parseAppRoute("/beta-testing")).toEqual({ view: "beta_testing", guidesManualId: null });
     expect(pathForView("beta_testing")).toBe("/beta-testing");
     expect(titleForView("beta_testing")).toBe("Beta Tester Dashboard | Get Your Side Hustle");
+    expect(parseAppRoute("/beta-credits")).toEqual({ view: "beta_credits", guidesManualId: null });
+    expect(pathForView("beta_credits")).toBe("/beta-credits");
+    expect(titleForView("beta_credits")).toBe("Beta Tester Credit Guide | Get Your Side Hustle");
+    expect(parseAppRoute("/beta-points")).toEqual({ view: "beta_points", guidesManualId: null });
+    expect(pathForView("beta_points")).toBe("/beta-points");
   });
 });

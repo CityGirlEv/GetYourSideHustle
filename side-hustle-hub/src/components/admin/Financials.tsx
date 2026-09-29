@@ -332,7 +332,7 @@ export const Financials: React.FC = () => {
         id,
         itemId: null,
         scope: "contract",
-        title: "T + E — Partnership Contract",
+        title: "Tina & Evelyn — Partnership Contract",
         name: file.name,
         mimeType: file.type || "application/octet-stream",
         size: file.size,
@@ -384,7 +384,7 @@ export const Financials: React.FC = () => {
               <DollarSign size={22} /> Financials
             </h2>
             <p style={{ color: "var(--text-primary)", margin: 0, fontSize: "0.92rem" }}>
-              Admin-only budget, expenses, Stripe payments, money model, receipts, and the T + E partnership
+              Admin-only budget, expenses, Stripe payments, money model, receipts, and the Tina & Evelyn partnership
               contract.
             </p>
           </div>

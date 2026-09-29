@@ -2,6 +2,7 @@ import { LogIn, MessageSquare, Smile, UserPlus } from "lucide-react";
 import { MembershipPage } from "./MembershipPage";
 import { BlueprintUnlockPanel } from "./BlueprintUnlockPanel";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
+import type { AuthUser } from "../lib/auth";
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
 import {
   AUDIENCE_LABELS,
@@ -19,14 +20,17 @@ type JoinPageProps = {
   onKidsCorner?: () => void;
   onOpenFreeGuides?: () => void;
   /** After free Blueprint signup, restore the wizard results. */
-  onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup) => void;
+  onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup, user?: AuthUser | null) => void;
   onOpenBetaNda?: () => void;
+  onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
   /** Audience lane selected from the page that opened Join. */
   membershipAudience?: AudienceGroup | null;
   /** Scroll to Free–Elite plans (in-page See Memberships CTAs only — not header/footer Join). */
   scrollToPlans?: boolean;
   onScrolledToPlans?: () => void;
+  /** Highlight / focus Upgrade–Choose for this plan after scroll. */
+  focusTier?: TierId | null;
   /** Scroll to a-la-carte cart checkout (header Cart button). */
   scrollToCart?: boolean;
   onScrolledToCart?: () => void;
@@ -35,6 +39,12 @@ type JoinPageProps = {
   currentTier?: TierId | null;
   /** Prefill a-la-carte Stripe checkout email. */
   checkoutEmail?: string | null;
+  /** Open My Dashboard → Schedule Suite. */
+  onOpenScheduleSuite?: () => void;
+  onOpenBilling?: () => void;
+  onOpenCredits?: () => void;
+  onOpenDashboard?: () => void;
+  onOpenBlueprints?: () => void;
 };
 
 export function JoinPage({
@@ -45,23 +55,31 @@ export function JoinPage({
   onOpenFreeGuides,
   onBlueprintUnlocked,
   onOpenBetaNda,
+  onBetaTesterRegistered,
   onBetaTestingUnlocked,
   membershipAudience = null,
   scrollToPlans = false,
   onScrolledToPlans,
+  focusTier = null,
   scrollToCart = false,
   onScrolledToCart,
   isLoggedIn = false,
   currentTier = null,
   checkoutEmail = null,
+  onOpenScheduleSuite,
+  onOpenBilling,
+  onOpenCredits,
+  onOpenDashboard,
+  onOpenBlueprints,
 }: JoinPageProps) {
   return (
     <div className="join-page-combined" data-testid="join-page">
-      {onBlueprintUnlocked && (
+      {onBlueprintUnlocked && !isLoggedIn && (
         <BlueprintUnlockPanel
           onUnlocked={onBlueprintUnlocked}
           onSignIn={onLogin}
           onOpenBetaNda={onOpenBetaNda}
+          onBetaTesterRegistered={onBetaTesterRegistered}
           onBetaTestingUnlocked={onBetaTestingUnlocked}
         />
       )}
@@ -75,20 +93,26 @@ export function JoinPage({
             ? "You're signed in — pick a higher plan to upgrade your membership, or switch plans anytime."
             : membershipAudience
               ? `Showing ${AUDIENCE_LABELS[membershipAudience]} membership options first — change the lane under the picture anytime.`
-              : "Pick the plan that fits your Side Hustle — Free through Elite — with audience options for Kids, Teens, Adults, and Seniors."}
+              : "Four plans — Free, Starter, Pro, and Elite. Pick the plan that fits your Side Hustle, with audience options for Kids, Teens, Adults, and Seniors."}
         </p>
         <MembershipPage
           onGoToJoin={(tier, audience) => onSignup(tier, audience ?? membershipAudience ?? undefined)}
           onGoToLogin={onLogin}
           onOpenFreeGuides={onOpenFreeGuides}
           initialAudience={membershipAudience}
-          autoScrollToPlans={scrollToPlans}
+          autoScrollToPlans={scrollToPlans || Boolean(focusTier)}
+          focusTier={focusTier}
           onAutoScrolledToPlans={onScrolledToPlans}
           autoScrollToCart={scrollToCart}
           onAutoScrolledToCart={onScrolledToCart}
           isLoggedIn={isLoggedIn}
           currentTier={currentTier}
           checkoutEmail={checkoutEmail}
+          onOpenScheduleSuite={onOpenScheduleSuite}
+          onOpenBilling={onOpenBilling}
+          onOpenCredits={onOpenCredits}
+          onOpenDashboard={onOpenDashboard}
+          onOpenBlueprints={onOpenBlueprints}
         />
       </section>
 
@@ -108,7 +132,7 @@ export function JoinPage({
         </button>
         {!isLoggedIn && (
           <button type="button" className="btn btn-outline" onClick={onLogin}>
-            <LogIn size={16} /> Sign in
+            <LogIn size={16} /> Log in
           </button>
         )}
         <button type="button" className="btn btn-outline" onClick={onCommunity}>

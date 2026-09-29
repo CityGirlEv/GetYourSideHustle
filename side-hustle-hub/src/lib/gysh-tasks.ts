@@ -8,9 +8,11 @@ import {
   guideReviewTaskId,
 } from "./launch-guides";
 import { MEMBERSHIP_TIERS, type TierId } from "./membership";
+import { noteEntriesPlainText } from "./gysh-note-entries";
 import { currentSprintIndex, dueDateForSprint } from "./gysh-sprints";
 import { ensureTaskNotesPageLink } from "./qa-page-links";
 import { suggestedSprintForTask } from "./gysh-sprint-board";
+import { ensureSocialAnalyticsReviewTasks } from "./social-analytics-review-tasks";
 
 export type TaskStatus =
   | "not_started"
@@ -88,6 +90,7 @@ export type TaskCategory =
   | "email_resend"
   | "content"
   | "launch_marketing"
+  | "personal_amplify"
   | "other";
 
 export const TASK_CATEGORIES: { id: TaskCategory; label: string }[] = [
@@ -102,6 +105,7 @@ export const TASK_CATEGORIES: { id: TaskCategory; label: string }[] = [
   { id: "email_resend", label: "Email / Resend" },
   { id: "content", label: "Content" },
   { id: "launch_marketing", label: "Launch / Marketing" },
+  { id: "personal_amplify", label: "Personal Amplify" },
   { id: "other", label: "Other" },
 ];
 
@@ -130,57 +134,110 @@ export function categoryLabel(category: TaskCategory | string): string {
   return TASK_CATEGORY_LABELS[id];
 }
 
-/** Named people who can be assigned to tasks / plan items. */
-export type PartnerAssignee = "Tina" | "Evelyn" | "Lyriq" | "Candace";
+/** Soft-launch Personal Amplify Task List rows (Tina/Evelyn personal reshare cadence). */
+export function isPersonalAmplifyTask(task: {
+  id?: string;
+  description?: string;
+  category?: string;
+}): boolean {
+  const id = String(task.id || "");
+  const desc = String(task.description || "");
+  if (/PERSONAL-AMPLIFY/i.test(id)) return true;
+  if (/personal\s+ampl[iy]/i.test(desc)) return true;
+  return normalizeCategory(task.category) === "personal_amplify";
+}
+
+/** Named people who can be assigned to tasks / plan items (core partners + live QA). */
+export type PartnerAssignee = string;
 
 /**
  * Stored assignee value.
- * - Singles: Tina | Evelyn | Lyriq | Candace | Unassigned
+ * - Singles: Tina | Evelyn | Lyriq | Candace | Milford | … | Unassigned
  * - Tina+Evelyn (legacy): Both
  * - Other multi: Tina+Lyriq | Evelyn+Candace | … (sorted join with +)
  */
 export type TaskAssignee = string;
 
+/** Core soft-launch partners (always listed first on assignee chips). */
 export const PARTNER_ASSIGNEES: PartnerAssignee[] = ["Tina", "Evelyn", "Lyriq", "Candace"];
 
-const PARTNER_SET = new Set<string>(PARTNER_ASSIGNEES);
+/** Merge live QA short names (e.g. Milford) onto the core partner list. */
+export function partnerAssigneesWithExtras(
+  extras: readonly string[] = [],
+): PartnerAssignee[] {
+  const out = [...PARTNER_ASSIGNEES];
+  const seen = new Set(out.map((p) => p.toLowerCase()));
+  for (const raw of extras) {
+    const n = String(raw || "").trim();
+    if (!n) continue;
+    const key = n.toLowerCase();
+    if (seen.has(key) || key === "unassigned" || key === "both") continue;
+    seen.add(key);
+    out.push(n);
+  }
+  return out;
+}
+
+function canonicalizeKnownPerson(
+  raw: string,
+  knownPeople: readonly string[],
+): string | null {
+  const p = String(raw || "").trim();
+  if (!p) return null;
+  if (/^both$/i.test(p)) return null; // handled by caller
+  for (const known of knownPeople) {
+    const k = known.toLowerCase();
+    if (p.toLowerCase() === k || p.toLowerCase().startsWith(`${k} `)) return known;
+  }
+  // Legacy aliases for core partners when not already in knownPeople
+  if (/^candace\b/i.test(p)) return "Candace";
+  if (/^tina\b/i.test(p)) return "Tina";
+  if (/^evelyn\b/i.test(p) || /^evvelyn\b/i.test(p)) return "Evelyn";
+  if (/^lyriq\b/i.test(p)) return "Lyriq";
+  if (/^milford\b/i.test(p)) return knownPeople.find((x) => /^milford$/i.test(x)) || "Milford";
+  if (/^brenda\b/i.test(p)) return knownPeople.find((x) => /^brenda$/i.test(x)) || "Brenda";
+  if (/^isaiah\b/i.test(p)) return knownPeople.find((x) => /^isaiah$/i.test(x)) || "Isaiah";
+  if (/^ruth\b/i.test(p)) return knownPeople.find((x) => /^ruth$/i.test(x)) || "Ruth";
+  return null;
+}
 
 /** Parse stored assignee into partner list (Both → Tina+Evelyn). */
-export function parseAssigneePeople(assignedTo: string | null | undefined): PartnerAssignee[] {
+export function parseAssigneePeople(
+  assignedTo: string | null | undefined,
+  knownPeople: readonly string[] = PARTNER_ASSIGNEES,
+): PartnerAssignee[] {
   const raw = String(assignedTo ?? "").trim();
   if (!raw || raw === "Unassigned") return [];
   if (raw === "Both") return ["Tina", "Evelyn"];
+  const known = knownPeople.length > 0 ? knownPeople : PARTNER_ASSIGNEES;
   const parts = raw
     .split(/[+,&|/]/)
     .map((p) => p.trim())
     .filter(Boolean);
   const people: PartnerAssignee[] = [];
   for (const p of parts) {
-    if (p === "Both") {
+    if (/^both$/i.test(p)) {
       if (!people.includes("Tina")) people.push("Tina");
       if (!people.includes("Evelyn")) people.push("Evelyn");
       continue;
     }
-    const canon =
-      p === "Candace" || /^candace\b/i.test(p)
-        ? "Candace"
-        : p === "Tina" || /^tina\b/i.test(p)
-          ? "Tina"
-          : p === "Evelyn" || /^evelyn\b/i.test(p)
-            ? "Evelyn"
-            : p === "Lyriq" || /^lyriq\b/i.test(p)
-              ? "Lyriq"
-              : p;
-    if (PARTNER_SET.has(canon) && !people.includes(canon as PartnerAssignee)) {
-      people.push(canon as PartnerAssignee);
-    }
+    const canon = canonicalizeKnownPerson(p, known);
+    if (canon && !people.includes(canon)) people.push(canon);
   }
   return people;
 }
 
 /** Encode partner list for storage (Tina+Evelyn alone → Both for partner-done rules). */
-export function formatAssigneePeople(people: readonly PartnerAssignee[]): TaskAssignee {
-  const uniq = PARTNER_ASSIGNEES.filter((p) => people.includes(p));
+export function formatAssigneePeople(
+  people: readonly PartnerAssignee[],
+  knownPeople: readonly string[] = PARTNER_ASSIGNEES,
+): TaskAssignee {
+  const order = knownPeople.length > 0 ? knownPeople : PARTNER_ASSIGNEES;
+  const uniq = order.filter((p) => people.some((x) => x.toLowerCase() === p.toLowerCase()));
+  // Keep any selected people not in the order list (stable append)
+  for (const p of people) {
+    if (!uniq.some((x) => x.toLowerCase() === p.toLowerCase())) uniq.push(p);
+  }
   if (uniq.length === 0) return "Unassigned";
   if (uniq.length === 1) return uniq[0]!;
   if (uniq.length === 2 && uniq[0] === "Tina" && uniq[1] === "Evelyn") return "Both";
@@ -188,8 +245,11 @@ export function formatAssigneePeople(people: readonly PartnerAssignee[]): TaskAs
 }
 
 /** Human label: "Tina + Evelyn", "Tina + Lyriq", etc. */
-export function assigneeDisplayLabel(assignedTo: string | null | undefined): string {
-  const people = parseAssigneePeople(assignedTo);
+export function assigneeDisplayLabel(
+  assignedTo: string | null | undefined,
+  knownPeople: readonly string[] = PARTNER_ASSIGNEES,
+): string {
+  const people = parseAssigneePeople(assignedTo, knownPeople);
   if (people.length === 0) return "Unassigned";
   return people.join(" + ");
 }
@@ -203,8 +263,11 @@ export function requiresPartnerDone(assignedTo: string | null | undefined): bool
 export function assigneeIncludes(
   assignedTo: string | null | undefined,
   person: PartnerAssignee,
+  knownPeople: readonly string[] = PARTNER_ASSIGNEES,
 ): boolean {
-  return parseAssigneePeople(assignedTo).includes(person);
+  return parseAssigneePeople(assignedTo, knownPeople).some(
+    (p) => p.toLowerCase() === String(person || "").toLowerCase(),
+  );
 }
 
 export type GyshTask = {
@@ -369,7 +432,7 @@ export function applyTaskFailDevCycle(
 }
 
 /**
- * For Tina+Evelyn (Both) tasks: overall Done only when T + E have each marked done.
+ * For Tina+Evelyn (Both) tasks: overall Done only when Tina & Evelyn have each marked done.
  * Single-assignee / other multi (e.g. Tina+Lyriq): overall status is enough.
  */
 export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}): GyshTask {
@@ -453,7 +516,69 @@ export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}):
   } else if (next.status !== "failed" && next.status !== "fixed_retest" && next.status !== "failed_retest") {
     next.dateCompleted = "";
   }
+
+  // First touch via notes or partner checkboxes only: Not Started → In Progress.
+  // Do not bump when only status or assignee is edited.
+  if (
+    shouldAutoStartTaskOnFirstTouch({
+      prevStatus: task.status,
+      nextStatus: next.status,
+      notesChanged:
+        patchNorm.notes !== undefined &&
+        noteEntriesPlainText(String(patchNorm.notes ?? "")).trim() !==
+          noteEntriesPlainText(String(task.notes ?? "")).trim(),
+      partnerBoxChanged:
+        (patchNorm.tinaDone !== undefined && Boolean(patchNorm.tinaDone) !== Boolean(task.tinaDone)) ||
+        (patchNorm.evelynDone !== undefined && Boolean(patchNorm.evelynDone) !== Boolean(task.evelynDone)),
+    })
+  ) {
+    next.status = "in_progress";
+  }
+
   return next;
+}
+
+/**
+ * First time a Not Started task is touched via partner checkbox or notes,
+ * auto-promote to In Progress. Never when only status/assignee change.
+ */
+export function shouldAutoStartTaskOnFirstTouch(input: {
+  prevStatus: string | null | undefined;
+  nextStatus: string | null | undefined;
+  notesChanged?: boolean;
+  partnerBoxChanged?: boolean;
+}): boolean {
+  const prev = normalizeTaskStatus(input.prevStatus) || "not_started";
+  if (prev !== "not_started") return false;
+  const next = normalizeTaskStatus(input.nextStatus) || prev;
+  if (next !== "not_started") return false;
+  return Boolean(input.notesChanged || input.partnerBoxChanged);
+}
+
+/** True when a Not Started task already has notes or a partner box checked (needs heal → In Progress). */
+export function notStartedTaskAlreadyTouched(
+  task: Pick<GyshTask, "status" | "notes" | "tinaDone" | "evelynDone">,
+): boolean {
+  if ((normalizeTaskStatus(task.status) || "not_started") !== "not_started") return false;
+  if (noteEntriesPlainText(String(task.notes ?? "")).trim()) return true;
+  if (task.tinaDone || task.evelynDone) return true;
+  return false;
+}
+
+export function healNotStartedTouchedTasks(tasks: GyshTask[]): {
+  tasks: GyshTask[];
+  changed: boolean;
+  changedTasks: GyshTask[];
+} {
+  const changedTasks: GyshTask[] = [];
+  const next = tasks.map((t) => {
+    if (isPersonalAmplifyTask(t)) return t;
+    if (!notStartedTaskAlreadyTouched(t)) return t;
+    const patched = { ...t, status: "in_progress" as TaskStatus };
+    changedTasks.push(patched);
+    return patched;
+  });
+  return { tasks: next, changed: changedTasks.length > 0, changedTasks };
 }
 
 export function partnerDoneSummary(task: Pick<GyshTask, "assignedTo" | "tinaDone" | "evelynDone" | "status">): string {
@@ -930,7 +1055,7 @@ export function militaryVeteranCalloutTaskNotes(): string {
     "Callout is currently hidden (SHOW_MILITARY_VETERAN_CALLOUT = false).",
     "",
     "1. Confirm Military/Veteran discount amounts with Tina & Evelyn (do not invent $ in copy).",
-    "2. Wire veteran/military checkout pricing on Join for Adults & Seniors (and Senior stack when 55+).",
+    "2. Wire veteran/military checkout pricing on Join for Adults & Seniors (and Senior stack when 50+).",
     "3. Update MILITARY_VETERAN_CALLOUT copy in membership.ts to match the approved discount.",
     "4. Set SHOW_MILITARY_VETERAN_CALLOUT = true; restore MEMBER-001 + e2e military assertions.",
     "5. Confirm Adults & Seniors show the callout + discounted path; Kids & Teens stay hidden.",
@@ -1037,7 +1162,7 @@ export function scheduleBlockStatusQaNotes(relatedCaseId: string): string {
       "Open [My Dashboard → Schedule Suite](/dashboard)",
       `schedule-suite-qa:${relatedCaseId}`,
       "",
-      "Pro+ (or admin) account required.",
+      "Pro or higher (or admin) account required.",
       "1. Open a schedule tab → use Email Me on the view row to jump to Email reminders.",
       "2. Set Daily / Weekly / Bi-weekly / Monthly and Save; reload to confirm cadence stuck.",
       "3. Confirm reminder email (when sent) includes weekly plan table + Kid Credits.",
@@ -1050,11 +1175,11 @@ export function scheduleBlockStatusQaNotes(relatedCaseId: string): string {
       "Open [My Dashboard → Schedule Suite](/dashboard)",
       `schedule-suite-qa:${relatedCaseId}`,
       "",
-      "Pro+ (or admin) account required.",
-      "1. Blueprint plan → Marketing + Target sales → Save.",
+      "Pro or higher (or admin) account required.",
+      "1. Blueprint plan → confirm tasks complete / remaining label; Marketing + Target sales → Save.",
       "2. Weekly roundup → I killed it / Need improvement / Action items.",
-      "3. From Plan tracker → Grade me → lands on Weekly Roundup; only one Grade me button on that view.",
-      "4. Mark some days Done → Grade me → % score updates.",
+      "3. From any tab → Grade me → stay on that tab; the button shows the letter + % (one Grade me in the stats bar on every tab).",
+      "4. Mark some days Done on Plan tracker → Current Grade on the button updates live.",
       "5. Full scale + each letter: see SCHED-GRADE-001.",
       `Testing Portal case: ${relatedCaseId}`,
     ].join("\n");
@@ -1064,18 +1189,19 @@ export function scheduleBlockStatusQaNotes(relatedCaseId: string): string {
       "Open [My Dashboard → Schedule Suite](/dashboard)",
       `schedule-suite-qa:${relatedCaseId}`,
       "",
-      "Pro+ (or admin) account required.",
+      "Pro or higher (or admin) account required.",
       "",
       "GRADING SCALE (how score is calculated):",
       "• Score = % of the 7 day blocks marked Done.",
       "• Not Started / In Progress / Blocked do NOT count.",
       "• Hours, sales, and roundup are context only (do not change the letter).",
-      "• Marks: A+ 97–100% | A 90–96% | B+ 87–89% | B 80–86% | C+ 77–79% | C 70–76% | D 60–69% | F 0–59%.",
-      "• With 7 days: 7 Done≈100% A+; 6≈86% B; 5≈71% C; 4≈57% F; 0=0% F.",
+      "• Marks: A+ 97–100% | A 90–96% | B+ 87–89% | B 80–86% | C+ 77–79% | C 70–76% | D 50–69% | F 0–49%.",
+      "• D starts at 50% so 7-day weeks can hit D (4/7 ≈ 57% D; 3/7 ≈ 43% F).",
+      "• With 7 days: 7 Done≈100% A+; 6≈86% B; 5≈71% C; 4≈57% D; 0–3=F.",
       "",
-      "1. F: 0 Done → Grade me → F on Weekly Roundup.",
-      "2. Walk Done counts to hit D, C/C+, B/B+, then A/A+ (7/7).",
-      "3. Confirm Grade me switches to Roundup and does not show Grade me twice; re-grade updates after Done changes.",
+      "1. F: 0 Done → Grade me → F in the Grade me button.",
+      "2. Walk Done counts to hit D (4/7), C/C+ (5/7), B/B+ (6/7), then A/A+ (7/7).",
+      "3. Confirm Grade me stays on the current tab (Blueprint, Plan tracker, Roundup, P&L, Progress) and the button shows Current Grade; Plan tracker Done clicks update the grade live.",
       "4. A/A+ should show celebration.",
       `Testing Portal case: ${relatedCaseId}`,
     ].join("\n");
@@ -1085,8 +1211,8 @@ export function scheduleBlockStatusQaNotes(relatedCaseId: string): string {
       "Open [My Dashboard → Schedule Suite](/dashboard)",
       `schedule-suite-qa:${relatedCaseId}`,
       "",
-      "Pro+ (or admin) account required. P&L is a Pro/Elite Schedule Suite feature.",
-      "1. Confirm Membership/Join lists Profit & Loss calculator on Pro+.",
+      "Pro or higher (or admin) account required. P&L is a Pro/Elite Schedule Suite feature.",
+      "1. Confirm Membership/Join lists Profit & Loss calculator on Pro or higher.",
       "2. Schedule Suite → P&L calculator tab.",
       "3. Check Blueprint window: days (≤10 target), weeks, tracker % complete.",
       "4. Add Sale line (date, description, amount) → Sales + Net update.",
@@ -1100,7 +1226,7 @@ export function scheduleBlockStatusQaNotes(relatedCaseId: string): string {
     "Open [My Dashboard → Schedule Suite](/dashboard)",
     `schedule-suite-qa:${relatedCaseId}`,
     "",
-    "Pro+ (or admin) account required.",
+    "Pro or higher (or admin) account required.",
     "1. Open Tracker for a schedule tab.",
     "2. Set each status: Not Started, In Progress, Done, Blocked.",
     "3. Confirm Done crosses out the day focus and uses green styling.",
@@ -1162,13 +1288,15 @@ export async function syncGuideReviewTasks(existing?: GyshTask[]): Promise<{
   const membership = ensureMembershipTierReviewTasks(senior.tasks);
   const military = ensureMilitaryVeteranCalloutTask(membership.tasks);
   const scheduleStatus = ensureScheduleBlockStatusQaTasks(military.tasks);
-  const linked = ensureTaskPageLinks(scheduleStatus.tasks);
+  const social = ensureSocialAnalyticsReviewTasks(scheduleStatus.tasks);
+  const linked = ensureTaskPageLinks(social.tasks);
   const created = [
     ...guide.created,
     ...senior.created,
     ...membership.created,
     ...military.created,
     ...scheduleStatus.created,
+    ...social.created,
   ];
   if (
     created.length === 0 &&
@@ -1183,7 +1311,93 @@ export async function syncGuideReviewTasks(existing?: GyshTask[]): Promise<{
   return { tasks: saved, createdCount: created.length };
 }
 
-const SOFT_LAUNCH_SYNC_FLAG = "gysh_soft_launch_tasks_synced";
+const SOFT_LAUNCH_SYNC_FLAG = "gysh_soft_launch_tasks_synced_amplify_s6";
+
+/** Personal amplify lives on Sprint 6 (Tue Sep 8 – Mon Sep 14, 2026). */
+export const PERSONAL_AMPLIFY_SPRINT = 6;
+
+/** Sprint 6 window dues (Tue 9/8 – Mon 9/14). */
+const PERSONAL_AMPLIFY_WEEK_DUES = [
+  "09/08/26",
+  "09/09/26",
+  "09/10/26",
+  "09/11/26",
+  "09/12/26",
+  "09/13/26",
+  "09/14/26",
+] as const;
+const PERSONAL_AMPLIFY_WEEK_DUE = /^09\/(0[8-9]|1[0-4])\/26$/;
+
+function personalAmplifyScatterKey(id: string): string {
+  return id.replace(/-(TINA|EVELYN)$/i, "");
+}
+
+function scatterPersonalAmplifyDue(index: number): string {
+  return PERSONAL_AMPLIFY_WEEK_DUES[index % PERSONAL_AMPLIFY_WEEK_DUES.length]!;
+}
+
+function personalAmplifyLooksOff(task: GyshTask): boolean {
+  if (normalizeCategory(task.category) !== "personal_amplify") return true;
+  if (Number(task.sprint) !== PERSONAL_AMPLIFY_SPRINT) return true;
+  if (normalizeTaskStatus(task.status) !== "not_started") return true;
+  if (String(task.dateCompleted || "").trim()) return true;
+  if (task.tinaDone || task.evelynDone) return true;
+  if (!PERSONAL_AMPLIFY_WEEK_DUE.test(String(task.dueDate || "").trim())) return true;
+  return false;
+}
+
+/**
+ * Reset Personal Amplify rows to Not Started on Sprint 6 with cadence due dates.
+ * Existing CF notes stay; partner-done flags and completion dates clear.
+ */
+export function healPersonalAmplifyTasks(
+  tasks: GyshTask[],
+  seeds: Array<{ id: string; dueDate: string; sprint: number }>,
+): { tasks: GyshTask[]; healed: GyshTask[] } {
+  const byId = new Map(seeds.map((s) => [s.id, s]));
+  const unmappedKeys: string[] = [];
+  for (const t of tasks) {
+    if (!isPersonalAmplifyTask(t) || byId.has(t.id)) continue;
+    const key = personalAmplifyScatterKey(t.id);
+    if (!unmappedKeys.includes(key)) unmappedKeys.push(key);
+  }
+  const scatterDue = new Map(
+    unmappedKeys.map((key, i) => [key, scatterPersonalAmplifyDue(i)]),
+  );
+  const healed: GyshTask[] = [];
+  const next = tasks.map((t) => {
+    if (!isPersonalAmplifyTask(t)) return t;
+    const seed = byId.get(t.id);
+    const dueDate =
+      seed?.dueDate ||
+      scatterDue.get(personalAmplifyScatterKey(t.id)) ||
+      (PERSONAL_AMPLIFY_WEEK_DUE.test(String(t.dueDate || "").trim())
+        ? t.dueDate
+        : PERSONAL_AMPLIFY_WEEK_DUES[0]);
+    const patched: GyshTask = {
+      ...t,
+      category: "personal_amplify",
+      sprint: seed?.sprint ?? PERSONAL_AMPLIFY_SPRINT,
+      dueDate,
+      status: "not_started",
+      dateCompleted: "",
+      tinaDone: false,
+      evelynDone: false,
+    };
+    const changed =
+      normalizeCategory(t.category) !== "personal_amplify" ||
+      Number(t.sprint) !== Number(patched.sprint) ||
+      t.dueDate !== patched.dueDate ||
+      normalizeTaskStatus(t.status) !== "not_started" ||
+      Boolean(String(t.dateCompleted || "").trim()) ||
+      Boolean(t.tinaDone) ||
+      Boolean(t.evelynDone);
+    if (!changed) return t;
+    healed.push(patched);
+    return patched;
+  });
+  return { tasks: next, healed };
+}
 
 /**
  * Ensures Content Factory soft-launch Task List rows exist.
@@ -1193,53 +1407,68 @@ const SOFT_LAUNCH_SYNC_FLAG = "gysh_soft_launch_tasks_synced";
 export async function syncSoftLaunchTasks(
   existing?: GyshTask[],
   opts?: { force?: boolean },
-): Promise<{ tasks: GyshTask[]; createdCount: number }> {
+): Promise<{ tasks: GyshTask[]; createdCount: number; healedCount: number }> {
   if (
     !opts?.force &&
     typeof sessionStorage !== "undefined" &&
     sessionStorage.getItem(SOFT_LAUNCH_SYNC_FLAG) === "1"
   ) {
     const tasks = existing ?? (await fetchTasks());
-    return { tasks, createdCount: 0 };
+    const needsAmplifyHeal = tasks.some(
+      (t) => isPersonalAmplifyTask(t) && personalAmplifyLooksOff(t),
+    );
+    if (!needsAmplifyHeal) {
+      return { tasks, createdCount: 0, healedCount: 0 };
+    }
   }
 
   const { softLaunchTaskSeeds } = await import("./gysh-soft-launch-rollout");
   const base = existing ?? (await fetchTasks());
   const have = new Set(base.map((t) => t.id));
   const missingIds = softLaunchTaskSeeds({ idsOnly: true }).filter((id) => !have.has(id));
-  if (missingIds.length === 0) {
+  const amplifyIds = base.filter(isPersonalAmplifyTask).map((t) => t.id);
+  const seedIds = [...new Set([...missingIds, ...amplifyIds])];
+  const seeds = softLaunchTaskSeeds({
+    onlyIds: seedIds.length ? seedIds : missingIds,
+    lightNotes: true,
+  });
+  const { healed } = healPersonalAmplifyTasks(base, seeds);
+  if (missingIds.length === 0 && healed.length === 0) {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem(SOFT_LAUNCH_SYNC_FLAG, "1");
     }
-    return { tasks: base, createdCount: 0 };
+    return { tasks: base, createdCount: 0, healedCount: 0 };
   }
 
   const today = todayMMDDYY();
-  const seeds = softLaunchTaskSeeds({ onlyIds: missingIds, lightNotes: true });
-  const created: GyshTask[] = seeds.map((seed) => ({
-    id: seed.id,
-    description: seed.description,
-    category: normalizeCategory(seed.category),
-    priority: (["P0", "P1", "P2", "P3"].includes(seed.priority)
-      ? seed.priority
-      : "P1") as TaskPriority,
-    status: "not_started" as const,
-    assignBy: seed.assignBy || "Auto-sync",
-    assignedTo: seed.assignedTo || "Both",
-    dateAssigned: today,
-    dueDate: seed.dueDate || "",
-    dateCompleted: "",
-    notes: seed.notes,
-    sprint: seed.sprint,
-    tinaDone: false,
-    evelynDone: false,
-    attachments: [],
-  }));
+  const missing = new Set(missingIds);
+  const created: GyshTask[] = seeds
+    .filter((seed) => missing.has(seed.id))
+    .map((seed) => ({
+      id: seed.id,
+      description: seed.description,
+      category: normalizeCategory(seed.category),
+      priority: (["P0", "P1", "P2", "P3"].includes(seed.priority)
+        ? seed.priority
+        : "P1") as TaskPriority,
+      status: "not_started" as const,
+      assignBy: seed.assignBy || "Auto-sync",
+      assignedTo: seed.assignedTo || "Both",
+      dateAssigned: today,
+      dueDate: seed.dueDate || "",
+      dateCompleted: "",
+      notes: seed.notes,
+      sprint: seed.sprint,
+      tinaDone: false,
+      evelynDone: false,
+      attachments: [],
+    }));
 
-  // Upsert only the new CF rows — never re-PUT the whole Task List on seed.
-  const saved = await persistTasks(created);
+  const upsert = [...created, ...healed];
+  // Upsert new CF rows + reset Personal Amplify to NS / Sprint 6 scattered dues.
+  const saved = upsert.length > 0 ? await persistTasks(upsert) : base;
   if (typeof sessionStorage !== "undefined") {
     sessionStorage.setItem(SOFT_LAUNCH_SYNC_FLAG, "1");
   }
-  return { tasks: saved, createdCount: created.length };
+  return { tasks: saved, createdCount: created.length, healedCount: healed.length };
 }

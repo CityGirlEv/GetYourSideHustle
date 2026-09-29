@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { FlaskConical, ListChecks, X } from "lucide-react";
 import {
   TASK_STATUS_LABELS,
@@ -93,7 +94,7 @@ export function DueTasksModal({
   const hasTests = overdueTests.length > 0;
   const itemCount = overdue.length + dueToday.length + overdueTests.length;
 
-  return (
+  const dialog = (
     <div
       role="dialog"
       aria-modal="true"
@@ -221,4 +222,6 @@ export function DueTasksModal({
       </div>
     </div>
   );
+
+  return createPortal(dialog, document.body);
 }

@@ -7,13 +7,9 @@ test.describe("Beta phase notice", () => {
     await expect(page.getByTestId("beta-phase-popup")).toHaveCount(0);
   });
 
-  test("preview query opens the beta popup and Got it dismisses it", async ({ page }) => {
+  test("preview query does not open the retired beta popup", async ({ page }) => {
     await page.goto("/?betaNotice=1");
-    const dialog = page.getByTestId("beta-phase-popup");
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("heading", { name: /We're in Beta/i })).toBeVisible();
-    await expect(dialog).toContainText(/undergoing testing/i);
-    await page.getByTestId("beta-phase-popup-got-it").click();
-    await expect(dialog).toHaveCount(0);
+    await expect(page.getByTestId("page-title")).toBeVisible();
+    await expect(page.getByTestId("beta-phase-popup")).toHaveCount(0);
   });
 });

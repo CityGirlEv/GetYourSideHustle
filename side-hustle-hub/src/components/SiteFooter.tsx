@@ -1,5 +1,6 @@
 import { UserPlus } from "lucide-react";
 import { SITE_NAME, ROOT_DOMAIN, ADMIN_EMAIL, FACEBOOK_URL, SITE_PURPOSE } from "../lib/site-config";
+import { LEGAL_DISCLAIMER_BODY, LEGAL_DISCLAIMER_HEADLINE, LEGAL_DISCLAIMER_LIABILITY, legalCopyrightNotice } from "../lib/legal-disclaimer";
 import gyshLogo from "../assets/gysh-logo-rocket.png";
 import { FacebookIcon } from "./FacebookIcon";
 
@@ -8,11 +9,14 @@ export type FooterNavView =
   | "contact"
   | "privacy"
   | "beta_nda"
+  | "beta_credits"
+  | "beta_points"
   | "join"
   | "memberships"
   | "login"
   | "community"
-  | "newsletter";
+  | "newsletter"
+  | "shop";
 
 type SiteFooterProps = {
   onNavigate: (view: FooterNavView) => void;
@@ -60,7 +64,7 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
 
         <nav className="site-footer-nav" aria-label="Footer">
           <button type="button" className="site-footer-link" onClick={() => onNavigate("about")}>
-            About
+            About Us
           </button>
           <button
             type="button"
@@ -71,7 +75,10 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
             See Memberships
           </button>
           <button type="button" className="site-footer-link" onClick={() => onNavigate("community")}>
-            Community
+            Blog
+          </button>
+          <button type="button" className="site-footer-link" onClick={() => onNavigate("shop")}>
+            Shop
           </button>
           <button
             type="button"
@@ -100,6 +107,22 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
           >
             Beta Tester NDA
           </button>
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("beta_credits")}
+            data-testid="footer-beta-credits"
+          >
+            Beta Credits
+          </button>
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("beta_points")}
+            data-testid="footer-beta-points"
+          >
+            Beta Points
+          </button>
           <a
             href={FACEBOOK_URL}
             className="site-footer-link site-footer-link--facebook"
@@ -115,16 +138,14 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
 
       <div className="site-footer-disclaimer">
         <p>
-          <strong>Your hustle, your results.</strong> Income examples, calculators, and workshop takeaways are
-          educational illustrations only — not guarantees. Outcomes depend on your effort, skills, market, and
-          consistency. {SITE_NAME} does not provide financial, legal, tax, or investment advice. Consult licensed
-          professionals before making business or money decisions.
+          <strong>{LEGAL_DISCLAIMER_HEADLINE}</strong> {LEGAL_DISCLAIMER_BODY}
         </p>
+        <p>{LEGAL_DISCLAIMER_LIABILITY}</p>
       </div>
 
       <div className="site-footer-meta">
         <span>
-          © {year} {SITE_NAME}. All rights reserved.
+          {legalCopyrightNotice(year)}
         </span>
         <span className="site-footer-dot" aria-hidden>
           ·

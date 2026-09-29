@@ -60,7 +60,7 @@ flowchart TD
 
   F --> N{Cursor addresses conditions?}
   N -->|Yes| M
-  N -->|No / needs human review| O[Stays Conditional Pass<br/>may reassign e.g. to Evelyn]
+  N -->|No / needs human review| O[Conditional Pass assigns to Evelyn<br/>Lead Developer]
 
   K --> P[Handed back to Tina]
   L --> P

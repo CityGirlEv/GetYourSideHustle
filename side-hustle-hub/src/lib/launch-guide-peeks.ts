@@ -3,8 +3,14 @@
  * Peeks are sourced from real guide modules — never invent titles.
  */
 
+import {
+  adultGuideMinTier,
+  kidsGuideMinTier,
+  seniorGuideMinTier,
+  type GuideMinTier,
+} from "./guide-access";
 import { guidesForAudience } from "./kids-guides";
-import { LAUNCH_GUIDES } from "./launch-guides";
+import { LAUNCH_GUIDES, sortGuidesFreeFirst } from "./launch-guides";
 import { SENIOR_GUIDE_TEASERS } from "./seniors-content";
 
 export type GuidePeekSectionId = "kids" | "junior" | "senior" | "adult";
@@ -20,8 +26,8 @@ export type GuidePeek = {
   peek: string;
   section: GuidePeekSectionId;
   nav: GuidePeekNav;
-  /** Member-gated full guide elsewhere; sneak peek still visible here. */
-  memberGuide?: boolean;
+  /** Minimum membership to open the full guide. */
+  minTier: GuideMinTier;
 };
 
 export type GuidePeekSection = {
@@ -43,31 +49,49 @@ export function sneakPeekText(text: string, maxLen = 140): string {
 }
 
 export function getLaunchGuidePeekSections(): GuidePeekSection[] {
-  const kids = guidesForAudience("kids").map((g) => ({
-    id: g.id,
-    title: g.title,
-    peek: sneakPeekText(g.summary),
-    section: "kids" as const,
-    nav: { view: "kids" as const, mode: "kids" as const },
-    memberGuide: !g.free,
-  }));
+  const kids = sortGuidesFreeFirst(
+    guidesForAudience("kids").map((g) => ({
+      id: g.id,
+      title: g.title,
+      name: g.title,
+      peek: sneakPeekText(g.summary),
+      section: "kids" as const,
+      nav: { view: "guides" as const, hustleId: g.id },
+      minTier: kidsGuideMinTier(g.id),
+    })),
+    (id) => kidsGuideMinTier(id),
+  );
 
-  const junior = guidesForAudience("junior").map((g) => ({
-    id: g.id,
-    title: g.title,
-    peek: sneakPeekText(g.summary),
-    section: "junior" as const,
-    nav: { view: "kids" as const, mode: "junior" as const },
-    memberGuide: !g.free,
-  }));
+  const junior = sortGuidesFreeFirst(
+    guidesForAudience("junior").map((g) => ({
+      id: g.id,
+      title: g.title,
+      name: g.title,
+      peek: sneakPeekText(g.summary),
+      section: "junior" as const,
+      nav: { view: "guides" as const, hustleId: g.id },
+      minTier: kidsGuideMinTier(g.id),
+    })),
+    (id) => kidsGuideMinTier(id),
+  );
 
-  const senior = SENIOR_GUIDE_TEASERS.map((g) => ({
-    id: g.id,
-    title: g.title,
-    peek: sneakPeekText(g.blurb),
-    section: "senior" as const,
-    nav: { view: "seniors" as const },
-  }));
+  const senior = sortGuidesFreeFirst(
+    SENIOR_GUIDE_TEASERS.map((g) => ({
+      id: g.id,
+      title: g.title,
+      name: g.title,
+      peek: sneakPeekText(g.blurb),
+      section: "senior" as const,
+      nav: g.launchGuideId
+        ? ({ view: "guides" as const, hustleId: g.launchGuideId })
+        : ({ view: "seniors" as const }),
+      minTier: seniorGuideMinTier(g.id, g.launchGuideId),
+    })),
+    (id) => {
+      const g = SENIOR_GUIDE_TEASERS.find((x) => x.id === id);
+      return seniorGuideMinTier(id, g?.launchGuideId);
+    },
+  );
 
   const adult = LAUNCH_GUIDES.map((g) => ({
     id: g.id,
@@ -75,6 +99,7 @@ export function getLaunchGuidePeekSections(): GuidePeekSection[] {
     peek: sneakPeekText(g.peek),
     section: "adult" as const,
     nav: { view: "guides" as const, hustleId: g.id },
+    minTier: adultGuideMinTier(g.id),
   }));
 
   return [
@@ -93,13 +118,13 @@ export function getLaunchGuidePeekSections(): GuidePeekSection[] {
     {
       id: "senior",
       label: "Senior",
-      subtitle: "55+ · flexible schedules — Senior guide teasers",
+      subtitle: "50+ · flexible schedules — Senior guide teasers",
       guides: senior,
     },
     {
       id: "adult",
       label: "Adult / general",
-      subtitle: "Full Launch Guides for all adults",
+      subtitle: "Full Launch Guides for all adults — Free first",
       guides: adult,
     },
   ];

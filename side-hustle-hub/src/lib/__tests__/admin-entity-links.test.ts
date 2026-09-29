@@ -70,4 +70,13 @@ describe("admin entity link titles", () => {
       "Task T-EXTRA · Extra ops task",
     );
   });
+
+  it("treats missing edges as empty (no crash)", () => {
+    const self = { kind: "test" as const, id: "VIDEO-003" };
+    const catalog = [
+      { label: "Task T-SL-S3-YT-FIRST-SHORT", opts: { tab: "tasks" as const, taskId: "T-SL-S3-YT-FIRST-SHORT" } },
+    ];
+    expect(mergeEntityCrossLinks(self, catalog, undefined)).toHaveLength(1);
+    expect(mergeEntityCrossLinks(self, catalog, null)).toHaveLength(1);
+  });
 });

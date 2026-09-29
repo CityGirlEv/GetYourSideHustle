@@ -1,0 +1,10 @@
+# Copy to .dev.vars (gitignored) for local Pages Functions + Resend.
+# Terminal 1: bun run build && bun run dev:api
+# Terminal 2: set VITE_API_PROXY=http://127.0.0.1:8788 && bun run dev   (PowerShell: $env:VITE_API_PROXY='http://127.0.0.1:8788'; bun run dev)
+#
+# Or skip dev:api and use production API from localhost (default Vite proxy).
+
+RESEND_API_KEY=re_your_key_here
+FROM_EMAIL=My Plan, Not My Mood <info@nonnegotiation.com>
+APP_URL=http://localhost:3001
+ADMIN_NOTIFY_EMAIL=you@example.com

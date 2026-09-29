@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { isTransientD1Error, withD1Retry } from "../d1-retry";
+import {
+  isTransientD1Error,
+  publicCaughtApiError,
+  TRANSIENT_DB_USER_MESSAGE,
+  withD1Retry,
+} from "../d1-retry";
 
 describe("isTransientD1Error", () => {
   it("matches D1 timeout / reset / dropped remote", () => {
@@ -12,7 +17,26 @@ describe("isTransientD1Error", () => {
     expect(isTransientD1Error(new Error("Internal error while starting up D1 DB storage caused object to be reset"))).toBe(
       true,
     );
+    expect(isTransientD1Error(new Error("internal error; reference = 6coi217vvgjhhaqojr0q5mqg"))).toBe(
+      true,
+    );
     expect(isTransientD1Error(new Error("UNIQUE constraint failed"))).toBe(false);
+  });
+});
+
+describe("publicCaughtApiError", () => {
+  it("hides Cloudflare internal error references behind a 503", () => {
+    expect(publicCaughtApiError(new Error("internal error; reference = rd67dvsars25cpaqmu1845a5"))).toEqual({
+      message: TRANSIENT_DB_USER_MESSAGE,
+      status: 503,
+    });
+  });
+
+  it("keeps unknown failures as a 500 server error", () => {
+    expect(publicCaughtApiError(new Error("UNIQUE constraint failed"))).toEqual({
+      message: "Server error: UNIQUE constraint failed",
+      status: 500,
+    });
   });
 });
 
@@ -23,12 +47,31 @@ describe("withD1Retry", () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it("retries a transient D1 error once then succeeds", async () => {
+  it("retries a transient D1 error then succeeds", async () => {
     const fn = vi
       .fn()
       .mockRejectedValueOnce(new Error("D1_ERROR: D1 DB storage operation exceeded timeout which caused object to be reset."))
       .mockResolvedValueOnce("recovered");
     await expect(withD1Retry(fn)).resolves.toBe("recovered");
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a Cloudflare internal error reference twice then succeeds", async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("internal error; reference = 5oi2kr3hok8oa6rc14gg163u"))
+      .mockRejectedValueOnce(new Error("internal error; reference = k0cj4krs5mo93qjittnga738"))
+      .mockResolvedValueOnce("recovered");
+    await expect(withD1Retry(fn)).resolves.toBe("recovered");
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries a login-style internal error then succeeds", async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("internal error; reference = a"))
+      .mockResolvedValueOnce("signed-in");
+    await expect(withD1Retry(fn, 2)).resolves.toBe("signed-in");
     expect(fn).toHaveBeenCalledTimes(2);
   });
 

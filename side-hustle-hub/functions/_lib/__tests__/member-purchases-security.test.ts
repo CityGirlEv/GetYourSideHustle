@@ -38,8 +38,8 @@ describe("plan credit enrollment grants", () => {
   });
 
   it("seeds youth vs adult pool amounts by lane", () => {
-    expect(planKidCreditAllowance("starter", "parent")).toBe(60);
-    expect(planKidCreditAllowance("starter", "adult")).toBe(30);
-    expect(planKidCreditAllowance("pro", "senior")).toBe(60);
+    expect(planKidCreditAllowance("starter", "parent")).toBe(2.5);
+    expect(planKidCreditAllowance("starter", "adult")).toBe(2.5);
+    expect(planKidCreditAllowance("pro", "senior")).toBe(5);
   });
 });

@@ -9,7 +9,10 @@ import { withPageLinkInFirstStep } from "./qa-page-links";
 import { noteEntriesPlainText } from "./gysh-note-entries";
 import { expandCatalogCasesForSingleAssignees, testCaseLogicalId } from "./gysh-test-case-dupes";
 import { EMAIL_TEMPLATE_REVIEW_CASES } from "./gysh-email-template-review-cases";
+import { GUIDE_REVIEW_CASES } from "./gysh-guide-review-cases";
 import { LEGAL_REVIEW_CASES } from "./gysh-legal-review-cases";
+import { STRIPE_CHECKOUT_CASES } from "./gysh-stripe-checkout-cases";
+import { BETA_CREDITS_REVIEW_CASES } from "./gysh-beta-credits-review-cases";
 
 export type TestSuite = "manual" | "vitest" | "playwright";
 
@@ -90,6 +93,73 @@ export const DEV_FIX_STATUSES: TestStatus[] = [
 
 /** Initial / default status for every test case until a tester changes it. */
 export const DEFAULT_TEST_STATUS: TestStatus = "not_run";
+
+/**
+ * First time a Not Started test is touched via checklist or notes,
+ * auto-promote to In Progress. Never when only status/assignee change,
+ * and never for automated suite-owned cases.
+ */
+export function shouldAutoStartTestOnFirstTouch(input: {
+  prevStatus: string | null | undefined;
+  nextStatus: string | null | undefined;
+  lockedSuiteOwner?: string | null;
+  notesChanged?: boolean;
+  stepsChanged?: boolean;
+}): boolean {
+  if (input.lockedSuiteOwner) return false;
+  const prev = String(input.prevStatus || DEFAULT_TEST_STATUS);
+  if (prev !== "not_run") return false;
+  const next = String(input.nextStatus || prev);
+  // Explicit status change away from Not Started — leave it alone.
+  if (next !== "not_run") return false;
+  return Boolean(input.notesChanged || input.stepsChanged);
+}
+
+/** True when a Not Started test already has notes or checked steps (needs heal → In Progress). */
+export function notStartedTestAlreadyTouched(input: {
+  status: string | null | undefined;
+  note?: string | null;
+  checkedSteps?: boolean[] | null;
+}): boolean {
+  if (String(input.status || DEFAULT_TEST_STATUS) !== "not_run") return false;
+  if (noteEntriesPlainText(String(input.note ?? "")).trim()) return true;
+  if ((input.checkedSteps ?? []).some(Boolean)) return true;
+  return false;
+}
+
+/** Sweep Not Started tests that already have notes or checked steps → In Progress. */
+export function healNotStartedTouchedTests(input: {
+  statuses: Record<string, string | undefined>;
+  notes: Record<string, string | undefined>;
+  checkedSteps?: Record<string, boolean[] | undefined>;
+  caseIds?: string[];
+}): { statuses: Record<string, string>; changedIds: string[] } {
+  const statuses = { ...input.statuses } as Record<string, string>;
+  const changedIds: string[] = [];
+  const ids =
+    input.caseIds ??
+    Array.from(
+      new Set([
+        ...Object.keys(input.statuses),
+        ...Object.keys(input.notes),
+        ...Object.keys(input.checkedSteps ?? {}),
+      ]),
+    );
+  for (const id of ids) {
+    if (
+      !notStartedTestAlreadyTouched({
+        status: statuses[id],
+        note: input.notes[id],
+        checkedSteps: input.checkedSteps?.[id],
+      })
+    ) {
+      continue;
+    }
+    statuses[id] = "in_progress";
+    changedIds.push(id);
+  }
+  return { statuses, changedIds };
+}
 
 /** Fail, Blocked, Conditional Pass, and Lead Dev retest statuses require a short written note. */
 export const NOTE_REQUIRED_STATUSES: TestStatus[] = [
@@ -220,12 +290,14 @@ export type TestCategory =
   | "kids_junior"
   | "seniors"
   | "adult_hustles"
+  | "guides"
   | "proofread"
   | "website"
   | "facebook"
   | "youtube"
   | "instagram"
   | "tiktok"
+  | "personal_amplify"
   | "contact"
   | "content"
   | "workshops"
@@ -242,12 +314,14 @@ export const TEST_CATEGORY_LABELS: Record<TestCategory, string> = {
   kids_junior: "Kids & Teens",
   seniors: "Seniors",
   adult_hustles: "Adult Hub",
+  guides: "Guides",
   proofread: "ProofRead",
   website: "Website",
   facebook: "Facebook",
   youtube: "YouTube",
   instagram: "Instagram",
   tiktok: "TikTok",
+  personal_amplify: "Personal Amplify",
   contact: "Contact",
   content: "Content",
   workshops: "Workshops",
@@ -265,12 +339,14 @@ export const TEST_CATEGORIES: TestCategory[] = [
   "kids_junior",
   "seniors",
   "adult_hustles",
+  "guides",
   "proofread",
   "website",
   "facebook",
   "youtube",
   "instagram",
   "tiktok",
+  "personal_amplify",
   "contact",
   "content",
   "workshops",
@@ -292,6 +368,23 @@ export const SOCIAL_TEST_CATEGORIES: TestCategory[] = [
 ];
 
 export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id" | "title">): TestCategory {
+  const id = String(t.id || "").toUpperCase();
+  const title = String(t.title || "");
+  // Personal amplify share QA (Tina/Evelyn personal reshare cadence)
+  if (id.includes("PERSONAL-AMPLIFY") || /personal\s+ampl[iy]/i.test(title)) {
+    return "personal_amplify";
+  }
+  // Guides library + GUIDE-REV content review (incl. VT-GUIDES-REVIEW) — before suite buckets
+  if (
+    t.area === "Guides" ||
+    t.area === "Free Guides" ||
+    t.area === "Guide Review" ||
+    id.startsWith("GUIDE-REV-") ||
+    id === "VT-GUIDES-REVIEW" ||
+    /^GUIDE-\d/.test(id)
+  ) {
+    return "guides";
+  }
   if (t.suite === "vitest" || t.suite === "playwright") {
     if (t.area === "Kids Get Your Side Hustle") return "wizard_kids";
     if (t.area === "Teens Get Your Side Hustle" || t.area === "Junior Get Your Side Hustle")
@@ -329,9 +422,12 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id" | "tit
       return "seniors";
     case "Adult Hub":
     case "Side Hustle Checklist":
-    case "Free Guides":
     case "Membership":
       return "adult_hustles";
+    case "Guides":
+    case "Free Guides":
+    case "Guide Review":
+      return "guides";
     case "Workshops":
       return "workshops";
     case "Facebook":
@@ -495,13 +591,13 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Primary nav: click Home, GYSH Match Wizard, Kids & Teens, Seniors, Guides, Workshops, Community, Join",
-      "Secondary/meta nav: About, Contact Us (and Login when logged out)",
+      "Primary nav: click Home, GYSH Match Wizard, Kids & Teens, Seniors, Community (Blog / Workshops / Newsletter / GEAR), Side Hustle Guides, Memberships, Gear, Join Free, About Us, Contact Us; logged-in members also see My Dashboard in that row, colored by plan",
+      "Secondary/meta nav: Login when logged out",
       "Confirm each view title updates (Kids & Teens → GYSH Kids & Teens Corner; Match Wizard selector uses the family Match Wizard headline until an adult wizard starts)",
       "Confirm Guides is a dropdown (Guides Library + audience guides), not a Some Free banner",
-      "Confirm Membership is not a separate top-nav item (plans live on Join)",
+      "Confirm header order Memberships → Gear → Join Free → About Us → Contact Us",
     ],
-    expected: "Every listed nav item opens the correct page; Home is first; Guides then Workshops sit after Seniors; Join includes membership plans",
+    expected: "Every listed nav item opens the correct page; Home is first; Community holds Blog, Workshops, Newsletter, and GEAR; primary row ends Memberships, Gear, Join Free, About Us, Contact Us; My Dashboard appears in the top row only when logged in",
     path: "dashboard",
   },
   {
@@ -515,15 +611,15 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     steps: [
       "Open Join from top nav",
       "Confirm membership plans/hero appear first; footer CTAs include Create account / Join, Sign in, Browse GYSH Community, Kids / Teens Corner (no Kids/Teens team cards above plans)",
-      "Confirm Free / Starter / Pro / Elite cards, then hustle schedule suite callout after the membership tier grid (points to My Dashboard → Schedule Suite)",
+      "Confirm Free / Starter / Pro / Elite cards, then Parent-funded Kid Credit packs and a la carte price lists, then the side hustle schedule suite callout (links to My Dashboard → Schedule Suite)",
       "On Adults/Seniors: confirm note that all membership amounts are collected in advance; check Yearly on a paid card and confirm both equivalent monthly rate and yearly amount show",
       "Military & Veterans callout is deferred (hidden) until Sprint 6 / Task T-MEM-MILITARY (Military Membership discount) — do not expect it on Adults/Seniors yet",
-      "Switch audience tabs: Kids (4–12), Teens (13–17), Adults (18–54), Seniors (55+)",
+      "Switch audience tabs: Kids (4–12), Teens (13–17), Adults (18–49), Seniors (50+)",
       "On Kids and Teens, confirm parent-funded credit packs and credit earn sections appear",
-      "Confirm credit packs list 25 / $5, 60 / $10, 140 / $20, and 300 / $40",
+      "Confirm credit packs list 25 / $5, 60 / $10, 140 / $20, and 300 / $40 with Add to cart",
       "Scan a la carte price table for the selected audience",
     ],
-    expected: "Join loads with membership section then schedule suite; advance-billing note on Adults/Seniors; yearly shows monthly equiv + yearly amount; military/veteran callout stays hidden until T-MEM-MILITARY; Kids/Teens show credit funding and earning; Pro unlocks schedule suite on My Dashboard",
+    expected: "Join loads with membership plans then Parent-funded packs then a la carte then schedule suite; advance-billing note on Adults/Seniors; yearly shows monthly equiv + yearly amount; military/veteran callout stays hidden until T-MEM-MILITARY; Kids/Teens show credit funding and earning; Pro unlocks schedule suite on My Dashboard",
     path: "join",
   },
   {
@@ -571,8 +667,8 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Sign in as Pro+ (or admin) and open My Dashboard → Schedule Suite",
-      "Create or open a schedule; stay on Plan tracker (no Weekly plan tab)",
+      "Sign in as Pro or higher (or admin) and open My Dashboard → Schedule Suite",
+      "Create or open a schedule; set Start date (shifts every day's due date); Blueprint plan is first, then Plan tracker (no Weekly plan tab)",
       "Check a day checkbox → Status becomes Done automatically",
       "Uncheck the same checkbox → Status becomes Not Started",
       "Also change Status via the dropdown (In Progress / Blocked) without relying on the checkbox",
@@ -591,13 +687,14 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Confirm family member bubbles at top (All family members + each name) with Saved schedules under them",
-      "Filter by All vs an individual member and confirm tabs update",
+      "Confirm Make a new schedule is first, then the Saved schedules card (family names, then schedule pills). No top Saved/Save schedules button, no Open existing",
+      "Tap a family member name and confirm only that person’s saved schedules show; tap a schedule pill to open it",
+      "Confirm Save schedule and Open guide sit beside the selected plan tab (Blueprint plan / Plan tracker / …) and Save stays disabled until you edit",
       "In Plan tracker, set mixed statuses; confirm Done strikethrough and status colors",
       "Use Weekly plan download PDF and Word links on Plan tracker",
     ],
     expected:
-      "Member bubbles filter Saved schedules; Done is struck through; PDF/Word weekly plan links work; no Weekly plan subtab",
+      "Make a new schedule is above Saved schedules; name chips filter Saved schedules; clicking a schedule opens it; Save schedule and Open guide sit next to the selected plan tab; Save is disabled until an edit; Done is struck through; PDF/Word weekly plan links work; no Weekly plan subtab; no header Save or Open existing",
     path: "dashboard",
   },
   {
@@ -626,7 +723,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Sign in as Pro+ (or admin) and open My Dashboard → Schedule Suite",
+      "Sign in as Pro or higher (or admin) and open My Dashboard → Schedule Suite",
       "Open or create a schedule tab; confirm Email reminders control (None / Daily / Weekly / Bi-weekly / Monthly)",
       "Confirm Email Me on the Plan tracker / Blueprint row scrolls to the Email reminders section",
       "Set cadence to Weekly (or Daily for a same-day check), fill required hours, and Save",
@@ -647,14 +744,14 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Open Schedule Suite → Blueprint plan: enter Marketing plan and Target sales; Save",
-      "Open Weekly roundup: fill I killed it here, I need improvement here, Action items for upcoming week",
-      "From Plan tracker, click Grade me → lands on Weekly Roundup with the grade shown; confirm only one Grade me button on that view (not duplicated in the stats bar)",
-      "Mark some day blocks Done, click Grade me again; confirm letter + % score updates",
+      "Open Schedule Suite → Blueprint plan: enter Marketing plan and Target sales; confirm the tasks complete / remaining label; Save",
+      "Open Weekly roundup: expand I killed it here / I need improvement / Action items, fill them, then Save progress",
+      "From any tab (Blueprint plan, Plan tracker, Weekly roundup, P&L, Progress), click Grade me → stay on that tab; the button shows Current Grade plus the letter + % (one Grade me button in the stats bar on every tab)",
+      "Mark some day blocks Done on Plan tracker; Current Grade on the button updates live without clicking Grade me again",
       "See SCHED-GRADE-001 for the full grading scale and each letter mark",
     ],
     expected:
-      "Blueprint + roundup persist after Save; Grade me opens Weekly Roundup with a single Grade me control; score = % of day blocks Done (see SCHED-GRADE-001)",
+      "Blueprint + roundup persist after Save; Grade me stays on the current tab and shows the letter in the button on every view; score = % of day blocks Done (see SCHED-GRADE-001)",
     path: "dashboard",
   },
   {
@@ -666,30 +763,30 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "GRADING SCALE (how the score is calculated): Score = % of the 7 day blocks marked Done (Not Started / In Progress / Blocked do not count). Hours, sales, and roundup are context only — they do not change the letter. Marks: A+ = 97–100%, A = 90–96%, B+ = 87–89%, B = 80–86%, C+ = 77–79%, C = 70–76%, D = 60–69%, F = 0–59%. With 7 days: 7 Done ≈ 100% (A+), 6 Done ≈ 86% (B), 5 Done ≈ 71% (C), 4 Done ≈ 57% (F), 0 Done = 0% (F).",
-      "Sign in as Pro+ (or admin) → My Dashboard → Schedule Suite → open a schedule on Plan tracker",
-      "F: leave all days Not Started → Grade me → expect F (~0%) on Weekly Roundup",
-      "D: mark enough days Done for ~60–69% (e.g. ~4–5 of 7 depending on rounding) → Grade me → expect D",
+      "GRADING SCALE (how the score is calculated): Score = % of the 7 day blocks marked Done (Not Started / In Progress / Blocked do not count). Hours, sales, and roundup are context only — they do not change the letter. Marks: A+ = 97–100%, A = 90–96%, B+ = 87–89%, B = 80–86%, C+ = 77–79%, C = 70–76%, D = 50–69%, F = 0–49%. D starts at 50% so a 7-day week can hit D (4/7 ≈ 57%); 3/7 ≈ 43% stays F. With 7 days: 7 Done ≈ 100% (A+), 6 Done ≈ 86% (B), 5 Done ≈ 71% (C), 4 Done ≈ 57% (D), 0–3 Done = F.",
+      "Sign in as Pro or higher (or admin) → My Dashboard → Schedule Suite → open a schedule on Plan tracker",
+      "F: leave all days Not Started → Grade me → expect F (~0%) in the Grade me button",
+      "D: mark 4 of 7 days Done (~57%) → Grade me → expect D in the button",
       "C / C+: mark days for ~70–79% → Grade me → expect C or C+",
       "B / B+: mark days for ~80–89% → Grade me → expect B or B+",
       "A / A+: mark 7/7 Done → Grade me → expect A or A+ (~100%) and celebration for A/A+",
-      "Confirm Grade me from Plan tracker is the green primary button and switches to Weekly Roundup; Roundup shows only one Grade me (stats-bar Grade me hidden); re-grade after changing Done counts updates the score",
+      "Confirm Grade me is the green primary stats-bar button on Blueprint plan, Plan tracker, Weekly roundup, P&L, and Progress; clicking it does not switch tabs; the button shows Current Grade plus the letter; Plan tracker Done clicks update Current Grade live",
     ],
     expected:
-      "Each mark matches the % Done scale above; Grade me opens Roundup without a duplicate Grade me; A/A+ shows celebration; score is completion % only (not hours/sales/roundup)",
+      "Each mark matches the % Done scale above; Grade me stays on the current tab and shows the letter in the button on every view; A/A+ shows celebration; score is completion % only (not hours/sales/roundup)",
     path: "dashboard",
   },
   {
     id: "SCHED-PNL-001",
     area: "Membership",
-    title: "Schedule Suite Profit & Loss calculator (Pro+)",
+    title: "Schedule Suite Profit & Loss calculator (Pro or higher)",
     priority: "P1",
     roles: ["adult", "admin", "qa"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Confirm Membership / Join lists Profit & Loss calculator on Pro and Elite",
-      "Sign in as Pro+ (or admin) → My Dashboard → Schedule Suite → open a schedule → P&L calculator tab",
+      "Sign in as Pro or higher (or admin) → My Dashboard → Schedule Suite → open a schedule → P&L calculator tab",
       "Confirm Blueprint window shows days (≤10 target), week count, and plan tracker % complete",
       "Add line item: Type Sale, Date, Description, Amount → Add; confirm Sales + Net profit update",
       "Add line item: Type Expense, Category (Admin/Overhead/Advertising/etc.), Amount → Add; confirm Expenses + Net update",
@@ -710,7 +807,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     suite: "manual",
     steps: [
       "Open Seniors from top nav (or Home Seniors starting-point bubble)",
-      "Confirm intro welcomes 55+ / retirees & flexible schedules without infantilizing tone",
+      "Confirm intro welcomes 50+ / retirees & flexible schedules without infantilizing tone",
       "Browse tabs: GYSH Match Wizard, Ideas, Guides, Join",
     ],
     expected: "Page title is GYSH Seniors Corner; tabs work; Join can mark interest or link to Join",
@@ -909,7 +1006,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
   },
   {
     id: "FREE-001",
-    area: "Free Guides",
+    area: "Guides",
     title: "Guides library filters All / Free / Adult-Senior / Kids / Teens (spot-check)",
     priority: "P2",
     roles: ["all", "qa"],
@@ -960,10 +1057,28 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     suite: "manual",
     steps: [
       "Admin → Users Area",
+      "Use Search users with a name, email, or * / ? wildcard (example: *evelyn* or *@cox.net)",
+      "Open a member card and use Add credits (and Remove if needed) on that user",
       "Filter by Kid, Teens, Adult, Admin, QA",
       "Change a demo user status",
     ],
-    expected: "Filters work; status changes save",
+    expected: "Search and role filters narrow the list; Add credits updates that member’s wallet; status changes save",
+    path: "admin",
+  },
+  {
+    id: "ADMIN-002b",
+    area: "Admin",
+    title: "Users Area can delete a non-founder member",
+    priority: "P1",
+    roles: ["admin"],
+    assignees: ["evelyn"],
+    suite: "manual",
+    steps: [
+      "Admin → Users Area",
+      "Edit a test member who is not Tina or Evelyn",
+      "Click Delete and confirm",
+    ],
+    expected: "Member disappears from the list; Tina and Evelyn Delete buttons stay disabled; your own account cannot be deleted",
     path: "admin",
   },
   {
@@ -985,7 +1100,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
   {
     id: "ADMIN-004",
     area: "Admin",
-    title: "Task List tracks T + E assignments",
+    title: "Task List tracks Tina & Evelyn assignments",
     priority: "P1",
     roles: ["admin", "qa"],
     assignees: ["tina", "evelyn"],
@@ -1130,7 +1245,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     suite: "manual",
     steps: [
       "Resize to ~375px or use a phone",
-      "Open hamburger menu; navigate to Guides, Kids & Teens, Seniors, Join",
+      "Open hamburger menu; navigate to Guides, Kids & Teens, Seniors, Sign-Up",
       "Use page zoom + / − if shown; confirm layout does not clip primary CTAs",
     ],
     expected: "Menu opens/closes; navigation works; no unreadable overlapping controls",
@@ -1231,7 +1346,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
       "Confirm readable contrast (ink tokens; WCAG AA 4.5:1)",
       "Optional: npx playwright test e2e/lighthouse-a11y.spec.ts -g contrast",
     ],
-    expected: "color-contrast passes for hustle card accents",
+    expected: "color-contrast passes for side hustle card accents",
   },
   {
     id: "LH-005",
@@ -1534,7 +1649,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
       "Scan copy for ageist or infantilizing language",
       "Confirm top matches fit flexible schedules",
     ],
-    expected: "Tone respectful; hustles fit 55+ energy/time constraints",
+    expected: "Tone respectful; hustles fit 50+ energy/time constraints",
     path: "seniors",
   },
   {
@@ -1606,7 +1721,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
   {
     id: "ABOUT-001",
     area: "About",
-    title: "About page tells T + E partnership story clearly",
+    title: "About page tells Tina & Evelyn partnership story clearly",
     priority: "P2",
     roles: ["all", "qa"],
     assignees: ["evelyn"],
@@ -1686,7 +1801,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
   },
   {
     id: "GUIDE-001",
-    area: "Free Guides",
+    area: "Guides",
     title: "Free vs member guide gating is obvious to a human (not just API)",
     priority: "P1",
     roles: ["all", "qa"],
@@ -1703,7 +1818,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
   },
   {
     id: "GUIDE-002",
-    area: "Free Guides",
+    area: "Guides",
     title: "User Guides / PDF export (if present) is usable",
     priority: "P2",
     roles: ["qa", "admin"],
@@ -2159,8 +2274,17 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
   // One review case per Admin → Email Templates catalog entry (Candace)
   ...EMAIL_TEMPLATE_REVIEW_CASES,
 
+  // All guides content review (Launch + Kids + Teens + Seniors) — Sprint 6
+  ...GUIDE_REVIEW_CASES,
+
   // Candace legal review — disclaimer, Beta Tester NDA, signup confirmation email
   ...LEGAL_REVIEW_CASES,
+
+  // Stripe Checkout — every paid membership SKU, a-la-carte item, credit pack (Sprint 4 · Unassigned)
+  ...STRIPE_CHECKOUT_CASES,
+
+  // Beta Tester Member Credits guide — Milford / Tina / Brenda / Lyriq / Evelyn
+  ...BETA_CREDITS_REVIEW_CASES,
 ];
 
 /** Expand shared-assignee + calculator triples before page-link injection. */
@@ -2208,7 +2332,18 @@ export type TestStatusesPayload = {
   updatedBy: Record<string, string>;
   attachments: Record<string, TestAttachmentMeta[]>;
   generatedCases: GeneratedTestCase[];
+  /** PUT returns only changed cases — merge into existing maps instead of replacing. */
+  partial?: boolean;
 };
+
+export function nextKeyedMap<T>(
+  prev: Record<string, T>,
+  incoming: Record<string, T> | undefined,
+  partial?: boolean,
+): Record<string, T> {
+  const next = incoming ?? {};
+  return partial ? { ...prev, ...next } : next;
+}
 
 function mapStatusesResponse(data: {
   statuses?: Record<string, TestStatus>;
@@ -2225,6 +2360,7 @@ function mapStatusesResponse(data: {
   updatedBy?: Record<string, string>;
   attachments?: Record<string, TestAttachmentMeta[]>;
   generatedCases?: GeneratedTestCase[];
+  partial?: boolean;
 }): TestStatusesPayload {
   return {
     statuses: data.statuses ?? {},
@@ -2240,6 +2376,7 @@ function mapStatusesResponse(data: {
     updatedAt: data.updatedAt ?? {},
     updatedBy: data.updatedBy ?? {},
     attachments: data.attachments ?? {},
+    partial: data.partial === true,
     generatedCases: (data.generatedCases ?? []).map((c) => ({
       ...c,
       priority: (c.priority as Priority) || "P1",
@@ -2269,6 +2406,8 @@ export async function saveTestStatus(
     dueDate?: string;
     assignedBy?: string;
     dateAssigned?: string;
+    /** Trusted allow-list only (Cursor / System). */
+    noteAuthor?: string;
   },
 ): Promise<TestStatusesPayload> {
   const data = await api<Parameters<typeof mapStatusesResponse>[0]>("test-statuses", {
@@ -2282,6 +2421,7 @@ export async function saveTestStatus(
       ...(opts?.dueDate !== undefined ? { dueDate: opts.dueDate } : {}),
       ...(opts?.assignedBy !== undefined ? { assignedBy: opts.assignedBy } : {}),
       ...(opts?.dateAssigned !== undefined ? { dateAssigned: opts.dateAssigned } : {}),
+      ...(opts?.noteAuthor !== undefined ? { noteAuthor: opts.noteAuthor } : {}),
       checkedSteps: opts?.checkedSteps,
       failedStepIndex: opts?.failedStepIndex ?? null,
       stepCount: opts?.stepCount ?? 0,
@@ -2295,6 +2435,8 @@ export async function saveTestStatusesBatch(
     caseId: string;
     status: TestStatus;
     note?: string;
+    /** Trusted allow-list only (Cursor / System) — see setTestStatus. */
+    noteAuthor?: string;
     assignee?: string;
     sprint?: number;
     dueDate?: string;

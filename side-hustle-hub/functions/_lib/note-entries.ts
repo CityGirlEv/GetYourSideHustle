@@ -15,7 +15,29 @@ export type NoteEntry = {
 export const LEGACY_NOTE_AUTHOR = "Legacy";
 export const PRIOR_NOTE_AUTHOR = "Prior note";
 export const SYSTEM_NOTE_AUTHOR = "System";
+/** Notes written by Execute Fixes / Fixed/Cursor — never a human tester name. */
+export const CURSOR_NOTE_AUTHOR = "Cursor";
 export const LEGACY_EPOCH = "1970-01-01T00:00:00.000Z";
+
+/** True when note body is a Cursor/Execute Fixes note (must not show as tester-authored). */
+export function looksLikeCursorAuthoredNote(text: string | null | undefined): boolean {
+  const t = String(text ?? "").trim();
+  if (!t) return false;
+  if (/\[Proposed Fix\]/i.test(t)) return true;
+  if (/^Cursor\b/i.test(t)) return true;
+  if (/Fixed\/Cursor via Execute Fixes/i.test(t)) return true;
+  if (/Could not fix via Execute Fixes/i.test(t)) return true;
+  if (/Cursor repaired prior Execute Fixes/i.test(t)) return true;
+  if (/Cursor could not apply/i.test(t)) return true;
+  if (/Cursor fix from (tester notes|imported markdown)/i.test(t)) return true;
+  return false;
+}
+
+export function healCursorNoteAuthor<T extends { author: string; text: string }>(entry: T): T {
+  if (!looksLikeCursorAuthoredNote(entry.text)) return entry;
+  if (authorsMatch(entry.author, CURSOR_NOTE_AUTHOR)) return entry;
+  return { ...entry, author: CURSOR_NOTE_AUTHOR };
+}
 
 export type PriorNoteAttribution = {
   author?: string | null;
@@ -55,6 +77,7 @@ function canEditNoteEntry(entry: NoteEntry, actor: string | null | undefined): b
   if (!actor?.trim()) return false;
   if (isPriorNoteEntry(entry)) return false;
   if (authorsMatch(entry.author, SYSTEM_NOTE_AUTHOR)) return false;
+  if (authorsMatch(entry.author, CURSOR_NOTE_AUTHOR)) return false;
   return authorsMatch(entry.author, actor);
 }
 
@@ -122,15 +145,17 @@ export function parseNoteEntries(
       const parsed = JSON.parse(trimmed) as unknown;
       if (Array.isArray(parsed) && parsed.every(isNoteEntry)) {
         return parsed.map((e) =>
-          healPriorEntry(
-            {
-              id: e.id,
-              author: String(e.author || LEGACY_NOTE_AUTHOR).trim() || LEGACY_NOTE_AUTHOR,
-              createdAt: e.createdAt,
-              updatedAt: e.updatedAt || e.createdAt,
-              text: String(e.text ?? ""),
-            },
-            prior,
+          healCursorNoteAuthor(
+            healPriorEntry(
+              {
+                id: e.id,
+                author: String(e.author || LEGACY_NOTE_AUTHOR).trim() || LEGACY_NOTE_AUTHOR,
+                createdAt: e.createdAt,
+                updatedAt: e.updatedAt || e.createdAt,
+                text: String(e.text ?? ""),
+              },
+              prior,
+            ),
           ),
         );
       }
@@ -141,13 +166,13 @@ export function parseNoteEntries(
 
   const { author, at } = normalizePriorAttribution(prior);
   return [
-    {
+    healCursorNoteAuthor({
       id: "legacy",
       author,
       createdAt: at,
       updatedAt: at,
       text,
-    },
+    }),
   ];
 }
 
@@ -221,14 +246,12 @@ export function mergeNoteEntries(
       continue;
     }
     const next = incomingById.get(prev.id);
-    // Never drop prior entries — omit from incoming = keep unchanged; empty text = keep.
+    // Own notes: omit or empty text = delete. Others' notes are retained above.
     if (!next) {
-      result.push(prev);
       continue;
     }
     const text = String(next.text ?? "").trim();
     if (!text) {
-      result.push(prev);
       continue;
     }
     if (text === prev.text.trim()) {
@@ -248,7 +271,10 @@ export function mergeNoteEntries(
     }
     result.push({
       id: inc.id?.trim() || newNoteId(),
-      author: who,
+      author:
+        authorsMatch(who, CURSOR_NOTE_AUTHOR) || looksLikeCursorAuthoredNote(text)
+          ? CURSOR_NOTE_AUTHOR
+          : who,
       createdAt: inc.createdAt || now,
       updatedAt: now,
       text,

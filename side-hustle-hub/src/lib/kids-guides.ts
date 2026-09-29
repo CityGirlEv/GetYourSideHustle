@@ -1,6 +1,7 @@
 /** Starter guides for Kids Corner (4–12) and Teens Side Hustle (13–17). */
 
 import type { KidsAudience } from "./kids-team";
+import { PARENT_THUMBS_UP_STEP } from "./guide-detailed-steps";
 
 export type KidsGuideStep = {
   title: string;
@@ -21,7 +22,7 @@ export type KidsGuide = {
   parentTip: string;
 };
 
-export const KIDS_GUIDES: KidsGuide[] = [
+export const KIDS_GUIDES_RAW: KidsGuide[] = [
   // —— Kids (4–12) free ——
   {
     id: "kids-piggy-first-goal",
@@ -31,28 +32,28 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "savings",
     previewCount: 2,
     summary:
-      "Name something you want, pick a simple price, and count how many little jobs it might take — with a parent helping.",
-    parentTip: "Keep goals small and celebrate progress, not perfection.",
+      "Pick something you want, find out about how much it costs, and use simple math to see how many little jobs or sales it could take to reach your goal — with help from a parent/guardian.",
+    parentTip: "Keep goals small and celebrate progress, not perfection. Help with prices and safe earning ideas.",
     steps: [
       {
-        title: "Pick one goal",
-        body: "Choose something fun and reachable — a game, book, craft kit, or outing. Write the name on a sticky note.",
+        title: "Pick Your Goal",
+        body: "Write or draw what you want to save for — a toy, game, book, gift, or something for your side hustle.",
       },
       {
-        title: "Write the price",
-        body: "Ask a parent for a real price (or a close estimate). Put that number next to your goal.",
+        title: "Find the Price",
+        body: "With a parent/guardian, write an approximate price. Prices can change — close is okay.",
       },
       {
-        title: "Choose your hustle rate",
-        body: "Decide what one job might earn (example: $5 for a craft, $10 for a walk with a parent nearby).",
+        title: "Count What You Already Have",
+        body: "Subtract money already saved from the goal price to find Still Needed.",
       },
       {
-        title: "Count the jobs",
-        body: "Use the Piggy Bank tab to see how many tasks you need. Mark a star each time you finish one!",
+        title: "Make Your Savings Spot",
+        body: "Label a piggy bank, jar, envelope, or tracker: “I'm saving for ______!”",
       },
       {
-        title: "Celebrate kindly",
-        body: "When you hit halfway, do a kindness win too — share a craft or help someone for free.",
+        title: "Count How Many Jobs/Sales",
+        body: "Still Needed ÷ amount saved per job — always round UP. Celebrate each deposit!",
       },
     ],
   },
@@ -64,28 +65,28 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "give-back",
     previewCount: 2,
     summary:
-      "Earning is great — kindness is part of the GYSH team too. Practice giving back with a tiny free gift of help.",
-    parentTip: "Supervise introductions; keep it with people you already know.",
+      "Practice kindness with one small free help session — share a skill you already know. No selling, no pricing — just Give-Back Day with a parent nearby.",
+    parentTip: "Approve who they help and stay nearby. Keep the first activity small and with people you know.",
     steps: [
       {
-        title: "Name your kindness skill",
-        body: "What can you share? Reading together, drawing a card, watering a plant, or teaching a simple game.",
+        title: "What Are You Good At?",
+        body: "List 3 things you know how to do — drawing, reading, games, crafts, or helping with a phone. Small skills count.",
       },
       {
-        title: "Pick one person to help",
-        body: "Choose a sibling, neighbor your parents know, or a grandparent — never strangers alone.",
+        title: "Pick One Way to Help",
+        body: "Choose one skill and finish: “I can use this skill to help someone by __________.” Keep it tiny.",
       },
       {
-        title: "Offer a free mini-session",
-        body: "Say: “Can I help for 15 minutes for free?” Keep it short and cheerful.",
+        title: "Pick Someone to Help",
+        body: "Choose a parent-approved person you already know — family, friend, or known neighbor. Never strangers alone.",
       },
       {
-        title: "Notice how it feels",
-        body: "Talk with a parent about how helping made you feel. That’s Glow Getter energy!",
+        title: "Do Your Give-Back Activity!",
+        body: "Show up, be kind, finish what you promised, and clean up. Track it in My Kindness Counter.",
       },
       {
-        title: "Balance earn + give",
-        body: "Try one paid task and one kindness task in the same week when you can.",
+        title: "Plan Your Next Kindness",
+        body: "Write one next idea and try a monthly Give-Back Day. Kindness practice — not a paid hustle.",
       },
     ],
   },
@@ -98,32 +99,29 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "games-ai",
     previewCount: 2,
     summary:
-      "Invent a mini maze, quiz, or story-game using kid-friendly AI tools — always with a parent. Join the Kids Corner GYSH Team for the full step-by-step guide.",
-    parentTip: "Stay in the room. Never share real names, school, address, or photos with tools or strangers.",
+      "Invent and build a tiny maze, quiz, choice-based story, or other simple game with kid-friendly AI help. A parent or guardian stays involved with account setup, privacy, publishing, purchases, messages, and any money-related activity.",
+    parentTip:
+      "Stay nearby. Parent handles accounts, privacy, publishing, messages, and money. Never enter a child’s full name, home address, school, phone, private photos, passwords, or exact location into an AI tool.",
     steps: [
       {
-        title: "Brainstorm one tiny idea",
-        body: "Pick something small: a 3-question quiz, a maze on paper, or a choose-your-adventure with 3 choices.",
+        title: "Pick one tiny game idea",
+        body: "Finish: “My game is a ________.” Keep it small — one goal, simple rules, playable in about 1–5 minutes.",
       },
       {
-        title: "Ask a parent to open a safe tool",
-        body: "Only use parent-approved apps. Parent types prompts; you dream up characters and rules.",
+        title: "Draw it on paper first",
+        body: "START → PLAYER DOES SOMETHING → GAME RESPONDS → WIN/TRY AGAIN → END. Maze, quiz, story, or catch game.",
       },
       {
-        title: "Create a character and a goal",
-        body: "Name a hero (made-up!), decide what they want, and draw or print one picture together.",
+        title: "Ask AI to help with the plan",
+        body: "Parent nearby. Safe topic only. No private information. The child chooses what goes into the game.",
       },
       {
-        title: "Build 3 levels or questions",
-        body: "Keep it short. Easy → medium → fun surprise. Write them on paper or in a shared doc.",
+        title: "Build a playable version",
+        body: "Start screen, one action, a win/end screen. Make it playable before making it fancy.",
       },
       {
-        title: "Playtest with family",
-        body: "Try it at family game night or a school fair project. Track any tips in the Piggy Bank.",
-      },
-      {
-        title: "Give back with your game",
-        body: "Offer one free play session for a friend or sibling — kindness counts as a team win.",
+        title: "Test, playtest, and share safely",
+        body: "Play 3 times yourself, then 1–3 trusted testers. Parent decides if it stays private or is shared.",
       },
     ],
   },
@@ -135,28 +133,52 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "reinvest",
     previewCount: 2,
     summary:
-      "When you earn coins, spend a little on fun, save a little, and put a little back into your hustle supplies — kid-friendly “investing.”",
-    parentTip: "Use three jars or envelopes: Spend, Save, Hustle. Keep amounts tiny and visual.",
+      "When you earn, split what's left into Fun, Save, and Grow jars — enjoy some now, save some, and put some back into hustle supplies. No competitors or business name needed.",
+    parentTip: "Use three jars or envelopes: Fun, Save, Grow. Keep amounts tiny and visual. Split the same day they earn.",
     steps: [
       {
-        title: "Make three jars",
-        body: "Label them Spend, Save, and Hustle. Decorate them — crafts count!",
+        title: "Track What You Earn",
+        body: "Write down every amount. Date, what you did, money earned. Don't guess.",
       },
       {
-        title: "Split your next earnings",
-        body: "Example: of $9, put $3 in each jar (or whatever split your parent likes).",
+        title: "Track What It Cost",
+        body: "Did you buy anything to do the job? Money collected is not automatically money you can split.",
       },
       {
-        title: "Plan one Hustle jar buy",
-        body: "Use Hustle jar money for stickers, clay, lemonade cups, or printer paper — things that help you earn again.",
+        title: "Find Money Left to Split",
+        body: "Money earned minus costs. That leftover is what goes into Fun, Save, and Grow.",
       },
       {
-        title: "Keep Save jar for your big goal",
-        body: "Don’t dip into Save for toys. That’s your Piggy Bank mission.",
+        title: "Make Three Jars: Fun, Save, Grow",
+        body: "Fun = enjoy now. Save = Piggy Bank goal. Grow = hustle supplies. Decorate them — crafts count!",
       },
       {
-        title: "Tell your story",
-        body: "Share with family how putting money back helped your next craft or walk day.",
+        title: "Pick Your Split",
+        body: "With a parent, choose percentages that add to 100%. Starter: 40% Save / 30% Fun / 30% Grow.",
+      },
+      {
+        title: "Split Your Money",
+        body: "Divide the leftover into the three jars the same day. Don't wait until the coins mix together.",
+      },
+      {
+        title: "Make a Grow Wish List",
+        body: "Grow money is only for things that help you earn again — cups, stickers, clay, paper (parent-approved).",
+      },
+      {
+        title: "Think Before You Buy",
+        body: "Ask: Do I need it? Will I use it? Could it help me earn again? If it's just for fun, that's the Fun jar.",
+      },
+      {
+        title: "Put Some Earnings Back",
+        body: "When the Grow jar has enough, buy one wish-list item with a parent. Write why it helps.",
+      },
+      {
+        title: "Check If It Helped",
+        body: "Did the buy help you make more or make the next job easier? Celebrate the habit.",
+      },
+      {
+        title: "Do It Again Next Time You Earn",
+        body: "Next payday or sale, split again. Change the percentages only if a parent agrees they still add to 100%.",
       },
     ],
   },
@@ -168,7 +190,7 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "give-back",
     previewCount: 2,
     summary:
-      "Make a tiny sticker or charm set, price it with a parent, and add a Glow Getter kindness extra inspired by Kevina Starr.",
+      "Make a tiny set of original stickers, charms, kindness cards, or another simple craft; price it with a parent; sell only through parent-approved channels; and include a Kevina-inspired kindness extra. Tagline: Make Something Bright. Sell It Safely. Share a Little Kindness.",
     parentTip: "Supervise oven clay or shipping. Sell only to family, school fairs, or people you know.",
     steps: [
       {
@@ -203,28 +225,52 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "savings",
     previewCount: 2,
     summary:
-      "Treat savings like a mini business plan: clear target, timeline, and weekly job count — tracked in the Piggy Bank.",
+      "Name what you’re saving for, the cost, how you’ll earn, and your weekly savings goal — tracked in the Piggy Bank. No competitors or business name needed.",
     parentTip: "Agree on realistic rates and school-first schedules together.",
     steps: [
       {
-        title: "Define the goal + deadline",
-        body: "Example: $150 tablet fund in 3 months. Write it where you’ll see it.",
+        title: "Pick What You’re Saving For",
+        body: "Choose something meaningful. Write why you want it. You do not need a business name.",
       },
       {
-        title: "Break into weekly targets",
-        body: "Divide total by weeks. That’s your minimum earn-per-week (adjust for exams).",
+        title: "Find or Estimate the Total Cost",
+        body: "Look up a real price or a close estimate with a parent/guardian. Do not use credit or borrow money.",
       },
       {
-        title: "Pick 1–2 teen hustles",
-        body: "Choose from Teens Ideas that fit your time — don’t overcommit.",
+        title: "Pick a Target Date or Number of Weeks",
+        body: "How many weeks until you hope to reach it? School and rest come first. Goals may take longer than expected.",
       },
       {
-        title: "Log every payout",
-        body: "Use the Piggy Bank math after each job. Screenshot or note progress weekly.",
+        title: "Calculate Your Weekly Savings Goal",
+        body: "Savings Goal Cost ÷ Number of Weeks = Weekly Savings Goal. Put it in the Piggy Bank tracker.",
       },
       {
-        title: "Review with a guardian",
-        body: "Monthly check-in: what’s working, what to pause, what to reinvest.",
+        title: "List Safe Ways You Could Earn Money",
+        body: "With parent/guardian approval only. Families decide which chores are paid.",
+      },
+      {
+        title: "Pick One or Two Earning Ideas to Try",
+        body: "Start small. Weekly savings goal ÷ expected earnings per task ≈ tasks needed per week.",
+      },
+      {
+        title: "Decide How Much of Each Earning You Will Save",
+        body: "You do not have to save every dollar. Optional habit: save some, spend some, share/give some.",
+      },
+      {
+        title: "Add Every Savings Amount to the Piggy Bank",
+        body: "Update goal cost, total saved, remaining, weeks, percent complete, and next weekly goal.",
+      },
+      {
+        title: "Check Your Progress at the End of Each Week",
+        body: "ON TRACK if you met (or almost met) the weekly goal. NEEDS ADJUSTMENT if you are far behind — without shaming yourself.",
+      },
+      {
+        title: "Adjust the Goal or Timeline if Needed",
+        body: "Extend the timeline, pick another safe earning idea, or change the goal with a parent/guardian. Never overwork.",
+      },
+      {
+        title: "Celebrate the Milestone and Choose Your Next Goal",
+        body: "At 100%, celebrate. Then decide whether to buy the planned item, keep saving, or choose a new goal.",
       },
     ],
   },
@@ -236,28 +282,29 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "give-back",
     previewCount: 2,
     summary:
-      "Turn a skill into community value — one free teaching session builds reputation and kindness muscle.",
-    parentTip: "Host in public or supervised spaces; no private home visits with strangers.",
+      "Turn something you already know into one simple FREE teaching session for someone else. Build confidence, communication skills, reputation, and the experience of helping others.",
+    parentTip:
+      "Approve the student, location, transportation, communications, and online arrangements. Host in public or supervised spaces; no private home visits with strangers.",
     steps: [
       {
-        title: "Choose a teachable skill",
-        body: "Reading help, basic tech, study flashcards, or a simple creative workshop.",
+        title: "Pick Something You Know",
+        body: "Write 3 things you're good at, then choose ONE that is easy and safe to teach a beginner.",
       },
       {
-        title: "Offer one free 20-minute session",
-        body: "Family, trusted neighbor, or school club — parent helps with intros.",
+        title: "Pick One Simple Lesson",
+        body: "Finish: “By the end, the person will know how to _____.” Keep it 30–60 minutes.",
       },
       {
-        title: "Prepare a tiny outline",
-        body: "3 bullets: warm-up, practice, win. Keep it structured like a CEO workshop.",
+        title: "Choose Who You Want to Help",
+        body: "Family, friend, neighbor, senior, or parent-approved group — get guardian approval first.",
       },
       {
-        title: "Ask for feedback",
-        body: "What helped? What was confusing? Use notes to improve paid sessions later.",
+        title: "Make Your Lesson Plan",
+        body: "Welcome → Show → Do it together → They try → Wrap-up. Use Google Docs.",
       },
       {
-        title: "Schedule a balance week",
-        body: "Aim for at least one paid job and one give-back action per month when you can.",
+        title: "Teach and ask for feedback",
+        body: "Let the learner TRY. Ask what was easy/confusing. Never post names/photos without permission.",
       },
     ],
   },
@@ -270,32 +317,29 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "games-ai",
     previewCount: 2,
     summary:
-      "Use AI for concepts, art ideas, and dialogue, then build a small web/mobile prototype with guardian-approved tools. Full guide for Teens Side Hustle Team members.",
-    parentTip: "Approve accounts and publishing. No personal info or payment cards in AI chats.",
+      "Use AI to help brainstorm a game concept, characters, art direction, dialogue, rules, levels, and testing ideas, then use guardian-approved tools to build a small playable web or mobile prototype.",
+    parentTip:
+      "Approve accounts, tools, and any publishing. No personal info, payment cards, passwords, or API keys in AI chats. Original/allowed assets only.",
     steps: [
       {
-        title: "Scope one tiny game",
-        body: "One-level platformer, quiz, or visual novel scene. Write a one-paragraph pitch.",
+        title: "Create the One-Sentence Game Idea",
+        body: "PLAYER + ACTION + GOAL + OBSTACLE. Pick one tiny idea — not Fortnite or Roblox.",
       },
       {
-        title: "Generate concepts safely",
-        body: "With guardian OK, use AI for mood boards, sprite ideas, and dialogue drafts — then edit heavily.",
+        title: "Write the Mini Game Design Document",
+        body: "One page: controls, win/lose, score, target device, and art/sound style.",
       },
       {
-        title: "Prototype with a coding helper",
-        body: "Tools like Cursor or Antigravity can help — keep the build tiny and document what you changed.",
+        title: "Build the Core Gameplay Loop",
+        body: "With guardian-approved tools, make the main action work, then add score and feedback.",
       },
       {
-        title: "Playtest + iterate",
-        body: "Friends or classmates try it. Fix one bug and one fun upgrade.",
+        title: "Test on the Target Device",
+        body: "Watch 2–3 trusted testers. Fix bugs before adding more features.",
       },
       {
-        title: "Share with approval",
-        body: "School project, portfolio piece, or free itch.io demo only after a guardian says yes.",
-      },
-      {
-        title: "Reinvest learning time",
-        body: "Put a slice of any tips toward a course, asset pack, or better tools — CEO reinvestment.",
+        title: "Package the Prototype & Create a Demo",
+        body: "Save a playable demo and a short “how I built it” note — guardian approval before sharing.",
       },
     ],
   },
@@ -307,28 +351,28 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "reinvest",
     previewCount: 2,
     summary:
-      "Don’t spend every dollar you earn. Split income into save, enjoy, and grow-the-business buckets.",
+      "Don’t spend every dollar you earn. Split income into Save, Enjoy, and Grow buckets — teen-friendly reinvesting. No competitors or business name needed.",
     parentTip: "Agree on percentages together (example 50/30/20) and review monthly.",
     steps: [
       {
         title: "Open three buckets",
-        body: "Save (goal), Enjoy (fun), Grow (business). Bank account sub-pots or a simple spreadsheet work.",
+        body: "Save (goal), Enjoy (fun), Grow (supplies / skills that earn again). Bank account sub-pots, envelopes, or a simple spreadsheet work. No business name needed; this is your money-habit system.",
       },
       {
         title: "Pick a split rule",
-        body: "Start simple: 50% Save / 30% Enjoy / 20% Grow — adjust with a guardian.",
+        body: "Start simple: 50% Save / 30% Enjoy / 20% Grow — adjust with a guardian. Write the rule where you’ll see it every payout.",
       },
       {
         title: "List Grow spends that earn again",
-        body: "Supplies, printing, a domain for a school project, ads for a fair booth, or a skill workshop.",
+        body: "Supplies, printing, a domain for a school project, ads for a fair booth, or a skill workshop. Only Grow money buys these — and only after Save is funded.",
       },
       {
         title: "Cap Enjoy so Save stays sacred",
-        body: "Enjoy is allowed — guilt-free — because Save and Grow are already funded.",
+        body: "Enjoy is allowed — guilt-free — because Save and Grow are already funded first. Don’t raid Save for impulse buys.",
       },
       {
         title: "Track ROI in plain words",
-        body: "“I spent $12 on stickers and earned $40” is great CEO journaling.",
+        body: "“I spent $12 on stickers and earned $40” is great CEO journaling. Review with a guardian monthly and tweak the split if school comes first.",
       },
     ],
   },
@@ -340,7 +384,7 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "games-ai",
     previewCount: 2,
     summary:
-      "Practice wholesome content for school, portfolio, or family brand — privacy-first, no stranger DMs.",
+      "Practice wholesome content for school, a portfolio, or a family brand — privacy-first, parent-approved, and without stranger direct messages. Tagline: Create Something Helpful. Share It Safely.",
     parentTip: "Private accounts preferred; approve every public post.",
     steps: [
       {
@@ -366,6 +410,57 @@ export const KIDS_GUIDES: KidsGuide[] = [
     ],
   },
 ];
+
+const PARENT_THUMBS_UP_TITLE_RE =
+  /get parent thumbs up on the side hustle|set safety rules with a parent|consult parent about (your )?idea/i;
+
+/** Every kids/teen guide starts with parent thumbs-up. */
+export function ensureKidsGuideParentThumbsUp(guide: KidsGuide): KidsGuide {
+  const rest = guide.steps.filter((s) => !PARENT_THUMBS_UP_TITLE_RE.test(s.title));
+  return {
+    ...guide,
+    steps: [
+      { title: PARENT_THUMBS_UP_STEP.title, body: PARENT_THUMBS_UP_STEP.desc },
+      ...rest,
+    ],
+  };
+}
+
+export const KIDS_GUIDES: KidsGuide[] = KIDS_GUIDES_RAW.map(ensureKidsGuideParentThumbsUp);
+
+export function kidsGuideById(guideId: string): KidsGuide | undefined {
+  const id = String(guideId || "").trim();
+  if (!id) return undefined;
+  return KIDS_GUIDES.find((g) => g.id === id);
+}
+
+/** Map a Kids/Teens library guide into the Launch Guides detail shape. */
+export function kidsGuideToLaunchGuideData(guide: KidsGuide): {
+  id: string;
+  name: string;
+  timeframe: string;
+  estEarnings: string;
+  bestFor: string;
+  steps: { title: string; desc: string }[];
+  proTip: string;
+  pitfall: string;
+} {
+  return {
+    id: guide.id,
+    name: guide.title,
+    timeframe:
+      guide.id === "junior-savings-ceo"
+        ? "2 weeks"
+        : guide.audience === "junior"
+          ? "1 - 2 weeks"
+          : "A few days",
+    estEarnings: guide.free ? "Free guide" : "Member guide",
+    bestFor: guide.summary,
+    steps: guide.steps.map((s) => ({ title: s.title, desc: s.body })),
+    proTip: guide.parentTip,
+    pitfall: "Skip parent thumbs-up or rush into strangers / public posts without approval.",
+  };
+}
 
 export function guidesForAudience(audience: KidsAudience): KidsGuide[] {
   return KIDS_GUIDES.filter((g) => g.audience === audience);

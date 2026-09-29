@@ -15,10 +15,10 @@ import {
   PDF_CONTENT_TOP,
   PDF_CONTENT_BOTTOM,
   PDF_BRAND_COLORS,
-  loadPdfLogoDataUrl,
   drawPdfPageChrome,
   applyPdfPageBranding,
 } from "./pdf-branding";
+import { loadPdfLogoDataUrl } from "./pdf-logo";
 
 export { PARTNERSHIP_MONEY_MODEL_META } from "./partnership-money-model";
 

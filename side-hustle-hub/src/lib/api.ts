@@ -3,7 +3,18 @@
  * No localStorage fallback: failures surface clearly to the UI.
  */
 
-import { isRetryableD1ApiError } from "./d1-errors";
+import { actAsUserId, ACT_AS_USER_HEADER, readActAsTarget } from "./admin-act-as";
+import { isRetryableD1ApiError, shouldRetryD1ApiCall, d1ClientRetryLimit } from "./d1-errors";
+import { apiGetCoalesceKey, coalesceInFlight } from "./in-flight";
+import { readSessionToken, writeSessionToken } from "./session-storage";
+
+function currentActAsUserId(): string | null {
+  try {
+    return actAsUserId(readActAsTarget());
+  } catch {
+    return null;
+  }
+}
 
 export class ApiError extends Error {
   status: number;
@@ -14,36 +25,36 @@ export class ApiError extends Error {
   }
 }
 
-const SESSION_KEY = "gysh_session_token";
-
 export function getSessionToken(): string | null {
-  try {
-    return sessionStorage.getItem(SESSION_KEY);
-  } catch {
-    return null;
-  }
+  return readSessionToken();
 }
 
 export function setSessionToken(token: string | null): void {
-  try {
-    if (token) sessionStorage.setItem(SESSION_KEY, token);
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    /* ignore */
-  }
+  writeSessionToken(token);
 }
 
 type ApiOptions = {
   method?: string;
   body?: unknown;
   auth?: boolean;
+  /** One-request act-as override (does not change the Profile Switcher). */
+  actAsUserId?: string | null;
   /** Override default abort (e.g. large attachment downloads). */
   timeoutMs?: number;
-  /** Internal: already retried a transient D1 timeout. */
-  _d1Retried?: boolean;
+  /** Internal: count of transient D1 retries already attempted. */
+  _d1Retries?: number;
   /** Internal: already retried a local Vite→:8788 proxy blip. */
   _proxyRetried?: boolean;
 };
+
+function resolveActAsUserId(opts: ApiOptions): string | null {
+  if (opts.auth === false) return null;
+  if (Object.prototype.hasOwnProperty.call(opts, "actAsUserId")) {
+    const id = String(opts.actAsUserId || "").trim();
+    return id || null;
+  }
+  return currentActAsUserId();
+}
 
 /** Local Pages Functions + D1 can need >20s on first parallel load after restart. */
 const DEFAULT_API_TIMEOUT_MS = 45_000;
@@ -58,10 +69,26 @@ async function parseError(res: Response): Promise<string> {
   return `Request failed (${res.status})`;
 }
 
+const getInflight = new Map<string, Promise<unknown>>();
+
 /**
- * Call /api/*. credentials:include for httpOnly cookie; Bearer from sessionStorage as backup.
+ * Call /api/*. credentials:include for httpOnly cookie; Bearer from session storage as backup.
+ * Concurrent identical GETs share one request (Admin + Testing + sprint bars all load tasks).
  */
 export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
+  const method = (opts.method || (opts.body !== undefined ? "POST" : "GET")).toUpperCase();
+  const asUser = resolveActAsUserId(opts);
+  const key =
+    !(opts._d1Retries ?? 0) && !opts._proxyRetried
+      ? apiGetCoalesceKey(path, method, opts.auth === false ? null : getSessionToken(), asUser)
+      : null;
+  if (key) {
+    return coalesceInFlight(getInflight, key, () => requestApi<T>(path, opts));
+  }
+  return requestApi<T>(path, opts);
+}
+
+async function requestApi<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     accept: "application/json",
   };
@@ -71,6 +98,8 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   if (auth) {
     const token = getSessionToken();
     if (token) headers.authorization = `Bearer ${token}`;
+    const asUser = resolveActAsUserId(opts);
+    if (asUser) headers[ACT_AS_USER_HEADER] = asUser;
   }
 
   let res: Response;
@@ -111,9 +140,9 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
       /Local API worker not running|:8788/i.test(message)
     ) {
       await new Promise((r) => setTimeout(r, 1_500));
-      return api<T>(path, { ...opts, _proxyRetried: true });
+      return requestApi<T>(path, { ...opts, _proxyRetried: true });
     }
-    // Stale Bearer in sessionStorage can override a still-valid cookie — clear and retry once.
+    // Stale Bearer can override a still-valid cookie — clear and retry once.
     if (
       auth &&
       res.status === 401 &&
@@ -121,16 +150,18 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
       getSessionToken()
     ) {
       setSessionToken(null);
-      return api<T>(path, { ...opts, auth: true });
+      return requestApi<T>(path, { ...opts, auth: true });
     }
     const method = (opts.method || (opts.body !== undefined ? "POST" : "GET")).toUpperCase();
+    const d1Retries = opts._d1Retries ?? 0;
     if (
-      method === "GET" &&
+      shouldRetryD1ApiCall(method, path) &&
       res.status >= 500 &&
-      !opts._d1Retried &&
+      d1Retries < d1ClientRetryLimit(method, path) &&
       isRetryableD1ApiError(message)
     ) {
-      return api<T>(path, { ...opts, _d1Retried: true });
+      await new Promise((r) => setTimeout(r, 700 * (d1Retries + 1)));
+      return requestApi<T>(path, { ...opts, _d1Retries: d1Retries + 1 });
     }
     throw new ApiError(message, res.status);
   }
@@ -138,6 +169,6 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
-export async function apiHealth(): Promise<{ ok: boolean; db: string; users: number }> {
+export async function apiHealth(): Promise<{ ok: boolean; db: string; email?: string }> {
   return api("health", { auth: false });
 }

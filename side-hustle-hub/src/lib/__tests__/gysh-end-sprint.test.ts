@@ -54,6 +54,33 @@ describe("applyEndSprintActions", () => {
     expect(noteIndicatesRollover(result.testBatch[0]?.note)).toBe(true);
   });
 
+  it("includes incomplete D1 test rows even when missing from the catalog list", () => {
+    const result = applyEndSprintActions({
+      sprint: 3,
+      actions: {},
+      tasks: [],
+      tests: [{ id: "IN-CATALOG" }],
+      testStatuses: {
+        "IN-CATALOG": "not_run",
+        "ORPHAN-D1": "fail",
+      },
+      testSprints: {
+        "IN-CATALOG": 3,
+        "ORPHAN-D1": 3,
+      },
+      testNotes: {},
+      testAssignees: {},
+      testDueDates: {},
+      actorLabel: "Evelyn",
+    });
+
+    expect(result.testBatch.map((t) => t.caseId).sort()).toEqual([
+      "IN-CATALOG",
+      "ORPHAN-D1",
+    ]);
+    expect(result.testBatch.every((t) => t.sprint === 4)).toBe(true);
+  });
+
   it("completes selected items instead of rolling them", () => {
     const result = applyEndSprintActions({
       sprint: 1,

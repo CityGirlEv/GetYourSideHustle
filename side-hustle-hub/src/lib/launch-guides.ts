@@ -6,6 +6,15 @@
  *
  * `peek` mirrors the "bestFor" one-liner from StepByStepGuides (adult/general).
  */
+import { adultGuideMinTier, guideTierSortRank } from "./guide-access";
+import {
+  PRO_SPREAD_HUSTLE_IDS,
+  STARTER_SPREAD_HUSTLE_IDS,
+  freeWizardLaunchGuideRefs,
+  hustleById,
+  hustleCardPeek,
+} from "./side-hustle-catalog";
+
 export type LaunchGuideRef = {
   id: string;
   name: string;
@@ -15,7 +24,21 @@ export type LaunchGuideRef = {
   free?: boolean;
 };
 
-export const LAUNCH_GUIDES: LaunchGuideRef[] = [
+/** Free Membership guides first, then Starter → Pro → Elite (name tie-break). */
+export function sortGuidesFreeFirst<T extends { id: string; name?: string; title?: string }>(
+  guides: T[],
+  minTierOf: (id: string) => ReturnType<typeof adultGuideMinTier> = adultGuideMinTier,
+): T[] {
+  return [...guides].sort((a, b) => {
+    const tr = guideTierSortRank(minTierOf(a.id)) - guideTierSortRank(minTierOf(b.id));
+    if (tr !== 0) return tr;
+    const nameA = a.name ?? a.title ?? a.id;
+    const nameB = b.name ?? b.title ?? b.id;
+    return nameA.localeCompare(nameB);
+  });
+}
+
+const CORE_LAUNCH_GUIDES: LaunchGuideRef[] = [
   {
     id: "airbnb",
     name: "Airbnb Hosting",
@@ -34,7 +57,7 @@ export const LAUNCH_GUIDES: LaunchGuideRef[] = [
   {
     id: "digital-products",
     name: "Digital Products",
-    peek: "Creators who want to sell ebooks, printables, templates, and courses — separate from affiliate links.",
+    peek: "Creators who want to sell ebooks, printables, planners, templates, and mini-courses — separate from affiliate links.",
   },
   {
     id: "affiliate",
@@ -83,20 +106,51 @@ export const LAUNCH_GUIDES: LaunchGuideRef[] = [
   },
   {
     id: "ai-timing",
-    name: "AI Timing Scout",
-    peek: "Research-minded Side Hustlers who want to boost gig earnings or sell hotspot playbooks.",
+    name: "AI Rideshare Timing Scout",
+    peek: "Licensed drivers and researchers who study local ZIP, event, and commute windows — then test or sell dated playbooks.",
   },
   {
     id: "ai-agents",
     name: "AI Agents for Side Hustlers",
-    peek: "Builders who can productize agent setups (lead find, scheduling, research) for other Side Hustlers.",
+    peek: "Adults, seniors/retirees, and experienced teens with adult-managed accounts who can sell one narrow supervised workflow.",
   },
   {
     id: "book-publishing",
     name: "Book Publishing",
-    peek: "A Digital path for writers and storytellers (Tina's lane) — manuscripts to royalty income; kids can publish too.",
+    peek: "Write, edit, package, and publish print, ebook, and optional audio with KDP/IngramSpark — then market and measure profit.",
   },
 ];
+
+const existingIds = new Set(CORE_LAUNCH_GUIDES.map((g) => g.id));
+
+function catalogExtras(ids: readonly string[]): LaunchGuideRef[] {
+  return ids
+    .filter((id) => !existingIds.has(id) && hustleById(id))
+    .map((id) => {
+      const h = hustleById(id)!;
+      return {
+        id: h.id,
+        name: h.name,
+        peek: hustleCardPeek(h),
+      };
+    });
+}
+
+const freeWizardExtras = freeWizardLaunchGuideRefs().filter((ref) => !existingIds.has(ref.id));
+for (const ref of freeWizardExtras) existingIds.add(ref.id);
+
+const starterExtras = catalogExtras(STARTER_SPREAD_HUSTLE_IDS);
+for (const ref of starterExtras) existingIds.add(ref.id);
+
+const proExtras = catalogExtras(PRO_SPREAD_HUSTLE_IDS);
+
+/** Core + Free + Starter/Pro spreads — Free Membership guides listed first. */
+export const LAUNCH_GUIDES: LaunchGuideRef[] = sortGuidesFreeFirst([
+  ...CORE_LAUNCH_GUIDES,
+  ...freeWizardExtras,
+  ...starterExtras,
+  ...proExtras,
+]);
 
 export function hasLaunchGuide(guideId: string): boolean {
   return LAUNCH_GUIDES.some((g) => g.id === guideId);
@@ -111,5 +165,5 @@ export function guideReviewDescription(name: string): string {
 }
 
 export function guideReviewNotes(guideId: string): string {
-  return `Open [Guides](/guides)\nguide-review:${guideId}`;
+  return `Open [Guide](/guides?hustle=${encodeURIComponent(guideId)})\nguide-review:${guideId}`;
 }

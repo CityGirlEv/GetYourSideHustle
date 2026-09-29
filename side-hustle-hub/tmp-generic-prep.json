@@ -1,0 +1,144 @@
+{
+  "genericPCount": 2,
+  "genericSCount": 15,
+  "usingKindFallbackCount": 16,
+  "usingKindFallback": [
+    "ai-agents",
+    "ai-timing",
+    "virtual-call-assistant",
+    "online-research-assistant",
+    "family-history-organizer",
+    "travel-research-assistant",
+    "website-tester",
+    "ai-prompt-helper",
+    "local-business-ai-setup",
+    "appointment-setter",
+    "lead-followup-assistant",
+    "ai-peers",
+    "custom-bookmark-creator",
+    "junior-savings-ceo",
+    "junior-games-ai",
+    "kids-games-ai"
+  ],
+  "genericP": [
+    {
+      "id": "neighborhood-helper",
+      "name": "Neighborhood Helper",
+      "pLabels": "Grocery carry-in | Porch tidy | Multi-task bundle",
+      "authoredP": true
+    },
+    {
+      "id": "junior-savings-ceo",
+      "name": "Savings Goals for Future CEOs",
+      "pLabels": "Chore payout toward goal | Small sale item (if any) | Weekly savings target",
+      "authoredP": false
+    }
+  ],
+  "genericS": [
+    {
+      "id": "ai-agents",
+      "name": "AI Agents for Side Hustlers",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "ai-timing",
+      "name": "AI Timing Scout",
+      "sTotal": "About $15–40 for car/phone comfort gear",
+      "sNames": "Phone mount | Car charger / cable | Hand / surface wipes | Insulated bag (if AI Timing Scout includes food)",
+      "authoredS": false
+    },
+    {
+      "id": "virtual-call-assistant",
+      "name": "Build a Virtual Call Assistant",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "online-research-assistant",
+      "name": "Online Research Assistant",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "family-history-organizer",
+      "name": "Family History Organizer",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "travel-research-assistant",
+      "name": "Travel Research Assistant",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "website-tester",
+      "name": "Website Tester",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "ai-prompt-helper",
+      "name": "AI Prompt Helper",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "local-business-ai-setup",
+      "name": "Local Business AI Setup Helper",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "appointment-setter",
+      "name": "Appointment Setter",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "lead-followup-assistant",
+      "name": "Lead Follow-Up Assistant",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "ai-peers",
+      "name": "AI-for-Peers Coffee Chat",
+      "sTotal": "About $5–25 for delivery / client-facing printables",
+      "sNames": "Client notes notebook | USB drive for file handoff (optional) | Printed checklist or one-pager | Folder or envelope for signed docs",
+      "authoredS": false
+    },
+    {
+      "id": "custom-bookmark-creator",
+      "name": "Custom Bookmark Creator",
+      "sTotal": "About $10–30 for first batch materials",
+      "sNames": "Cardstock / bookmark blanks | Ribbon or tassel cord | Laminating sheets (optional)",
+      "authoredS": false
+    },
+    {
+      "id": "junior-games-ai",
+      "name": "Build a Game with AI — From Idea to Prototype",
+      "sTotal": "About $10–40 for first batch materials",
+      "sNames": "Build a Game with AI — From Idea to Prototype starter materials | Bags / boxes / tags | Small display tray or stand",
+      "authoredS": false
+    },
+    {
+      "id": "kids-games-ai",
+      "name": "Make a Tiny Game with AI (Parent Nearby)",
+      "sTotal": "About $10–40 for first batch materials",
+      "sNames": "Make a Tiny Game with AI (Parent Nearby) starter materials | Bags / boxes / tags | Small display tray or stand",
+      "authoredS": false
+    }
+  ]
+}

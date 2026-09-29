@@ -11,8 +11,13 @@ import {
   Lightbulb,
   Handshake,
   Heart,
+  Lock,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import communityHero from "../assets/membership-hero.png";
+import { MembershipLockBadge } from "./MembershipLockBadge";
+import { canAccessCommunity, type TierId } from "../lib/membership";
 
 interface Comment {
   id: string;
@@ -27,7 +32,22 @@ interface Comment {
   likedByUser?: boolean;
 }
 
-export const CommunityHub: React.FC = () => {
+type CommunityHubProps = {
+  isLoggedIn?: boolean;
+  isAdmin?: boolean;
+  membershipTier?: TierId | null;
+  onLogin?: () => void;
+  onJoin?: () => void;
+};
+
+export const CommunityHub: React.FC<CommunityHubProps> = ({
+  isLoggedIn = false,
+  isAdmin = false,
+  membershipTier = null,
+  onLogin,
+  onJoin,
+}) => {
+  const unlocked = canAccessCommunity(membershipTier, { isAdmin });
   const [selectedTag, setSelectedTag] = useState<string>("all");
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostTag, setNewPostTag] = useState("airbnb");
@@ -201,6 +221,7 @@ export const CommunityHub: React.FC = () => {
                 Post a win, ask for help when you&apos;re stuck, or drop a tip that saved you time.
                 Filter by topic below and grow with the community.
               </p>
+              <MembershipLockBadge minTier="starter" unlocked={unlocked} data-testid="community-lock-badge" />
             </div>
             <ul className="community-hero-pillars">
               <li>
@@ -250,6 +271,28 @@ export const CommunityHub: React.FC = () => {
         </div>
       </section>
 
+      {!unlocked ? (
+        <section className="glass community-hub__lock" data-testid="community-lock">
+          <p>
+            <Lock size={16} aria-hidden /> The member feed is a Starter or higher membership perk.
+            {!isLoggedIn
+              ? " Sign in if you already subscribe, or join to unlock."
+              : " Upgrade to Starter or higher to post and read member threads."}
+          </p>
+          <div className="community-hub__lock-actions">
+            {!isLoggedIn && onLogin ? (
+              <button type="button" className="btn btn-outline" onClick={onLogin} data-testid="community-login">
+                <LogIn size={16} aria-hidden /> Log in
+              </button>
+            ) : null}
+            {onJoin ? (
+              <button type="button" className="btn btn-primary" onClick={onJoin} data-testid="community-join">
+                <UserPlus size={16} aria-hidden /> {isLoggedIn ? "See memberships" : "Join GYSH"}
+              </button>
+            ) : null}
+          </div>
+        </section>
+      ) : (
       <div className="community-body community-body--feed">
         <div className="community-feed-column">
           <div className="community-bubble-strip" aria-label="Community stats and mentors">
@@ -405,6 +448,7 @@ export const CommunityHub: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

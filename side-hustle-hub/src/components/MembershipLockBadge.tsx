@@ -46,7 +46,7 @@ type FeatureLockBadgeProps = {
   "data-testid"?: string;
 };
 
-/** Schedule Suite / P&L lock badge (Pro+). */
+/** Schedule Suite / P&L lock badge (Pro or higher). */
 export function MembershipFeatureLockBadge({
   feature,
   unlocked = false,

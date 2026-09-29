@@ -24,8 +24,11 @@ export type AppRouteView =
   | "privacy"
   | "beta_nda"
   | "beta_testing"
+  | "beta_credits"
+  | "beta_points"
   | "join"
-  | "membership_signup";
+  | "membership_signup"
+  | "shop";
 
 /** Canonical path for each main page (no trailing slash except home). */
 export const VIEW_PATH: Record<AppRouteView, string> = {
@@ -47,8 +50,11 @@ export const VIEW_PATH: Record<AppRouteView, string> = {
   privacy: "/privacy",
   beta_nda: "/beta-nda",
   beta_testing: "/beta-testing",
+  beta_credits: "/beta-credits",
+  beta_points: "/beta-points",
   join: "/join",
   membership_signup: "/membership",
+  shop: "/shop",
 };
 
 const PATH_ALIASES: Record<string, AppRouteView> = {
@@ -81,9 +87,14 @@ const PATH_ALIASES: Record<string, AppRouteView> = {
   "/beta-tester-nda": "beta_nda",
   "/beta-testing": "beta_testing",
   "/beta-tester": "beta_testing",
+  "/beta-credits": "beta_credits",
+  "/beta-tester-credits": "beta_credits",
+  "/beta-points": "beta_points",
+  "/beta-tester-points": "beta_points",
   "/join": "join",
   "/membership": "membership_signup",
   "/membership-signup": "membership_signup",
+  "/shop": "shop",
 };
 
 export type GuideManualSlug = "adult" | "kids" | "teens" | "seniors" | "master";
@@ -124,6 +135,15 @@ export function parseAppRoute(pathname: string = typeof window !== "undefined" ?
   return { view: "dashboard", guidesManualId: null };
 }
 
+/**
+ * Member-only chrome. Guests must never see these pages together with the Log in button.
+ * Guides library is public to browse; individual guides still require Free+ registration to unlock.
+ * Admin Studio has its own staff gate.
+ */
+export function viewRequiresMemberLogin(view: AppRouteView | string): boolean {
+  return view === "user_portal";
+}
+
 export function pathForView(
   view: AppRouteView,
   opts?: { guidesManualId?: GuideManualSlug | string | null },
@@ -154,7 +174,7 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     dashboard: "Get Your Side Hustle",
     quiz: "GYSH Match Wizard",
     calculators: "GYSH Profit Estimator",
-    guides: "GYSH Guides",
+    guides: "Side Hustle Library",
     checklist: "GYSH Side Hustle Guide",
     community: "GYSH Community",
     newsletter: "GYSH Newsletter",
@@ -169,11 +189,34 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     privacy: "Privacy Policy",
     beta_nda: "Beta Tester NDA",
     beta_testing: "Beta Tester Dashboard",
+    beta_credits: "Beta Tester Credit Guide",
+    beta_points: "Beta Tester Points",
     join: "Join GYSH",
     membership_signup: "Membership Sign-up",
+    shop: "GYSH Shop",
   };
   const label = labels[view] ?? "Get Your Side Hustle";
   return view === "dashboard" ? `${label} — Learn, Calculate, and Connect` : `${label} | Get Your Side Hustle`;
+}
+
+/** Dashboard tab hashes stay on /my-dashboard only — leaving that page drops them. */
+export function hashForSyncedView(view: AppRouteView, currentHash: string): string {
+  if (view !== "user_portal") return "";
+  return currentHash || "";
+}
+
+/** Workshop card/register query is listing-page-only — never carry it to Home or other views. */
+export function stripWorkshopDeepLinkParams(params: URLSearchParams): void {
+  params.delete("register");
+  params.delete("workshop");
+}
+
+/** Community → Workshops always opens the catalog, not a leftover pre-register form. */
+export function workshopsListingPath(search: string = ""): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  stripWorkshopDeepLinkParams(params);
+  const qs = params.toString();
+  return qs ? `/workshops?${qs}` : "/workshops";
 }
 
 /**
@@ -182,7 +225,16 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
  */
 export function syncUrlToView(
   view: AppRouteView,
-  opts?: { guidesManualId?: GuideManualSlug | string | null; replace?: boolean },
+  opts?: {
+    guidesManualId?: GuideManualSlug | string | null;
+    /** Open a specific Launch Guide on /guides via ?hustle= */
+    guidesHustleId?: string | null;
+    /** Filter Side Hustle Library by age via ?age= */
+    guidesAge?: "kids" | "junior" | "adult" | "senior" | null;
+    /** Community → Workshops: drop ?register= / ?workshop= so the catalog shows. */
+    workshopListing?: boolean;
+    replace?: boolean;
+  },
 ): void {
   if (typeof window === "undefined") return;
   const desiredPath = pathForView(view, opts);
@@ -194,8 +246,22 @@ export function syncUrlToView(
     params.delete("tier");
     // keep audience if present for join page consumers
   }
+  if (view === "guides" && !opts?.guidesManualId) {
+    const hustle = String(opts?.guidesHustleId || "").trim();
+    if (hustle) params.set("hustle", hustle);
+    else params.delete("hustle");
+    const age = opts?.guidesAge;
+    if (age) params.set("age", age);
+    else params.delete("age");
+  } else {
+    params.delete("hustle");
+    params.delete("age");
+  }
+  if (view !== "workshops" || opts?.workshopListing) {
+    stripWorkshopDeepLinkParams(params);
+  }
   const qs = params.toString();
-  const hash = window.location.hash || "";
+  const hash = hashForSyncedView(view, window.location.hash || "");
   const nextUrl = `${desiredPath}${qs ? `?${qs}` : ""}${hash}`;
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   if (current === nextUrl) return;

@@ -203,7 +203,9 @@ const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export const SPRINT_ZERO_START = new Date(2026, 6, 14);
-export const DEFAULT_SPRINT_COUNT = 8;
+/** Sprint 0 through Sprint 10 (11 windows). */
+export const DEFAULT_SPRINT_COUNT = 11;
+export const LAST_SPRINT_INDEX = DEFAULT_SPRINT_COUNT - 1;
 
 /**
  * Weeks of no sprint activity after Sprint 2 (Soft Launch) ended Mon Aug 3, 2026.
@@ -274,8 +276,23 @@ export const SPRINT_THEMES: SprintTheme[] = [
   },
   {
     index: 7,
-    goal: "Buffer",
-    theme: "Deferred items, catch-up, Planning pull for next horizon",
+    goal: "Catch-up & polish",
+    theme: "Deferred items, catch-up QA, and planning pull before paid conversion",
+  },
+  {
+    index: 8,
+    goal: "Workshops + paid conversion",
+    theme: "Public workshops live, waitlists converting, membership upgrade push",
+  },
+  {
+    index: 9,
+    goal: "Community & retention",
+    theme: "Invite-a-friend, certificates, returning members, community cadence",
+  },
+  {
+    index: 10,
+    goal: "Next horizon",
+    theme: "Holiday / Q4 scale, retro of S0–S10, and the next planning pull",
   },
 ];
 
@@ -288,7 +305,7 @@ export type RolloutScheduleRow = {
   focus: string;
 };
 
-/** Soft launch + GMSH band schedule (Sprint 0–7) with live date windows. */
+/** Soft launch + GMSH band schedule (Sprint 0–10) with live date windows. */
 export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutScheduleRow[] {
   const focusBySprint: Record<number, string> = {
     0: "Infra & accounts — foundations only",
@@ -298,7 +315,10 @@ export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutSched
     4: "Kids GMSH + IG/TikTok + first Meta ads",
     5: "Teens/Adult GMSH + marketing systems",
     6: "Senior Get My Side Hustle",
-    7: "Buffer / deferred pull",
+    7: "Catch-up, deferred pull, QA polish",
+    8: "Workshops live + paid membership conversion",
+    9: "Community, invite-a-friend, certificates / retention",
+    10: "Next-horizon planning + holiday / Q4 scale",
   };
   return SPRINT_THEMES.map((t) => {
     const sw = getSprintWindow(t.index, ref);
@@ -894,6 +914,41 @@ export function buildDefaultPlanItems(ref: Date = new Date()): PlanItem[] {
       kind: "rollout",
       notes: "Featured mentors from Training Circle graduates · Sprint 4",
     }, ref),
+    planItemOnSprintDay(6, 1, {
+      id: "s6-senior-gmsh",
+      title: "Senior Get My Side Hustle sign-off",
+      owner: "Both",
+      kind: "launch",
+      notes: "Senior matrix + Senior Side Hustles polish · Sprint 6",
+    }, ref),
+    planItemOnSprintDay(7, 1, {
+      id: "s7-catchup",
+      title: "Catch-up QA + deferred pull",
+      owner: "Both",
+      kind: "sprint",
+      notes: "Clear rolled-over work before paid conversion · Sprint 7",
+    }, ref),
+    planItemOnSprintDay(8, 1, {
+      id: "s8-workshops-live",
+      title: "Workshops live + membership conversion",
+      owner: "Both",
+      kind: "launch",
+      notes: "Public workshop dates + upgrade CTAs · Sprint 8",
+    }, ref),
+    planItemOnSprintDay(9, 1, {
+      id: "s9-community-retention",
+      title: "Community cadence + retention loops",
+      owner: "Both",
+      kind: "content",
+      notes: "Invite-a-friend, certificates, returning members · Sprint 9",
+    }, ref),
+    planItemOnSprintDay(10, 1, {
+      id: "s10-next-horizon",
+      title: "Next-horizon planning (S0–S10 retro)",
+      owner: "Both",
+      kind: "sprint",
+      notes: "Holiday / Q4 scale and the next planning pull · Sprint 10",
+    }, ref),
   ];
 
   return items;
@@ -903,7 +958,7 @@ export function buildDefaultPlanItems(ref: Date = new Date()): PlanItem[] {
 export function weeklySyncForSprint(sprint: SprintWindow): ContentCalendarItem {
   return {
     id: `meet-sprint-${sprint.index}`,
-    title: "T + E weekly sync",
+    title: "Tina & Evelyn weekly sync",
     date: toISODate(sprint.start),
     dateLabel: `${WEEKDAY_SHORT[sprint.start.getDay()]} ${formatDisplayDate(sprint.start)} · 10:00 AM`,
     owner: "Both",

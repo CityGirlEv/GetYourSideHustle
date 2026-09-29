@@ -117,6 +117,7 @@ export function drawLeadMagnetPageHeader(
   pageW: number,
   margin: number,
   logoDataUrl?: string | null,
+  isCoverPage?: boolean,
 ): void {
   const headerTop = PAGE_TOP_MARGIN;
   const headerBottom = headerTop + HEADER_HEIGHT;
@@ -137,10 +138,11 @@ export function drawLeadMagnetPageHeader(
     { align: "right" },
   );
 
-  const logoW = 180;
-  const logoH = 58;
+  const isCover = isCoverPage ?? (doc.getNumberOfPages() <= 1);
+  const logoW = isCover ? 160 : 110;
+  const logoH = isCover ? 52 : 35;
   const logoX = margin;
-  const logoY = headerTop + 8;
+  const logoY = isCover ? headerTop + 8 : headerTop + 14;
 
   if (logoDataUrl) {
     try {

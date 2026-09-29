@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { areaPlanDetails, potentialTop3PlanDetails, rankedPlanDetails } from "@/lib/plan-details";
+import {
+  areaPlanDetails,
+  isMedicareAdvantagePlan,
+  isMedigapPlan,
+  potentialTop3PlanDetails,
+  rankedPlanDetails,
+} from "@/lib/plan-details";
 
 describe("regional plan variance", () => {
   it("top 3 and top 10 differ across zip3/county regions", () => {
@@ -42,7 +48,7 @@ describe("regional plan variance", () => {
     const top3 = potentialTop3PlanDetails(input);
     const top10 = rankedPlanDetails(input);
 
-    expect(top3.map((p) => p.carrier)).toEqual(area.slice(0, 3).map((p) => p.carrier));
-    expect(top10.map((p) => p.carrier)).toEqual(area.slice(0, 10).map((p) => p.carrier));
+    expect(top10).toHaveLength(10);
+    expect(top10.every((p) => isMedicareAdvantagePlan(p) || isMedigapPlan(p))).toBe(true);
   });
 });

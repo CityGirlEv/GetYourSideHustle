@@ -12,6 +12,7 @@ import {
   isWizardMatrixCaseId,
 } from "../../lib/gysh-automated-tests";
 import { isHumanQaTester } from "../../lib/gysh-roles";
+import { leadDevAssigneeForStatusChange } from "../../lib/gysh-fail-assignee";
 import {
   applyPartnerDone,
   assigneeForAuthUser,
@@ -45,6 +46,7 @@ import {
   withDefaultSuite,
   type TestCase,
   type TestStatus,
+  nextKeyedMap,
 } from "../../lib/gysh-test-plan";
 
 type Props = {
@@ -257,7 +259,8 @@ export function QaSprintSideBySide({
         const test = allTests.find((t) => t.id === testId);
         if (!test) continue;
         const note = testNotes[testId] ?? "";
-        const assignee = testAssignees[testId] || test.assignees[0] || "";
+        const currentAssignee = testAssignees[testId] || test.assignees[0] || "";
+        const assignee = leadDevAssigneeForStatusChange(status, currentAssignee);
         const stepCount = Array.isArray(test.steps) ? test.steps.length : 0;
         const data = await saveTestStatus(
           testId,
@@ -276,10 +279,10 @@ export function QaSprintSideBySide({
               }
             : undefined,
         );
-        setTestStatuses(data.statuses);
-        setTestNotes(data.notes);
-        setTestAssignees(data.assignees);
-        setTestSprints(data.sprints);
+        setTestStatuses((prev) => nextKeyedMap(prev, data.statuses, data.partial));
+        setTestNotes((prev) => nextKeyedMap(prev, data.notes, data.partial));
+        setTestAssignees((prev) => nextKeyedMap(prev, data.assignees, data.partial));
+        setTestSprints((prev) => nextKeyedMap(prev, data.sprints, data.partial));
       }
       if (testIds.length > 0) setTestStatusDrafts({});
       const n = taskIds.length + testIds.length;

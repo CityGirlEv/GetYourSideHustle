@@ -5,6 +5,9 @@ import { ApiError } from "../../lib/api";
 import { formatMoney } from "../../lib/gysh-financials";
 import {
   fetchPaymentsReport,
+  paymentKindLabel,
+  paymentMemberDisplayName,
+  paymentTotalsCategoryLabel,
   type GyshPayment,
   type PaymentsReport,
 } from "../../lib/gysh-payments";
@@ -13,13 +16,6 @@ import {
   resolvePaymentPeriodRange,
   type PaymentPeriodPreset,
 } from "../../lib/payment-periods";
-
-function kindLabel(kind: string): string {
-  if (kind === "membership") return "Memberships";
-  if (kind === "alacarte") return "A-la-carte";
-  if (kind === "credit_pack") return "Credit packs";
-  return kind || "Other";
-}
 
 function formatPaidAt(iso: string): string {
   try {
@@ -171,35 +167,35 @@ export function FinancialPaymentsPanel() {
           <p style={{ marginTop: 0, color: "var(--text-primary)", fontSize: "0.9375rem" }}>
             {report?.period.label || "—"}
           </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(45,106,79,0.08)" }}>
-              <div style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>Total collected</div>
-              <strong data-testid="financials-payments-total">
-                {formatMoney(report?.totals.amountUsd ?? 0)}
-              </strong>
-            </div>
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(215,198,151,0.35)" }}>
-              <div style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>Payments</div>
-              <strong data-testid="financials-payments-count">{report?.totals.count ?? 0}</strong>
-            </div>
-            {Object.entries(report?.totals.byKind || {}).map(([kind, row]) => (
-              <div
-                key={kind}
-                style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(45,106,79,0.05)" }}
-              >
-                <div style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>{kindLabel(kind)}</div>
-                <strong>
-                  {formatMoney(row.amountUsd)} · {row.count}
-                </strong>
-              </div>
-            ))}
+          <div className="financials-payments-table-wrap">
+            <table className="financials-payments-table" data-testid="financials-payments-summary">
+              <caption>Payments received — totals</caption>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th className="financials-payments-table__num">Payments</th>
+                  <th className="financials-payments-table__num">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Total collected</th>
+                  <td className="financials-payments-table__num" data-testid="financials-payments-count">
+                    {report?.totals.count ?? 0}
+                  </td>
+                  <td className="financials-payments-table__num" data-testid="financials-payments-total">
+                    {formatMoney(report?.totals.amountUsd ?? 0)}
+                  </td>
+                </tr>
+                {Object.entries(report?.totals.byKind || {}).map(([kind, row]) => (
+                  <tr key={kind} data-testid={`financials-payments-category-${kind}`}>
+                    <th scope="row">{paymentTotalsCategoryLabel(kind)}</th>
+                    <td className="financials-payments-table__num">{row.count}</td>
+                    <td className="financials-payments-table__num">{formatMoney(row.amountUsd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {payments.length === 0 ? (
@@ -213,25 +209,28 @@ export function FinancialPaymentsPanel() {
               ) : null}
             </p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className="admin-table" data-testid="financials-payments-table">
+            <div className="financials-payments-table-wrap">
+              <table className="financials-payments-table" data-testid="financials-payments-table">
+                <caption>Payments received</caption>
                 <thead>
                   <tr>
                     <th>When (Chicago)</th>
+                    <th>Member</th>
                     <th>Email</th>
                     <th>Item</th>
                     <th>Kind</th>
-                    <th>Amount</th>
+                    <th className="financials-payments-table__num">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {payments.map((p) => (
                     <tr key={p.sessionId}>
                       <td>{formatPaidAt(p.paidAt)}</td>
+                      <td>{paymentMemberDisplayName(p)}</td>
                       <td>{p.email || "—"}</td>
                       <td>{p.label}</td>
-                      <td>{kindLabel(p.kind)}</td>
-                      <td>{formatMoney(p.amountCents / 100)}</td>
+                      <td>{paymentKindLabel(p.kind)}</td>
+                      <td className="financials-payments-table__num">{formatMoney(p.amountCents / 100)}</td>
                     </tr>
                   ))}
                 </tbody>

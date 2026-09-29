@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List, Mail, RefreshCw, RotateCcw, Save, Send } from "lucide-react";
 import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { api, ApiError } from "../../lib/api";
+import { emailTemplateMatchesQuery, emailTemplateSaveEnabled, shouldHydrateEmailTemplateDraft, emailTemplateLogLabel } from "../../lib/email-template-list";
+import { merchEmailVars } from "../../lib/membership-email-copy";
+import { EMAIL_TEMPLATE_REVIEW_CATALOG } from "../../lib/gysh-email-template-review-cases";
 import { RichTextEmailEditor } from "./RichTextEmailEditor";
 
 type TemplateContent = {
@@ -73,9 +76,17 @@ const SAMPLE_VARS: Record<string, string> = {
   digestBodyHtml: "<p>Sample digest rows appear here in live sends.</p>",
 };
 
-function fillSampleVars(input: string): string {
+function sampleVarsForSlug(slug: string): Record<string, string> {
+  if (slug === "membership_merch_ready") {
+    return { ...SAMPLE_VARS, ...merchEmailVars("starter") };
+  }
+  return SAMPLE_VARS;
+}
+
+function fillSampleVars(input: string, slug: string): string {
+  const vars = sampleVarsForSlug(slug);
   return String(input || "").replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => {
-    if (Object.prototype.hasOwnProperty.call(SAMPLE_VARS, key)) return SAMPLE_VARS[key] ?? "";
+    if (Object.prototype.hasOwnProperty.call(vars, key)) return vars[key] ?? "";
     return `{{${key}}}`;
   });
 }
@@ -109,11 +120,56 @@ function draftsEqual(a: TemplateContent, b: TemplateContent): boolean {
   );
 }
 
+function TemplateSaveBar({
+  busy,
+  canSave,
+  dirty,
+  saveTestId,
+  showReset = true,
+  onSave,
+  onReset,
+}: {
+  busy: boolean;
+  canSave: boolean;
+  dirty: boolean;
+  saveTestId: string;
+  showReset?: boolean;
+  onSave: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="email-templates-admin__editor-actions">
+      {showReset ? (
+        <button
+          type="button"
+          className="btn btn-outline"
+          data-testid={saveTestId === "email-template-save" ? "email-template-reset" : undefined}
+          disabled={busy}
+          onClick={onReset}
+        >
+          <RotateCcw size={16} /> Reset to default
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className="btn btn-primary"
+        data-testid={saveTestId}
+        disabled={!canSave}
+        title={dirty ? "Save edits to this template" : "Save this template"}
+        onClick={onSave}
+      >
+        <Save size={16} /> Save template
+      </button>
+    </div>
+  );
+}
+
 export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null }) {
   const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
   const [logoUrl, setLogoUrl] = useState("");
   const [placeholders, setPlaceholders] = useState<string[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [listQuery, setListQuery] = useState("");
   const [selected, setSelected] = useState<string>("");
   const [draft, setDraft] = useState<TemplateContent>(EMPTY_DRAFT);
   const [savedSnapshot, setSavedSnapshot] = useState<TemplateContent>(EMPTY_DRAFT);
@@ -128,8 +184,23 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHydratedSlug = useRef("");
   const dirty = draftReady && !draftsEqual(draft, savedSnapshot);
-  const selectedRow = templates.find((t) => t.slug === selected);
+  const canSave = emailTemplateSaveEnabled(busy, Boolean(selected));
+  const labeledTemplates = useMemo(
+    () =>
+      templates.map((t) => {
+        const catalog = EMAIL_TEMPLATE_REVIEW_CATALOG.find((c) => c.slug === t.slug);
+        if (!catalog) return t;
+        return { ...t, name: catalog.name, description: catalog.description };
+      }),
+    [templates],
+  );
+  const selectedRow = labeledTemplates.find((t) => t.slug === selected);
+  const visibleTemplates = useMemo(
+    () => labeledTemplates.filter((t) => emailTemplateMatchesQuery(t, listQuery)),
+    [labeledTemplates, listQuery],
+  );
 
   const applyRowToDraft = (row: TemplateRow | undefined) => {
     if (!row) {
@@ -152,20 +223,22 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
     [templates],
   );
 
-  const load = async () => {
+  const load = async (opts?: { keepDraft?: boolean }) => {
     setErr("");
+    setBusy(true);
     try {
       const data = await api<{
         emailConfigured: boolean;
         logoUrl: string;
         placeholders?: string[];
         templates: TemplateRow[];
-      }>("email/templates");
+      }>("email/templates", { timeoutMs: 120_000 });
       setEmailConfigured(data.emailConfigured);
       setLogoUrl(data.logoUrl || "");
       setPlaceholders(data.placeholders || []);
       const list = data.templates || [];
       setTemplates(list);
+      if (opts?.keepDraft) return;
       const preferred =
         (focusSlug && list.some((t) => t.slug === focusSlug) ? focusSlug : "") ||
         selected ||
@@ -173,10 +246,13 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
         "";
       if (preferred) {
         setSelected(preferred);
+        lastHydratedSlug.current = preferred;
         applyRowToDraft(list.find((t) => t.slug === preferred));
       }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not load email templates.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -209,8 +285,7 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When the selected template changes, reload draft from the list (once row exists).
-  const lastHydratedSlug = useRef("");
+  // When the selected template changes, load that row into the editor once.
   useEffect(() => {
     if (!selected) {
       lastHydratedSlug.current = "";
@@ -222,12 +297,12 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
       setDraftReady(false);
       return;
     }
-    if (lastHydratedSlug.current === selected && draftReady) return;
+    if (!shouldHydrateEmailTemplateDraft(lastHydratedSlug.current, selected)) return;
     lastHydratedSlug.current = selected;
     applyRowToDraft(row);
     setMsg("");
     setErr("");
-  }, [selected, templates, draftReady]);
+  }, [selected, templates]);
 
   useEffect(() => {
     if (!selected || !draftReady) return;
@@ -266,19 +341,31 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
         ok: boolean;
         preview?: Omit<Preview, "slug"> & { slug?: string };
         content?: TemplateContent;
+        updatedAt?: string;
+        updatedBy?: string;
       }>("email/templates", {
         method: "PUT",
         body: { slug: selected, ...draft },
       });
       setMsg(`Saved ${selectedRow?.name || selected}.`);
-      if (data.content) {
-        setDraft(data.content);
-        setSavedSnapshot(data.content);
-      } else {
-        setSavedSnapshot(draft);
-      }
+      const savedContent = data.content ?? draft;
+      setDraft(savedContent);
+      setSavedSnapshot(savedContent);
+      lastHydratedSlug.current = selected;
+      setTemplates((list) =>
+        list.map((t) =>
+          t.slug === selected
+            ? {
+                ...t,
+                ...savedContent,
+                updatedAt: data.updatedAt,
+                updatedBy: data.updatedBy,
+              }
+            : t,
+        ),
+      );
       if (data.preview) setPreview({ ...data.preview, slug: selected });
-      await load();
+      void load({ keepDraft: true });
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Save failed.");
     } finally {
@@ -305,9 +392,13 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
       if (data.content) {
         setDraft(data.content);
         setSavedSnapshot(data.content);
+        lastHydratedSlug.current = selected;
+        setTemplates((list) =>
+          list.map((t) => (t.slug === selected ? { ...t, ...data.content! } : t)),
+        );
       }
       if (data.preview) setPreview({ ...data.preview, slug: selected });
-      await load();
+      void load({ keepDraft: true });
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Reset failed.");
     } finally {
@@ -329,7 +420,7 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
         body: { slug: selected, to: to.trim() || undefined },
       });
       setMsg(data.message || `Test sent for ${selected}.`);
-      await load();
+      await load({ keepDraft: true });
       await loadLogs(selected, showAllLogs);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Test send failed.");
@@ -381,7 +472,7 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
   };
 
   const templateName = (slug: string) =>
-    templates.find((t) => t.slug === slug)?.name || slug;
+    labeledTemplates.find((t) => t.slug === slug)?.name || slug;
 
   const totalLogged = templates.reduce((n, t) => n + (t.sendCount || 0), 0);
 
@@ -476,24 +567,43 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
 
       <div className="email-templates-admin__layout email-templates-admin__layout--edit">
         <aside className="email-templates-admin__list" aria-label="Templates">
-          {templates.map((t) => (
-            <button
-              key={t.slug}
-              type="button"
-              className={`email-templates-admin__item${selected === t.slug && !showAllLogs ? " is-active" : ""}`}
-              onClick={() => {
-                if (dirty && selected !== t.slug) {
-                  if (!window.confirm("Discard unsaved edits for this template?")) return;
-                }
-                setShowAllLogs(false);
-                setSelected(t.slug);
-              }}
-            >
-              <strong>{t.name}</strong>
-              <span>{t.description}</span>
-              <em data-testid={`email-template-count-${t.slug}`}>{t.sendCount} logged sends</em>
-            </button>
-          ))}
+          <label className="email-templates-admin__search">
+            <span className="sr-only">Find an email template</span>
+            <input
+              type="search"
+              value={listQuery}
+              onChange={(e) => setListQuery(e.target.value)}
+              placeholder="Find t-shirt, GYSHFamily, merch…"
+              data-testid="email-template-search"
+            />
+          </label>
+          {templates.length === 0 ? (
+            <p className="email-templates-admin__list-empty">Loading templates…</p>
+          ) : visibleTemplates.length === 0 ? (
+            <p className="email-templates-admin__list-empty" data-testid="email-template-search-empty">
+              No templates match “{listQuery.trim()}”.
+            </p>
+          ) : (
+            visibleTemplates.map((t) => (
+              <button
+                key={t.slug}
+                type="button"
+                data-testid={`email-template-item-${t.slug}`}
+                className={`email-templates-admin__item${selected === t.slug && !showAllLogs ? " is-active" : ""}`}
+                onClick={() => {
+                  if (dirty && selected !== t.slug) {
+                    if (!window.confirm("Discard unsaved edits for this template?")) return;
+                  }
+                  setShowAllLogs(false);
+                  setSelected(t.slug);
+                }}
+              >
+                <strong>{t.name}</strong>
+                <span>{t.description}</span>
+                <em data-testid={`email-template-count-${t.slug}`}>{t.sendCount} logged sends</em>
+              </button>
+            ))
+          )}
         </aside>
 
         <section className="email-templates-admin__editor glass" data-testid="email-template-editor">
@@ -510,26 +620,14 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
                     </p>
                   ) : null}
                 </div>
-                <div className="email-templates-admin__editor-actions">
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    data-testid="email-template-reset"
-                    disabled={busy}
-                    onClick={() => void resetToDefault()}
-                  >
-                    <RotateCcw size={16} /> Reset to default
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    data-testid="email-template-save"
-                    disabled={busy || !dirty}
-                    onClick={() => void save()}
-                  >
-                    <Save size={16} /> Save template
-                  </button>
-                </div>
+                <TemplateSaveBar
+                  busy={busy}
+                  canSave={canSave}
+                  dirty={dirty}
+                  saveTestId="email-template-save"
+                  onSave={() => void save()}
+                  onReset={() => void resetToDefault()}
+                />
               </header>
 
               {placeholders.length ? (
@@ -577,23 +675,23 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
                       Sample filled view (placeholders → example text)
                     </p>
                     <p className="email-templates-admin__message-eyebrow">
-                      {fillSampleVars(draft.eyebrow) || "—"}
+                      {fillSampleVars(draft.eyebrow, selected) || "—"}
                     </p>
                     <h5 className="email-templates-admin__message-headline">
-                      {fillSampleVars(draft.headline) || "Headline"}
+                      {fillSampleVars(draft.headline, selected) || "Headline"}
                     </h5>
                     <p className="email-templates-admin__message-subhead">
-                      {fillSampleVars(draft.subhead)}
+                      {fillSampleVars(draft.subhead, selected)}
                     </p>
                     <div
                       className="email-templates-admin__message-body"
                       dangerouslySetInnerHTML={{
-                        __html: fillSampleVars(draft.bodyHtml) || "<p><em>No body yet.</em></p>",
+                        __html: fillSampleVars(draft.bodyHtml, selected) || "<p><em>No body yet.</em></p>",
                       }}
                     />
                     {draft.ctaLabel ? (
                       <p className="email-templates-admin__message-cta">
-                        Button: {fillSampleVars(draft.ctaLabel)}
+                        Button: {fillSampleVars(draft.ctaLabel, selected)}
                       </p>
                     ) : null}
                   </div>
@@ -634,7 +732,7 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
                     </p>
                     {draftReady ? (
                       <RichTextEmailEditor
-                        key={`email-body-${selected}-${savedSnapshot.bodyHtml.slice(0, 40)}`}
+                        key={`email-body-${selected}`}
                         value={draft.bodyHtml}
                         onChange={(html) => setField("bodyHtml", html)}
                         disabled={busy}
@@ -689,6 +787,21 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
                   />
                 </label>
               </div>
+              <div className="email-templates-admin__editor-foot">
+                {dirty ? (
+                  <span className="email-templates-admin__dirty">Unsaved edits</span>
+                ) : (
+                  <span className="email-templates-admin__meta">Save writes this template to D1.</span>
+                )}
+                <TemplateSaveBar
+                  busy={busy}
+                  canSave={canSave}
+                  dirty={dirty}
+                  saveTestId="email-template-save-footer"
+                  onSave={() => void save()}
+                  onReset={() => void resetToDefault()}
+                />
+              </div>
             </>
           ) : (
             <p>Select a template to edit.</p>
@@ -715,6 +828,16 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
                   onChange={(e) => setTo(e.target.value)}
                   autoComplete="email"
                 />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  data-testid="email-template-save-preview"
+                  disabled={!canSave}
+                  title={dirty ? "Save edits to this template" : "Save this template"}
+                  onClick={() => void save()}
+                >
+                  <Save size={16} /> Save template
+                </button>
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -755,6 +878,13 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
             {showAllLogs ? " · all templates" : null}
           </span>
         </header>
+        {!showAllLogs && selected !== "membership_merch_ready" ? (
+          <p className="email-templates-admin__logs-empty">
+            This list is only the template selected on the left. Complimentary hat/tee emails are{" "}
+            <strong>GYSHFamily t-shirt discount · hat or tee</strong> — select that row, or click{" "}
+            <strong>Show all emails</strong>.
+          </p>
+        ) : null}
 
         {logs.length === 0 && !logsBusy ? (
           <p className="email-templates-admin__logs-empty">
@@ -784,7 +914,9 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
                     </td>
                     {showAllLogs ? (
                       <td>
-                        <code>{row.templateSlug}</code>
+                        <code title={row.templateSlug}>
+                          {emailTemplateLogLabel(row.templateSlug, EMAIL_TEMPLATE_REVIEW_CATALOG)}
+                        </code>
                       </td>
                     ) : null}
                     <td>{row.toEmail}</td>

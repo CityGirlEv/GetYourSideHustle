@@ -2,7 +2,15 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!assets/|robots.txt|llms.txt|_redirects|.*\\.).*)",
+      "source": "/MyPlan",
+      "destination": "/MyPlan/index.html"
+    },
+    {
+      "source": "/MyPlan/(.*)",
+      "destination": "/MyPlan/$1"
+    },
+    {
+      "source": "/((?!MyPlan|assets/|robots.txt|llms.txt|_redirects|.*\\.).*)",
       "destination": "/index.html"
     }
   ]

@@ -62,8 +62,9 @@ export function CertificatesAdmin() {
     }
     let cancelled = false;
     const token = getSessionToken();
-    void fetch(`/api/certificates/${selectedId}/svg`, {
+    void fetch(`/api/certificates/${selectedId}/svg?live=1`, {
       credentials: "include",
+      cache: "no-store",
       headers: token ? { authorization: `Bearer ${token}` } : {},
     })
       .then(async (res) => {
@@ -139,7 +140,7 @@ export function CertificatesAdmin() {
         const blob = await res.blob();
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `GYSH-Family-Certificate-${id}.pdf`;
+        a.download = `Get-Your-Side-Hustle-Certificate-${id}.pdf`;
         a.click();
         URL.revokeObjectURL(a.href);
       })
@@ -152,11 +153,11 @@ export function CertificatesAdmin() {
       <header className="certificates-admin__head">
         <div>
           <h2>
-            <Award size={20} aria-hidden /> GYSH Family Certificates
+            <Award size={20} aria-hidden /> Get Your Side Hustle Certificates
           </h2>
           <p className="admin-page-lede">
-            Welcome certificates (PDF + SVG) attach to membership emails. Edit wording below, then
-            regenerate as needed.
+            Family membership certificates (PDF + SVG) attach to welcome emails. The new Welcome art
+            is live — save the template, then regenerate to refresh issued files.
           </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={() => void load()} disabled={busy}>
@@ -171,10 +172,13 @@ export function CertificatesAdmin() {
         <section className="glass certificates-admin__template" aria-label="Certificate template">
           <h3>Certificate template</h3>
           <p className="certificates-admin__hint">
-            Use placeholders: <code>{"{{name}}"}</code>, <code>{"{{date}}"}</code>,{" "}
-            <code>{"{{tier}}"}</code>, <code>{"{{audience}}"}</code>. Kids &amp; Teens
-            certificates automatically add a Glow Getter celebration line. Every certificate shows{" "}
-            <code>https://getyoursidehustle.com</code> in the footer.
+            Body copy appears under the name plate. Placeholders: <code>{"{{name}}"}</code>,{" "}
+            <code>{"{{date}}"}</code>, <code>{"{{tier}}"}</code>, <code>{"{{audience}}"}</code>.
+            Kids, Teens, and Seniors keep their honor line on the gold seal (Glow Getter, Young
+            CEO, Seniors Corner). Kids &amp; Teens also add a Glow Getter celebration line.
+            Every certificate spells out <strong>Get Your Side Hustle</strong> and shows{" "}
+            <code>https://getyoursidehustle.com</code>. Use <strong>Save &amp; regenerate all</strong>{" "}
+            to refresh issued files with the new art.
           </p>
           <div className="certificates-admin__fields">
             <label>
@@ -262,8 +266,8 @@ export function CertificatesAdmin() {
                 <strong>{c.memberName}</strong>
                 <span>{c.memberEmail}</span>
                 <em>
-                  {c.membershipTier} · {c.audience} ·{" "}
-                  {c.issuedAt ? new Date(c.issuedAt).toLocaleDateString() : ""}
+                  {c.membershipTier} · {c.audience} · {c.title}
+                  {c.issuedAt ? ` · ${new Date(c.issuedAt).toLocaleDateString()}` : ""}
                   {c.emailSentAt ? " · emailed" : ""}
                 </em>
               </button>

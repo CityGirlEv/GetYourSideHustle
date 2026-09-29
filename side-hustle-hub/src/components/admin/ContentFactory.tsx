@@ -13,6 +13,7 @@ import {
   type ContentDraft,
   type ContentDraftStatus,
 } from "../../lib/gysh-content-factory";
+import { cfCardNumber } from "../../lib/admin-card-numbers";
 import {
   CONTENT_FACTORY_HOWTO,
   MARKETING_PLAN_DEFINITIONS,
@@ -29,9 +30,13 @@ import {
   softLaunchItemById,
   softLaunchItemCompletion,
   softLaunchItemRef,
+  softLaunchItemShowsRollover,
   softLaunchProjectionForItem,
   softLaunchRolloutItems,
+  planSoftLaunchSprintRollovers,
+  withSoftLaunchRolloverNote,
   SOFT_LAUNCH_FACTORY_SPRINTS,
+  SOFT_LAUNCH_SEED_ALL_RANGE,
   SOFT_LAUNCH_ITEM_STATUSES,
   SOFT_LAUNCH_ITEM_STATUS_LABELS,
   contentFactoryItemStatusClass,
@@ -42,15 +47,25 @@ import {
   type RolloutChannel,
   type RolloutOwner,
 } from "../../lib/gysh-soft-launch-rollout";
-import { currentSprintIndex, getSprintWindow } from "../../lib/gysh-sprints";
-import { fetchTasks, isoToMmddyy, TASK_STATUS_LABELS, type TaskStatus } from "../../lib/gysh-tasks";
+import { currentSprintIndex, getSprintWindow, withSprintDueDate } from "../../lib/gysh-sprints";
+import {
+  fetchTasks,
+  isoToMmddyy,
+  persistTasks,
+  TASK_STATUS_LABELS,
+  type GyshTask,
+  type TaskStatus,
+} from "../../lib/gysh-tasks";
 import {
   DEFAULT_TEST_STATUS,
   STATUS_LABELS as TEST_STATUS_LABELS,
   TEST_CASES,
   fetchTestStatuses,
+  saveTestStatusesBatch,
   type TestStatus,
 } from "../../lib/gysh-test-plan";
+import { appendActorNote } from "../../lib/gysh-note-entries";
+import { noteRolledFromSprint, rolloverNoteText, itemMatchesSprintFilterSet } from "../../lib/gysh-sprint-board";
 import { ApiError } from "../../lib/api";
 import {
   adminStudioPath,
@@ -168,13 +183,14 @@ function statusBadge(
     textDecoration: "none" as const,
     cursor: link ? ("pointer" as const) : undefined,
   };
+  const badgeClass = "content-factory__status-badge";
   if (link) {
     const href = adminStudioPath(link);
     return (
       <a
         href={href}
         data-testid={testId}
-        className="admin-cross-link"
+        className={`admin-cross-link ${badgeClass}`}
         title="Open linked item"
         style={style}
         onClick={(e) => {
@@ -188,7 +204,7 @@ function statusBadge(
     );
   }
   return (
-    <span data-testid={testId} style={style}>
+    <span data-testid={testId} className={badgeClass} style={style}>
       {s.mark} {label}
     </span>
   );
@@ -376,17 +392,132 @@ export function ContentFactory({
       const [data, tasks, testPayload, overrides, attachments] = await Promise.all([
         fetchContentState(),
         fetchTasks().catch(() => [] as Awaited<ReturnType<typeof fetchTasks>>),
-        fetchTestStatuses().catch(() => ({ statuses: {} as Record<string, string> })),
+        fetchTestStatuses().catch(() => ({
+          statuses: {} as Record<string, string>,
+          notes: {} as Record<string, string>,
+          assignees: {} as Record<string, string>,
+          sprints: {} as Record<string, number>,
+          dueDates: {} as Record<string, string>,
+        })),
         fetchSoftLaunchOverrides().catch(() => ({} as Record<string, SoftLaunchOverrideEntry>)),
         fetchSoftLaunchAttachments().catch(() => [] as SoftLaunchItemAttachment[]),
       ]);
-      setItemOverrides(overrides);
-      activateSoftLaunchOverrides(overrides);
+      let nextOverrides = { ...overrides };
+      activateSoftLaunchOverrides(nextOverrides);
       setAttachmentsByItem(groupSoftLaunchAttachmentsByItem(attachments));
-      setLinkTasks(tasks.map((t) => ({ id: t.id, description: t.description })));
-      const taskMap: Record<string, string> = {};
-      for (const t of tasks) taskMap[t.id] = t.status;
-      const testMap: Record<string, string> = { ...(testPayload.statuses ?? {}) };
+
+      let workingTasks = tasks;
+      let taskMap: Record<string, string> = {};
+      for (const t of workingTasks) taskMap[t.id] = t.status;
+      let testMap: Record<string, string> = { ...(testPayload.statuses ?? {}) };
+      let testSprints: Record<string, number> = { ...(testPayload.sprints ?? {}) };
+      let testNotes: Record<string, string> = { ...(testPayload.notes ?? {}) };
+      let testAssignees: Record<string, string> = { ...(testPayload.assignees ?? {}) };
+      let testDueDates: Record<string, string> = { ...(testPayload.dueDates ?? {}) };
+
+      const targetSprint = softLaunchFactoryDefaultSprints()[0] ?? currentSprintIndex();
+      const planned = planSoftLaunchSprintRollovers({
+        items: softLaunchRolloutItems(),
+        targetSprint,
+        taskStatusById: taskMap,
+        testStatusById: testMap,
+      });
+
+      if (planned.length > 0) {
+        const taskById = new Map(workingTasks.map((t) => [t.id, t]));
+        const taskDelta: GyshTask[] = [];
+        const testBatch: Array<{
+          caseId: string;
+          status: TestStatus;
+          note?: string;
+          assignee?: string;
+          sprint?: number;
+          dueDate?: string;
+        }> = [];
+
+        for (const plan of planned) {
+          const prevNotes = String(nextOverrides[plan.itemId]?.patch?.notes ?? "").trim();
+          const catalogNotes = softLaunchItemById(plan.itemId)?.notes ?? "";
+          const baseNotes = prevNotes || catalogNotes;
+          try {
+            const saved = await saveSoftLaunchItemOverride(plan.itemId, {
+              sprint: targetSprint as 2 | 3 | 4 | 5,
+              notes: withSoftLaunchRolloverNote(baseNotes, plan.fromSprint),
+            });
+            nextOverrides = { ...nextOverrides, [plan.itemId]: saved };
+          } catch {
+            /* keep going — task roll still helps Task List */
+          }
+
+          const task = taskById.get(plan.taskId);
+          if (task && Number(task.sprint) !== targetSprint && task.status !== "done") {
+            const already = noteRolledFromSprint(task.notes, plan.fromSprint);
+            taskDelta.push({
+              ...task,
+              ...withSprintDueDate({ sprint: targetSprint }),
+              status: task.status === "not_started" ? "in_progress" : task.status,
+              notes: already
+                ? task.notes
+                : appendActorNote(task.notes, "System", rolloverNoteText(plan.fromSprint)),
+            });
+          }
+
+          for (const caseId of plan.relatedTestIds) {
+            const st = (testMap[caseId] ?? DEFAULT_TEST_STATUS) as TestStatus;
+            if (st === "pass" || st === "conditional_approval") continue;
+            if (Number(testSprints[caseId]) === targetSprint) continue;
+            const from = Number(testSprints[caseId]);
+            const fromSprint = Number.isFinite(from) ? from : plan.fromSprint;
+            const note = testNotes[caseId] ?? "";
+            testBatch.push({
+              caseId,
+              status: st === "rolled_over" ? "not_run" : st,
+              note: noteRolledFromSprint(note, fromSprint)
+                ? note
+                : appendActorNote(note, "System", rolloverNoteText(fromSprint)),
+              assignee: testAssignees[caseId] ?? "",
+              sprint: targetSprint,
+              dueDate: testDueDates[caseId],
+            });
+          }
+        }
+
+        activateSoftLaunchOverrides(nextOverrides);
+        setItemOverrides(nextOverrides);
+
+        if (taskDelta.length > 0) {
+          try {
+            workingTasks = await persistTasks(taskDelta);
+            taskMap = {};
+            for (const t of workingTasks) taskMap[t.id] = t.status;
+          } catch {
+            /* keep prior tasks */
+          }
+        }
+        if (testBatch.length > 0) {
+          try {
+            const savedTests = await saveTestStatusesBatch(testBatch);
+            testMap = { ...testMap, ...(savedTests.statuses ?? {}) };
+            testSprints = { ...testSprints, ...(savedTests.sprints ?? {}) };
+            testNotes = { ...testNotes, ...(savedTests.notes ?? {}) };
+            testAssignees = { ...testAssignees, ...(savedTests.assignees ?? {}) };
+            testDueDates = { ...testDueDates, ...(savedTests.dueDates ?? {}) };
+          } catch {
+            /* keep prior tests */
+          }
+        }
+
+        const refs = planned.map((p) => p.itemRef || p.itemId);
+        setSeedMsg(
+          `Rolled ${planned.length} incomplete Content Factory item${
+            planned.length === 1 ? "" : "s"
+          } → Sprint ${targetSprint}: ${refs.join(", ")}`,
+        );
+      } else {
+        setItemOverrides(nextOverrides);
+      }
+
+      setLinkTasks(workingTasks.map((t) => ({ id: t.id, description: t.description })));
       setTaskStatusById(taskMap);
       setTestStatusById(testMap);
 
@@ -485,7 +616,9 @@ export function ContentFactory({
 
   const sprintScopedItems = useMemo(() => {
     if (sprintFilters.size === 0) return rolloutItems;
-    return rolloutItems.filter((i) => sprintFilters.has(i.sprint));
+    return rolloutItems.filter((i) =>
+      itemMatchesSprintFilterSet(i.sprint, i.notes, sprintFilters),
+    );
   }, [sprintFilters, rolloutItems]);
 
   const sprintCounts = useMemo(() => {
@@ -660,7 +793,7 @@ export function ContentFactory({
           <Sparkles size={20} style={{ color: "var(--bronze)" }} /> Content Factory
         </h2>
         <p style={{ color: "var(--text-primary)", marginTop: 4, marginBottom: 0, fontSize: "0.95rem" }}>
-          GYSH Marketing/Launch Plan (Sprints 3–5): Facebook, Kevina Starr, website/newsletter, ads, and new channels. Admin only.
+          GYSH Marketing/Launch Plan ({SOFT_LAUNCH_SEED_ALL_RANGE}): Facebook, Kevina Starr, website/newsletter, ads, and new channels. Admin only.
         </p>
         {error && (
           <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.9rem" }}>
@@ -791,8 +924,15 @@ export function ContentFactory({
                 <button type="button" className="btn btn-primary" onClick={() => void seedRollout("visible")} disabled={loading}>
                   <Wand2 size={14} /> Seed visible → drafts
                 </button>
-                <button type="button" className="btn btn-outline" onClick={() => void seedRollout("all")} disabled={loading}>
-                  Seed all S2–S5
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => void seedRollout("all")}
+                  disabled={loading}
+                  data-testid="factory-seed-all"
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  Seed all {SOFT_LAUNCH_SEED_ALL_RANGE}
                 </button>
                 <button type="button" className="btn btn-outline" onClick={() => setShowSeeded((v) => !v)} disabled={loading}>
                   Seeded drafts ({seededDrafts.length})
@@ -802,7 +942,7 @@ export function ContentFactory({
               <div
                 className="qa-categories-panel"
                 data-testid="factory-due-filters"
-                style={{ margin: 0, flex: "1 1 220px", minWidth: 200 }}
+                style={{ margin: 0, flex: "1 1 220px", minWidth: 0 }}
               >
                 <div
                   className="qa-section-heading qa-categories-panel__header"
@@ -1059,7 +1199,7 @@ export function ContentFactory({
                   <FilterChip
                     active={sprintFilters.size === 0}
                     onToggle={() => setSprintFilters(new Set())}
-                    title="Show all soft-launch sprints"
+                    title="Show all marketing calendar sprints"
                     testId="factory-sprint-all"
                   >
                     All sprints
@@ -1156,7 +1296,21 @@ export function ContentFactory({
             </div>
 
             {seedMsg && (
-              <p style={{ marginTop: 12, color: "var(--text-primary)", fontSize: "0.95rem" }}>{seedMsg}</p>
+              <p
+                data-testid="factory-rollover-flash"
+                style={{
+                  marginTop: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "rgba(14, 116, 144, 0.1)",
+                  border: "1px solid rgba(14, 116, 144, 0.35)",
+                  color: "#0e7490",
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                }}
+              >
+                {seedMsg}
+              </p>
             )}
             <p style={{ marginTop: 12, color: "var(--text-primary)", fontSize: "0.95rem" }}>
               <CalendarRange size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
@@ -1172,9 +1326,11 @@ export function ContentFactory({
                 Editable working copies of plan items. Advance status as you publish.
               </p>
               {seededDrafts.length === 0 ? (
-                <p style={{ marginTop: 12, color: "var(--text-primary)" }}>None yet — use Seed visible sprint or Seed all S2–S5.</p>
+                <p style={{ marginTop: 12, color: "var(--text-primary)" }}>
+                  None yet — use Seed visible sprint or Seed all {SOFT_LAUNCH_SEED_ALL_RANGE}.
+                </p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(280px, 1.2fr)", gap: 16, marginTop: 12 }}>
+                <div className="content-factory__seeded-grid">
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {seededDrafts.map((d) => (
                       <button
@@ -1234,7 +1390,7 @@ export function ContentFactory({
               !p.opsItemId &&
               (sprintFilters.size === 0 || sprintFilters.has(p.sprint)),
           ).length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+            <div className="content-factory__projection-grid">
               {SOFT_LAUNCH_PROJECTIONS.filter(
                 (p) =>
                   !p.opsItemId &&
@@ -1271,7 +1427,7 @@ export function ContentFactory({
                   const open = openItemIds.has(item.id);
                   const projection = softLaunchProjectionForItem(item.id);
                   const dueLabel = isoToMmddyy(item.day) || item.day;
-                  const ref = softLaunchItemRef(item.id);
+                  const ref = cfCardNumber(item.id) || softLaunchItemRef(item.id);
                   return (
                   <div
                     key={item.id}
@@ -1323,7 +1479,7 @@ export function ContentFactory({
                       >
                         <ShowHideChevron open={open} />
                         <span
-                          className="flat-label flat-label--id"
+                          className="flat-label flat-label--id admin-card-num"
                           data-testid={`factory-item-ref-${item.id}`}
                           title={`Content Factory ${ref}`}
                           style={{ fontWeight: 800 }}
@@ -1346,6 +1502,7 @@ export function ContentFactory({
                           }}
                         >
                           <span
+                            className="content-factory__item-name"
                             data-testid={`factory-item-name-${item.id}`}
                             style={{
                               textDecoration: completion.itemDone ? "line-through" : undefined,
@@ -1356,6 +1513,23 @@ export function ContentFactory({
                           >
                             {item.title}
                           </span>
+                          <span className="content-factory__item-meta">
+                          {softLaunchItemShowsRollover(item) ? (
+                            <span
+                              className="flat-label"
+                              data-testid={`factory-item-rolled-${item.id}`}
+                              title={item.notes || "Rolled over from a prior sprint"}
+                              style={{
+                                background: "rgba(14, 116, 144, 0.12)",
+                                color: "#0e7490",
+                                border: "1px solid rgba(14, 116, 144, 0.35)",
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                              }}
+                            >
+                              Rolled over
+                            </span>
+                          ) : null}
                           <span
                             className="content-factory__item-due"
                             data-testid={`factory-item-due-${item.id}`}
@@ -1363,7 +1537,6 @@ export function ContentFactory({
                             style={{
                               color: "#9B2F28",
                               fontWeight: 800,
-                              whiteSpace: "nowrap",
                               textDecoration: completion.itemDone ? "line-through" : undefined,
                               textDecorationColor: completion.itemDone
                                 ? "rgba(155, 47, 40, 0.55)"
@@ -1379,7 +1552,6 @@ export function ContentFactory({
                                 fontSize: "0.8rem",
                                 fontWeight: 700,
                                 color: "var(--bronze)",
-                                whiteSpace: "nowrap",
                               }}
                             >
                               {attachmentsByItem[item.id]!.length} file
@@ -1398,10 +1570,10 @@ export function ContentFactory({
                                   : item.owner === "Evelyn"
                                     ? "var(--bronze)"
                                     : "var(--charcoal)",
-                              whiteSpace: "nowrap",
                             }}
                           >
                             {item.owner}
+                          </span>
                           </span>
                         </strong>
                         <span style={{ fontSize: "0.8rem", color: "var(--bronze)", fontWeight: 700 }}>

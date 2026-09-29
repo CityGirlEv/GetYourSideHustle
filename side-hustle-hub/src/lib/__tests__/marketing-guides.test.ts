@@ -21,10 +21,10 @@ describe("marketing guide library copy", () => {
   it("uses readable en-dashes and dots on audience badges", () => {
     const badges = MARKETING_GUIDES.map((g) => g.audienceBadge);
     expect(badges).toEqual([
-      "Ages 18–54 · Side Hustlers & families",
+      "Ages 18–49 · Side Hustlers & families",
       "Ages 4–12 · Parents as GYSH Coaches",
       "Ages 13–17 · Parent / guardian aware",
-      "Ages 55+ · Retirees & flexible schedules",
+      "Ages 50+ · Retirees & flexible schedules",
       "All ages · Partners · Families · Coaches",
     ]);
     for (const g of MARKETING_GUIDES) {

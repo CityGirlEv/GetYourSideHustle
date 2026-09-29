@@ -1,0 +1,209 @@
+{
+  "supplyOverrideCount": 54,
+  "pricingOverrideCount": 87,
+  "missingSCount": 33,
+  "missingPCount": 0,
+  "missingS": [
+    {
+      "id": "ai-agents",
+      "name": "AI Agents for Side Hustlers",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "ai-assets",
+      "name": "AI Asset Studio",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "ai-timing",
+      "name": "AI Timing Scout",
+      "sample": "About $15–40 for car/phone comfort gear :: Phone mount, Car charger / cable, Hand / surface wipes, Insulated bag (if AI Timing Scout includes food)"
+    },
+    {
+      "id": "virtual-call-assistant",
+      "name": "Build a Virtual Call Assistant",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "ai-social-helper",
+      "name": "AI Social Media Helper",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "fb-marketplace-helper",
+      "name": "Facebook Marketplace Listing Helper",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "online-research-assistant",
+      "name": "Online Research Assistant",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "ai-promo-video",
+      "name": "AI Promotional Video Creator",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "digital-organizer",
+      "name": "Digital Organizer",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "transcription-notes-helper",
+      "name": "Transcription & Notes Helper",
+      "sample": "About $15–45 for cleaning consumables :: Work or disposable gloves, Mild cleaner / wipes, Microfiber cloths, Trash bags"
+    },
+    {
+      "id": "family-history-organizer",
+      "name": "Family History Organizer",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "digital-photo-organizer",
+      "name": "Digital Photo Organizer",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "local-content-photographer",
+      "name": "Local Business Content Photographer",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "local-event-content-creator",
+      "name": "Local Event Content Creator",
+      "sample": "About $5–25 for printables and name tags :: Printed agendas / flyers, Name tags or sign-in sheet, Simple snacks (if hosting in person)"
+    },
+    {
+      "id": "travel-research-assistant",
+      "name": "Travel Research Assistant",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "online-community-moderator",
+      "name": "Online Community Moderator",
+      "sample": "About $5–25 for printables and name tags :: Printed agendas / flyers, Name tags or sign-in sheet, Simple snacks (if hosting in person)"
+    },
+    {
+      "id": "group-setup-helper",
+      "name": "Discord/Facebook Group Setup Helper",
+      "sample": "About $5–25 for printables and name tags :: Printed agendas / flyers, Name tags or sign-in sheet, Simple snacks (if hosting in person)"
+    },
+    {
+      "id": "website-tester",
+      "name": "Website Tester",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "ai-prompt-helper",
+      "name": "AI Prompt Helper",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "digital-product-formatter",
+      "name": "Digital Product Formatter",
+      "sample": "About $15–50 for packing / sample materials :: Poly mailers or boxes, Packing tape, Shipping label paper / stickers, Product sample or mockup print"
+    },
+    {
+      "id": "local-business-ai-setup",
+      "name": "Local Business AI Setup Helper",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "appointment-setter",
+      "name": "Appointment Setter",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "lead-followup-assistant",
+      "name": "Lead Follow-Up Assistant",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "ai-peers",
+      "name": "AI-for-Peers Coffee Chat",
+      "sample": "About $5–25 for delivery / client-facing printables :: Client notes notebook, USB drive for file handoff (optional), Printed checklist or one-pager, Folder or envelope for signed docs"
+    },
+    {
+      "id": "junior-savings-ceo",
+      "name": "Savings Goals for Future CEOs",
+      "sample": "About $0–15 — mostly paper and a jar (parent helps) :: Clear jar or envelope for tracking, Paper + markers for goals / charts, Sticker sheet for progress"
+    },
+    {
+      "id": "junior-give-back-teach",
+      "name": "Give Back: Teach What You Know",
+      "sample": "About $5–25 for printables and name tags :: Printed agendas / flyers, Name tags or sign-in sheet, Simple snacks (if hosting in person)"
+    },
+    {
+      "id": "junior-games-ai",
+      "name": "Build a Game with AI — From Idea to Prototype",
+      "sample": "About $10–40 for first batch materials :: Build a Game with AI — From Idea to Prototype starter materials, Bags / boxes / tags, Small display tray or stand"
+    },
+    {
+      "id": "junior-reinvest-ceo",
+      "name": "Reinvest Like a CEO (Age-Appropriate)",
+      "sample": "About $0–15 — mostly paper and a jar (parent helps) :: Clear jar or envelope for tracking, Paper + markers for goals / charts, Sticker sheet for progress"
+    },
+    {
+      "id": "junior-content-create",
+      "name": "Content Creation Starter (Parent-Friendly)",
+      "sample": "About $10–40 for shoot / delivery extras (phone is Tools) :: Extra SD card or USB for client delivery, Mini tripod / grip, Clip-on LED light, Simple backdrop cloth"
+    },
+    {
+      "id": "kids-piggy-first-goal",
+      "name": "Piggy Bank: Set Your First Savings Goal",
+      "sample": "About $0–15 — mostly paper and a jar (parent helps) :: Clear jar or envelope for tracking, Paper + markers for goals / charts, Sticker sheet for progress"
+    },
+    {
+      "id": "kids-kindness-share",
+      "name": "Give Back: Share a Skill for Free",
+      "sample": "About $0–15 — mostly paper and a jar (parent helps) :: Clear jar or envelope for tracking, Paper + markers for goals / charts, Sticker sheet for progress"
+    },
+    {
+      "id": "kids-games-ai",
+      "name": "Make a Tiny Game with AI (Parent Nearby)",
+      "sample": "About $10–40 for first batch materials :: Make a Tiny Game with AI (Parent Nearby) starter materials, Bags / boxes / tags, Small display tray or stand"
+    },
+    {
+      "id": "kids-reinvest-jar",
+      "name": "Grow Your Hustle: Put Some Earnings Back",
+      "sample": "About $0–15 — mostly paper and a jar (parent helps) :: Clear jar or envelope for tracking, Paper + markers for goals / charts, Sticker sheet for progress"
+    }
+  ],
+  "missingP": [],
+  "touchIds": [
+    "ai-agents",
+    "ai-assets",
+    "ai-peers",
+    "ai-promo-video",
+    "ai-prompt-helper",
+    "ai-social-helper",
+    "ai-timing",
+    "appointment-setter",
+    "digital-organizer",
+    "digital-photo-organizer",
+    "digital-product-formatter",
+    "family-history-organizer",
+    "fb-marketplace-helper",
+    "group-setup-helper",
+    "junior-content-create",
+    "junior-games-ai",
+    "junior-give-back-teach",
+    "junior-reinvest-ceo",
+    "junior-savings-ceo",
+    "kids-games-ai",
+    "kids-kindness-share",
+    "kids-piggy-first-goal",
+    "kids-reinvest-jar",
+    "lead-followup-assistant",
+    "local-business-ai-setup",
+    "local-content-photographer",
+    "local-event-content-creator",
+    "online-community-moderator",
+    "online-research-assistant",
+    "transcription-notes-helper",
+    "travel-research-assistant",
+    "virtual-call-assistant",
+    "website-tester"
+  ]
+}

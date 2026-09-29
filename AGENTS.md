@@ -43,3 +43,29 @@ to reflect the intended new behavior.
 Both suites are wired in `.github/workflows/tests.yml`. New `*.test.ts(x)` and
 `*.spec.ts` files under the paths above are picked up automatically — no
 workflow edits needed when adding tests.
+
+## Deploying Projects via Agent
+
+When requested to deploy, agents MUST run the deployment command corresponding to the active project workspace:
+
+### 1. My Plan, Not My Mood (`my-plan-not-my-mood` / nonnegotiation.com)
+```bash
+cd C:\Users\evely\Documents\antigravity\eager-hypatia\my-plan-not-my-mood
+bun run deploy
+```
+- **Target Domain**: https://nonnegotiation.com
+
+### 2. Get Your Side Hustle (`side-hustle-hub` / getyoursidehustle.com)
+```bash
+cd C:\Users\evely\Documents\antigravity\eager-hypatia\side-hustle-hub
+npm run deploy:pages
+```
+- **Target Domain**: https://getyoursidehustle.com
+
+### 3. Part B Optimizer (`eager-hypatia` / mypartb.com)
+```bash
+cd C:\Users\evely\Documents\antigravity\eager-hypatia
+npm run deploy
+```
+- **Target Domain**: https://mypartb.com
+

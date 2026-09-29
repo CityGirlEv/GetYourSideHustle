@@ -22,9 +22,13 @@ describe("legal review cases for Candace", () => {
     const nda = LEGAL_REVIEW_CASES.find((c) => c.id === "LEGAL-NDA-001");
     const signup = LEGAL_REVIEW_CASES.find((c) => c.id === "LEGAL-SIGNUP-001");
     expect(disc?.title).toMatch(/disclaimer/i);
+    expect(disc?.steps.join(" ")).toMatch(/email footers/i);
     expect(nda?.title).toMatch(/NDA/i);
+    expect(nda?.steps.join(" ")).toContain("GYSH-BETA-NDA-v1.1");
+    expect(nda?.steps.join(" ")).toMatch(/five \(5\) year/);
     expect(signup?.title).toMatch(/confirmation email/i);
     expect(signup?.steps.join(" ")).toMatch(/Registration confirmation/i);
+    expect(signup?.steps.join(" ")).toMatch(/Your side hustle, your results/i);
   });
 
   it("is on the current sprint with a today due date", () => {

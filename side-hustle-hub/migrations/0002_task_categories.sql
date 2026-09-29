@@ -1,4 +1,4 @@
--- Remap GYSH task categories to T/E operational taxonomy.
+-- Remap GYSH task categories to Tina & Evelyn operational taxonomy.
 -- Column already exists (TEXT); this is a data migration only.
 
 -- Per-task assignments for the seeded backlog

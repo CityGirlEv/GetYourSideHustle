@@ -9,11 +9,14 @@ vi.mock("../open-pdf", () => ({
   reservePdfTab: vi.fn(() => null),
 }));
 
+vi.mock("../pdf-logo", () => ({
+  loadPdfLogoDataUrl: vi.fn(async () => undefined),
+}));
+
 vi.mock("../pdf-branding", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../pdf-branding")>();
   return {
     ...actual,
-    loadPdfLogoDataUrl: vi.fn(async () => undefined),
     applyPdfPageBranding: vi.fn((doc: unknown, label: string) => {
       actual.applyPdfPageBranding(doc as never, label, undefined);
     }),
@@ -31,8 +34,9 @@ describe("hustle schedule weekly plan export", () => {
     hustleLabel: "Airbnb Hosting",
     ageGroup: "adult",
     blueprintId: "bp",
-    dueDate: "2026-08-23",
-  });
+      dueDate: "2026-08-23",
+      guideSteps: [],
+    });
 
   beforeEach(() => {
     vi.mocked(openPdfInBrowser).mockClear();
@@ -75,6 +79,7 @@ describe("hustle schedule P&L export", () => {
       ageGroup: "adult",
       blueprintId: "bp",
       dueDate: "2026-08-23",
+      guideSteps: [],
     });
     plan = patchPlanPnL(
       plan,
@@ -120,6 +125,7 @@ describe("hustle schedule P&L export", () => {
       ageGroup: "adult",
       blueprintId: "bp",
       dueDate: "2026-08-23",
+      guideSteps: [],
     });
     await downloadProfitAndLossPdf(plan);
     expect(applyPdfPageBranding).toHaveBeenCalledWith(

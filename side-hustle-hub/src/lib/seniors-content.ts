@@ -1,6 +1,7 @@
-/** Senior Side Hustles — opportunities & guide teasers for 55+ / flexible schedules. */
+/** Senior Side Hustles — opportunities & guide teasers for 50+ / flexible schedules. */
 
 import { seniorGuideMinTier } from "./guide-access";
+import { hustleById, seniorBrowseOpportunities } from "./side-hustle-catalog";
 
 export type SeniorOpportunity = {
   id: string;
@@ -25,7 +26,7 @@ export type SeniorGuideTeaser = {
   launchGuideId?: string;
 };
 
-export const SENIOR_AUDIENCE_LABEL = "55+ · Retirees & flexible schedules";
+export const SENIOR_AUDIENCE_LABEL = "50+ · Retirees & flexible schedules";
 
 export const SENIOR_INTRO = {
   headline: "GYSH side hustles that fit your pace",
@@ -62,11 +63,19 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
   },
   {
     id: "crafts",
-    name: "Craft & Maker Sales",
-    desc: "Sell handmade goods at markets, church fairs, Etsy, or Facebook — quilts, woodwork, jewelry, baked goods with a local following.",
+    name: "Handmade Craft Sales",
+    desc: "Make and sell handmade goods at markets, church fairs, Etsy, or Facebook — quilts, woodwork, jewelry, or baked goods with a local following.",
     fit: "Hobby crafters ready to price and ship",
     schedule: "Batch-friendly weekends",
     startup: "Low — supplies + a simple booth or listing",
+  },
+  {
+    id: "pod",
+    name: "Print-on-Demand (POD)",
+    desc: "Design original or licensed merch and sell shirts, mugs, and other products through Etsy or Shopify — the provider prints as orders come in. Elite Launch Guide.",
+    fit: "Creative makers who want online sales without warehousing inventory",
+    schedule: "Design in batches; light weekly listing and customer-service time",
+    startup: "Low–medium — samples, fees, and tools; not a $0 business",
   },
   {
     id: "pet-sitting",
@@ -78,16 +87,16 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
   },
   {
     id: "str-cohost",
-    name: "Airbnb / STR Co-Hosting",
-    desc: "Help hosts with guest messaging, turnover checklists, or local hospitality — without owning the property yourself.",
-    fit: "Organized hosts or hospitality veterans",
-    schedule: "Part-time blocks; can share duties",
-    startup: "Low if partnering with an existing host",
+    name: "Airbnb Arbitrage Hosting",
+    desc: "Operate a short-term rental without owning the property by leasing or master-leasing a unit, furnishing it, and hosting guests only when the owner, lease, building/HOA, insurance, platform, and local laws allow it.",
+    fit: "Organized hosts who want hospitality income without buying real estate",
+    schedule: "10 - 25 hrs/week; property-based / local + online",
+    startup: "Moderate–High — furnishing + deposits; not a $0 start",
   },
   {
     id: "bookkeeping",
     name: "Bookkeeping & Admin Support",
-    desc: "Invoice tracking, QuickBooks basics, or calendar ops for solopreneurs who outgrow spreadsheets.",
+    desc: "Help solopreneurs stay organized with invoice tracking, QuickBooks basics, expense organization, and calendar operations — not CPA or tax advice.",
     fit: "Former office admins, accountants, detail people",
     schedule: "Remote-friendly weekly rhythm",
     startup: "Low — software you may already know",
@@ -110,8 +119,8 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
   },
   {
     id: "ai-peers",
-    name: "AI Prompting Help for Peers",
-    desc: "Help other seniors get comfortable with ChatGPT and similar tools — email drafts, photo organizing, research, and scam spotting.",
+    name: "AI-for-Peers Coffee Chat",
+    desc: "Host a friendly coffee-chat style session teaching peers ChatGPT and everyday AI tools — office hours pace, not tech jargon.",
     fit: "Curious tech adopters who like teaching",
     schedule: "Short sessions; group or 1:1",
     startup: "Very low — free AI tools + patience",
@@ -124,6 +133,40 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
     schedule: "On when you want; off when you don’t",
     startup: "Medium — vehicle requirements + app approval",
   },
+  {
+    id: "notary",
+    name: "Part-Time Notary",
+    desc: "Get commissioned and offer mobile or by-appointment notarizations for neighbors and local professionals — precise work on your schedule.",
+    fit: "Detail-oriented adults and seniors",
+    schedule: "Evenings and weekends on demand",
+    startup: "Medium — state commission + stamp + bond",
+  },
+  {
+    id: "start-gardening-club",
+    name: "Start a Gardening Club",
+    desc: "Launch a neighborhood or community-center gardening club — community first, income optional.",
+    fit: "Gardeners who enjoy hosting peers",
+    schedule: "Monthly or biweekly daytime meetups",
+    startup: "Low — venue + simple handouts",
+  },
+  {
+    id: "start-book-club",
+    name: "Start a Book Club",
+    desc: "Host a welcoming monthly book club with discussion prompts and optional reading kits.",
+    fit: "Readers who love warm conversation",
+    schedule: "One afternoon or evening per month",
+    startup: "Very low — library partnership",
+  },
+];
+
+/** Expanded senior browse from shared M2M catalog (preserves curated ids above). */
+const SENIOR_CATALOG_EXTRAS = seniorBrowseOpportunities().filter(
+  (o) => !SENIOR_OPPORTUNITIES.some((c) => c.id === o.id),
+);
+
+export const SENIOR_OPPORTUNITIES_EXPANDED: SeniorOpportunity[] = [
+  ...SENIOR_OPPORTUNITIES,
+  ...SENIOR_CATALOG_EXTRAS,
 ];
 
 export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
@@ -132,11 +175,12 @@ export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
     title: "Host an AI-for-peers coffee chat",
     blurb: "A friendly agenda for teaching neighbors ChatGPT basics — including scam red flags.",
     status: "preview",
+    launchGuideId: "ai-peers",
   },
   {
     id: "safe-cohost",
-    title: "Co-host a short-term rental without owning",
-    blurb: "Roles, guest messaging templates, and how to partner with a host you trust.",
+    title: "Airbnb Arbitrage",
+    blurb: "Partner on short-term rentals without owning — roles, guest messaging, and how to work with a host you trust.",
     status: "live",
     launchGuideId: "property-mgmt",
   },
@@ -162,6 +206,13 @@ export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
     launchGuideId: "affiliate",
   },
   {
+    id: "senior-pod",
+    title: "Print-on-Demand (POD)",
+    blurb: "Design merch and sell through Etsy or Shopify without warehousing — Elite Launch Guide for a paced second chapter.",
+    status: "live",
+    launchGuideId: "pod",
+  },
+  {
     id: "start-consulting",
     title: "Start a consulting pilot in 7 days",
     blurb: "Define your niche, set a simple rate card, and land your first discovery call.",
@@ -179,14 +230,28 @@ export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
     blurb: "Offer grocery runs, pharmacy pickups, and appointment rides with clear rates and neighbor trust.",
     status: "coming_soon",
   },
+  {
+    id: "start-gardening-club",
+    title: "Start a Gardening Club",
+    blurb: "Plant swaps, seasonal meetups, and optional workshops — community first, income optional.",
+    status: "live",
+    launchGuideId: "start-gardening-club",
+  },
+  {
+    id: "start-book-club",
+    title: "Start a Book Club",
+    blurb: "Monthly reads, gentle discussion prompts, and library-friendly hosting for peers.",
+    status: "live",
+    launchGuideId: "start-book-club",
+  },
+  {
+    id: "senior-notary",
+    title: "Part-time notary on your schedule",
+    blurb: "Get commissioned and offer mobile or by-appointment notarizations for neighbors and local pros.",
+    status: "live",
+    launchGuideId: "notary",
+  },
 ];
-
-/** Sort: Free-plan openers → live launch links → coming soon. */
-export function orderedSeniorGuides(guides: SeniorGuideTeaser[] = SENIOR_GUIDE_TEASERS): SeniorGuideTeaser[] {
-  const rank = (g: SeniorGuideTeaser) =>
-    g.status === "preview" ? 0 : g.status === "live" ? 1 : 2;
-  return [...guides].sort((a, b) => rank(a) - rank(b));
-}
 
 /** True when this senior teaser belongs in the Free Membership guides bundle. */
 export function isSeniorGuideFree(
@@ -196,6 +261,17 @@ export function isSeniorGuideFree(
   void _freeLaunchIds;
   if (guide.status === "coming_soon") return false;
   return seniorGuideMinTier(guide.id, guide.launchGuideId) === "free";
+}
+
+/** Sort: Free-plan openers first → live/preview → coming soon. */
+export function orderedSeniorGuides(guides: SeniorGuideTeaser[] = SENIOR_GUIDE_TEASERS): SeniorGuideTeaser[] {
+  const statusRank = (g: SeniorGuideTeaser) =>
+    g.status === "coming_soon" ? 2 : g.status === "live" ? 1 : 0;
+  return [...guides].sort((a, b) => {
+    const freeDelta = Number(isSeniorGuideFree(b)) - Number(isSeniorGuideFree(a));
+    if (freeDelta !== 0) return freeDelta;
+    return statusRank(a) - statusRank(b);
+  });
 }
 
 /** Senior Get Your Side Hustle answers — lifestyle, ranked skills/goals, availability. */
@@ -241,6 +317,12 @@ const SENIOR_MATCH_PROFILES: Record<
     goals: { income: 0.6, purpose: 0.45, flexible: 0.8, learn: 0.4 },
     lifestyles: ["gentle", "balanced"],
     availability: ["light", "flexible", "steady"],
+  },
+  pod: {
+    skills: { creative: 1, tech: 0.7, writing: 0.45 },
+    goals: { income: 0.9, flexible: 1, learn: 0.7, purpose: 0.35 },
+    lifestyles: ["gentle", "balanced"],
+    availability: ["light", "flexible"],
   },
   "pet-sitting": {
     skills: { hands_on: 0.7, hospitality: 0.55 },
@@ -291,8 +373,56 @@ const GOAL_WEIGHTS = [28, 16, 8];
 const LIFESTYLE_WEIGHT = 14;
 const AVAILABILITY_WEIGHT = 12;
 
+/** Heuristic senior profile from catalog tags when no hand-tuned entry exists. */
+export function seniorProfileFromCatalog(opportunityId: string): {
+  skills: Partial<Record<string, number>>;
+  goals: Partial<Record<string, number>>;
+  lifestyles: string[];
+  availability: string[];
+} | null {
+  const h = hustleById(opportunityId);
+  if (!h) return null;
+  const skills: Partial<Record<string, number>> = {};
+  const goals: Partial<Record<string, number>> = {};
+  for (const t of h.matchTags ?? []) {
+    if (t === "creative") skills.creative = 1;
+    if (t === "tech" || t === "ai") skills.tech = Math.max(skills.tech ?? 0, 0.85);
+    if (t === "physical" || t === "outdoor") skills.hands_on = 1;
+    if (t === "animals") skills.hands_on = Math.max(skills.hands_on ?? 0, 0.7);
+    if (t === "people" || t === "helping") skills.teaching = Math.max(skills.teaching ?? 0, 0.65);
+    if (t === "operations" || t === "admin") skills.admin = Math.max(skills.admin ?? 0, 0.7);
+    if (t === "hosting" || t === "hospitality") skills.hospitality = 1;
+    if (t === "local") goals.flexible = Math.max(goals.flexible ?? 0, 0.75);
+    if (t === "indoor") goals.purpose = Math.max(goals.purpose ?? 0, 0.45);
+  }
+  if (h.zeroStart) goals.income = Math.max(goals.income ?? 0, 0.55);
+  if (!Object.keys(skills).length) skills.admin = 0.45;
+  if (!Object.keys(goals).length) {
+    goals.income = 0.55;
+    goals.flexible = 0.6;
+  }
+  return {
+    skills,
+    goals,
+    lifestyles: ["gentle", "balanced", "active"],
+    availability: ["light", "steady", "flexible"],
+  };
+}
+
+export function resolveSeniorMatchProfile(opportunityId: string) {
+  return SENIOR_MATCH_PROFILES[opportunityId] ?? seniorProfileFromCatalog(opportunityId);
+}
+
+/** Four Senior Match Wizard picks that rank Print-on-Demand (POD) first (Elite). */
+export const SENIOR_POD_TOP_MATCH_ANSWERS: SeniorMatchAnswers = {
+  lifestyle: "gentle",
+  skills: ["creative", "tech"],
+  goals: ["income", "flexible", "learn"],
+  availability: "light",
+};
+
 export function scoreSeniorMatch(opportunityId: string, answers: SeniorMatchAnswers): number {
-  const profile = SENIOR_MATCH_PROFILES[opportunityId];
+  const profile = resolveSeniorMatchProfile(opportunityId);
   if (!profile) return 0;
 
   let score = 0;

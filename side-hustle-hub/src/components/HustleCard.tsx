@@ -20,6 +20,7 @@ import {
   BookMarked,
   FileDown,
 } from "lucide-react";
+import { presentableGuideTitle } from "../lib/guide-title";
 
 export interface Hustle {
   id: string;
@@ -106,7 +107,9 @@ export const HustleCard: React.FC<HustleCardProps> = ({ hustle, onSelectAction }
       </span>
 
       {/* Name and Description */}
-      <h3 style={{ fontSize: "1.25rem", color: "var(--charcoal)", marginBottom: "8px" }}>{hustle.name}</h3>
+      <h3 style={{ fontSize: "1.25rem", color: "var(--charcoal)", marginBottom: "8px" }}>
+        {presentableGuideTitle(hustle.id, hustle.name)}
+      </h3>
       <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginBottom: "20px", flexGrow: 1 }}>{hustle.description}</p>
 
       {/* Metrics Grid */}
