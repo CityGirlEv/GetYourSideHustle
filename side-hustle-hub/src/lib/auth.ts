@@ -145,6 +145,7 @@ export async function registerFreeMember(input: {
   email: string;
   password: string;
   name?: string;
+  phone: string;
   ageGroup: BlueprintAgeGroup;
   childDisplayName?: string;
   claimToken?: string;
@@ -214,6 +215,7 @@ export async function registerFreeMember(input: {
         email: input.email,
         password: input.password,
         name: input.name,
+        phone: input.phone,
         ageGroup: input.ageGroup,
         childDisplayName: input.childDisplayName,
         claimToken: input.claimToken,

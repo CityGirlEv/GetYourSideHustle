@@ -32,6 +32,7 @@ import {
   parseAdminMembershipUpdate,
   parseFoundingStarterSlot,
 } from "../../src/lib/admin-membership";
+import { parseRequiredPhone } from "../../src/lib/member-profile";
 import { parseAuditListQuery } from "./audit-list-query";
 import { mergeAuditEventsWithEmails, type EmailLogAuditRow } from "./audit-email-events";
 import { ensurePartnerAdmins } from "./partners";
@@ -2845,7 +2846,9 @@ async function persistWorkshopRegistration(
   const workshopId = resolveWorkshopId(String(body.workshopId || "").trim());
   const name = String(body.name || "").trim();
   const email = canonicalizeEmail(String(body.email || ""));
-  const phone = String(body.phone || "").trim();
+  const phoneParsed = parseRequiredPhone(body.phone);
+  if (!phoneParsed.ok) return error(phoneParsed.error);
+  const phone = phoneParsed.phone;
   const notes = String(body.notes || "").trim();
   const attendeeCount = Math.max(1, Math.min(10, Number(body.attendeeCount ?? 1) || 1));
 

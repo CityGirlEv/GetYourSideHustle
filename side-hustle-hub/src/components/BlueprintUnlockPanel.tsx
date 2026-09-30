@@ -11,6 +11,7 @@ import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAc
 import { PasswordField } from "./PasswordField";
 import { passwordPolicyError } from "../lib/password-policy";
 import { HEARD_ABOUT_SOURCES, parseHeardAboutInput } from "../lib/heard-about";
+import { parseRequiredPhone } from "../lib/member-profile";
 
 type BlueprintUnlockPanelProps = {
   onUnlocked: (ageGroup: BlueprintAgeGroup, user?: AuthUser | null) => void;
@@ -32,6 +33,7 @@ export function BlueprintUnlockPanel({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [childDisplayName, setChildDisplayName] = useState("");
   const [heardAboutSource, setHeardAboutSource] = useState("");
   const [heardAboutDetail, setHeardAboutDetail] = useState("");
@@ -79,6 +81,11 @@ export function BlueprintUnlockPanel({
       setError("Enter a first name or nickname for the child (we do not collect a child email).");
       return;
     }
+    const phoneParsed = parseRequiredPhone(phone);
+    if (!phoneParsed.ok) {
+      setError(phoneParsed.error);
+      return;
+    }
     const heardAbout = parseHeardAboutInput({
       sourceId: heardAboutSource,
       detail: heardAboutDetail,
@@ -109,6 +116,7 @@ export function BlueprintUnlockPanel({
         email: trimmed,
         password,
         name: name.trim() || undefined,
+        phone: phoneParsed.phone,
         ageGroup,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         claimToken: wizard.claimToken ?? pending.claimToken,
@@ -229,6 +237,20 @@ export function BlueprintUnlockPanel({
           placeholder={isKids ? "parent@email.com" : "you@email.com"}
           required
           data-testid="blueprint-unlock-email"
+        />
+        <label htmlFor="blueprint-unlock-phone">
+          {isKids ? "Parent / guardian phone" : "Phone number"}
+        </label>
+        <input
+          id="blueprint-unlock-phone"
+          type="tel"
+          autoComplete="tel"
+          inputMode="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="(555) 123-4567"
+          required
+          data-testid="blueprint-unlock-phone"
         />
         <PasswordField
           id="blueprint-unlock-password"

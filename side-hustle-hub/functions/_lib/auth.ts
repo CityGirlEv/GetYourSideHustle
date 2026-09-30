@@ -37,6 +37,7 @@ import {
 } from "../../src/lib/membership";
 import { heardAboutFromNotes, mergeHeardAboutNote, parseHeardAboutInput } from "../../src/lib/heard-about";
 import { pendingFreeAccountMaySignIn, registerUserStatus } from "../../src/lib/register-activation";
+import { parseRequiredPhone } from "../../src/lib/member-profile";
 
 export type Env = {
   DB: D1Database;
@@ -533,6 +534,7 @@ export async function handleRegister(
     email?: string;
     password?: string;
     name?: string;
+    phone?: string;
     ageGroup?: RegisterAgeGroup;
     childDisplayName?: string;
     claimToken?: string;
@@ -566,6 +568,9 @@ export async function handleRegister(
   const email = canonicalizeEmail(body.email || "");
   const password = String(body.password || "");
   const name = String(body.name || "").trim();
+  const phoneParsed = parseRequiredPhone(body.phone);
+  if (!phoneParsed.ok) return error(phoneParsed.error);
+  const phone = phoneParsed.phone;
   const ageGroup = (body.ageGroup || "adult") as RegisterAgeGroup;
   const childDisplayName = String(body.childDisplayName || "").trim();
   const claimToken = String(body.claimToken || "").trim();
@@ -639,14 +644,20 @@ export async function handleRegister(
   // Paid Adult/Senior plans stay pending until Stripe / staff activation.
   const accountStatus = registerUserStatus(membershipTier);
   try {
+    await env.DB.prepare(`ALTER TABLE users ADD COLUMN phone TEXT NOT NULL DEFAULT ''`).run();
+  } catch {
+    /* phone column already present */
+  }
+  try {
     await env.DB.prepare(
-      `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (id, name, email, phone, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(
         userId,
         displayName,
         email,
+        phone,
         assignedPrimary,
         rolesJson,
         accountStatus,
@@ -682,6 +693,11 @@ export async function handleRegister(
           now,
         )
         .run();
+      try {
+        await env.DB.prepare(`UPDATE users SET phone = ? WHERE id = ?`).bind(phone, userId).run();
+      } catch {
+        /* phone column still missing on this database */
+      }
     } else if (msg.includes("UNIQUE")) {
       return error("An account with that email already exists. Sign in instead.", 409);
     } else {

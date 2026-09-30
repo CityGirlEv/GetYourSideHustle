@@ -16,6 +16,7 @@ import {
   type WorkshopStatus,
 } from "../../lib/workshops";
 import { ApiError } from "../../lib/api";
+import { parseRequiredPhone } from "../../lib/member-profile";
 
 function toggleId(list: string[], id: string): string[] {
   return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -342,6 +343,11 @@ function WorkshopRosterPanel({
 
   const addRegistrant = async (e: FormEvent) => {
     e.preventDefault();
+    const phoneParsed = parseRequiredPhone(phone);
+    if (!phoneParsed.ok) {
+      setError(phoneParsed.error);
+      return;
+    }
     setAdding(true);
     setError("");
     setSavedMsg("");
@@ -350,7 +356,7 @@ function WorkshopRosterPanel({
         workshopId,
         name,
         email,
-        phone,
+        phone: phoneParsed.phone,
         attendeeCount,
         notes,
       });
@@ -457,10 +463,15 @@ function WorkshopRosterPanel({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 8rem", gap: 10 }}>
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" htmlFor="workshop-roster-phone">Phone (optional)</label>
+            <label className="form-label" htmlFor="workshop-roster-phone">Phone number</label>
             <input
               id="workshop-roster-phone"
               className="text-input"
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              required
+              placeholder="(555) 123-4567"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               data-testid="workshop-roster-phone"

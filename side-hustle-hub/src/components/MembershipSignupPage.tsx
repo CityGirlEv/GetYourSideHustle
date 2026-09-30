@@ -35,6 +35,7 @@ import {
   membershipStripeCheckoutHint,
   membershipUpgradeActionBubbles,
 } from "../lib/membership-signup-labels";
+import { parseRequiredPhone } from "../lib/member-profile";
 import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
 import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
@@ -119,6 +120,7 @@ export function MembershipSignupPage({
   const [name, setName] = useState("");
   const [childDisplayName, setChildDisplayName] = useState("");
   const [email, setEmail] = useState(() => String(loggedInEmail || "").trim());
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [applyBetaTester, setApplyBetaTester] = useState(false);
@@ -311,6 +313,11 @@ export function MembershipSignupPage({
       setError("Enter a first name or nickname for the child.");
       return;
     }
+    const phoneParsed = parseRequiredPhone(phone);
+    if (!phoneParsed.ok) {
+      setError(phoneParsed.error);
+      return;
+    }
     const ndaPayload = {
       agreed: betaNda.agreed,
       legalName: betaNda.legalName.trim() || name.trim(),
@@ -332,6 +339,7 @@ export function MembershipSignupPage({
         email: trimmed,
         password,
         name: name.trim() || undefined,
+        phone: phoneParsed.phone,
         ageGroup: audience,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         membershipTier: tier.id,
@@ -571,6 +579,21 @@ export function MembershipSignupPage({
               onChange={(e) => setEmail(e.target.value)}
               required
               data-testid="membership-signup-email"
+            />
+
+            <label htmlFor="membership-signup-phone">
+              {isKids ? "Parent / guardian phone" : "Phone number"}
+            </label>
+            <input
+              id="membership-signup-phone"
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              placeholder="(555) 123-4567"
+              data-testid="membership-signup-phone"
             />
 
             <PasswordField

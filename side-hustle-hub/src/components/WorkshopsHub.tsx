@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, ChevronRight, Clock, Download, MapPin, Mic2, Users, Video } from "lucide-react";
 import { ApiError } from "../lib/api";
+import { parseRequiredPhone } from "../lib/member-profile";
 import {
   AUDIENCE_LABELS,
   STATUS_LABELS,
@@ -280,12 +281,18 @@ export function WorkshopsHub({
       });
       return;
     }
+    const phoneParsed = parseRequiredPhone(registrationForm.phone);
+    if (!phoneParsed.ok) {
+      setRegistrationStatus({ kind: "error", message: phoneParsed.error });
+      return;
+    }
     setSubmittingRegistration(true);
     setRegistrationStatus(null);
     try {
       const res = await submitWorkshopRegistration({
         workshopId: registeringFor.id,
         ...registrationForm,
+        phone: phoneParsed.phone,
       });
       setRegistrationStatus({
         kind: "success",
@@ -452,11 +459,20 @@ export function WorkshopsHub({
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Phone</label>
+                <label className="form-label" htmlFor="workshop-registration-phone">
+                  Phone number
+                </label>
                 <input
+                  id="workshop-registration-phone"
                   className="text-input"
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
+                  placeholder="(555) 123-4567"
                   value={registrationForm.phone}
                   onChange={(e) => setRegistrationForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  data-testid="workshop-registration-phone"
                 />
               </div>
               <div className="form-group">

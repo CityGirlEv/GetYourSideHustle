@@ -5,8 +5,11 @@ import {
   PROFILE_SAVE_SIGN_IN_ERROR,
   isProfileDashboardHash,
   parseMemberProfileUpdate,
+  parseRequiredPhone,
   profileEmailConflictError,
   profileSaveAuthError,
+  REGISTER_PHONE_INVALID_ERROR,
+  REGISTER_PHONE_REQUIRED_ERROR,
 } from "../member-profile";
 
 describe("member profile basics", () => {
@@ -60,6 +63,20 @@ describe("member profile basics", () => {
         email: "sam@example.com",
       }).ok,
     ).toBe(false);
+  });
+
+  it("requires a phone number with 7–15 digits on registration", () => {
+    expect(parseRequiredPhone("")).toEqual({ ok: false, error: REGISTER_PHONE_REQUIRED_ERROR });
+    expect(parseRequiredPhone("   ")).toEqual({ ok: false, error: REGISTER_PHONE_REQUIRED_ERROR });
+    expect(parseRequiredPhone("123")).toEqual({ ok: false, error: REGISTER_PHONE_INVALID_ERROR });
+    expect(parseRequiredPhone("1".repeat(16))).toEqual({
+      ok: false,
+      error: REGISTER_PHONE_INVALID_ERROR,
+    });
+    expect(parseRequiredPhone("  (555) 123-4567  ")).toEqual({
+      ok: true,
+      phone: "(555) 123-4567",
+    });
   });
 
   it("flags an email already used by a different user", () => {
