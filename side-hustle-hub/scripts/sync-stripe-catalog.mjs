@@ -1,10 +1,10 @@
 /**
  * Sync GYSH memberships, a-la-carte items, and credit packs to Stripe (test or live).
  *
- * Membership lookup keys ending in `_month` are billed every 3 months
- * (`recurring.interval_count: 3`) at 3× the monthly sticker — not monthly.
- * Yearly prices stay yearly. Existing monthly subscriptions are moved onto the
- * new quarterly Price with no immediate proration.
+ * Membership lookup keys ending in `_month` are billed monthly at the sticker
+ * price. Yearly prices stay yearly. Do not replace an active monthly Price
+ * with an every-3-months Price — checkout sends the catalog Price id, and an
+ * inactive id fails with "The price specified is inactive."
  *
  * Usage:
  *   node --use-system-ca scripts/sync-stripe-catalog.mjs
@@ -183,46 +183,6 @@ async function ensurePrice({
   return { price, previousPriceId };
 }
 
-/** Move active monthly subscriptions onto the new every-3-months Price (no immediate proration). */
-async function migrateSubscriptionsToQuarterlyPrice(oldPriceId, newPriceId) {
-  if (!oldPriceId || !newPriceId || oldPriceId === newPriceId) return;
-  let startingAfter;
-  let moved = 0;
-  for (;;) {
-    const page = await stripe.subscriptions.list({
-      price: oldPriceId,
-      status: "all",
-      limit: 100,
-      ...(startingAfter ? { starting_after: startingAfter } : {}),
-    });
-    for (const sub of page.data) {
-      if (!["active", "trialing", "past_due"].includes(sub.status)) continue;
-      const item = sub.items?.data?.[0];
-      if (!item?.id) continue;
-      const rec = item.price?.recurring;
-      if (rec?.interval === "month" && rec.interval_count === 3) continue;
-      try {
-        await stripe.subscriptions.update(sub.id, {
-          items: [{ id: item.id, price: newPriceId }],
-          proration_behavior: "none",
-          metadata: {
-            ...(sub.metadata || {}),
-            gysh_interval: "quarter",
-            gysh_commitment_months: "3",
-          },
-        });
-        moved += 1;
-        console.log(`  ↻ subscription ${sub.id} → every 3 months (${newPriceId})`);
-      } catch (err) {
-        console.warn(`  ! could not migrate ${sub.id}: ${err?.message || err}`);
-      }
-    }
-    if (!page.has_more || page.data.length === 0) break;
-    startingAfter = page.data[page.data.length - 1].id;
-  }
-  if (moved) console.log(`  migrated ${moved} subscription(s) off ${oldPriceId}`);
-}
-
 const catalog = {
   mode: secret.startsWith("sk_live_") ? "live" : "test",
   syncedAt: new Date().toISOString(),
@@ -242,15 +202,15 @@ for (const tier of MEMBERSHIP_TIERS) {
         audience === "senior" ? tier.priceMonthlyUsdSenior : tier.priceMonthlyUsd;
       const yearly =
         audience === "senior" ? tier.priceYearlyUsdSenior : tier.priceYearlyUsd;
-      const usd = interval === "month" ? Math.round(monthly * 3 * 100) / 100 : yearly;
+      const usd = interval === "month" ? monthly : yearly;
       const audienceLabel = audience === "senior" ? "Seniors (50+)" : "Adults";
-      const intervalLabel = interval === "month" ? "Every 3 months" : "Yearly";
+      const intervalLabel = interval === "month" ? "Monthly" : "Yearly";
       const productLookup = `gysh_membership_${tier.id}_${audience}`;
       const priceLookup = `gysh_membership_${tier.id}_${audience}_${interval}`;
       const product = await ensureProduct({
         lookupKey: productLookup,
         name: `GYSH ${tier.name} — ${audienceLabel}`,
-        description: `${tier.name} membership for ${audienceLabel}. Billed every 3 months (or yearly).`,
+        description: `${tier.name} membership for ${audienceLabel}. Billed monthly or yearly.`,
         metadata: {
           gysh_kind: "membership",
           gysh_tier: tier.id,
@@ -261,19 +221,16 @@ for (const tier of MEMBERSHIP_TIERS) {
         productId: product.id,
         lookupKey: priceLookup,
         unitAmountCents: dollarsToCents(usd),
-        recurring:
-          interval === "year"
-            ? { interval: "year" }
-            : { interval: "month", interval_count: 3 },
+        recurring: { interval },
         metadata: {
           gysh_kind: "membership",
           gysh_tier: tier.id,
           gysh_audience: audience,
-          gysh_interval: interval === "month" ? "quarter" : interval,
+          gysh_interval: interval,
         },
       });
-      if (interval === "month") {
-        await migrateSubscriptionsToQuarterlyPrice(previousPriceId, price.id);
+      if (previousPriceId) {
+        console.log(`  ↻ replaced inactive ${previousPriceId} with ${price.id}`);
       }
       catalog.memberships[tier.id][audience][interval] = {
         productId: product.id,
@@ -281,7 +238,7 @@ for (const tier of MEMBERSHIP_TIERS) {
         amountUsd: usd,
         label: `${tier.name} ${audienceLabel} ${intervalLabel}`,
       };
-      console.log(`  ✓ ${priceLookup} → ${price.id} ($${usd} / ${interval === "month" ? "3 months" : "year"})`);
+      console.log(`  ✓ ${priceLookup} → ${price.id} ($${usd} / ${interval})`);
     }
   }
 }

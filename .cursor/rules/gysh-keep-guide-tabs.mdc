@@ -1,0 +1,21 @@
+---
+description: Never deploy or switch onto a GYSH checkout that drops the per-guide tabs
+alwaysApply: true
+---
+
+# Keep the GYSH guide tabs
+
+The live site lost Prerequisites / Tools / Pricing / Steps when a checkout without `GuidePrepSections.tsx` was deployed. Cloudflare `--branch=main` is only a label. It does not mean git `main`.
+
+Before any GYSH `git checkout`, `git switch`, or `npm run deploy:pages`:
+
+- `side-hustle-hub/src/components/GuidePrepSections.tsx` must exist.
+- `StepByStepGuides.tsx` must render `<GuidePrepSections`.
+- `functions/_lib/stripe.ts` must define `resolveChargeablePriceId`.
+- `functions/_lib/stripe-checkout.ts` must call it. A catalog price id goes stale when Stripe deactivates that Price. Checkout has to use the active Price for the lookup key, or the inactive-price error returns.
+
+If the target branch or working tree fails that check, do not switch and do not deploy. Bring the guide-tab files onto the branch first.
+
+`deploy-pages.mjs` aborts when `scripts/gysh-deploy-guard.mjs` reports the tabs are missing. Do not bypass that guard, and do not run `wrangler pages deploy` by itself.
+
+Uncommitted files are uploaded (`--commit-dirty=true`). A stash is not. Confirm the stash is not the only copy of work you still need before deploying.

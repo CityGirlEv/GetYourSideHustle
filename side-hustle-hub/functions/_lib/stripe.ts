@@ -141,6 +141,69 @@ export function stripeSubscriptionIdFromSession(
   return "";
 }
 
+export type StripePriceActive = { id: string; active?: boolean };
+
+/**
+ * Checkout must charge an active Price. A catalog id can go stale when Stripe
+ * moves the lookup key onto a new Price and deactivates the old one.
+ * Keep the catalog id when it is still active; otherwise use the active Price
+ * that currently owns the lookup key.
+ */
+export function pickChargeablePriceId(input: {
+  catalogPriceId: string;
+  catalogPrice: StripePriceActive | null;
+  lookupPrices?: StripePriceActive[] | null;
+  /** False when Stripe could not be asked (network). Do not block checkout on that. */
+  confirmed?: boolean;
+}): { ok: true; priceId: string; replacedInactive: boolean } | { ok: false; error: string } {
+  const catalogId = String(input.catalogPriceId || "").trim();
+  if (input.catalogPrice?.active && input.catalogPrice.id) {
+    return { ok: true, priceId: input.catalogPrice.id, replacedInactive: false };
+  }
+  const active = (input.lookupPrices || []).find((price) => price.active && price.id);
+  if (active?.id) {
+    return { ok: true, priceId: active.id, replacedInactive: active.id !== catalogId };
+  }
+  const confirmed = input.confirmed ?? input.catalogPrice != null;
+  if (!confirmed && catalogId) {
+    return { ok: true, priceId: catalogId, replacedInactive: false };
+  }
+  return {
+    ok: false,
+    error: catalogId
+      ? `Stripe price ${catalogId} is inactive, and no active replacement was found.`
+      : "Stripe price is inactive, and no active replacement was found.",
+  };
+}
+
+export async function resolveChargeablePriceId(
+  secret: string,
+  catalogPriceId: string,
+  lookupKey?: string | null,
+): Promise<{ ok: true; priceId: string; replacedInactive: boolean } | { ok: false; error: string }> {
+  const retrieved = await stripeRequest<StripePriceActive>(
+    secret,
+    "GET",
+    `prices/${encodeURIComponent(catalogPriceId)}`,
+  );
+  const catalogPrice = retrieved.ok ? retrieved.data : null;
+  let lookupPrices: StripePriceActive[] = [];
+  const key = String(lookupKey || "").trim();
+  if (key && !catalogPrice?.active) {
+    const listed = await stripeRequest<{ data?: StripePriceActive[] }>(secret, "GET", "prices", {
+      "lookup_keys[]": key,
+      limit: 5,
+    });
+    if (listed.ok && Array.isArray(listed.data?.data)) lookupPrices = listed.data.data;
+  }
+  return pickChargeablePriceId({
+    catalogPriceId,
+    catalogPrice,
+    lookupPrices,
+    confirmed: retrieved.ok,
+  });
+}
+
 export async function createStripeCheckoutSession(
   secret: string,
   form: Record<string, string | number | undefined | null>,

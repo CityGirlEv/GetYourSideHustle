@@ -14,8 +14,8 @@ describe("stripe catalog", () => {
     expect(stripeCatalogMode()).toBe("live");
     const starterMonthly = membershipStripePrice("starter", "adult", "month");
     expect(starterMonthly?.priceId).toMatch(/^price_/);
-    expect(starterMonthly?.amountUsd).toBe(117);
-    expect(starterMonthly?.label).toMatch(/3 months/i);
+    expect(starterMonthly?.amountUsd).toBe(39);
+    expect(starterMonthly?.label).toMatch(/Monthly/i);
     expect(membershipStripePrice("free", "adult", "month")).toBeNull();
     expect(membershipStripePrice("pro", "kids", "month")).toBeNull();
   });

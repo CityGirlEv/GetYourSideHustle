@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   resolveAlaCarteCheckoutLines,
   resolveCheckoutPrice,
+  stripeCatalogLookupKey,
   supportsMembershipStripeCheckout,
 } from "../stripe-checkout";
 import {
   checkoutReturnOrigin,
   encodeStripeForm,
   normalizeCheckoutOrigin,
+  pickChargeablePriceId,
 } from "../stripe";
 
 describe("stripe checkout resolution", () => {
@@ -22,7 +24,7 @@ describe("stripe checkout resolution", () => {
     if (monthly.ok) {
       expect(monthly.mode).toBe("subscription");
       expect(monthly.priceId).toMatch(/^price_/);
-      expect(monthly.amountUsd).toBe(117);
+      expect(monthly.amountUsd).toBe(39);
     }
 
     const seniorYear = resolveCheckoutPrice({
@@ -100,6 +102,58 @@ describe("stripe checkout resolution", () => {
       expect(single.lines).toHaveLength(1);
       expect(single.amountUsd).toBe(12);
     }
+  });
+
+  it("keeps an active catalog price and replaces an inactive one", () => {
+    expect(
+      pickChargeablePriceId({
+        catalogPriceId: "price_old",
+        catalogPrice: { id: "price_old", active: true },
+        lookupPrices: [{ id: "price_new", active: true }],
+      }),
+    ).toEqual({ ok: true, priceId: "price_old", replacedInactive: false });
+
+    expect(
+      pickChargeablePriceId({
+        catalogPriceId: "price_inactive_quarter",
+        catalogPrice: { id: "price_inactive_quarter", active: false },
+        lookupPrices: [{ id: "price_active_month", active: true }],
+      }),
+    ).toEqual({ ok: true, priceId: "price_active_month", replacedInactive: true });
+
+    const missing = pickChargeablePriceId({
+      catalogPriceId: "price_inactive_quarter",
+      catalogPrice: { id: "price_inactive_quarter", active: false },
+      lookupPrices: [],
+    });
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.error).toMatch(/inactive/i);
+
+    expect(
+      pickChargeablePriceId({
+        catalogPriceId: "price_catalog",
+        catalogPrice: null,
+        lookupPrices: [],
+        confirmed: false,
+      }),
+    ).toEqual({ ok: true, priceId: "price_catalog", replacedInactive: false });
+  });
+
+  it("builds the Stripe lookup key checkout uses when a catalog price is inactive", () => {
+    expect(
+      stripeCatalogLookupKey({
+        kind: "membership",
+        tierId: "starter",
+        audience: "senior",
+        interval: "month",
+      }),
+    ).toBe("gysh_membership_starter_senior_month");
+    expect(stripeCatalogLookupKey({ kind: "alacarte", itemId: "consult-60" })).toBe(
+      "gysh_alacarte_consult-60_once",
+    );
+    expect(stripeCatalogLookupKey({ kind: "credit_pack", itemId: "boost" })).toBe(
+      "gysh_credits_boost_once",
+    );
   });
 
   it("encodes Stripe form fields", () => {

@@ -19,6 +19,7 @@ import {
   createStripeOnceCoupon,
   checkoutReturnOrigin,
   requireStripeSecret,
+  resolveChargeablePriceId,
   retrieveStripeCheckoutSession,
   stripeSubscriptionIdFromSession,
 } from "./stripe";
@@ -102,6 +103,27 @@ export function resolveCheckoutPrice(input: {
     };
   }
   return { ok: false, error: "Unknown checkout kind." };
+}
+
+/** Stripe lookup key for the Price checkout should charge if the catalog id is inactive. */
+export function stripeCatalogLookupKey(input: {
+  kind: CheckoutKind;
+  tierId?: string;
+  audience?: string;
+  interval?: string;
+  itemId?: string;
+}): string | null {
+  if (input.kind === "membership") {
+    const tier = String(input.tierId || "").toLowerCase();
+    const audience = String(input.audience || "").toLowerCase();
+    const interval = input.interval === "year" ? "year" : "month";
+    if (!tier || !audience) return null;
+    return `gysh_membership_${tier}_${audience}_${interval}`;
+  }
+  const itemId = String(input.itemId || "").trim();
+  if (!itemId) return null;
+  if (input.kind === "credit_pack") return `gysh_credits_${itemId}_once`;
+  return `gysh_alacarte_${itemId}_once`;
 }
 
 function lookupJoinCartSku(itemId: string): {
@@ -280,7 +302,7 @@ export async function handleStripeCheckoutCreate(
   let mode: "subscription" | "payment";
   let label: string;
   let amountUsd: number;
-  let catalogLineItems: Array<{ priceId: string; quantity: number }>;
+  let catalogLineItems: Array<{ priceId: string; quantity: number; lookupKey?: string | null }>;
   let cartMeta = "";
   let mixedLines: MixedCartLine[] = [];
 
@@ -290,7 +312,11 @@ export async function handleStripeCheckoutCreate(
     mode = cart.mode;
     label = cart.label;
     amountUsd = cart.amountUsd;
-    catalogLineItems = cart.lines.map((l) => ({ priceId: l.priceId, quantity: l.quantity }));
+    catalogLineItems = cart.lines.map((l) => ({
+      priceId: l.priceId,
+      quantity: l.quantity,
+      lookupKey: stripeCatalogLookupKey({ kind: l.skuKind, itemId: l.itemId }),
+    }));
     cartMeta = cart.lines.map((l) => `${l.itemId}x${l.quantity}`).join(",");
     kind = cart.checkoutKind;
     mixedLines = mixedLinesFromCartSku(cart.lines);
@@ -307,7 +333,19 @@ export async function handleStripeCheckoutCreate(
     mode = resolved.mode;
     label = resolved.label;
     amountUsd = resolved.amountUsd;
-    catalogLineItems = [{ priceId: resolved.priceId, quantity: 1 }];
+    catalogLineItems = [
+      {
+        priceId: resolved.priceId,
+        quantity: 1,
+        lookupKey: stripeCatalogLookupKey({
+          kind,
+          tierId: body.tierId,
+          audience: body.audience,
+          interval: body.interval,
+          itemId: body.itemId || body.packId,
+        }),
+      },
+    ];
     cartMeta = String(body.itemId || body.packId || "");
     if (kind === "credit_pack") {
       mixedLines = mixedLinesFromCartSku([
@@ -610,6 +648,12 @@ export async function handleStripeCheckoutCreate(
     ]);
     amountUsd = quote.cashDueUsd;
   } else {
+    for (const line of catalogLineItems) {
+      if (!line.priceId) continue;
+      const active = await resolveChargeablePriceId(secret, line.priceId, line.lookupKey);
+      if (!active.ok) return error(active.error, 502);
+      line.priceId = active.priceId;
+    }
     writeStripeLineItems(form, catalogLineItems);
     if (mode === "subscription" && quote.creditsApplied > 0 && quote.creditValueUsd > 0) {
       const coupon = await createStripeOnceCoupon(secret, {

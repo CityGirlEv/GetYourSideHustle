@@ -1,14 +1,14 @@
 {
   "mode": "live",
-  "syncedAt": "2026-09-21T09:23:46.143Z",
+  "syncedAt": "2026-10-01T23:06:00.000Z",
   "memberships": {
     "starter": {
       "adult": {
         "month": {
           "productId": "prod_VDNW0LfJcitlzh",
-          "priceId": "price_1UI3RwJOsDH7RgBdbO0wCM7A",
-          "amountUsd": 117,
-          "label": "Starter Adults Every 3 months"
+          "priceId": "price_1UJfpXJOsDH7RgBdhjPsdGWS",
+          "amountUsd": 39,
+          "label": "Starter Adults Monthly"
         },
         "year": {
           "productId": "prod_VDNW0LfJcitlzh",
@@ -20,9 +20,9 @@
       "senior": {
         "month": {
           "productId": "prod_VDNWkxCGzGfWPv",
-          "priceId": "price_1UI3RyJOsDH7RgBdRJ8bpeLa",
-          "amountUsd": 102,
-          "label": "Starter Seniors (50+) Every 3 months"
+          "priceId": "price_1UJfpYJOsDH7RgBdrpXD6oy6",
+          "amountUsd": 34,
+          "label": "Starter Seniors (50+) Monthly"
         },
         "year": {
           "productId": "prod_VDNWkxCGzGfWPv",
@@ -36,9 +36,9 @@
       "adult": {
         "month": {
           "productId": "prod_VDNXXVVfjFcIDZ",
-          "priceId": "price_1UI3S0JOsDH7RgBdM4h0LeHt",
-          "amountUsd": 207,
-          "label": "Pro Adults Every 3 months"
+          "priceId": "price_1UJfpaJOsDH7RgBdk1e99EKq",
+          "amountUsd": 69,
+          "label": "Pro Adults Monthly"
         },
         "year": {
           "productId": "prod_VDNXXVVfjFcIDZ",
@@ -50,9 +50,9 @@
       "senior": {
         "month": {
           "productId": "prod_VDNXp0qkSHjoSk",
-          "priceId": "price_1UI3S1JOsDH7RgBdBcY2Ng7A",
-          "amountUsd": 171,
-          "label": "Pro Seniors (50+) Every 3 months"
+          "priceId": "price_1UJfpbJOsDH7RgBdAwrhYSzm",
+          "amountUsd": 57,
+          "label": "Pro Seniors (50+) Monthly"
         },
         "year": {
           "productId": "prod_VDNXp0qkSHjoSk",
@@ -66,9 +66,9 @@
       "adult": {
         "month": {
           "productId": "prod_VDNXrXI9JxygaK",
-          "priceId": "price_1UI3S3JOsDH7RgBdPElJJOmz",
-          "amountUsd": 357,
-          "label": "Elite Adults Every 3 months"
+          "priceId": "price_1UJfpdJOsDH7RgBdBOiArZQ0",
+          "amountUsd": 119,
+          "label": "Elite Adults Monthly"
         },
         "year": {
           "productId": "prod_VDNXrXI9JxygaK",
@@ -80,9 +80,9 @@
       "senior": {
         "month": {
           "productId": "prod_VDNXLOrg53RF4w",
-          "priceId": "price_1UI3S5JOsDH7RgBdFgMLwljy",
-          "amountUsd": 282,
-          "label": "Elite Seniors (50+) Every 3 months"
+          "priceId": "price_1UJfpeJOsDH7RgBdxKT2gE7O",
+          "amountUsd": 94,
+          "label": "Elite Seniors (50+) Monthly"
         },
         "year": {
           "productId": "prod_VDNXLOrg53RF4w",
