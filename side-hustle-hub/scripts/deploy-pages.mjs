@@ -16,8 +16,15 @@ import { existsSync, renameSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readGyshGuideTabsDeployBlocker } from "./gysh-deploy-guard.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+const guideTabsBlocker = readGyshGuideTabsDeployBlocker(root);
+if (guideTabsBlocker) {
+  console.error(guideTabsBlocker);
+  process.exit(1);
+}
 const wrangler = path.resolve(
   root,
   "../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js",

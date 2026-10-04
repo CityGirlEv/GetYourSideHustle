@@ -1,22 +1,23 @@
 /**
- * Free signups can use My Dashboard immediately.
- * Paid plans stay pending until checkout / staff activation.
+ * New memberships stay pending until the person clicks the verification email.
+ * That click sets the account Active. Staff do not approve the login.
  */
 
 export function registerUserStatus(
-  membershipTier: string | null | undefined,
-): "active" | "pending" {
-  const tier = String(membershipTier || "free").trim().toLowerCase();
-  return tier === "free" ? "active" : "pending";
+  _membershipTier?: string | null,
+): "pending" {
+  void _membershipTier;
+  return "pending";
 }
 
-/** Existing pending Free accounts may sign in; that flips them to active. */
-export function pendingFreeAccountMaySignIn(input: {
-  status: string | null | undefined;
+/**
+ * Login must not skip the verification email.
+ * Pending memberships become Active only from the emailed link.
+ */
+export function pendingFreeAccountMaySignIn(_input?: {
+  status?: string | null;
   membershipTier?: string | null;
 }): boolean {
-  const status = String(input.status || "").trim().toLowerCase();
-  if (status !== "pending") return false;
-  const tier = String(input.membershipTier || "free").trim().toLowerCase();
-  return tier === "free";
+  void _input;
+  return false;
 }

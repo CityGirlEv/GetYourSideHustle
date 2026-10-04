@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CalendarRange, Mic2, Rocket, Sparkles, Wand2 } from "lucide-react";
+import { CalendarRange, Sparkles, Wand2 } from "lucide-react";
 import { BusyOverlay } from "../WaitFeedback";
 import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import {
@@ -71,7 +71,6 @@ import {
   adminStudioPath,
   marketingLaunchPlanUrl,
   navigateAdminDeepLink,
-  readAdminDeepLink,
   type AdminDeepLinkOpts,
 } from "../../lib/admin-deep-links";
 import { scrollAdminFocusIntoView } from "../../lib/admin-focus-scroll";
@@ -88,7 +87,6 @@ import {
   type SoftLaunchOverrideEntry,
 } from "../../lib/soft-launch-item-overrides";
 import { useAdminEntityLinks } from "../../hooks/useAdminEntityLinks";
-import { WorkshopsAdmin } from "./WorkshopsAdmin";
 import { MarkdownLinkText } from "./MarkdownLinkText";
 import { AdminCrossLinks, crossLinksForSoftLaunchItem } from "./AdminCrossLinks";
 import { SoftLaunchItemEditor } from "./SoftLaunchItemEditor";
@@ -259,14 +257,6 @@ const NEXT_STATUS: Partial<Record<ContentDraftStatus, ContentDraftStatus>> = {
   scheduled: "published",
 };
 
-type FactoryTab = "soft_launch" | "workshops";
-
-function factoryTabFromDeepLink(): FactoryTab {
-  const panel = readAdminDeepLink().panel;
-  if (panel === "workshops") return "workshops";
-  return "soft_launch";
-}
-
 export function ContentFactory({
   focusItemId = null,
   onFocusConsumed,
@@ -274,7 +264,6 @@ export function ContentFactory({
   focusItemId?: string | null;
   onFocusConsumed?: () => void;
 } = {}) {
-  const [tab, setTab] = useState<FactoryTab>(factoryTabFromDeepLink);
   /** Empty set = all sprints (same multi-select pattern as Task List / Testing Portal). */
   const [sprintFilters, setSprintFilters] = useState<Set<number>>(
     () => new Set(softLaunchFactoryDefaultSprints()),
@@ -361,7 +350,6 @@ export function ContentFactory({
       onFocusConsumed?.();
       return;
     }
-    setTab("soft_launch");
     setSprintFilters(new Set([item.sprint]));
     setChannelFilter("all");
     setAssigneeFilters(new Set());
@@ -719,15 +707,6 @@ export function ContentFactory({
     setAssigneeFilters((prev) => toggleInSet(prev, owner));
   };
 
-  const setFactoryTab = (id: FactoryTab) => {
-    setTab(id);
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", "factory");
-    url.searchParams.set("panel", id === "workshops" ? "workshops" : "launch-plan");
-    window.history.replaceState(window.history.state, "", url.toString());
-  };
-
   const seedRollout = async (mode: "visible" | "all") => {
     setSeedMsg("");
     const next = seedSoftLaunchDrafts(
@@ -800,30 +779,8 @@ export function ContentFactory({
             {error}
           </div>
         )}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-          {(
-            [
-              ["soft_launch", "GYSH Marketing/Launch Plan", <Rocket key="s" size={14} />],
-              ["workshops", "Workshops", <Mic2 key="w" size={14} />],
-            ] as const
-          ).map(([id, label, icon]) => (
-            <button
-              key={id}
-              type="button"
-              className={`nav-link-btn ${tab === id ? "active" : ""}`}
-              style={{ borderRadius: 10 }}
-              onClick={() => setFactoryTab(id)}
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {tab === "workshops" && <WorkshopsAdmin />}
-
-      {tab === "soft_launch" && (
         <>
           <div className="glass content-factory__help-stack" data-testid="factory-help-stack">
             <div className="content-factory__help-row qa-categories-panel" data-testid="factory-howto-panel">
@@ -1797,7 +1754,6 @@ export function ContentFactory({
             </div>
           ))}
         </>
-      )}
     </div>
   );
 }

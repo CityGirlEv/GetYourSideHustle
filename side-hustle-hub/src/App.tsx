@@ -29,7 +29,6 @@ import {
   Crown,
   BookOpen,
   LayoutDashboard,
-  Users,
 } from "lucide-react";
 import { FacebookIcon } from "./components/FacebookIcon";
 import { HeaderReferralBadge } from "./components/HeaderReferralBadge";
@@ -108,7 +107,12 @@ import { showGuidesUpdatingScreen, showHomeGuidesLibraryTag } from "./lib/guides
 import type { FooterNavView } from "./components/SiteFooter";
 import type { AudienceGroup, TierId } from "./lib/membership";
 import { myDashboardLocationTip } from "./lib/dashboard-nav-tip";
-import { COMMUNITY_NAV_CHILDREN, isCommunityNavView } from "./lib/primary-nav";
+import {
+  COMMUNITY_NAV_CHILDREN,
+  MATCH_WIZARDS_NAV_LABEL,
+  MATCH_WIZARD_NAV_CHILDREN,
+  isCommunityNavView,
+} from "./lib/primary-nav";
 import {
   audienceFromAgeGroup,
   isAudienceGroup,
@@ -149,6 +153,7 @@ import { workshopRegistrationPath } from "./lib/workshops";
 import { consumeWorkshopJoinReturn } from "./lib/pending-join-return";
 import { readAdminDeepLink } from "./lib/admin-deep-links";
 import {
+  confirmEmailVerification,
   confirmPasswordReset,
   hasActiveTabSession,
   LOGIN_BUTTON_LABEL,
@@ -159,6 +164,7 @@ import {
   type AuthUser,
 } from "./lib/auth";
 import { clearResetTokenFromUrl, readResetTokenFromUrl } from "./lib/password-reset-url";
+import { clearVerifyTokenFromUrl, readVerifyTokenFromUrl } from "./lib/email-verify-url";
 import type { GuidePeekNav } from "./lib/launch-guide-peeks";
 import {
   ACT_AS_AUDIENCE_OPTIONS,
@@ -189,7 +195,6 @@ import { isYouthDashboardUser, youthAgeBand } from "./lib/youth-dashboard";
 import { authReadySafetyMs } from "./lib/first-load";
 import { isLocalDevHost } from "./lib/d1-errors";
 import { readCachedAuthUser, readSessionToken } from "./lib/session-storage";
-import kevinaNavMark from "./assets/kevina-starr-logo.png";
 import gyshLogo from "./assets/gysh-logo-rocket.png";
 import "./App.css";
 
@@ -245,7 +250,7 @@ function App() {
   /** Skip pushState when the URL change came from back/forward. */
   const skipNextUrlSync = useRef(false);
   const urlSyncReady = useRef(false);
-  /** Community → Workshops should show the catalog, not a leftover ?register= form. */
+  /** Workshops on the main menu should show the catalog, not a leftover ?register= form. */
   const workshopsListingNav = useRef(false);
   const [workshopsHubEpoch, setWorkshopsHubEpoch] = useState(0);
   /** Guest hit /my-dashboard — after session restore, put them back on the portal. */
@@ -283,6 +288,8 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [communityMenuOpen, setCommunityMenuOpen] = useState(false);
   const communityMenuRef = useRef<HTMLLIElement>(null);
+  const [wizardMenuOpen, setWizardMenuOpen] = useState(false);
+  const wizardMenuRef = useRef<HTMLLIElement>(null);
   const [adminSessionKey, setAdminSessionKey] = useState(0);
   const [adminTab, setAdminTab] = useState<AdminTab>(() => readAdminDeepLink().tab ?? "schedule");
   /** Tina / Lyriq must submit ≥3 meeting dates before any other navigation. */
@@ -754,6 +761,7 @@ function App() {
     setParentKidDashboard(null);
     setMobileMenuOpen(false);
     setCommunityMenuOpen(false);
+    setWizardMenuOpen(false);
     setAdminMenuOpen(false);
     if (dest === "guides") {
       if (opts && "launchGuideId" in opts) {
@@ -809,10 +817,13 @@ function App() {
     audience?: AudienceGroup | null,
     opts?: { resumeCheckout?: boolean },
   ) => {
+    const profileAudience = audienceFromAgeGroup(authUser?.audience);
     const next =
       audience != null
         ? audienceFromAgeGroup(audience)
-        : joinAudience ?? readSavedJoinAudience("adult");
+        : (authUser?.audience ? profileAudience : null) ??
+          joinAudience ??
+          readSavedJoinAudience("adult");
     saveJoinAudience(next);
     setJoinAudience(next);
     setSignupTier(tier);
@@ -1166,6 +1177,8 @@ function App() {
     setFindMineMode("adult");
     setActiveView("quiz");
     setMobileMenuOpen(false);
+    setCommunityMenuOpen(false);
+    setWizardMenuOpen(false);
     setAdminMenuOpen(false);
     setActAsMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1218,6 +1231,7 @@ function App() {
 
   /** After free unlock / login claim — land on My Dashboard (Blueprint + credits). */
   const restoreBlueprintAfterUnlock = (_ageGroup: BlueprintAgeGroup) => {
+    setPortalInitialTab("blueprint");
     setActiveView("user_portal");
     setMobileMenuOpen(false);
     setAdminMenuOpen(false);
@@ -1240,6 +1254,22 @@ function App() {
       document.removeEventListener("touchstart", onPointerDown);
     };
   }, [communityMenuOpen]);
+
+  useEffect(() => {
+    if (!wizardMenuOpen) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const el = wizardMenuRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setWizardMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [wizardMenuOpen]);
 
   useEffect(() => {
     if (!adminMenuOpen || mobileMenuOpen) return;
@@ -1483,6 +1513,34 @@ function App() {
     setActiveView("login");
     setResetError("");
     setResetSuccess("");
+  }, []);
+
+  useEffect(() => {
+    const token = readVerifyTokenFromUrl();
+    if (!token) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await confirmEmailVerification(token);
+      if (cancelled) return;
+      clearVerifyTokenFromUrl();
+      if (!result.ok || !result.user) {
+        setLoginMode("login");
+        setActiveView("login");
+        setLoginError(
+          result.error ||
+            "Could not verify that email. Sign in with your password and we will send a new link.",
+        );
+        return;
+      }
+      setIsLoggedIn(true);
+      setAuthUser(result.user);
+      setMemberAccessTick((n) => n + 1);
+      setPortalInitialTab("blueprint");
+      setActiveView("user_portal");
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1901,8 +1959,8 @@ function App() {
               src={gyshLogo}
               alt="Get Your Side Hustle"
               className="brand-header-logo"
-              width={584}
-              height={280}
+              width={486}
+              height={243}
             />
           </button>
 
@@ -2250,6 +2308,56 @@ function App() {
             <div className="top-header-row top-header-row--meta">
               <nav className="nav-secondary" aria-label="Audience and resources">
                 <ul className="nav-links nav-links--secondary">
+                  <li
+                    ref={wizardMenuRef}
+                    className={`nav-dropdown${wizardMenuOpen ? " open" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className={`nav-link-btn ${
+                        activeView === "quiz" || activeView === "seniors" || activeView === "kids"
+                          ? "active"
+                          : ""
+                      }`}
+                      data-testid="nav-find-mine"
+                      aria-expanded={wizardMenuOpen}
+                      aria-haspopup="true"
+                      onClick={() => {
+                        setCommunityMenuOpen(false);
+                        setWizardMenuOpen((open) => !open);
+                      }}
+                    >
+                      <Sparkles size={16} className="nav-icon nav-icon--quiz" aria-hidden />
+                      {MATCH_WIZARDS_NAV_LABEL}
+                      <ChevronDown size={14} className="nav-dropdown-chevron" aria-hidden />
+                    </button>
+                    <ul className="nav-dropdown-menu" hidden={!wizardMenuOpen}>
+                      {MATCH_WIZARD_NAV_CHILDREN.map((child) => (
+                        <li key={child.id}>
+                          <button
+                            type="button"
+                            className={`nav-dropdown-item ${
+                              (child.id === "adults" &&
+                                activeView === "quiz" &&
+                                findMineMode === "adult") ||
+                              (child.id === "seniors" && activeView === "seniors") ||
+                              (child.id === "kids" && activeView === "kids")
+                                ? "active"
+                                : ""
+                            }`}
+                            data-testid={child.testId}
+                            onClick={() => {
+                              if (child.id === "adults") openAdultFindMine();
+                              else if (child.id === "seniors") openSeniors();
+                              else openKidsCorner();
+                            }}
+                          >
+                            {child.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
                   <li>
                     <button
                       type="button"
@@ -2264,56 +2372,12 @@ function App() {
                   <li>
                     <button
                       type="button"
-                      onClick={() => goTo("quiz")}
-                      className={`nav-link-btn ${
-                        activeView === "quiz" && findMineMode !== "adult" ? "active" : ""
-                      }`}
-                      data-testid="nav-find-mine"
+                      onClick={() => goTo("workshops")}
+                      className={`nav-link-btn ${activeView === "workshops" ? "active" : ""}`}
+                      data-testid="nav-workshops"
                     >
-                      <Sparkles size={16} className="nav-icon nav-icon--quiz" aria-hidden />
-                      Match Wizard
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={openAdultFindMine}
-                      className={`nav-link-btn ${
-                        activeView === "quiz" && findMineMode === "adult" ? "active" : ""
-                      }`}
-                      data-testid="nav-adults"
-                    >
-                      <Users size={16} className="nav-icon nav-icon--adults" aria-hidden />
-                      Adults
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => openSeniors()}
-                      className={`nav-link-btn ${activeView === "seniors" ? "active" : ""}`}
-                      data-testid="nav-seniors"
-                    >
-                      <Heart size={16} className="nav-icon nav-icon--seniors" aria-hidden />
-                      Seniors
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => openKidsCorner()}
-                      className={`nav-link-btn ${activeView === "kids" ? "active" : ""}`}
-                      data-testid="nav-kids"
-                    >
-                      <img
-                        src={kevinaNavMark}
-                        alt="Kevina Starr"
-                        aria-hidden="true"
-                        className="nav-kevina-mark"
-                        width={28}
-                        height={28}
-                      />
-                      Kids & Teens
+                      <Mic2 size={16} className="nav-icon nav-icon--workshops" aria-hidden />
+                      Workshops
                     </button>
                   </li>
                   <li
@@ -2326,7 +2390,10 @@ function App() {
                       data-testid="nav-community"
                       aria-expanded={communityMenuOpen}
                       aria-haspopup="true"
-                      onClick={() => setCommunityMenuOpen((open) => !open)}
+                      onClick={() => {
+                        setWizardMenuOpen(false);
+                        setCommunityMenuOpen((open) => !open);
+                      }}
                     >
                       <MessageSquare size={16} className="nav-icon nav-icon--community" aria-hidden />
                       Community
@@ -2922,7 +2989,12 @@ function App() {
                 canSetGuideReviewedByDev(authUser) && !previewingAsMember
               }
               onGoToJoin={(focusTier?: TierId) =>
-                openJoin("adult", joinUnlockNavOpts(focusTier))
+                openJoin(
+                  effectivePortalLogin && authUser?.audience
+                    ? audienceFromAgeGroup(authUser.audience)
+                    : "adult",
+                  joinUnlockNavOpts(focusTier),
+                )
               }
               onGoToLogin={() => goTo("login")}
             />
@@ -2956,7 +3028,14 @@ function App() {
         {activeView === "checklist" && (
           <LaunchChecklistPage
             isLoggedIn={effectivePortalLogin}
-            onGoToJoin={() => openJoin("adult", { scrollToPlans: true })}
+            onGoToJoin={() =>
+              openJoin(
+                effectivePortalLogin && authUser?.audience
+                  ? audienceFromAgeGroup(authUser.audience)
+                  : "adult",
+                { scrollToPlans: true },
+              )
+            }
             onGoToLogin={() => goTo("login")}
             onOpenGuide={handleOpenGuidePeek}
           />
@@ -2969,7 +3048,14 @@ function App() {
             memberName={authUser?.name || ""}
             memberEmail={authUser?.email || ""}
             isAdmin={canUseAdminPortal && !previewingAsMember}
-            onGoToJoin={() => openMembershipSignup("free", "adult")}
+            onGoToJoin={() =>
+              openMembershipSignup(
+                "free",
+                effectivePortalLogin && authUser?.audience
+                  ? audienceFromAgeGroup(authUser.audience)
+                  : "adult",
+              )
+            }
             onGoToLogin={() => goTo("login")}
             onAddWorkshopSeat={() => {
               addAlaCarteToCart("workshop-general");
@@ -3411,6 +3497,7 @@ function App() {
                 ? authUser.membershipTier
                 : null
             }
+            memberAudience={authUser?.audience ?? null}
             onProfileUpdated={(user: AuthUser) => {
               setAuthUser(user);
               setIsLoggedIn(true);
@@ -3542,7 +3629,12 @@ function App() {
                 setFindMineMode("select");
                 goTo("quiz");
               }}
-              onOpenJoin={() => openJoin("adult", { scrollToPlans: true })}
+              onOpenJoin={() =>
+                openJoin(
+                  authUser?.audience ? audienceFromAgeGroup(authUser.audience) : null,
+                  { scrollToPlans: true },
+                )
+              }
               onMembershipChanged={(tier: string) => {
                 setAuthUser((prev) => (prev ? { ...prev, membershipTier: tier } : prev));
               }}

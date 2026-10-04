@@ -35,10 +35,9 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
             src={gyshLogo}
             alt={SITE_NAME}
             className="site-footer-logo"
-            width={584}
-            height={280}
+            width={486}
+            height={243}
           />
-          <p className="site-footer-tagline">{SITE_PURPOSE}</p>
           <div className="site-footer-social">
             <a
               href={FACEBOOK_URL}
@@ -61,6 +60,8 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
             </button>
           </div>
         </div>
+
+        <p className="site-footer-tagline">{SITE_PURPOSE}</p>
 
         <nav className="site-footer-nav" aria-label="Footer">
           <button type="button" className="site-footer-link" onClick={() => onNavigate("about")}>

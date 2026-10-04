@@ -431,6 +431,19 @@ export function mixedCheckoutButtonLabel(quote: MixedPayQuote): string {
   return `Checkout ${formatUsd(quote.cashDueUsd)}`;
 }
 
+/** True when this charge can be paid with credits and the member should still see Stripe. */
+export function offerStripeBesideCredits(
+  quote: Pick<MixedPayQuote, "creditsMax" | "subtotalUsd">,
+): boolean {
+  return Math.floor(Number(quote.creditsMax) || 0) > 0 && Number(quote.subtotalUsd) > 0;
+}
+
+/** Full card price. Credits are not applied. */
+export function payWithStripeButtonLabel(amountLabel: string): string {
+  const label = String(amountLabel || "").trim();
+  return label ? `Pay ${label} with Stripe` : "Pay with Stripe";
+}
+
 /** True when credits cover the whole charge — no Stripe redirect (credit packs never qualify). */
 export function checkoutFullyPaidWithCredits(quote: Pick<MixedPayQuote, "cashDueCents" | "creditsApplied">): boolean {
   return Number(quote.cashDueCents) <= 0 && Number(quote.creditsApplied) > 0;

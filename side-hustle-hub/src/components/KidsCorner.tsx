@@ -1130,6 +1130,7 @@ function KidsHustleWizard({
   onOpenPiggy,
   hasAccountLogin = false,
   previewAsGuest = false,
+  membershipTier = null,
   onUnlockBlueprint,
   onOpenDashboard,
   onOpenGuide,
@@ -1140,6 +1141,7 @@ function KidsHustleWizard({
   /** Real portal session (parent/family account) — not lightweight team join. */
   hasAccountLogin?: boolean;
   previewAsGuest?: boolean;
+  membershipTier?: string | null;
   onUnlockBlueprint?: () => void;
   onOpenDashboard?: () => void;
   /** Open the Launch Guide for a ranked match. */
@@ -1568,6 +1570,9 @@ function KidsHustleWizard({
                 onRetake={resetQuiz}
                 onSelectGuide={onOpenGuide}
                 onOpenDashboard={onOpenDashboard}
+                isLoggedIn={hasAccountLogin}
+                previewAsGuest={previewAsGuest}
+                membershipTier={membershipTier}
                 extraActions={
                   unlocked ? (
                     <>
@@ -2234,6 +2239,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onOpenPiggy={() => setKidsTab("piggy")}
               hasAccountLogin={hasAccountLogin}
               previewAsGuest={previewAsGuest}
+              membershipTier={effectiveGuideTier}
               onUnlockBlueprint={
                 onUnlockBlueprint
                   ? () => onUnlockBlueprint("kids")
@@ -2304,6 +2310,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onOpenPiggy={() => setJuniorTab("piggy")}
               hasAccountLogin={hasAccountLogin}
               previewAsGuest={previewAsGuest}
+              membershipTier={effectiveGuideTier}
               onUnlockBlueprint={
                 onUnlockBlueprint
                   ? () => onUnlockBlueprint("junior")

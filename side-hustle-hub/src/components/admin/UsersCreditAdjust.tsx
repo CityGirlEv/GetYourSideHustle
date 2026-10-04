@@ -13,7 +13,7 @@ export function UsersCreditAdjust({
   user: GyshUser;
   onBalanceChanged?: (email: string, balance: number) => void;
 }) {
-  const [amount, setAmount] = useState("10");
+  const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState<InternalCreditAction | null>(null);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
@@ -23,11 +23,16 @@ export function UsersCreditAdjust({
     if (busy) return;
     setError("");
     setOk("");
+    const credits = Math.floor(Number(amount));
+    if (!Number.isFinite(credits) || credits <= 0) {
+      setError("Enter how many credits to add or remove.");
+      return;
+    }
     setBusy(action);
     try {
       const result = await grantInternalCredits({
         email: user.email,
-        credits: Number(amount),
+        credits: credits,
         action,
       });
       onBalanceChanged?.(result.email, result.balance);
@@ -53,7 +58,7 @@ export function UsersCreditAdjust({
       }}
     >
       <div className="users-credit-adjust-label">
-        <Coins size={14} aria-hidden /> Credits
+        <Coins size={14} aria-hidden /> Balance
         <strong data-testid={`users-credits-balance-${user.id}`}>
           {formatKidCreditBalance(balance)}
         </strong>
@@ -66,8 +71,8 @@ export function UsersCreditAdjust({
             min={1}
             max={10000}
             step={1}
-            required
             value={amount}
+            placeholder="Amount"
             onChange={(e) => setAmount(e.target.value)}
             data-testid={`users-credits-amount-${user.id}`}
           />

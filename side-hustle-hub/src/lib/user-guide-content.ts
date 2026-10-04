@@ -494,7 +494,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     number: "6",
     title: "Content Factory",
     intro:
-      "Admin-only: GYSH Marketing/Launch Plan (soft-launch calendar, copy, prompts, artifacts) and Workshops for the public hub.",
+      "Admin-only: GYSH Marketing/Launch Plan (soft-launch calendar, copy, prompts, artifacts). Workshop rosters are under People & access → Workshops.",
     subsections: [
       {
         id: "factory-launch-plan",
@@ -526,7 +526,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "ws-edit",
-            text: "Edit title, blurb, date (or TBD), time, capacity, registration open/closed, note, status, audience, format, speakers, tags.",
+            text: "Open Admin → People & access → Workshops. Edit title, blurb, date (or TBD), time, capacity, registration open/closed, note, status, audience, format, speakers, tags. The roster for who signed up is on that page.",
           },
           {
             id: "ws-save",
@@ -703,7 +703,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     number: "12",
     title: "End-user site",
     intro:
-      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Sign-Up · About Us · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
+      "Public GYSH experience. Primary header: Home · Match Wizards (Adults, Seniors, Kids & Teens) · Guides · Workshops · Community (Blog, Newsletter, GEAR) · Sign-Up · About Us · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
     subsections: [
       {
         id: "eu-home",
@@ -803,7 +803,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "eu-ws1",
-            text: "Public hub reads workshops managed under Content Factory → Workshops.",
+            text: "Public hub reads workshops managed under Admin → People & access → Workshops.",
           },
           {
             id: "eu-ws2",

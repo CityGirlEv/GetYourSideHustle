@@ -40,6 +40,39 @@ export function purchasePaymentMethodLabel(source: PurchasePaymentSource): strin
   return "Stripe Checkout";
 }
 
+/** Match a credit spend in the ledger to the checkout that used it. */
+export function matchCreditsSpentToSessions(
+  spends: ReadonlyArray<{ delta?: number | null; reason?: string | null }>,
+  sessionIds: ReadonlyArray<string>,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  const used = new Set<number>();
+  for (const rawId of sessionIds) {
+    const id = String(rawId || "").trim();
+    if (!id || map.has(id)) continue;
+    const needle = id.length > 16 ? id.slice(-16) : id;
+    const idx = spends.findIndex((row, i) => {
+      if (used.has(i)) return false;
+      const reason = String(row.reason || "");
+      return reason.includes(id) || (needle.length >= 8 && reason.includes(needle));
+    });
+    if (idx < 0) continue;
+    used.add(idx);
+    const spent = Math.abs(Math.trunc(Number(spends[idx]?.delta) || 0));
+    if (spent > 0) map.set(id, spent);
+  }
+  return map;
+}
+
+export function creditsAppliedFromPaymentMeta(metaJson: string | null | undefined): number {
+  try {
+    const parsed = JSON.parse(String(metaJson || "{}")) as { creditsApplied?: unknown };
+    return Math.max(0, Math.floor(Number(parsed.creditsApplied) || 0));
+  } catch {
+    return 0;
+  }
+}
+
 export function formatPurchasePaymentAmountLabel(input: {
   amountCents?: number;
   creditsApplied?: number;

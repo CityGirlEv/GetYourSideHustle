@@ -13,9 +13,16 @@ import {
 import { softDeleteUserRecord } from "./data";
 import { requireStripeSecret, stripeRequest } from "./stripe";
 import {
+  formatMembershipBillingDay,
+  membershipDowngradeChargeLabel,
+  membershipDowngradeNotice,
   membershipCancelActionForTier,
+  normalizeMembershipTierId,
   type MembershipCancelAction,
 } from "../../src/lib/membership-cancel";
+import { MEMBERSHIP_TIERS, TIER_LADDER, type TierId } from "../../src/lib/membership";
+import { STRIPE_CATALOG } from "./stripe-catalog.generated";
+import { ensureMembershipBillingColumns } from "./membership-lifecycle";
 
 async function ensureStripeSubscriptionColumn(env: Env): Promise<void> {
   try {
@@ -114,6 +121,117 @@ export async function listLinkedKidUserIds(env: Env, parentUserId: string): Prom
   return [...seen];
 }
 
+async function readMemberAudience(env: Env, userId: string): Promise<string> {
+  try {
+    const row = await env.DB.prepare(`SELECT audience FROM users WHERE id = ?`)
+      .bind(userId)
+      .first<{ audience?: string | null }>();
+    return String(row?.audience || "adult").toLowerCase();
+  } catch {
+    return "adult";
+  }
+}
+
+type StripeSubItem = {
+  id?: string;
+  current_period_end?: number;
+  price?: { recurring?: { interval?: string } };
+};
+
+/** Keep the current plan until period end, then Stripe bills the lower price (or stops). */
+async function scheduleDowngrade(env: Env, user: DbUser, nextTier: TierId): Promise<Response> {
+  await ensureMembershipBillingColumns(env);
+  const now = new Date().toISOString();
+  const current = normalizeMembershipTierId(user.membership_tier);
+  const audience = await readMemberAudience(env, user.id);
+  const subId = await readStripeSubscriptionId(env, user);
+  let effectiveOn: string | null = null;
+  let interval: "month" | "year" = "month";
+
+  if (subId.startsWith("sub_")) {
+    const secret = requireStripeSecret(env);
+    if (secret instanceof Response) return error("Stripe is not configured.", 503);
+    const loaded = await stripeRequest<{
+      current_period_end?: number;
+      items?: { data?: StripeSubItem[] };
+    }>(secret, "GET", `subscriptions/${encodeURIComponent(subId)}`, {
+      "expand[0]": "items.data.price",
+    });
+    if (!loaded.ok) {
+      return error(loaded.error || "Could not load your Stripe subscription.", 502);
+    }
+    const item = loaded.data.items?.data?.[0];
+    interval = item?.price?.recurring?.interval === "year" ? "year" : "month";
+    const endUnix = Number(item?.current_period_end || loaded.data.current_period_end || 0);
+    if (Number.isFinite(endUnix) && endUnix > 0) {
+      effectiveOn = new Date(endUnix * 1000).toISOString().slice(0, 10);
+    }
+    if (nextTier === "free") {
+      const canceled = await stripeRequest(secret, "POST", `subscriptions/${encodeURIComponent(subId)}`, {
+        cancel_at_period_end: "true",
+      });
+      if (!canceled.ok) {
+        return error(canceled.error || "Could not schedule the Stripe cancellation.", 502);
+      }
+    } else if (audience === "adult" || audience === "senior") {
+      const audienceKey = audience === "senior" ? "senior" : "adult";
+      const price = STRIPE_CATALOG.memberships[nextTier]?.[audienceKey]?.[interval];
+      if (!price?.priceId || !item?.id) {
+        return error("Stripe price for that plan is not configured.", 400);
+      }
+      const swapped = await stripeRequest(secret, "POST", `subscriptions/${encodeURIComponent(subId)}`, {
+        "items[0][id]": item.id,
+        "items[0][price]": price.priceId,
+        proration_behavior: "none",
+        cancel_at_period_end: "false",
+      });
+      if (!swapped.ok) {
+        return error(swapped.error || "Could not schedule the new Stripe price.", 502);
+      }
+    }
+  } else {
+    try {
+      const row = await env.DB.prepare(`SELECT membership_expires_at FROM users WHERE id = ?`)
+        .bind(user.id)
+        .first<{ membership_expires_at?: string | null }>();
+      const day = String(row?.membership_expires_at || "").slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day)) effectiveOn = day;
+    } catch {
+      /* no expiry column yet */
+    }
+  }
+
+  const currentName = MEMBERSHIP_TIERS.find((row) => row.id === current)?.name || "your current plan";
+  const nextName = MEMBERSHIP_TIERS.find((row) => row.id === nextTier)?.name || nextTier;
+  const message = membershipDowngradeNotice({
+    currentName,
+    nextName,
+    nextTier,
+    chargeLabel: membershipDowngradeChargeLabel({ nextTier, audience, interval }),
+    effectiveOn: formatMembershipBillingDay(effectiveOn),
+  });
+  const stamp = `Downgrade scheduled → ${nextTier} on ${effectiveOn || "next cycle"} ${now}`;
+  const prev = String(user.notes || "");
+  const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+  await env.DB.prepare(
+    `UPDATE users
+     SET notes = ?, membership_pending_tier = ?, membership_pending_effective_at = ?, updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(notes, nextTier, effectiveOn || "", now, user.id)
+    .run();
+  await appendAudit(env.DB, "membership_downgrade_scheduled", user.email, `${current}→${nextTier} ${effectiveOn || "next-cycle"}`);
+  const updated = (await getUserById(env.DB, user.id)) ?? user;
+  return json({
+    ok: true,
+    action: nextTier === "free" ? "cancel_to_free" : "schedule_downgrade",
+    message,
+    effectiveOn,
+    scheduledTier: nextTier,
+    user: publicUser(updated),
+  });
+}
+
 export async function handleMembershipCancel(
   env: Env,
   request: Request,
@@ -122,7 +240,7 @@ export async function handleMembershipCancel(
   const dbFail = !env.DB ? error("Database unavailable.", 503) : null;
   if (dbFail) return dbFail;
 
-  let body: { action?: string } = {};
+  let body: { action?: string; tier?: string } = {};
   try {
     body = await request.json();
   } catch {
@@ -133,57 +251,27 @@ export async function handleMembershipCancel(
   const tier = String(user.membership_tier || "free").toLowerCase();
   const inferred = membershipCancelActionForTier(tier);
   const requested = String(body.action || "").trim();
-  // Map legacy unsubscribe_disable → deactivate_account
   const normalizedRequested =
     requested === "unsubscribe_disable" ? "deactivate_account" : requested;
-  const action: MembershipCancelAction =
-    normalizedRequested === "cancel_to_free" || normalizedRequested === "deactivate_account"
-      ? (normalizedRequested as MembershipCancelAction)
+  const action: MembershipCancelAction | "schedule_downgrade" =
+    normalizedRequested === "cancel_to_free" ||
+    normalizedRequested === "deactivate_account" ||
+    normalizedRequested === "schedule_downgrade"
+      ? (normalizedRequested as MembershipCancelAction | "schedule_downgrade")
       : inferred;
 
-  if (action === "cancel_to_free" && !["starter", "pro", "elite"].includes(tier)) {
-    return error("You are already on the Free plan.", 400);
-  }
+  const requestedTier = normalizeMembershipTierId(body.tier);
+  const nextTier =
+    action === "schedule_downgrade" ? requestedTier : action === "cancel_to_free" ? "free" : null;
 
-  const now = new Date().toISOString();
-
-  if (action === "cancel_to_free") {
-    const subId = await readStripeSubscriptionId(env, user);
-    if (subId) {
-      const canceled = await cancelStripeSubscriptionBestEffort(env, subId);
-      if (!canceled.ok) {
-        return error(canceled.error || "Could not cancel Stripe subscription.", 502);
-      }
+  if (nextTier) {
+    const currentIdx = TIER_LADDER.indexOf(normalizeMembershipTierId(tier));
+    const nextIdx = TIER_LADDER.indexOf(nextTier);
+    if (currentIdx <= 0) return error("You are already on the Free plan.", 400);
+    if (nextIdx < 0 || nextIdx >= currentIdx) {
+      return error("Choose a lower plan to schedule a downgrade.", 400);
     }
-    const stamp = `Membership canceled → free ${now}`;
-    const prev = String(user.notes || "");
-    const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
-    await ensureStripeSubscriptionColumn(env);
-    try {
-      await env.DB.prepare(
-        `UPDATE users SET membership_tier = ?, stripe_subscription_id = '', notes = ?, updated_at = ? WHERE id = ?`,
-      )
-        .bind("free", notes, now, user.id)
-        .run();
-    } catch {
-      await env.DB.prepare(
-        `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
-      )
-        .bind("free", notes, now, user.id)
-        .run();
-    }
-    await appendAudit(env.DB, "membership_cancel_to_free", user.email, subId || "no-sub");
-    const updated = (await getUserById(env.DB, user.id)) ?? {
-      ...user,
-      membership_tier: "free",
-      notes,
-    };
-    return json({
-      ok: true,
-      action: "cancel_to_free",
-      message: "Your paid membership is canceled. Your account is now a Free account.",
-      user: publicUser(updated),
-    });
+    return scheduleDowngrade(env, user, nextTier);
   }
 
   // deactivate_account — soft-delete self + linked kids

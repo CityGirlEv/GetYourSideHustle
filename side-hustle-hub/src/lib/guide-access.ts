@@ -129,7 +129,7 @@ export const ADULT_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   dropshipping: "elite",
   airbnb: "starter",
   amazon: "elite",
-  "property-mgmt": "free",
+  "property-mgmt": "pro",
   "appointment-setter": "starter",
   "ai-assets": "elite",
   "greeting-card-creator": "pro",
@@ -349,8 +349,8 @@ export function resolveGuideAccess(input: GuideAccessInput): GuideAccessResult {
   const complimentary =
     Boolean(guideId) && complimentaryIds.some((id) => id.trim() === guideId);
 
-  if (complimentary) {
-    const userTier = input.isMember ? normalizeGuideTier(input.membershipTier) : "free";
+  if (complimentary && input.isMember) {
+    const userTier = normalizeGuideTier(input.membershipTier);
     return {
       unlocked: true,
       needsJoin: false,

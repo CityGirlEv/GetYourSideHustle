@@ -211,7 +211,7 @@ export function stripWorkshopDeepLinkParams(params: URLSearchParams): void {
   params.delete("workshop");
 }
 
-/** Community → Workshops always opens the catalog, not a leftover pre-register form. */
+/** Main-menu Workshops always opens the catalog, not a leftover pre-register form. */
 export function workshopsListingPath(search: string = ""): string {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   stripWorkshopDeepLinkParams(params);
@@ -231,7 +231,7 @@ export function syncUrlToView(
     guidesHustleId?: string | null;
     /** Filter Side Hustle Library by age via ?age= */
     guidesAge?: "kids" | "junior" | "adult" | "senior" | null;
-    /** Community → Workshops: drop ?register= / ?workshop= so the catalog shows. */
+    /** Workshops: drop ?register= / ?workshop= so the catalog shows. */
     workshopListing?: boolean;
     replace?: boolean;
   },

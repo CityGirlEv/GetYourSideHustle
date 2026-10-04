@@ -1,19 +1,23 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setSessionToken } from "../api";
 import { clearMemoryStore } from "../browser-storage";
-import { isFreeWizardHustle } from "../side-hustle-catalog";
 import {
   claimComplimentaryGuide,
   claimedExtraGuideId,
   complimentaryGuideIds,
   complimentaryPickNotice,
+  complimentaryUnlockButtonLabel,
   complimentarySelectionError,
   ensureComplimentaryClaim,
   explicitComplimentaryGuideId,
+  freeGuideCardLine,
   mergeCompMaps,
-  pickComplimentaryExtraGuideId,
   readLocalComplimentaryExtraId,
+  resolveStoredComplimentaryPick,
+  selectGuestFreeGuide,
   setCachedComplimentaryGuideIds,
+  storedComplimentaryPayload,
+  canOfferComplimentaryPick,
 } from "../wizard-comp-guide";
 
 afterEach(() => {
@@ -23,34 +27,6 @@ afterEach(() => {
 });
 
 describe("wizard complimentary extra guide", () => {
-  it("picks the true 100% match even when it is Unique Unique Free", () => {
-    expect(isFreeWizardHustle("dog-walk")).toBe(true);
-    expect(isFreeWizardHustle("airbnb")).toBe(false);
-    expect(
-      pickComplimentaryExtraGuideId({
-        resultIds: ["dog-walk", "yard-help", "airbnb"],
-        resultPcts: { "dog-walk": 100, "yard-help": 80, airbnb: 70 },
-      }),
-    ).toBe("dog-walk");
-  });
-
-  it("picks the highest % paid match when that is the true top", () => {
-    expect(
-      pickComplimentaryExtraGuideId({
-        resultIds: ["airbnb", "tutoring", "dog-walk"],
-        resultPcts: { airbnb: 100, tutoring: 88, "dog-walk": 40 },
-      }),
-    ).toBe("airbnb");
-  });
-
-  it("falls back to the first result id when percents are missing", () => {
-    expect(
-      pickComplimentaryExtraGuideId({
-        resultIds: ["tutoring", "dog-walk"],
-      }),
-    ).toBe("tutoring");
-  });
-
   it("claims one extra per account and ignores later wizards", () => {
     const first = claimComplimentaryGuide({}, "airbnb");
     expect(first.alreadyClaimed).toBe(false);
@@ -64,16 +40,39 @@ describe("wizard complimentary extra guide", () => {
     expect(claimedExtraGuideId(second.next)).toBe("airbnb");
   });
 
-  it("does not treat a leftover auto extra as the complimentary pick", () => {
-    const leftover = { extra: "tutoring" };
-    expect(explicitComplimentaryGuideId(leftover)).toBeNull();
-    expect(complimentaryGuideIds(leftover)).toEqual([]);
-    expect(mergeCompMaps(leftover, { adult: "airbnb" })).toEqual({});
+  it("stores a free guide only after Select this as my free guide", () => {
+    const untouched = { extra: "tutoring" };
+    expect(explicitComplimentaryGuideId(untouched)).toBeNull();
+    expect(complimentaryGuideIds(untouched)).toEqual([]);
+    expect(mergeCompMaps(untouched, { adult: "airbnb" })).toEqual({});
+    expect(storedComplimentaryPayload(untouched)).toEqual({});
+    expect(freeGuideCardLine("")).toBe("Free guide: not picked yet");
+    expect(
+      canOfferComplimentaryPick({
+        isLoggedIn: true,
+        membershipTier: "free",
+        claimedId: explicitComplimentaryGuideId(untouched),
+      }),
+    ).toBe(true);
 
-    const picked = claimComplimentaryGuide(leftover, "consulting");
+    const picked = claimComplimentaryGuide(untouched, "consulting");
     expect(picked.alreadyClaimed).toBe(false);
     expect(picked.claimedId).toBe("consulting");
     expect(picked.next).toEqual({ extra: "consulting", source: "pick" });
+    expect(explicitComplimentaryGuideId(picked.next)).toBe("consulting");
+    expect(storedComplimentaryPayload(picked.next)).toEqual({ extra: "consulting", source: "pick" });
+    expect(freeGuideCardLine("Consulting")).toBe("Free guide: Consulting");
+    expect(
+      canOfferComplimentaryPick({
+        isLoggedIn: true,
+        membershipTier: "free",
+        claimedId: explicitComplimentaryGuideId(picked.next),
+      }),
+    ).toBe(false);
+
+    const again = claimComplimentaryGuide(picked.next, "airbnb");
+    expect(again.alreadyClaimed).toBe(true);
+    expect(again.claimedId).toBe("consulting");
   });
 
   it("keeps the first explicit pick when merging local and server maps", () => {
@@ -97,6 +96,8 @@ describe("wizard complimentary extra guide", () => {
 
   it("tells Free members to unlock on the match row", () => {
     expect(complimentaryPickNotice()).toMatch(/Unlock this complimentary guide/i);
+    expect(complimentaryUnlockButtonLabel()).toBe("Select this as my free guide");
+    expect(complimentaryUnlockButtonLabel(true)).toBe("Unlocking…");
     expect(complimentarySelectionError({ selectedId: "", resultIds: ["airbnb"] })).toMatch(
       /Unlock 1 guide/i,
     );
@@ -117,5 +118,54 @@ describe("wizard complimentary extra guide", () => {
         alreadyOnFree: false,
       }),
     ).toBeNull();
+  });
+
+  it("lets a guest select one free guide and keeps that choice for life", () => {
+    const first = selectGuestFreeGuide("airbnb", ["airbnb", "dog-walk"]);
+    expect(first.error).toBeNull();
+    expect(first.claimedId).toBe("airbnb");
+    expect(readLocalComplimentaryExtraId()).toBe("airbnb");
+
+    const second = selectGuestFreeGuide("dog-walk", ["airbnb", "dog-walk"]);
+    expect(second.alreadyClaimed).toBe(true);
+    expect(second.claimedId).toBe("airbnb");
+    expect(second.error).toMatch(/once per lifetime/i);
+    expect(readLocalComplimentaryExtraId()).toBe("airbnb");
+  });
+
+  it("keeps a saved free-member pick when the server read is still empty", () => {
+    expect(resolveStoredComplimentaryPick({}, "airbnb")).toEqual({
+      extra: "airbnb",
+      source: "pick",
+    });
+    expect(resolveStoredComplimentaryPick({ extra: "tutoring" }, "airbnb")).toEqual({
+      extra: "airbnb",
+      source: "pick",
+    });
+    expect(
+      resolveStoredComplimentaryPick({ extra: "tutoring", source: "pick" }, "airbnb"),
+    ).toEqual({ extra: "tutoring", source: "pick" });
+    expect(resolveStoredComplimentaryPick({ extra: "tutoring" }, null)).toEqual({});
+  });
+
+  it("offers the one free guide to every free registration, including a blank tier", () => {
+    for (const membershipTier of ["free", "Free", "", null]) {
+      expect(
+        canOfferComplimentaryPick({ isLoggedIn: true, membershipTier, claimedId: null }),
+      ).toBe(true);
+    }
+    expect(
+      canOfferComplimentaryPick({ isLoggedIn: true, membershipTier: "starter" }),
+    ).toBe(true);
+    expect(
+      canOfferComplimentaryPick({ isLoggedIn: false, membershipTier: "free" }),
+    ).toBe(false);
+    expect(
+      canOfferComplimentaryPick({
+        isLoggedIn: true,
+        membershipTier: "free",
+        claimedId: "airbnb",
+      }),
+    ).toBe(false);
   });
 });

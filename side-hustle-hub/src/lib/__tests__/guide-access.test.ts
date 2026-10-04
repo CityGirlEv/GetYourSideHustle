@@ -106,7 +106,7 @@ describe("guide access gatekeeping", () => {
     expect(starterOnStarterGuide.unlocked).toBe(true);
   });
 
-  it("lets guests and Free members open one complimentary extra; other paid guides stay locked", () => {
+  it("lets Free members open one complimentary extra; guests stay locked", () => {
     const guest = resolveGuideAccess({
       isMember: false,
       membershipTier: null,
@@ -114,8 +114,8 @@ describe("guide access gatekeeping", () => {
       guideId: "airbnb",
       complimentaryGuideIds: ["airbnb"],
     });
-    expect(guest.unlocked).toBe(true);
-    expect(guest.needsJoin).toBe(false);
+    expect(guest.unlocked).toBe(false);
+    expect(guest.needsJoin).toBe(true);
 
     const guestOther = resolveGuideAccess({
       isMember: false,

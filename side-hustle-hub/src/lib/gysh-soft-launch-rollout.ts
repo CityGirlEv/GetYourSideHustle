@@ -45,7 +45,7 @@ export function softLaunchFactoryDefaultSprints(ref: Date = new Date()): number[
 export const CONTENT_FACTORY_HOWTO = {
   title: "How the Content Factory works",
   summary:
-    "Content Factory is the admin home for GYSH marketing ops: the Marketing/Launch Plan (what to post, where, when, with copy + media prompts + A→Z artifacts) and Workshops (public workshop listings). Only Admin accounts can open it. Partners follow the plan calendar, create creatives from the prompts, publish on the listed channels, and mark related tasks/tests done as each item ships.",
+    "Content Factory is the admin home for GYSH marketing ops: the Marketing/Launch Plan (what to post, where, when, with copy + media prompts + A→Z artifacts). Workshop signups are under Admin → People & access → Workshops. Only Admin accounts can open Content Factory. Partners follow the plan calendar, create creatives from the prompts, publish on the listed channels, and mark related tasks/tests done as each item ships.",
   steps: [
     "Open Admin → Content Factory → GYSH Marketing/Launch Plan (or use the share link).",
     "Filter by sprint and channel to see this week’s calendar.",
@@ -53,7 +53,7 @@ export const CONTENT_FACTORY_HOWTO = {
     "Publish on the named channel at the suggested time (America/Chicago).",
     "Follow the Personal amplify growth cadence (S3→S5): Tina and Evelyn each have their own Task on scheduled post days — filter Content Factory by Personal amplify.",
     "Save finished asset links (Drive / upload paths) back into the related task notes when available.",
-    "Use Content Factory → Workshops to edit public workshop titles, dates, and registration.",
+    "Use Admin → People & access → Workshops to edit public workshop titles, dates, and registration.",
   ],
 };
 

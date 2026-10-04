@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Mic2, Save, UserPlus, Users } from "lucide-react";
+import { Mic2, Save, Trash2, UserPlus, Users } from "lucide-react";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import {
   AUDIENCE_LABELS,
   STATUS_LABELS,
   WORKSHOP_FORMATS,
   adminAddWorkshopRegistrant,
+  adminDeleteWorkshopRegistrant,
   fetchWorkshopRoster,
   fetchWorkshops,
   persistWorkshops,
@@ -30,6 +31,8 @@ export function WorkshopsAdmin() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
+  const [newSpeakerName, setNewSpeakerName] = useState("");
+  const [newSpeakerTitle, setNewSpeakerTitle] = useState("");
 
   const reload = async () => {
     setLoading(true);
@@ -56,6 +59,50 @@ export function WorkshopsAdmin() {
     if (!selected) return;
     setWorkshops((prev) => prev.map((w) => (w.id === selected.id ? { ...w, ...patch } : w)));
     setSavedMsg("");
+  };
+
+  const markUnsaved = () => setSavedMsg("");
+
+  const addSpeaker = () => {
+    const name = newSpeakerName.trim();
+    if (!name) {
+      setError("Enter a speaker name.");
+      return;
+    }
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40);
+    const initials = name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("");
+    const speaker: GuestSpeaker = {
+      id: `sp-${slug || "guest"}-${crypto.randomUUID().slice(0, 8)}`,
+      name,
+      title: newSpeakerTitle.trim(),
+      bio: "",
+      topics: [],
+      accent: "#9B2F28",
+      initials: initials || "SP",
+    };
+    setSpeakers((prev) => [...prev, speaker]);
+    setNewSpeakerName("");
+    setNewSpeakerTitle("");
+    setError("");
+    markUnsaved();
+  };
+
+  const removeSpeaker = (speaker: GuestSpeaker) => {
+    if (!window.confirm(`Remove ${speaker.name} from the speaker list? Press Save to keep this change.`)) return;
+    setSpeakers((prev) => prev.filter((s) => s.id !== speaker.id));
+    setWorkshops((prev) =>
+      prev.map((w) => ({ ...w, speakerIds: w.speakerIds.filter((id) => id !== speaker.id) })),
+    );
+    markUnsaved();
   };
 
   const save = async () => {
@@ -86,7 +133,7 @@ export function WorkshopsAdmin() {
           <Mic2 size={18} style={{ color: "var(--bronze)" }} /> Edit workshops
         </h3>
         <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", margin: 0 }}>
-          Title, blurb, date (use TBD until confirmed), time, status, and speakers persist to D1 and power the public Workshops hub.
+          Title, blurb, date (use TBD until confirmed), time, status, and speakers stay on this page until you press Save. Save writes them to D1 and the public Workshops hub.
         </p>
         {error && (
           <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
@@ -104,6 +151,8 @@ export function WorkshopsAdmin() {
           </button>
         </div>
       </div>
+
+      {selected && <WorkshopRosterPanel workshopId={selected.id} workshopTitle={selected.title} />}
 
       <div className="workshops-admin__layout">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -263,24 +312,79 @@ export function WorkshopsAdmin() {
                 </select>
               </div>
             </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Speakers</label>
+            <div className="form-group" style={{ margin: 0 }} data-testid="workshop-speakers">
+              <label className="form-label">Speakers on this workshop</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {speakers.map((s) => {
-                  const on = selected.speakerIds.includes(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`btn ${on ? "btn-primary" : "btn-outline"}`}
-                      style={{ padding: "6px 10px", fontSize: "0.9375rem" }}
-                      onClick={() => patchSelected({ speakerIds: toggleId(selected.speakerIds, s.id) })}
-                    >
-                      {s.name}
-                    </button>
-                  );
-                })}
+                {speakers.length === 0 ? (
+                  <span style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>No speakers yet. Add one below, then save.</span>
+                ) : (
+                  speakers.map((s) => {
+                    const on = selected.speakerIds.includes(s.id);
+                    return (
+                      <span key={s.id} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <button
+                          type="button"
+                          className={`btn ${on ? "btn-primary" : "btn-outline"}`}
+                          style={{ padding: "6px 10px", fontSize: "0.9375rem" }}
+                          onClick={() => patchSelected({ speakerIds: toggleId(selected.speakerIds, s.id) })}
+                        >
+                          {s.name}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          style={{ padding: "6px 8px" }}
+                          aria-label={`Remove ${s.name}`}
+                          data-testid={`workshop-speaker-remove-${s.id}`}
+                          onClick={() => removeSpeaker(s)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </span>
+                    );
+                  })
+                )}
               </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginTop: 10, alignItems: "end" }}>
+                <div>
+                  <label className="form-label" htmlFor="workshop-speaker-name">Add speaker</label>
+                  <input
+                    id="workshop-speaker-name"
+                    className="text-input"
+                    value={newSpeakerName}
+                    placeholder="Name"
+                    data-testid="workshop-speaker-name"
+                    onChange={(e) => setNewSpeakerName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="workshop-speaker-title">Title</label>
+                  <input
+                    id="workshop-speaker-title"
+                    className="text-input"
+                    value={newSpeakerTitle}
+                    placeholder="Optional"
+                    data-testid="workshop-speaker-title"
+                    onChange={(e) => setNewSpeakerTitle(e.target.value)}
+                  />
+                </div>
+                <button type="button" className="btn btn-outline" data-testid="workshop-speaker-add" onClick={addSpeaker}>
+                  <UserPlus size={14} /> Add
+                </button>
+              </div>
+              <p style={{ margin: "8px 0 0", color: "var(--text-primary)", fontSize: "0.9rem" }}>
+                Adding or removing a speaker is not saved until you press Save.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ marginTop: 10 }}
+                onClick={() => void save()}
+                disabled={saving}
+                data-testid="workshop-speakers-save"
+              >
+                {saving ? <WaitLabel>Saving…</WaitLabel> : <><Save size={14} /> Save speakers and workshops</>}
+              </button>
             </div>
             <div className="form-group" style={{ margin: 0 }}>
               <label className="form-label">Tags (comma-separated)</label>
@@ -300,8 +404,6 @@ export function WorkshopsAdmin() {
           </div>
         )}
       </div>
-
-      {selected && <WorkshopRosterPanel workshopId={selected.id} workshopTitle={selected.title} />}
     </div>
   );
 }
@@ -316,6 +418,7 @@ function WorkshopRosterPanel({
   const [roster, setRoster] = useState<WorkshopRoster | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
   const [name, setName] = useState("");
@@ -374,18 +477,34 @@ function WorkshopRosterPanel({
     }
   };
 
+  const removeRegistrant = async (row: WorkshopRoster["registrations"][number]) => {
+    if (!window.confirm(`Remove ${row.name} from this roster? Their seat is freed right away.`)) return;
+    setDeletingId(row.id);
+    setError("");
+    setSavedMsg("");
+    try {
+      const result = await adminDeleteWorkshopRegistrant({ id: row.id, workshopId });
+      setSavedMsg(result.message);
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to remove registrant.");
+    } finally {
+      setDeletingId("");
+    }
+  };
+
   const seats = roster
     ? `${roster.seatsTaken}${roster.capacity > 0 ? ` / ${roster.capacity}` : ""} seats`
     : "";
 
   return (
-    <div className="glass" style={{ padding: 20, borderRadius: 14 }} data-testid="workshop-roster">
-      <BusyOverlay active={adding} message="Adding registrant…" />
+    <div className="glass" style={{ padding: 20, borderRadius: 14 }} data-testid="workshop-roster" id="workshop-registration-list">
+      <BusyOverlay active={adding || Boolean(deletingId)} message={deletingId ? "Removing registrant…" : "Adding registrant…"} />
       <h3 style={{ fontSize: "1.15rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <Users size={18} style={{ color: "var(--bronze)" }} /> Roster · {workshopTitle}
+        <Users size={18} style={{ color: "var(--bronze)" }} /> Registration list · {workshopTitle}
       </h3>
       <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", margin: 0 }}>
-        Registrants for this workshop. Adding someone here emails them a confirmation.
+        People registered for this workshop. Choose a workshop below to switch lists. Adding someone here emails them a confirmation.
         {seats ? ` ${seats}.` : ""}
       </p>
       {error && (
@@ -416,6 +535,7 @@ function WorkshopRosterPanel({
                   <th style={{ textAlign: "left", padding: "8px 6px" }}>Phone</th>
                   <th style={{ textAlign: "left", padding: "8px 6px" }}>Seats</th>
                   <th style={{ textAlign: "left", padding: "8px 6px" }}>Registered</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px" }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -426,6 +546,17 @@ function WorkshopRosterPanel({
                     <td style={{ padding: "8px 6px" }}>{row.phone || "—"}</td>
                     <td style={{ padding: "8px 6px" }}>{row.attendeeCount}</td>
                     <td style={{ padding: "8px 6px" }}>{row.createdAt.slice(0, 10)}</td>
+                    <td style={{ padding: "8px 6px" }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        disabled={deletingId === row.id}
+                        data-testid={`workshop-roster-delete-${row.email}`}
+                        onClick={() => void removeRegistrant(row)}
+                      >
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

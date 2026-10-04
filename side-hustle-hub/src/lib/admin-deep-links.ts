@@ -111,7 +111,11 @@ export function readAdminDeepLink(
   if (taskId) out.taskId = taskId;
   if (itemId) out.itemId = itemId;
   if (template) out.template = template;
-  if (panel) out.panel = panel;
+  if (panel === "workshops") {
+    out.tab = "workshops";
+  } else if (panel) {
+    out.panel = panel;
+  }
   if (sub) out.sub = sub;
   // Infer tab from focus id when tab omitted.
   if (!out.tab && out.testId) out.tab = "testing";

@@ -187,6 +187,7 @@ export async function registerFreeMember(input: {
   kidUserId?: string | null;
   kidLoginEmail?: string | null;
   claimedBlueprintId?: string | null;
+  pendingActivation?: boolean;
   error?: string;
 }> {
   if (!input.email.trim() || !input.password) {
@@ -228,12 +229,15 @@ export async function registerFreeMember(input: {
         betaNda: input.applyBetaTester === true ? input.betaNda : undefined,
       },
     });
-    setSessionToken(data.token ?? null);
-    markTabAlive();
-    writeCachedAuthUser(data.user);
-    clearLocalComplimentaryClaim();
+    if (data.token) {
+      setSessionToken(data.token);
+      markTabAlive();
+      writeCachedAuthUser(data.user);
+      clearLocalComplimentaryClaim();
+    }
     return {
       ok: true,
+      pendingActivation: !data.token,
       user: data.user,
       childProfileId: data.childProfileId,
       kidUserId: data.kidUserId,
@@ -428,6 +432,30 @@ export async function requestPasswordReset(email: string): Promise<ResetPassword
     };
   } catch (e) {
     const msg = e instanceof ApiError ? e.message : "Could not send password reset email.";
+    return { ok: false, error: msg };
+  }
+}
+
+/** Click the emailed membership link: Pending becomes Active and a session is stored. */
+export async function confirmEmailVerification(token: string): Promise<{
+  ok: boolean;
+  user?: AuthUser;
+  error?: string;
+}> {
+  try {
+    const data = await api<{ ok: boolean; user: AuthUser; token?: string }>("auth/confirm-email", {
+      method: "POST",
+      body: { token },
+      auth: false,
+    });
+    if (data.token) {
+      setSessionToken(data.token);
+      markTabAlive();
+      writeCachedAuthUser(data.user);
+    }
+    return { ok: true, user: data.user };
+  } catch (e) {
+    const msg = e instanceof ApiError ? e.message : "Could not verify that email.";
     return { ok: false, error: msg };
   }
 }

@@ -96,6 +96,12 @@ describe("placeUnstoredTestSprint", () => {
   it("keeps backlog for generated-failure board rows", () => {
     expect(placeUnstoredTestSprint(-1, [0, 1, 2])).toBe(-1);
   });
+
+  it("keeps a finished test on a closed sprint instead of the next open one", () => {
+    const now = new Date("2026-10-03T12:00:00");
+    expect(placeUnstoredTestSprint(8, [8], now, true)).toBe(8);
+    expect(placeUnstoredTestSprint(8, [8], now, false)).toBe(9);
+  });
 });
 
 describe("nextUnlockedSprint", () => {
@@ -155,6 +161,41 @@ describe("healClosedSprint leftovers", () => {
     expect(healed.sprints["QA-S2"]).toBe(3);
     expect(healed.sprints["QA-PASS"]).toBe(2);
     expect(noteIndicatesRollover(healed.notes["QA-S2"])).toBe(true);
+  });
+
+  it("puts Sprint 8 completions back on Sprint 8 after that sprint is closed", () => {
+    const closedSprint8 = [8];
+    const { tasks, changed } = healClosedSprintTaskLeftovers(
+      [
+        task({
+          id: "T-S8-DONE",
+          sprint: 9,
+          status: "done",
+          dateCompleted: "09/24/26",
+        }),
+        task({ id: "T-S8-OPEN", sprint: 8, status: "in_progress" }),
+      ],
+      closedSprint8,
+      "Evelyn",
+      new Date("2026-10-03T12:00:00"),
+    );
+    expect(tasks.find((t) => t.id === "T-S8-DONE")?.sprint).toBe(8);
+    expect(changed.map((t) => t.id).sort()).toEqual(["T-S8-DONE", "T-S8-OPEN"]);
+    expect(tasks.find((t) => t.id === "T-S8-OPEN")?.sprint).toBe(9);
+
+    const healed = healClosedSprintTestLeftovers({
+      sprints: { "QA-S8-PASS": 9, "QA-S8-OPEN": 8 },
+      statuses: { "QA-S8-PASS": "pass", "QA-S8-OPEN": "in_progress" },
+      notes: {},
+      dueDates: {},
+      finishedAt: { "QA-S8-PASS": "2026-09-24T15:00:00" },
+      closed: closedSprint8,
+      actorLabel: "Evelyn",
+      ref: new Date("2026-10-03T12:00:00"),
+    });
+    expect(healed.sprints["QA-S8-PASS"]).toBe(8);
+    expect(healed.sprints["QA-S8-OPEN"]).toBe(9);
+    expect(healed.changedIds.sort()).toEqual(["QA-S8-OPEN", "QA-S8-PASS"]);
   });
 
   it("rolls incomplete closed-sprint plan items to the next open sprint", () => {

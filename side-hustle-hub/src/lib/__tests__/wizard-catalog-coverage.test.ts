@@ -67,6 +67,91 @@ describe("wizard ranking covers full catalog", () => {
     expect(Math.max(...scored)).toBeGreaterThan(0);
   });
 
+  it("does not crown Airbnb for every Adult or Senior answer set", () => {
+    const strength = [30, 15];
+    const goalsW = [30, 18, 10];
+    const scoreAdult = (
+      id: string,
+      tags: string[],
+      answers: { budget: string; time: string; skill: string[]; goal: string[] },
+    ) => {
+      const profile = getAdultWizardProfile(id, tags);
+      let score = 0;
+      answers.skill.forEach((skill, i) => {
+        score += (profile.skills[skill] ?? 0) * (strength[i] ?? 0);
+      });
+      answers.goal.slice(0, 3).forEach((goal, i) => {
+        score += (profile.goals[goal] ?? 0) * (goalsW[i] ?? 0);
+      });
+      if (profile.budgets.includes(answers.budget)) score += 15;
+      if (profile.times.includes(answers.time)) score += 10;
+      return score;
+    };
+    const topAdult = (answers: { budget: string; time: string; skill: string[]; goal: string[] }) => {
+      return hustlesForAudience("adult")
+        .map((h) => ({ id: h.id, score: scoreAdult(h.id, h.matchTags ?? [], answers) }))
+        .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))[0]?.id;
+    };
+    const topSenior = (answers: {
+      lifestyle: string;
+      availability: string;
+      skills: string[];
+      goals: string[];
+    }) => {
+      return SENIOR_OPPORTUNITIES_EXPANDED.map((o) => ({
+        id: o.id,
+        score: scoreSeniorMatch(o.id, answers),
+      })).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))[0]?.id;
+    };
+
+    const creative = topAdult({
+      budget: "low",
+      time: "very_low",
+      skill: ["creative"],
+      goal: ["passive", "brand"],
+    });
+    const hosting = topAdult({
+      budget: "high",
+      time: "high",
+      skill: ["operations"],
+      goal: ["physical", "passive"],
+    });
+    const driving = topAdult({
+      budget: "low",
+      time: "medium",
+      skill: ["vehicle"],
+      goal: ["flexible", "local"],
+    });
+    expect(creative).not.toBe("airbnb");
+    expect(driving).not.toBe("airbnb");
+    expect(hosting).not.toBe(creative);
+    expect(new Set([creative, hosting, driving]).size).toBe(3);
+
+    const gentle = topSenior({
+      lifestyle: "gentle",
+      availability: "light",
+      skills: ["creative", "writing"],
+      goals: ["purpose", "learn", "flexible"],
+    });
+    const hands = topSenior({
+      lifestyle: "active",
+      availability: "flexible",
+      skills: ["hands_on"],
+      goals: ["income", "flexible", "social"],
+    });
+    const teach = topSenior({
+      lifestyle: "balanced",
+      availability: "light",
+      skills: ["teaching"],
+      goals: ["purpose", "social", "expertise"],
+    });
+    expect(gentle).not.toBe("airbnb");
+    expect(gentle).not.toBe("str-cohost");
+    expect(hands).not.toBe("airbnb");
+    expect(teach).not.toBe("airbnb");
+    expect(new Set([gentle, hands, teach]).size).toBe(3);
+  });
+
   it("catalog length stays the source of truth for adult ranking surface", () => {
     expect(SIDE_HUSTLES.length).toBeGreaterThan(50);
     expect(hustlesForAudience("adult").length).toBe(

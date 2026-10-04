@@ -12,6 +12,7 @@ import {
   drawPdfPageChrome,
 } from "./pdf-branding";
 import { PRODUCTION_SITE_URL } from "./site-config";
+import { WORKSHOP_GUIDE_LOGO_DATA_URL } from "./workshop-guide-logo-data";
 import {
   AI_SCENE_PACKS_PREREQ_PDF_PATH,
   workshopSneakPeek,
@@ -243,7 +244,7 @@ function creditsSection(state: DrawState, peek: WorkshopSneakPeek) {
 export async function buildWorkshopSneakPeekPdf(workshopId: string): Promise<jsPDF | null> {
   const peek = workshopSneakPeek(workshopId);
   if (!peek) return null;
-  const logoDataUrl = undefined;
+  const logoDataUrl = WORKSHOP_GUIDE_LOGO_DATA_URL;
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   drawPdfPageChrome(doc);
   const state: DrawState = { doc, y: PDF_CONTENT_TOP };
@@ -267,6 +268,7 @@ export async function buildWorkshopSneakPeekPdf(workshopId: string): Promise<jsP
 
   applyPdfPageBranding(doc, workshopSneakPeekPdfTitle(peek), logoDataUrl, new Date(), {
     hideLastUpdated: true,
+    footerLogo: true,
   });
   return doc;
 }

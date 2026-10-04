@@ -318,6 +318,8 @@ export function merchChoicesError(
 ): string | null {
   const count = merchItemCount(tierId);
   if (count <= 0) return null;
+  // Upgrade checkout does not collect merch. Missing choices can be claimed later.
+  if (raw == null) return null;
   const choices = parseMerchChoices(raw, count);
   if (!choices) {
     return count === 1

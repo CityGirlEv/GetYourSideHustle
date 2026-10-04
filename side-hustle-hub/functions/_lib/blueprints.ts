@@ -7,9 +7,10 @@ import {
   type Env,
   publicUser,
   requireDb,
+  userRoles,
 } from "./auth";
 import { error, json, randomToken } from "./crypto";
-import { claimedExtraGuideId } from "../../src/lib/wizard-comp-pick";
+import { explicitComplimentaryGuideId, storedComplimentaryPayload } from "../../src/lib/wizard-comp-pick";
 
 export type BlueprintAgeGroup = "kids" | "junior" | "adult" | "senior";
 
@@ -312,25 +313,30 @@ export async function grantComplimentaryWizardExtra(
   if (existing?.payload) {
     try {
       const parsed = JSON.parse(existing.payload) as Record<string, string>;
-      const prior = claimedExtraGuideId(parsed);
+      const prior = explicitComplimentaryGuideId(parsed);
       if (prior) return prior;
     } catch {
       /* overwrite empty/invalid */
     }
   }
   const now = new Date().toISOString();
-  const payload = JSON.stringify({ extra });
+  const payload = JSON.stringify({ extra, source: "pick" });
   await env.DB.prepare(
     `INSERT INTO member_progress (user_id, kind, payload, updated_at)
      VALUES (?, 'wizard_comp_guides', ?, ?)
      ON CONFLICT(user_id, kind) DO UPDATE SET
        payload = CASE
-         WHEN json_extract(member_progress.payload, '$.extra') IS NOT NULL
+         WHEN json_extract(member_progress.payload, '$.source') = 'pick'
           AND trim(COALESCE(json_extract(member_progress.payload, '$.extra'), '')) != ''
          THEN member_progress.payload
          ELSE excluded.payload
        END,
-       updated_at = excluded.updated_at`,
+       updated_at = CASE
+         WHEN json_extract(member_progress.payload, '$.source') = 'pick'
+          AND trim(COALESCE(json_extract(member_progress.payload, '$.extra'), '')) != ''
+         THEN member_progress.updated_at
+         ELSE excluded.updated_at
+       END`,
   )
     .bind(userId, payload, now)
     .run();
@@ -807,4 +813,69 @@ export async function saveBlueprintFavorite(
     .run();
 
   return json({ ok: true });
+}
+
+/** Admin: every saved Match Wizard blueprint, with the member who owns it. */
+function freeGuideIdFromPayload(raw: string | null | undefined): string {
+  if (!raw) return "";
+  try {
+    return storedComplimentaryPayload(JSON.parse(raw)).extra || "";
+  } catch {
+    return "";
+  }
+}
+
+export async function listAdminWizardBlueprints(env: Env): Promise<Response> {
+  const dbFail = requireDb(env);
+  if (dbFail) return dbFail;
+  await ensureBlueprintTables(env);
+  const { results } = await env.DB.prepare(
+    `SELECT u.id AS user_id, u.name AS user_name, u.email, u.status, u.audience, u.role, u.roles,
+            u.membership_tier,
+            b.age_group, b.top_result_id, b.result_ids_json, b.completed_at, b.source,
+            c.display_name AS child_name,
+            mp.payload AS comp_payload
+     FROM side_hustle_blueprints b
+     LEFT JOIN users u ON u.id = b.user_id
+     LEFT JOIN child_profiles c ON c.id = b.child_profile_id
+     LEFT JOIN member_progress mp ON mp.user_id = u.id AND mp.kind = 'wizard_comp_guides'
+     ORDER BY datetime(b.completed_at) DESC`,
+  ).all<{
+    user_id: string | null;
+    user_name: string | null;
+    email: string | null;
+    status: string | null;
+    audience: string | null;
+    role: string | null;
+    roles: string | null;
+    membership_tier: string | null;
+    age_group: string;
+    top_result_id: string | null;
+    result_ids_json: string;
+    completed_at: string;
+    source: string;
+    child_name: string | null;
+    comp_payload: string | null;
+  }>();
+  const blueprints = (results ?? []).map((row) => {
+    const roles = userRoles({ role: row.role || "adult", roles: row.roles });
+    return {
+      userId: row.user_id || "",
+      userName: row.user_name || "",
+      email: row.email || "",
+      status: row.status || "",
+      audience: row.audience || "",
+      role: roles[0] ?? "adult",
+      roles,
+      membershipTier: row.membership_tier || "",
+      ageGroup: row.age_group,
+      topResultId: row.top_result_id || "",
+      resultIds: parseJsonArray(row.result_ids_json),
+      completedAt: row.completed_at,
+      source: row.source || "wizard",
+      childName: row.child_name || "",
+      freeGuideId: freeGuideIdFromPayload(row.comp_payload),
+    };
+  });
+  return json({ blueprints });
 }

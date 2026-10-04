@@ -6,10 +6,10 @@
  * retakes do not grant another extra. Unique Unique Free stays separate.
  */
 
+import { actAsUserId, readActAsTarget } from "./admin-act-as";
 import { getSessionToken } from "./api";
 import { fetchMemberProgress, saveMemberProgress } from "./gysh-member-progress";
 import { getLocalStore } from "./browser-storage";
-import { isFreeWizardHustle } from "./side-hustle-catalog";
 import {
   canOfferComplimentaryPick,
   claimComplimentaryGuide,
@@ -27,11 +27,14 @@ export {
   claimedExtraGuideId,
   complimentaryGuideIds,
   complimentaryPickNotice,
+  complimentaryUnlockButtonLabel,
   complimentarySelectionError,
   explicitComplimentaryGuideId,
+  freeGuideCardLine,
   isExplicitComplimentaryPick,
   pickComplimentaryExtraGuideId,
   pickTrueTopMatchId,
+  storedComplimentaryPayload,
   type WizardCompMap,
 } from "./wizard-comp-pick";
 
@@ -39,6 +42,49 @@ export const WIZARD_COMP_PROGRESS_KIND = "wizard_comp_guides" as const;
 export const WIZARD_COMP_LOCAL_KEY = "gysh_wizard_comp_guides_v1";
 
 let cachedComplimentaryIds: string[] = [];
+/** In-memory pick for the member currently on screen. Never reuse it for someone else. */
+let sessionClaimedGuideId: string | null = null;
+let sessionClaimedUserKey: string | null = null;
+
+function viewedComplimentaryUserKey(): string {
+  return actAsUserId(readActAsTarget()) || "self";
+}
+
+function sessionPickForCurrentUser(): string | null {
+  if (sessionClaimedUserKey !== viewedComplimentaryUserKey()) return null;
+  return sessionClaimedGuideId;
+}
+
+function rememberSessionPick(id: string | null): void {
+  sessionClaimedUserKey = viewedComplimentaryUserKey();
+  sessionClaimedGuideId = id;
+}
+
+/** Drop another member's free-guide choice before this dashboard loads. */
+export function prepareComplimentaryLoadForCurrentUser(): void {
+  const key = viewedComplimentaryUserKey();
+  if (sessionClaimedUserKey === key) return;
+  sessionClaimedGuideId = null;
+  sessionClaimedUserKey = key;
+  writeLocalCompMap({});
+  setCachedComplimentaryGuideIds([]);
+}
+
+/**
+ * Remote explicit picks win. A pick saved earlier in this visit is kept when the
+ * server read is still empty, so the guide stays unlocked for every free signup.
+ * An `{ extra }` row with no source is not a pick.
+ */
+export function resolveStoredComplimentaryPick(
+  remote: WizardCompMap | null | undefined,
+  sessionGuideId?: string | null,
+): WizardCompMap {
+  const remoteId = explicitComplimentaryGuideId(remote ?? {});
+  const sessionId = String(sessionGuideId || "").trim();
+  const id = remoteId || sessionId || "";
+  if (!id) return {};
+  return { extra: id, source: "pick" };
+}
 
 export function setCachedComplimentaryGuideIds(ids: readonly string[]): void {
   cachedComplimentaryIds = ids.map((id) => id.trim()).filter(Boolean);
@@ -58,6 +104,38 @@ export function wizardCompUserFacingRule(): string {
   return "After you create a Free account, check 1 Match Wizard result as your complimentary Launch Guide — even if that extra is Starter, Pro, or Elite. That gift is once per lifetime. Free members also keep Unique Unique Free. You cannot unlock another extra later.";
 }
 
+export const GUEST_FREE_GUIDE_BUTTON_LABEL = "Select this as my free guide";
+
+/**
+ * Anonymous wizard: remember one free-guide choice. The first pick wins for life.
+ * A later pick of a different guide is ignored.
+ */
+export function selectGuestFreeGuide(
+  guideId: string,
+  resultIds: readonly string[],
+): { claimedId: string | null; alreadyClaimed: boolean; error: string | null } {
+  const id = guideId.trim();
+  const allowed = new Set(resultIds.map((row) => row.trim()).filter(Boolean));
+  const existing = readLocalCompMap();
+  if (!id || !allowed.has(id)) {
+    return {
+      claimedId: explicitComplimentaryGuideId(existing),
+      alreadyClaimed: Boolean(explicitComplimentaryGuideId(existing)),
+      error: "Pick a guide from this Match Wizard result list.",
+    };
+  }
+  const { next, claimedId, alreadyClaimed } = claimComplimentaryGuide(existing, id);
+  writeLocalCompMap(next);
+  if (alreadyClaimed && claimedId !== id) {
+    return {
+      claimedId,
+      alreadyClaimed: true,
+      error: "You already selected your 1 free guide. That choice is once per lifetime.",
+    };
+  }
+  return { claimedId, alreadyClaimed, error: null };
+}
+
 /** Sticky local extra id after the member has checked a result. */
 export function readLocalComplimentaryExtraId(): string | null {
   return explicitComplimentaryGuideId(readLocalCompMap());
@@ -65,6 +143,7 @@ export function readLocalComplimentaryExtraId(): string | null {
 
 /** New Free accounts start with no complimentary pick — drop leftover auto-grants. */
 export function clearLocalComplimentaryClaim(): void {
+  sessionClaimedGuideId = null;
   writeLocalCompMap({});
 }
 
@@ -92,25 +171,34 @@ export function mergeCompMaps(a: WizardCompMap, b: WizardCompMap): WizardCompMap
 }
 
 export async function loadComplimentaryGuides(isLoggedIn: boolean): Promise<WizardCompMap> {
-  const local = readLocalCompMap();
   if (!isLoggedIn || !getSessionToken()) {
-    const explicit = mergeCompMaps(local, {});
-    writeLocalCompMap(explicit);
-    setCachedComplimentaryGuideIds(complimentaryGuideIds(explicit));
-    return explicit;
+    writeLocalCompMap({});
+    setCachedComplimentaryGuideIds([]);
+    return {};
   }
+  prepareComplimentaryLoadForCurrentUser();
   try {
     const remote = await fetchMemberProgress<WizardCompMap>(WIZARD_COMP_PROGRESS_KIND);
-    const merged = mergeCompMaps(remote ?? {}, local);
-    writeLocalCompMap(merged);
-    if (explicitComplimentaryGuideId(merged) && !explicitComplimentaryGuideId(remote ?? {})) {
-      await saveMemberProgress(WIZARD_COMP_PROGRESS_KIND, merged);
+    const explicit = resolveStoredComplimentaryPick(remote, sessionPickForCurrentUser());
+    const id = explicitComplimentaryGuideId(explicit);
+    if (id && !explicitComplimentaryGuideId(remote ?? {}) && sessionPickForCurrentUser() === id) {
+      try {
+        await saveMemberProgress(WIZARD_COMP_PROGRESS_KIND, explicit);
+      } catch {
+        /* this visit still unlocks from the session pick */
+      }
     }
-    return merged;
-  } catch {
-    const explicit = mergeCompMaps(local, {});
-    setCachedComplimentaryGuideIds(complimentaryGuideIds(explicit));
+    writeLocalCompMap(explicit);
+    rememberSessionPick(id);
     return explicit;
+  } catch {
+    const sessionId = sessionPickForCurrentUser();
+    if (sessionId) {
+      setCachedComplimentaryGuideIds([sessionId]);
+      return { extra: sessionId, source: "pick" };
+    }
+    writeLocalCompMap({});
+    return {};
   }
 }
 
@@ -166,7 +254,6 @@ export async function claimSelectedComplimentaryGuide(input: {
     selectedId: input.guideId,
     resultIds: input.resultIds,
     alreadyClaimedId: prior,
-    alreadyOnFree: isFreeWizardHustle(input.guideId),
   });
   if (selectionError) {
     return {
@@ -181,8 +268,15 @@ export async function claimSelectedComplimentaryGuide(input: {
   if (!alreadyClaimed && claimedId && getSessionToken()) {
     try {
       await saveMemberProgress(WIZARD_COMP_PROGRESS_KIND, next);
-    } catch {
-      /* local map still applies until next sync */
+      if (claimedId) rememberSessionPick(claimedId);
+    } catch (err) {
+      writeLocalCompMap(current);
+      return {
+        map: current,
+        claimedId: prior,
+        alreadyClaimed: Boolean(prior),
+        error: err instanceof Error ? err.message : "Could not save your free guide. Try again.",
+      };
     }
   }
   return { map: next, claimedId, alreadyClaimed, error: null };

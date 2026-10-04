@@ -7,6 +7,7 @@ import {
   membershipAlaCarteCheckoutNote,
   membershipPlanBubbles,
   membershipPlanChooseLabel,
+  membershipSignupDropdownAudience,
   membershipSignupDropdownTier,
   membershipSignupSubmitLabel,
   membershipStripeCheckoutHint,
@@ -49,6 +50,38 @@ describe("membershipSignupDropdownTier", () => {
         isLoggedIn: true,
       }),
     ).toBe("pro");
+  });
+});
+
+describe("membershipSignupDropdownAudience", () => {
+  it("keeps a guest on the lane they opened", () => {
+    expect(
+      membershipSignupDropdownAudience({
+        initialAudience: "adult",
+        memberAudience: "senior",
+        isLoggedIn: false,
+      }),
+    ).toBe("adult");
+  });
+
+  it("keeps a signed-in Senior on Seniors when Join was last opened on Adults", () => {
+    expect(
+      membershipSignupDropdownAudience({
+        initialAudience: "adult",
+        memberAudience: "senior",
+        isLoggedIn: true,
+      }),
+    ).toBe("senior");
+  });
+
+  it("maps a parent account onto the Kids lane", () => {
+    expect(
+      membershipSignupDropdownAudience({
+        initialAudience: "adult",
+        memberAudience: "parent",
+        isLoggedIn: true,
+      }),
+    ).toBe("kids");
   });
 });
 

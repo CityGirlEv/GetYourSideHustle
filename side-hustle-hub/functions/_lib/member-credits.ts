@@ -7,6 +7,7 @@ import {
   internalCreditReason,
   parseInternalCreditGrant,
 } from "../../src/lib/internal-credits";
+import { kidCreditsFromCartItemMeta } from "../../src/lib/credit-pack-purchase";
 
 export type CreditLedgerRow = {
   id: string;
@@ -326,4 +327,80 @@ export async function handleAdminGrantInternalCredits(
     balance: result.balance,
     reason,
   });
+}
+
+/** Wallet balance used at checkout. Ledger sum wins when the two have drifted. */
+export async function reconcileWalletToLedger(
+  env: Env,
+  userId: string,
+): Promise<{ balance: number }> {
+  const wallet = await ensureWallet(env, userId);
+  try {
+    const row = await env.DB.prepare(
+      `SELECT COALESCE(SUM(delta), 0) AS total, COUNT(*) AS n
+       FROM member_credit_ledger WHERE user_id = ?`,
+    )
+      .bind(userId)
+      .first<{ total: number; n: number }>();
+    const rows = Math.floor(Number(row?.n) || 0);
+    const walletBalance = Math.max(0, Math.floor(wallet.balance));
+    if (rows <= 0) return { balance: walletBalance };
+    const ledgerBalance = Math.max(0, Math.floor(Number(row?.total) || 0));
+    const next = Math.max(walletBalance, ledgerBalance);
+    if (next !== wallet.balance) {
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `UPDATE member_credit_wallets SET balance = ?, updated_at = ? WHERE user_id = ?`,
+      )
+        .bind(next, now, userId)
+        .run();
+    }
+    return { balance: next };
+  } catch {
+    return { balance: Math.max(0, Math.floor(wallet.balance)) };
+  }
+}
+
+/** Spend Kid Credits on a membership or cart checkout. */
+export async function spendCheckoutCredits(
+  env: Env,
+  userId: string,
+  credits: number,
+  reason: string,
+  _paidAt?: string,
+): Promise<{ balance: number }> {
+  void _paidAt;
+  const amount = Math.max(0, Math.floor(Number(credits) || 0));
+  if (amount <= 0) {
+    const wallet = await ensureWallet(env, userId);
+    return { balance: wallet.balance };
+  }
+  return applyMemberCreditDelta(env, userId, -amount, reason);
+}
+
+/** Grant Kid Credits from a paid credit-pack checkout. Idempotent per Stripe session. */
+export async function grantCreditPackPurchase(
+  env: Env,
+  input: { userId: string; sessionId: string; itemMeta?: string; paidAt?: string },
+): Promise<{ granted: number; balance: number }> {
+  void input.paidAt;
+  const credits = Math.max(0, Math.floor(kidCreditsFromCartItemMeta(input.itemMeta)));
+  const wallet = await ensureWallet(env, input.userId);
+  if (credits <= 0) return { granted: 0, balance: wallet.balance };
+  const sessionId = String(input.sessionId || "").trim();
+  if (sessionId) {
+    const existing = await env.DB.prepare(
+      `SELECT id FROM member_credit_ledger WHERE user_id = ? AND reason LIKE ? LIMIT 1`,
+    )
+      .bind(input.userId, `%${sessionId}%`)
+      .first<{ id: string }>();
+    if (existing) return { granted: 0, balance: wallet.balance };
+  }
+  const result = await applyMemberCreditDelta(
+    env,
+    input.userId,
+    credits,
+    `Credit pack · ${String(input.itemMeta || "pack").slice(0, 80)} · ${sessionId}`.slice(0, 200),
+  );
+  return { granted: credits, balance: result.balance };
 }

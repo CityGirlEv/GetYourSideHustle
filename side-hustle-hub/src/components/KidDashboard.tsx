@@ -20,7 +20,11 @@ import {
   summarizeMemberCredits,
   type MemberCreditsSummary,
 } from "../lib/member-credits";
-import { listSavedBlueprints, type SavedBlueprint } from "../lib/blueprints-api";
+import {
+  blueprintLoadRetryDelayMs,
+  listSavedBlueprints,
+  type SavedBlueprint,
+} from "../lib/blueprints-api";
 import {
   blueprintAgeGroupTitle,
   blueprintMatchLabel,
@@ -63,6 +67,7 @@ export function KidDashboard({
   const [blueprints, setBlueprints] = useState<SavedBlueprint[]>([]);
   const [blueprintsLoading, setBlueprintsLoading] = useState(true);
   const [blueprintsError, setBlueprintsError] = useState<string | null>(null);
+  const [blueprintsFetched, setBlueprintsFetched] = useState(false);
   const [credits, setCredits] = useState<MemberCreditsSummary | null>(null);
   const [creditsLoading, setCreditsLoading] = useState(true);
   const [creditsError, setCreditsError] = useState<string | null>(null);
@@ -73,30 +78,40 @@ export function KidDashboard({
 
   useEffect(() => {
     let cancelled = false;
-    setBlueprintsLoading(true);
-    void listSavedBlueprints()
-      .then((rows) => {
-        if (cancelled) return;
-        const ageRows = rows.filter((bp) => bp.ageGroup === ageBand);
-        if (childProfileId) {
-          setBlueprints(ageRows.filter((bp) => bp.childProfileId === childProfileId));
-        } else {
-          // Youth sessions: prefer blueprints assigned to their child profile.
-          const assigned = ageRows.filter((bp) => Boolean(bp.childProfileId));
-          setBlueprints(assigned.length > 0 ? assigned : ageRows);
-        }
-        setBlueprintsError(null);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setBlueprints([]);
-        setBlueprintsError(err instanceof Error ? err.message : "Could not load your Blueprint.");
-      })
-      .finally(() => {
-        if (!cancelled) setBlueprintsLoading(false);
-      });
+    let timer = 0;
+    const load = (attempt: number) => {
+      if (cancelled) return;
+      setBlueprintsLoading(true);
+      void listSavedBlueprints()
+        .then((rows) => {
+          if (cancelled) return;
+          const ageRows = rows.filter((bp) => bp.ageGroup === ageBand);
+          if (childProfileId) {
+            setBlueprints(ageRows.filter((bp) => bp.childProfileId === childProfileId));
+          } else {
+            // Youth sessions: prefer blueprints assigned to their child profile.
+            const assigned = ageRows.filter((bp) => Boolean(bp.childProfileId));
+            setBlueprints(assigned.length > 0 ? assigned : ageRows);
+          }
+          setBlueprintsError(null);
+          setBlueprintsFetched(true);
+          setBlueprintsLoading(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          const wait = blueprintLoadRetryDelayMs(attempt);
+          if (wait != null) {
+            timer = window.setTimeout(() => load(attempt + 1), wait);
+            return;
+          }
+          setBlueprintsError(null);
+          setBlueprintsLoading(false);
+        });
+    };
+    load(0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [ageBand, childProfileId]);
 
@@ -215,7 +230,7 @@ export function KidDashboard({
               {!blueprintsLoading && blueprintsError && (
                 <p className="user-portal-credits-error">{blueprintsError}</p>
               )}
-              {!blueprintsLoading && !blueprintsError && blueprints.length === 0 && (
+              {blueprintsFetched && !blueprintsLoading && !blueprintsError && blueprints.length === 0 && (
                 <div className="user-portal-blueprint-empty" data-testid="kid-dashboard-blueprint-empty">
                   <p>
                     No Blueprint assigned yet. Ask your parent coach to map a Match Wizard result to

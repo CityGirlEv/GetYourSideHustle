@@ -18,6 +18,7 @@ import {
   kidCreditsFromPurchase,
   stripStripeSessionId,
 } from "./credit-pack-purchase";
+import { formatPurchasePaymentAmountLabel } from "./purchase-payment";
 
 /** My Dashboard → Billing/Access tab. */
 export const BILLING_DASHBOARD_HREF = "/my-dashboard#billing";
@@ -40,6 +41,8 @@ export type MemberPurchase = {
   currency: string;
   paidAt: string;
   source: string;
+  /** Kid Credits spent on this checkout. 1 credit = $1. */
+  creditsApplied?: number;
 };
 
 export type MemberPurchaseWithCredits = MemberPurchase & {
@@ -59,7 +62,8 @@ export type MemberPurchasesPayload = {
 export type MemberBillingTotals = {
   count: number;
   amountUsd: number;
-  byKind: Record<string, { count: number; amountUsd: number }>;
+  creditsApplied: number;
+  byKind: Record<string, { count: number; amountUsd: number; creditsApplied: number }>;
 };
 
 export type MemberAccessPurchaseLine = {
@@ -219,13 +223,38 @@ export function attachPurchaseCreditRunningTotals(
   return stamped.reverse();
 }
 
-export function formatPurchaseAmount(p: Pick<MemberPurchase, "amountUsd" | "currency">): string {
+export function formatPurchaseAmount(
+  p: Pick<MemberPurchase, "amountUsd" | "currency"> & {
+    amountCents?: number;
+    creditsApplied?: number;
+  },
+): string {
+  const credits = Math.max(0, Math.floor(Number(p.creditsApplied) || 0));
   const usd = Number(p.amountUsd);
+  if (credits > 0 && String(p.currency || "usd").toLowerCase() === "usd") {
+    const cents = Number.isFinite(Number(p.amountCents))
+      ? Math.round(Number(p.amountCents))
+      : Math.round((Number.isFinite(usd) ? usd : 0) * 100);
+    return formatPurchasePaymentAmountLabel({ amountCents: cents, creditsApplied: credits });
+  }
   if (!Number.isFinite(usd)) return "—";
   if (String(p.currency || "usd").toLowerCase() === "usd") {
     return formatBillingUsd(usd);
   }
   return `${usd.toFixed(2)} ${String(p.currency || "").toUpperCase()}`;
+}
+
+/** Billing totals amount: cash, credits, or both. */
+export function formatBillingAmount(input: {
+  amountUsd: number;
+  creditsApplied?: number;
+}): string {
+  return formatPurchaseAmount({
+    amountUsd: input.amountUsd,
+    amountCents: Math.round((Number(input.amountUsd) || 0) * 100),
+    currency: "usd",
+    creditsApplied: input.creditsApplied,
+  });
 }
 
 /** USD for billing (keeps $0 instead of membership "Free"). */
@@ -236,23 +265,32 @@ export function formatBillingUsd(n: number): string {
 }
 
 export function summarizeMemberBilling(purchases: MemberPurchase[]): MemberBillingTotals {
-  const byKind: Record<string, { count: number; amountUsd: number }> = {};
+  const byKind: Record<string, { count: number; amountUsd: number; creditsApplied: number }> = {};
   let amountUsd = 0;
+  let creditsApplied = 0;
   for (const p of purchases) {
     const key = billingCategoryKey(p);
     const amt = Number.isFinite(p.amountUsd) ? p.amountUsd : Math.round(p.amountCents || 0) / 100;
+    const credits = Math.max(0, Math.floor(Number(p.creditsApplied) || 0));
     amountUsd += amt;
-    if (!byKind[key]) byKind[key] = { count: 0, amountUsd: 0 };
+    creditsApplied += credits;
+    if (!byKind[key]) byKind[key] = { count: 0, amountUsd: 0, creditsApplied: 0 };
     byKind[key]!.count += 1;
     byKind[key]!.amountUsd += amt;
+    byKind[key]!.creditsApplied += credits;
   }
   return {
     count: purchases.length,
     amountUsd: Math.round(amountUsd * 100) / 100,
+    creditsApplied,
     byKind: Object.fromEntries(
       Object.entries(byKind).map(([k, v]) => [
         k,
-        { count: v.count, amountUsd: Math.round(v.amountUsd * 100) / 100 },
+        {
+          count: v.count,
+          amountUsd: Math.round(v.amountUsd * 100) / 100,
+          creditsApplied: v.creditsApplied,
+        },
       ]),
     ),
   };

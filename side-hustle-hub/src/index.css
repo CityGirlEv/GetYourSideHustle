@@ -811,7 +811,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .nav-links--primary {
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 .nav-links--secondary {
@@ -1107,12 +1107,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand-header-logo {
-  height: clamp(100px, 12vw, 140px);
+  /* Native art is 81px tall. Stay at or under that so the header downscales the 3x file instead of enlarging it. */
+  height: clamp(68px, 7.5vw, 81px);
   width: auto;
-  max-width: min(720px, 48vw);
+  max-width: min(460px, 44vw);
   object-fit: contain;
   display: block;
   background: transparent;
+  image-rendering: auto;
 }
 
 /* Login mark: CSS size well below native 584x280 so browsers downscale (sharp), never upscale */
@@ -1169,11 +1171,17 @@ h1, h2, h3, h4, h5, h6 {
 @media (min-width: 981px) {
   .nav-links {
     flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
+  .nav-links--primary,
   .nav-links--secondary {
-    justify-content: flex-start;
+    justify-content: flex-end;
+  }
+
+  .nav-links--secondary .nav-dropdown-menu {
+    left: auto;
+    right: 0;
   }
 }
 
@@ -6199,17 +6207,19 @@ button.checklist-checkbox:hover {
   --gysh-asset-cache-bust: 2026-07-23-css-fix-2;
 }
 
-/* Desktop: larger image left, narrower Live Learning box matched to image height */
+/* Desktop: poster sized to itself, Live Learning panel flush against it */
 .workshops-hero-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.72fr);
-  gap: 14px;
+  display: flex;
   align-items: stretch;
+  gap: 14px;
   max-width: 100%;
   overflow: hidden;
 }
 
 .workshops-visual-hero {
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: calc(100% - 288px);
   min-width: 0;
   align-self: start;
   line-height: 0;
@@ -6223,11 +6233,14 @@ button.checklist-checkbox:hover {
   display: block;
   box-sizing: border-box;
   line-height: 0;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .workshops-visual-hero__frame {
   margin: 0;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   line-height: 0;
   border-radius: 14px;
   overflow: hidden;
@@ -6238,7 +6251,7 @@ button.checklist-checkbox:hover {
 
 .workshops-visual-hero__img {
   display: block;
-  width: 100%;
+  width: auto;
   max-width: 100%;
   height: auto;
   max-height: var(--page-hero-img-max);
@@ -6260,9 +6273,11 @@ button.checklist-checkbox:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-width: 0;
+  flex: 0 1 360px;
+  width: min(380px, 100%);
+  min-width: 260px;
   /* Match image column height (image defines the row) */
-  height: 0;
+  height: auto;
   min-height: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -6309,19 +6324,29 @@ button.checklist-checkbox:hover {
   .workshops-visual-hero {
     order: -1;
     width: 100%;
+    max-width: none;
+  }
+
+  .workshops-visual-hero__band,
+  .workshops-visual-hero__frame {
+    width: 100%;
+  }
+
+  .workshops-visual-hero__img {
+    width: 100%;
+    max-height: var(--page-hero-img-max-mobile);
   }
 
   .workshops-hero {
     height: auto;
     min-height: 0;
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .workshops-hero-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .workshops-visual-hero__img {
-    max-height: var(--page-hero-img-max-mobile);
   }
 }
 
@@ -9875,12 +9900,13 @@ button.checklist-checkbox:hover {
 }
 
 .site-footer-tagline {
-  flex: 1 1 220px;
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: none;
   margin: 0;
   font-size: 0.95rem;
   color: var(--text-primary);
   line-height: 1.45;
-  max-width: 36rem;
 }
 
 .nowrap {
@@ -27726,6 +27752,17 @@ a.glow-badge.membership-schedule-link {
   gap: 6px;
 }
 
+.side-hustle-blueprint-comp-unlock {
+  white-space: normal;
+  text-align: left;
+}
+
+.side-hustle-blueprint-comp-error {
+  margin: 8px 0 0;
+  color: #9b2f28;
+  font-size: 0.9rem;
+}
+
 .side-hustle-blueprint-dashboard-link-wrap {
   margin: 10px 0 0;
 }
@@ -27801,6 +27838,14 @@ a.glow-badge.membership-schedule-link {
   background: linear-gradient(135deg, #9b2f28 0%, #6b4f3a 55%, #8a5a2b 100%);
   color: #fff;
   overflow: hidden;
+}
+
+.side-hustle-blueprint-unlock-banner.is-results-top {
+  position: sticky;
+  top: 5.5rem;
+  z-index: 30;
+  border-radius: 16px;
+  margin: 0;
 }
 
 .side-hustle-blueprint-unlock-banner-pulse {
@@ -33068,8 +33113,8 @@ small {
   }
 
   .brand-header-logo {
-    height: clamp(88px, 11vw, 120px);
-    max-width: min(480px, 52vw);
+    height: clamp(68px, 7.5vw, 81px);
+    max-width: min(420px, 50vw);
   }
 
   .content-factory__projection-grid {

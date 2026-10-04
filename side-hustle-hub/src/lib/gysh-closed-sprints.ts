@@ -78,15 +78,19 @@ export function sprintForNewTest(
 
 /**
  * First placement when a test has no stored sprint.
- * Backlog stays backlog. Closed or already-ended sprints redirect to the
- * current open sprint. Future/open suggested bands are kept.
+ * Backlog stays backlog. Open work in a closed or already-ended sprint
+ * redirects to the current open sprint. Finished work stays on the sprint
+ * it was completed in, including after that sprint is closed.
+ * Future/open suggested bands are kept.
  */
 export function placeUnstoredTestSprint(
   suggested: number,
   closed?: Iterable<number> | null,
   ref: Date = new Date(),
+  completed = false,
 ): number {
   if (!Number.isFinite(suggested) || suggested < 0) return suggested;
+  if (completed) return suggested;
   const current = currentSprintIndex(ref);
   if (isSprintLocked(closed, suggested) || suggested < current) {
     return sprintForNewTest(closed, ref);

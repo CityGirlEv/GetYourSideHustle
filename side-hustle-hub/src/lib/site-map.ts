@@ -19,7 +19,6 @@ import {
 import {
   JUNIOR_CORNER_TABS,
   KIDS_CORNER_TABS,
-  MATCH_WIZARD_AGES,
   SENIOR_CORNER_TABS,
 } from "./audience-nav";
 import { MARKETING_GUIDE_MENU } from "./marketing-guides";
@@ -81,71 +80,67 @@ function buildPublicMap(): SiteMapNode {
     blurb: "Family start · hustle catalog · Match Wizard night",
     children: [
       {
+        id: "nav-match",
+        label: "Match Wizards",
+        kind: "menu",
+        children: [
+          { id: "nav-adults", label: "Adults", kind: "submenu" },
+          {
+            id: "nav-seniors",
+            label: "Seniors",
+            kind: "submenu",
+            blurb: "GYSH Seniors Corner",
+            children: SENIOR_CORNER_TABS.map((t) => ({
+              id: t.siteMapId,
+              label: t.label,
+              kind: "page" as const,
+            })),
+          },
+          {
+            id: "nav-kids",
+            label: "Kids & Teens",
+            kind: "submenu",
+            blurb: "GYSH Kids & Teens Corner",
+            children: [
+              {
+                id: "kids-mode",
+                label: "Kids (Ages 4–12)",
+                kind: "page",
+                children: KIDS_CORNER_TABS.map((t) => ({
+                  id: t.siteMapId,
+                  label: t.label,
+                  kind: "page" as const,
+                  ...(t.blurb ? { blurb: t.blurb } : {}),
+                })),
+              },
+              {
+                id: "teens-mode",
+                label: "Teens (Ages 13–17)",
+                kind: "page",
+                children: JUNIOR_CORNER_TABS.map((t) => ({
+                  id: t.siteMapId,
+                  label: t.label,
+                  kind: "page" as const,
+                  ...(t.blurb ? { blurb: t.blurb } : {}),
+                })),
+              },
+            ],
+          },
+        ],
+      },
+      {
         id: "nav-guides",
         label: "Side Hustle Guides",
         kind: "menu",
         children: buildGuidesMenuChildren(),
       },
-      {
-        id: "nav-match",
-        label: "GYSH Match Wizard",
-        kind: "menu",
-        blurb: "Age-group selector",
-        children: MATCH_WIZARD_AGES.map((a) => ({
-          id: a.id,
-          label: a.label,
-          kind: "submenu" as const,
-          blurb: a.blurb,
-        })),
-      },
-      {
-        id: "nav-kids",
-        label: "Kids & Teens",
-        kind: "menu",
-        blurb: "GYSH Kids & Teens Corner",
-        children: [
-          {
-            id: "kids-mode",
-            label: "Kids (Ages 4–12)",
-            kind: "submenu",
-            children: KIDS_CORNER_TABS.map((t) => ({
-              id: t.siteMapId,
-              label: t.label,
-              kind: "page" as const,
-              ...(t.blurb ? { blurb: t.blurb } : {}),
-            })),
-          },
-          {
-            id: "teens-mode",
-            label: "Teens (Ages 13–17)",
-            kind: "submenu",
-            children: JUNIOR_CORNER_TABS.map((t) => ({
-              id: t.siteMapId,
-              label: t.label,
-              kind: "page" as const,
-              ...(t.blurb ? { blurb: t.blurb } : {}),
-            })),
-          },
-        ],
-      },
-      {
-        id: "nav-seniors",
-        label: "Seniors",
-        kind: "menu",
-        blurb: "GYSH Seniors Corner",
-        children: SENIOR_CORNER_TABS.map((t) => ({
-          id: t.siteMapId,
-          label: t.label,
-          kind: "submenu" as const,
-        })),
-      },
+      { id: "nav-workshops", label: "Workshops", kind: "menu" },
       {
         id: "nav-community",
         label: "Community",
         kind: "menu",
         children: [
           { id: "nav-community-blog", label: "Blog", kind: "submenu" },
-          { id: "nav-workshops", label: "Workshops", kind: "submenu" },
           { id: "nav-newsletter", label: "Newsletter", kind: "submenu", blurb: "Members only · Weekly Friday issue" },
           { id: "nav-community-gear", label: "GEAR", kind: "submenu", blurb: "GYSH merch shop" },
         ],
@@ -256,6 +251,7 @@ function buildAdminHrefEntries(): Record<string, SiteMapHref> {
 const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   home: { kind: "home" },
   "nav-match": { kind: "quiz" },
+  "nav-adults": { kind: "quiz-adult" },
   "match-kids": { kind: "kids", mode: "kids", tab: "wizard" },
   "match-teens": { kind: "kids", mode: "junior", tab: "wizard" },
   "match-adult": { kind: "quiz-adult" },

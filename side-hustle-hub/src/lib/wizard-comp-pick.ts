@@ -20,6 +20,18 @@ export function explicitComplimentaryGuideId(map: WizardCompMap): string | null 
   return isExplicitComplimentaryPick(map) ? claimedExtraGuideId(map) : null;
 }
 
+/** Keep only a guide the member actually checked. Auto-assigned extras become no pick. */
+export function storedComplimentaryPayload(payload: unknown): WizardCompMap {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {};
+  const id = explicitComplimentaryGuideId(payload as WizardCompMap);
+  return id ? { extra: id, source: WIZARD_COMP_PICK_SOURCE } : {};
+}
+
+export function freeGuideCardLine(guideName: string | null | undefined): string {
+  const name = String(guideName || "").trim();
+  return name ? `Free guide: ${name}` : "Free guide: not picked yet";
+}
+
 export function pickTrueTopMatchId(input: {
   resultIds: string[];
   resultPcts?: Record<string, number> | null;
@@ -104,12 +116,11 @@ export function complimentaryPickNotice(): string {
   return "Free members get to unlock 1 complimentary Launch Guide from this Blueprint — Starter, Pro, or Elite included. Use Unlock this complimentary guide on the match you want. This choice is once per lifetime.";
 }
 
-function isFreeMembershipForCompPick(tier?: string | null): boolean {
-  const t = String(tier ?? "free").toLowerCase().trim();
-  return !t || t === "free";
+export function complimentaryUnlockButtonLabel(busy = false): string {
+  return busy ? "Unlocking…" : "Select this as my free guide";
 }
 
-/** True when a logged-in Free member can still choose their one extra from this result list. */
+/** True when this logged-in member has not already chosen their one extra. */
 export function canOfferComplimentaryPick(input: {
   isLoggedIn?: boolean;
   previewAsGuest?: boolean;
@@ -118,7 +129,7 @@ export function canOfferComplimentaryPick(input: {
 }): boolean {
   if (input.previewAsGuest) return false;
   if (!input.isLoggedIn) return false;
-  if (!isFreeMembershipForCompPick(input.membershipTier)) return false;
+  void input.membershipTier;
   return !String(input.claimedId || "").trim();
 }
 

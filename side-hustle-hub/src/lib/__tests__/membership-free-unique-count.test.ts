@@ -12,7 +12,7 @@ import {
 import { guideTierSortRank, type GuideMinTier } from "../guide-access";
 
 describe("Membership Free unique count", () => {
-  it("rounds to 20 unique Free guides across ages (library merge)", () => {
+  it("counts unique Free guides across ages after Property Management moves to Pro", () => {
     const byId = new Map<string, GuideMinTier>();
     const take = (id: string, tier: GuideMinTier) => {
       const prev = byId.get(id);
@@ -45,7 +45,9 @@ describe("Membership Free unique count", () => {
 
     const freeIds = [...byId.entries()].filter(([, t]) => t === "free").map(([id]) => id).sort();
     expect(FREE_WIZARD_HUSTLE_IDS).toContain("leaf-raking");
+    expect(FREE_WIZARD_HUSTLE_IDS).not.toContain("property-mgmt");
     expect(freeIds).toContain("leaf-raking");
-    expect(freeIds.length, `free ids: ${freeIds.join(", ")}`).toBe(20);
+    expect(freeIds).not.toContain("property-mgmt");
+    expect(freeIds.length, `free ids: ${freeIds.join(", ")}`).toBe(19);
   });
 });

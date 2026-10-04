@@ -14,6 +14,7 @@ import {
   type TierId,
 } from "./email-brand";
 import { GYSH_GEAR_COLLECTION_URL } from "../../src/lib/gysh-gear-store";
+import { membershipRegistrationNoticeHtml } from "../../src/lib/membership-registration-notice";
 import { merchEmailVars, membershipTierDisplayName } from "../../src/lib/membership-email-copy";
 
 export type EmailTemplateContent = {
@@ -40,8 +41,14 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
   {
     slug: "registration_confirmation",
     name: "Registration confirmation",
-    description: "Sent when someone registers — pending admin activation.",
-    sampleSubject: `${SITE_NAME} — we got your signup!`,
+    description: "Sent when someone joins a membership — includes the link that activates the account.",
+    sampleSubject: `${SITE_NAME} — verify your membership`,
+  },
+  {
+    slug: "account_email_verification",
+    name: "Membership email verification",
+    description: "Click-to-verify link that sets a new membership from Pending to Active.",
+    sampleSubject: `${SITE_NAME} — verify your email to activate your membership`,
   },
   {
     slug: "workshop_registration_confirmation",
@@ -239,9 +246,6 @@ export const PREVIEW_SAMPLE_VARS: EmailTemplateVars = {
   expiresOn: "2026-12-21",
   chargeLine:
     "Stripe will attempt your every-3-month membership charge around 2026-12-21.",
-  workshopTitle: "90-Minute AI Marketing Video Hands-On Workshop",
-  workshopWhen: "Date & time TBD",
-  workshopFormat: "Live Zoom",
   workshopKind: "pre-registration",
   workshopNextLine:
     "We'll email you again when the date and time are locked. One seat is held for this email.",
@@ -371,20 +375,20 @@ function welcomeDefault(tierLabelText: string): EmailTemplateContent {
 export function defaultContentForSlug(slug: string): EmailTemplateContent | null {
   switch (slug) {
     case "registration_confirmation":
+    case "account_email_verification":
       return {
-        subject: `${SITE_NAME} — we got your signup!`,
-        preheader: "Welcome to the GYSH family — your membership details inside!",
-        eyebrow: "Membership · Pending activation",
-        headline: "{{name}}, Welcome to the GYSH family!",
-        subhead: "You're on the {{tier}} plan. An admin will activate your login soon.",
-        bodyHtml: `<p style="margin:0 0 12px;">We've saved your membership request. Here's what you unlocked on <strong>{{tier}}</strong>:</p>
-        {{perksHtml}}{{certHtml}}{{upgradesHtml}}
-        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
-          <strong>Next:</strong> A GYSH admin activates your account. You'll get a second email the moment you can sign in.
-        </p>`,
-        ctaLabel: "Explore membership upgrades",
-        ctaUrl: membershipDeepLink(),
-        footerNote: "Pending accounts can't sign in until an admin activates them.",
+        subject: `${SITE_NAME} — verify your email to activate your membership`,
+        preheader: "Click the link to activate your GYSH membership.",
+        eyebrow: "Membership · Verify your email",
+        headline: "{{name}}, confirm your email",
+        subhead: "One click sets your {{tier}} membership to Active.",
+        bodyHtml: `<p style="margin:0 0 12px;">Your GYSH membership is saved and waiting. Click the button below to verify your email and activate your account.</p>
+        <p style="margin:0 0 12px;">After you verify, you can sign in right away. No admin approval is required.</p>
+        {{perksHtml}}
+        ${membershipRegistrationNoticeHtml()}`,
+        ctaLabel: "Open GYSH",
+        ctaUrl: "{{ctaUrl}}",
+        footerNote: "This link expires in 72 hours. If it expires, sign in with your password and we will email a new one.",
       };
     case "workshop_registration_confirmation":
       return {
@@ -550,27 +554,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#947d64;">Submission details</p>
         <div style="margin:0 0 12px;padding:16px;border-radius:12px;background:#f7f0df;border:1px solid #e2d5bc;">{{message}}</div>
         <p style="margin:0;">Open Admin to follow up, or reply if a sender email is included.</p>`,
-        ctaLabel: "Open GYSH Admin",
+        ctaLabel: "Open GYSH",
         ctaUrl: `${SITE_URL}/admin?tab=users`,
         footerNote: "This alert was sent because a GYSH public form was completed.",
-      };
-    case "workshop_registration_confirmation":
-      return {
-        subject: `${SITE_NAME} — you're registered for {{workshopTitle}}`,
-        preheader: "You're on the roster — we'll email you when the schedule is confirmed.",
-        eyebrow: "Workshops · You're registered",
-        headline: "{{name}}, you're on the roster!",
-        subhead: "You're registered for {{workshopTitle}}.",
-        bodyHtml: `<p style="margin:0 0 12px;">We've saved your seat for <strong>{{workshopTitle}}</strong>.</p>
-        <p style="margin:0 0 8px;"><strong>When:</strong> {{workshopWhen}}</p>
-        <p style="margin:0 0 8px;"><strong>Format:</strong> {{workshopFormat}}</p>
-        <p style="margin:0 0 12px;"><strong>Attendees:</strong> {{attendeeCount}}</p>
-        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
-          <strong>Next:</strong> We'll email this same address when the date and Zoom details are confirmed. Keep this message so you have the workshop on your calendar.
-        </p>`,
-        ctaLabel: "View workshop",
-        ctaUrl: "{{ctaUrl}}",
-        footerNote: "Questions? Reply to this email or write info@getyoursidehustle.com.",
       };
     case "membership_subscribed":
       return {

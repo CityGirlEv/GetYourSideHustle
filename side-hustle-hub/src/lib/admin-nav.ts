@@ -10,6 +10,7 @@ export type AdminTab =
   | "agenda"
   | "testing"
   | "users"
+  | "blueprints"
   | "memberships"
   | "hustle-schedules"
   | "factory"
@@ -22,7 +23,8 @@ export type AdminTab =
   | "sitemap"
   | "user-guides"
   | "certificates"
-  | "email";
+  | "email"
+  | "workshops";
 
 export type AdminTabDef = { id: AdminTab; label: string; adminOnly?: boolean };
 
@@ -36,10 +38,12 @@ export const ADMIN_TABS: AdminTabDef[] = [
   { id: "timesheet", label: "Timesheet" },
   { id: "daily-progress", label: "Daily Progress" },
   { id: "users", label: "Users Area" },
+  { id: "blueprints", label: "Blueprint List", adminOnly: true },
   { id: "memberships", label: "Memberships" },
   { id: "hustle-schedules", label: "Schedule Suites" },
   { id: "certificates", label: "Certificates" },
   { id: "email", label: "Email Templates" },
+  { id: "workshops", label: "Workshops", adminOnly: true },
   { id: "factory", label: "Content Factory", adminOnly: true },
   { id: "vspw", label: "VSPW Wizard" },
   { id: "financials", label: "Financials", adminOnly: true },
@@ -56,7 +60,11 @@ export const ADMIN_MENU_GROUPS: { id: string; label: string; tabs: AdminTab[] }[
     label: "Plan & delivery",
     tabs: ["schedule", "agenda", "tasks", "testing", "timesheet", "daily-progress"],
   },
-  { id: "people", label: "People & access", tabs: ["users", "memberships", "hustle-schedules", "certificates", "email"] },
+  {
+    id: "people",
+    label: "People & access",
+    tabs: ["users", "blueprints", "memberships", "hustle-schedules", "certificates", "email", "workshops"],
+  },
   { id: "content", label: "Content & growth", tabs: ["factory", "vspw", "studio", "financials", "time-load"] },
   { id: "reference", label: "Reference", tabs: ["sitemap", "user-guides"] },
 ];

@@ -16,14 +16,14 @@ import {
 const GUIDE_ID = "property-mgmt";
 
 describe("Guide #097 Property Management", () => {
-  it("keeps title, #097, Free Guide, 3–6 weeks, and $1,000–$8,000/month examples", () => {
+  it("keeps title, #097, Pro Guide, 3–6 weeks, and $1,000–$8,000/month examples", () => {
     expect(formatGuideNumber(GUIDE_ID)).toBe("097");
     expect(PINNED_GUIDE_NUMBERS[GUIDE_ID]).toBe("097");
     const h = hustleById(GUIDE_ID)!;
     expect(h.name).toBe("Property Management");
-    expect(h.minTier).toBe("free");
-    expect(isFreeWizardHustle(GUIDE_ID)).toBe(true);
-    expect(adultGuideMinTier(GUIDE_ID)).toBe("free");
+    expect(h.minTier).toBe("pro");
+    expect(isFreeWizardHustle(GUIDE_ID)).toBe(false);
+    expect(adultGuideMinTier(GUIDE_ID)).toBe("pro");
     expect(h.timeReq).toMatch(/3\s*-\s*6 weeks/i);
     expect(h.potentialIncome).toMatch(/\$1,000/);
     expect(h.potentialIncome).toMatch(/\$8,000/);

@@ -127,14 +127,18 @@ export async function assignBlueprintMatch(input: {
 }
 
 /**
- * Auth failures return null so Blueprint shows the empty/retake state instead of
- * a raw "Not authenticated." line.
+ * Wait before another Blueprint list attempt. Null means stop retrying.
+ * The first dashboard load often hits a cold D1 timeout; a refresh then succeeds.
  */
-export function friendlyBlueprintsLoadError(err: unknown): string | null {
-  const msg = err instanceof Error ? err.message : String(err || "");
-  if (/not authenticated|session (invalid|expired)|unauthorized|401/i.test(msg)) {
-    return null;
-  }
-  if (!msg.trim()) return "Could not load your Blueprint right now.";
-  return "Could not load your Blueprint right now. Take the Match Wizard to save matches.";
+export function blueprintLoadRetryDelayMs(failedAttempts: number): number | null {
+  if (failedAttempts >= 2) return null;
+  return 800 * (failedAttempts + 1);
+}
+
+/**
+ * Blueprint load failures stay quiet. A missed request is not an empty Blueprint,
+ * so members are not told to retake the Match Wizard.
+ */
+export function friendlyBlueprintsLoadError(_err: unknown): string | null {
+  return null;
 }

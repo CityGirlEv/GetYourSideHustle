@@ -44,6 +44,7 @@ describe("isRetryableD1ApiError", () => {
     expect(d1ClientRetryLimit("GET", "tasks")).toBe(3);
     expect(d1ClientRetryLimit("GET", "test-statuses")).toBe(3);
     expect(d1ClientRetryLimit("GET", "agile-plan")).toBe(3);
+    expect(d1ClientRetryLimit("GET", "blueprints")).toBe(3);
     expect(d1ClientRetryLimit("GET", "health")).toBe(1);
     expect(d1ClientRetryLimit("POST", "auth/register")).toBe(0);
   });

@@ -36,7 +36,7 @@ import {
   type TierId,
 } from "../../src/lib/membership";
 import { heardAboutFromNotes, mergeHeardAboutNote, parseHeardAboutInput } from "../../src/lib/heard-about";
-import { pendingFreeAccountMaySignIn, registerUserStatus } from "../../src/lib/register-activation";
+import { registerUserStatus } from "../../src/lib/register-activation";
 import { parseRequiredPhone } from "../../src/lib/member-profile";
 
 export type Env = {
@@ -420,43 +420,29 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
       await safeAppendAudit(env.DB, "login_failed", email, "unknown account");
       return error("Invalid email or password.", 401);
     }
-    if (user.status !== "active") {
-      if (
-        pendingFreeAccountMaySignIn({
-          status: user.status,
-          membershipTier: user.membership_tier,
-        })
-      ) {
-        const activatedAt = new Date().toISOString();
-        try {
-          await env.DB.prepare(`UPDATE users SET status = 'active', updated_at = ? WHERE id = ?`)
-            .bind(activatedAt, user.id)
-            .run();
-          user = { ...user, status: "active" };
-        } catch {
-          return error(
-            "Your Free account is almost ready. Try signing in again in a moment.",
-            503,
-          );
-        }
-      } else {
-        await safeAppendAudit(env.DB, "login_failed", email, `inactive account · ${user.status}`);
-        if (user.status === "pending") {
-          return error(
-            "Your account is awaiting admin activation. Check your email for confirmation — you'll get a welcome message when you're cleared to sign in.",
-            403,
-          );
-        }
-        if (user.status === "disabled") {
-          return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
-        }
-        return error("Invalid email or password.", 401);
-      }
-    }
-
     const ok = await verifyPassword(password, user.password_salt, user.password_hash);
     if (!ok) {
       await safeAppendAudit(env.DB, "login_failed", email, "bad password");
+      return error("Invalid email or password.", 401);
+    }
+
+    if (user.status === "pending") {
+      try {
+        await emailPendingMembershipVerification(env, request, user);
+      } catch {
+        /* still tell them to open the link already sent */
+      }
+      await safeAppendAudit(env.DB, "login_failed", email, "pending email verification");
+      return error(
+        "Confirm your email to activate your membership. Check your inbox for the verification link, then sign in.",
+        403,
+      );
+    }
+    if (user.status !== "active") {
+      await safeAppendAudit(env.DB, "login_failed", email, `inactive account · ${user.status}`);
+      if (user.status === "disabled") {
+        return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
+      }
       return error("Invalid email or password.", 401);
     }
 
@@ -548,6 +534,7 @@ export async function handleRegister(
     membershipTier?: string;
     merchChoices?: unknown;
     merchTshirtSizes?: unknown;
+    phone?: string;
     /** Public applicants may add the Beta Tester role; admin/QA/Dev stay admin-assigned. */
     applyBetaTester?: boolean;
     betaNda?: {
@@ -640,8 +627,7 @@ export async function handleRegister(
     heardAbout.stamp,
   );
 
-  // Free members are active immediately so they can sign in and save profile.
-  // Paid Adult/Senior plans stay pending until Stripe / staff activation.
+  // Memberships stay pending until the person clicks the verification email.
   const accountStatus = registerUserStatus(membershipTier);
   try {
     await env.DB.prepare(`ALTER TABLE users ADD COLUMN phone TEXT NOT NULL DEFAULT ''`).run();
@@ -798,7 +784,7 @@ export async function handleRegister(
     env.DB,
     "register_ok",
     email,
-    `${membershipTier} register pending · ${ageGroup} · ${heardAbout.stamp}${applyBetaTester ? ` · beta · NDA ${BETA_NDA_VERSION}` : ""}`,
+    `${membershipTier} membership pending email verification · ${ageGroup} · ${heardAbout.stamp}${applyBetaTester ? ` · beta · NDA ${BETA_NDA_VERSION}` : ""}`,
   );
 
   // Attach the Match Wizard they just finished — keep on the critical path so the UI can deep-link.
@@ -836,6 +822,13 @@ export async function handleRegister(
     /* client can retry after activation / login */
   }
 
+  let confirmUrl = "";
+  try {
+    confirmUrl = await issueEmailVerification(env, request, user);
+  } catch {
+    /* login can send a fresh link */
+  }
+
   // Email (no cert PDF) + credit sync run after the response so signup feels fast.
   const postRegisterWork = (async () => {
     try {
@@ -863,7 +856,7 @@ export async function handleRegister(
           audience: String(audience),
           membership_tier: membershipTier,
         },
-        { includeCertificate: false, heardAbout: heardAbout.label },
+        { includeCertificate: false, heardAbout: heardAbout.label, confirmUrl },
       );
     } catch {
       /* non-fatal — admin can resend on activation */
@@ -911,7 +904,7 @@ export async function handleRegister(
       message:
         accountStatus === "active"
           ? `Your Free account is ready.${kidsLinkedMsg} You can save your profile and open My Dashboard now.`
-          : `Account created for the ${membershipTier} plan and awaiting admin activation.${kidsLinkedMsg} Adult/Senior paid plans continue to Stripe Checkout.`,
+          : `Check your email and click Verify to activate your ${membershipTier} membership.${kidsLinkedMsg} Then sign in. No admin approval is required.`,
     },
     201,
     extraHeaders,
@@ -1133,6 +1126,161 @@ async function ensurePasswordResetTable(db: D1Database): Promise<void> {
     .run();
 }
 
+const CONFIRM_TOKEN_HOURS = 72;
+
+async function ensureEmailConfirmTable(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS email_confirm_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used_at TEXT,
+        created_at TEXT NOT NULL
+      )`,
+    )
+    .run();
+}
+
+/** Email a one-time link that sets a pending membership to Active. */
+async function issueEmailVerification(
+  env: Env,
+  request: Request,
+  user: { id: string },
+): Promise<string> {
+  await ensureEmailConfirmTable(env.DB);
+  const token = randomToken();
+  const tokenHash = await sha256Hex(token);
+  const now = new Date();
+  const expires = new Date(now.getTime() + CONFIRM_TOKEN_HOURS * 60 * 60 * 1000);
+  const id = `ect-${crypto.randomUUID()}`;
+  await env.DB.prepare(
+    `UPDATE email_confirm_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL`,
+  )
+    .bind(now.toISOString(), user.id)
+    .run();
+  await env.DB.prepare(
+    `INSERT INTO email_confirm_tokens (id, user_id, token_hash, expires_at, used_at, created_at)
+     VALUES (?, ?, ?, ?, NULL, ?)`,
+  )
+    .bind(id, user.id, tokenHash, expires.toISOString(), now.toISOString())
+    .run();
+  const { membershipActivationUrl } = await import("../../src/lib/email-verify-url");
+  void request;
+  return membershipActivationUrl(token);
+}
+
+/** Correct password on a pending membership: send a fresh verification link. */
+async function emailPendingMembershipVerification(
+  env: Env,
+  request: Request,
+  user: DbUser,
+): Promise<void> {
+  const confirmUrl = await issueEmailVerification(env, request, user);
+  const { sendRegistrationConfirmation } = await import("./email");
+  await sendRegistrationConfirmation(
+    env,
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      audience: user.audience,
+      membership_tier: user.membership_tier,
+    },
+    { includeCertificate: false, confirmUrl },
+  );
+}
+
+/** Click the membership verification link: Pending becomes Active and they are signed in. */
+export async function handleConfirmEmail(
+  env: Env,
+  request: Request,
+  waitUntil?: (promise: Promise<unknown>) => void,
+): Promise<Response> {
+  const dbFail = requireDb(env);
+  if (dbFail) return dbFail;
+
+  let body: { token?: string };
+  try {
+    body = (await request.json()) as { token?: string };
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const token = String(body.token || "").trim();
+  if (!token) return error("Verification link is missing or invalid.");
+
+  await ensureEmailConfirmTable(env.DB);
+  const tokenHash = await sha256Hex(token);
+  const row = await env.DB.prepare(
+    `SELECT id, user_id, expires_at, used_at FROM email_confirm_tokens WHERE token_hash = ?`,
+  )
+    .bind(tokenHash)
+    .first<{ id: string; user_id: string; expires_at: string; used_at: string | null }>();
+
+  if (!row) return error("This verification link is invalid or has already been used.");
+  if (row.used_at) {
+    return error("This verification link was already used. Sign in with your password.");
+  }
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    return error("This verification link has expired. Sign in with your password and we will email a new one.");
+  }
+
+  const user = await getUserById(env.DB, row.user_id);
+  if (!user) return error("This verification link is invalid.");
+  if (user.status === "disabled") {
+    return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
+  }
+
+  const now = new Date().toISOString();
+  if (user.status !== "active") {
+    try {
+      await env.DB.prepare(
+        `UPDATE users SET status = 'active', activated_at = ?, activated_by = 'email', updated_at = ? WHERE id = ?`,
+      )
+        .bind(now, now, user.id)
+        .run();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes("no such column")) throw e;
+      await env.DB.prepare(`UPDATE users SET status = 'active', updated_at = ? WHERE id = ?`)
+        .bind(now, user.id)
+        .run();
+    }
+  }
+
+  await env.DB.prepare(`UPDATE email_confirm_tokens SET used_at = ? WHERE id = ?`).bind(now, row.id).run();
+  await appendAudit(env.DB, "email_verified", user.email, "membership set active from verification link");
+
+  const active = (await getUserById(env.DB, user.id)) || { ...user, status: "active" };
+  const session = await createSession(env.DB, active.id, {
+    secureCookie: requestWantsSecureCookie(request),
+  });
+
+  const welcome = (async () => {
+    try {
+      const { sendAccountActivatedWelcome } = await import("./email");
+      await sendAccountActivatedWelcome(env, active);
+    } catch {
+      /* activation already succeeded */
+    }
+  })();
+  if (typeof waitUntil === "function") waitUntil(welcome);
+  else void welcome;
+
+  return json(
+    {
+      ok: true,
+      user: publicUser({ ...active, status: "active" }),
+      token: session.token,
+      message: "Your membership is active. You are signed in.",
+    },
+    200,
+    { "set-cookie": session.cookie },
+  );
+}
+
 function publicBaseUrl(request: Request): string {
   const origin = (request.headers.get("origin") || "").replace(/\/$/, "");
   if (
@@ -1185,7 +1333,7 @@ export async function handleForgotPassword(env: Env, request: Request): Promise<
   }
   if (user.status === "pending") {
     return error(
-      "Your account is still awaiting admin activation. You can reset your password after you're activated.",
+      "Confirm your email to activate your membership before you reset the password. Check your inbox for the verification link.",
       403,
     );
   }

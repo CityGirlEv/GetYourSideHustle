@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   BookOpen,
   ChevronDown,
@@ -7,9 +8,9 @@ import {
   Save,
   Sparkles,
   Unlock,
+  UserPlus,
 } from "lucide-react";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
-import { visibleBlueprintMatches } from "../lib/free-member-session";
 import { complimentaryExtraUnlockBadge, type GuideMinTier } from "../lib/guide-access";
 import { cachedComplimentaryGuideIds } from "../lib/wizard-comp-guide";
 import { ComplimentaryGiftNote } from "./ComplimentaryGiftNote";
@@ -26,7 +27,12 @@ import {
 } from "../lib/wizard-save";
 import { DASHBOARD_HREF } from "../lib/member-dashboard";
 import { complimentaryUnlockAppliesToGuide, resolveGuideAccess } from "../lib/guide-access";
-import { canOfferComplimentaryPick } from "../lib/wizard-comp-pick";
+import {
+  canOfferComplimentaryPick,
+  complimentaryPickNotice,
+  complimentaryUnlockButtonLabel,
+} from "../lib/wizard-comp-pick";
+import { claimSelectedComplimentaryGuide, readLocalComplimentaryExtraId, selectGuestFreeGuide } from "../lib/wizard-comp-guide";
 
 export type BlueprintMatchCard = {
   id: string;
@@ -106,7 +112,14 @@ export function SideHustleBlueprintResults({
   isAdmin = false,
 }: SideHustleBlueprintResultsProps) {
   const extraGuideId = cachedComplimentaryGuideIds()[0] ?? "";
-  const fullMatches = visibleBlueprintMatches(matches, unlocked, extraGuideId);
+  const [guestPickId, setGuestPickId] = useState<string | null>(() => readLocalComplimentaryExtraId());
+  const [guestPickError, setGuestPickError] = useState("");
+  const [claimedExtraId, setClaimedExtraId] = useState(extraGuideId);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const [unlockError, setUnlockError] = useState("");
+  const [unlockErrorId, setUnlockErrorId] = useState("");
+  const activeExtraId = unlocked ? claimedExtraId || extraGuideId : "";
+  const fullMatches = matches;
   const saveBusy = saveStatus === "saving";
   const saveLabel = wizardSaveButtonLabel({ isLoggedIn: unlocked, status: saveStatus });
   const memberSession = Boolean(isLoggedIn) && !previewAsGuest;
@@ -114,8 +127,34 @@ export function SideHustleBlueprintResults({
     isLoggedIn: memberSession,
     previewAsGuest,
     membershipTier,
-    claimedId: extraGuideId,
+    claimedId: activeExtraId,
   });
+
+  const unlockAndOpen = async (guideId: string) => {
+    setUnlockingId(guideId);
+    setUnlockError("");
+    setUnlockErrorId(guideId);
+    try {
+      const result = await claimSelectedComplimentaryGuide({
+        isLoggedIn: memberSession,
+        previewAsGuest,
+        membershipTier,
+        guideId,
+        resultIds: matches.map((row) => row.id),
+      });
+      if (result.error) {
+        setUnlockError(result.error);
+        if (result.claimedId) setClaimedExtraId(result.claimedId);
+        return;
+      }
+      if (result.claimedId) setClaimedExtraId(result.claimedId);
+      if (onSelectGuide) onSelectGuide(guideId);
+    } catch (err: unknown) {
+      setUnlockError(err instanceof Error ? err.message : "Could not unlock that guide.");
+    } finally {
+      setUnlockingId(null);
+    }
+  };
 
   const destForMatch = (row: BlueprintMatchCard) => {
     const minTier = row.minTier ?? "free";
@@ -152,16 +191,20 @@ export function SideHustleBlueprintResults({
         <p className="side-hustle-blueprint-lead" data-testid="blueprint-lead">
           {unlocked
             ? `Here is your complete ${blueprintTitle(ageGroup)} — Free Membership Side Hustles first, then higher match %.`
-            : "Your ranked Side Hustle matches are ready. Create a free GYSH account (or sign in) to unlock the full Blueprint. Your top match is one free guide — once per lifetime, not once per wizard."}
+            : "Here are your Side Hustle matches. Select 1 as your free guide. That choice is once per lifetime."}
         </p>
+        {unlocked && offerComplimentaryPick ? (
+          <p className="side-hustle-blueprint-sublead" data-testid="blueprint-comp-pick-notice">
+            {complimentaryPickNotice()}
+          </p>
+        ) : null}
         {unlocked ? (
           <p className="side-hustle-blueprint-sublead" data-testid="blueprint-ranking-note">
             Free Membership Side Hustles plus your highest % match as one extra Launch Guide. Match % is how well each idea fits your answers.
           </p>
         ) : (
           <p className="side-hustle-blueprint-sublead">
-            We found Side Hustle ideas that match your interests, skills, schedule, and goals. Your
-            100% match is unlocked as a one-time gift.
+            Choose 1 match as your free guide, then sign up to open it. You can select only 1 free guide per lifetime.
           </p>
         )}
         {unlocked ? (
@@ -184,6 +227,37 @@ export function SideHustleBlueprintResults({
       </div>
 
       <div className="quiz-results-list side-hustle-blueprint-list">
+        {!unlocked && (
+          <div
+            className="side-hustle-blueprint-unlock-banner is-results-top"
+            data-testid="blueprint-unlock-banner"
+            role="status"
+          >
+            <span className="side-hustle-blueprint-unlock-banner-pulse" aria-hidden="true" />
+            <p className="side-hustle-blueprint-unlock-banner-text">
+              <strong>
+                <Lock size={18} aria-hidden />
+                Sign up to open these guides
+              </strong>
+              <span className="side-hustle-blueprint-unlock-banner-sub">
+                Your matches are below. A free account opens the guides and saves this Blueprint.
+              </span>
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary side-hustle-blueprint-unlock-banner-btn"
+              data-testid="blueprint-unlock-btn"
+              onClick={onUnlock}
+            >
+              <Unlock size={16} /> {unlockButtonLabel(ageGroup)}
+            </button>
+            <ChevronDown
+              className="side-hustle-blueprint-unlock-banner-arrow"
+              size={22}
+              aria-hidden
+            />
+          </div>
+        )}
         {fullMatches.map((row, index) => (
           <article
             key={row.id}
@@ -218,7 +292,7 @@ export function SideHustleBlueprintResults({
                     />
                   </span>
                 ) : null}
-                {extraGuideId && extraGuideId === row.id ? (
+                {activeExtraId && activeExtraId === row.id ? (
                   <span
                     className="glow-badge emerald"
                     data-testid={`blueprint-extra-unlock-${row.id}`}
@@ -242,7 +316,7 @@ export function SideHustleBlueprintResults({
 
             <p className="side-hustle-blueprint-card-desc">{row.description}</p>
 
-            {extraGuideId && extraGuideId === row.id ? (
+            {activeExtraId && activeExtraId === row.id ? (
               <ComplimentaryGiftNote guideId={row.id} minTier={row.minTier ?? "free"} />
             ) : null}
 
@@ -280,28 +354,81 @@ export function SideHustleBlueprintResults({
             )}
 
             <div className="side-hustle-blueprint-card-actions">
-              <a
-                href={wizardResultGuideHref(row.id, destForMatch(row))}
-                className="btn btn-primary"
-                data-testid={`blueprint-match-guide-${row.id}`}
-                data-dest={destForMatch(row)}
-                onClick={(e) => {
-                  const dest = destForMatch(row);
-                  if (dest === "blueprint") {
-                    if (onOpenDashboard) {
-                      e.preventDefault();
-                      onOpenDashboard();
+              {!unlocked ? (
+                guestPickId && guestPickId !== row.id ? null : (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  data-testid={`blueprint-match-signup-${row.id}`}
+                  onClick={() => {
+                    const result = selectGuestFreeGuide(
+                      row.id,
+                      matches.map((match) => match.id),
+                    );
+                    if (result.claimedId) setGuestPickId(result.claimedId);
+                    if (result.error && result.claimedId !== row.id) {
+                      setGuestPickError(result.error);
+                      return;
                     }
-                    return;
-                  }
-                  if (!onSelectGuide) return;
-                  e.preventDefault();
-                  onSelectGuide(row.id);
-                }}
-              >
-                <BookOpen size={14} /> {wizardResultGuideButtonLabel()}
-              </a>
+                    setGuestPickError("");
+                    onUnlock();
+                  }}
+                >
+                  <UserPlus size={14} aria-hidden /> Select this as my free guide
+                </button>
+                )
+              ) : offerComplimentaryPick &&
+                !resolveGuideAccess({
+                  isMember: memberSession,
+                  membershipTier,
+                  minTier: row.minTier ?? "free",
+                  isAdmin,
+                  guideId: row.id,
+                }).unlocked ? (
+                <button
+                  type="button"
+                  className="btn btn-primary side-hustle-blueprint-comp-unlock"
+                  data-testid={`blueprint-comp-unlock-${row.id}`}
+                  disabled={unlockingId !== null}
+                  onClick={() => void unlockAndOpen(row.id)}
+                >
+                  <Unlock size={14} aria-hidden />
+                  {complimentaryUnlockButtonLabel(unlockingId === row.id)}
+                </button>
+              ) : (
+                <a
+                  href={wizardResultGuideHref(row.id, destForMatch(row))}
+                  className="btn btn-primary"
+                  data-testid={`blueprint-match-guide-${row.id}`}
+                  data-dest={destForMatch(row)}
+                  onClick={(e) => {
+                    const dest = destForMatch(row);
+                    if (dest === "blueprint") {
+                      if (onOpenDashboard) {
+                        e.preventDefault();
+                        onOpenDashboard();
+                      }
+                      return;
+                    }
+                    if (!onSelectGuide) return;
+                    e.preventDefault();
+                    onSelectGuide(row.id);
+                  }}
+                >
+                  <BookOpen size={14} /> {wizardResultGuideButtonLabel()}
+                </a>
+              )}
             </div>
+            {guestPickError ? (
+              <p className="side-hustle-blueprint-comp-error" role="alert" data-testid="blueprint-guest-free-guide-error">
+                {guestPickError}
+              </p>
+            ) : null}
+            {unlockErrorId === row.id && unlockError ? (
+              <p className="side-hustle-blueprint-comp-error" role="alert" data-testid={`blueprint-comp-unlock-error-${row.id}`}>
+                {unlockError}
+              </p>
+            ) : null}
           </article>
         ))}
 
@@ -311,36 +438,6 @@ export function SideHustleBlueprintResults({
             data-testid="blueprint-unlock-gate"
             aria-labelledby="blueprint-gate-title"
           >
-            <div
-              className="side-hustle-blueprint-unlock-banner"
-              data-testid="blueprint-unlock-banner"
-              role="status"
-            >
-              <span className="side-hustle-blueprint-unlock-banner-pulse" aria-hidden="true" />
-              <p className="side-hustle-blueprint-unlock-banner-text">
-                <strong>
-                  <Lock size={18} aria-hidden />
-                  Your matches are locked
-                </strong>
-                <span className="side-hustle-blueprint-unlock-banner-sub">
-                  Sign up for a free plan (or higher) to see your ranked Side Hustle Blueprint
-                </span>
-              </p>
-              <button
-                type="button"
-                className="btn btn-primary side-hustle-blueprint-unlock-banner-btn"
-                data-testid="blueprint-unlock-btn"
-                onClick={onUnlock}
-              >
-                <Unlock size={16} /> {unlockButtonLabel(ageGroup)}
-              </button>
-              <ChevronDown
-                className="side-hustle-blueprint-unlock-banner-arrow"
-                size={22}
-                aria-hidden
-              />
-            </div>
-
             <h3 id="blueprint-gate-title" className="side-hustle-blueprint-gate-title">
               <span className="side-hustle-blueprint-gate-highlight">
                 Create your free GYSH account

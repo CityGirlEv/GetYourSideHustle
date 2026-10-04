@@ -9,10 +9,10 @@ import {
 
 describe("email template review cases", () => {
   it("covers every catalog template once, assigned to Candace", () => {
-    expect(EMAIL_TEMPLATE_REVIEW_CATALOG.length).toBe(26);
-    expect(EMAIL_TEMPLATE_REVIEW_CASES).toHaveLength(26);
+    expect(EMAIL_TEMPLATE_REVIEW_CATALOG.length).toBe(27);
+    expect(EMAIL_TEMPLATE_REVIEW_CASES).toHaveLength(27);
     const ids = new Set(EMAIL_TEMPLATE_REVIEW_CASES.map((c) => c.id));
-    expect(ids.size).toBe(26);
+    expect(ids.size).toBe(27);
     expect(ids.has("EMAIL-TPL-membership_subscribed")).toBe(true);
     expect(ids.has("EMAIL-TPL-membership_upgraded")).toBe(true);
     expect(ids.has("EMAIL-TPL-membership_merch_ready")).toBe(true);

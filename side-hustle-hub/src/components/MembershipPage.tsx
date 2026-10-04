@@ -98,6 +98,8 @@ import {
   maxCreditsForLine,
   membershipCreditPrice,
   mixedCheckoutButtonLabel,
+  offerStripeBesideCredits,
+  payWithStripeButtonLabel,
   quoteMixedCartPayment,
   usdToCents,
   type MixedCartLine,
@@ -273,6 +275,7 @@ export function MembershipPage({
   const [cart, setCart] = useState<AlaCarteCart>(() => readAlaCarteCart());
   const [cartEmail, setCartEmail] = useState(() => String(checkoutEmail || "").trim());
   const [cartBusy, setCartBusy] = useState(false);
+  const [cartPayVia, setCartPayVia] = useState<"credits" | "stripe" | null>(null);
   const [cartError, setCartError] = useState("");
   const [cartPaid, setCartPaid] = useState("");
   const [creditPaidThanks, setCreditPaidThanks] = useState<number | null>(null);
@@ -468,8 +471,7 @@ export function MembershipPage({
     window.setTimeout(() => scrollToCart(), 50);
   };
 
-  const handleCartCheckout = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runCartCheckout = async (creditsToApply: number) => {
     if (cartBusy) return;
     setCartError("");
     setCartPaid("");
@@ -478,23 +480,22 @@ export function MembershipPage({
       setCartError("Enter a valid email for checkout.");
       return;
     }
-    if (!cartStripeReady && mixedQuote.cashDueCents > 0) {
+    const credits = Math.max(0, Math.floor(creditsToApply));
+    const needsCard = credits <= 0 || mixedQuote.cashDueCents > 0;
+    if (needsCard && !cartStripeReady) {
       setCartError("One or more cart items are not available for Stripe checkout yet.");
       return;
     }
+    setCartPayVia(credits > 0 ? "credits" : "stripe");
     setCartBusy(true);
     try {
       const session = await startAlaCarteCartCheckout({
         email,
         items: cart.lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity })),
-        creditsToApply: isLoggedIn
-          ? creditsEdited.current
-            ? mixedQuote.creditsApplied
-            : mixedQuote.creditsMax
-          : 0,
+        creditsToApply: isLoggedIn ? credits : 0,
       });
       if (session?.paid && !session.url) {
-        const applied = mixedQuote.creditsApplied;
+        const applied = credits;
         setCart(clearAlaCarteCart());
         setCartPaid(
           applied > 0
@@ -521,7 +522,13 @@ export function MembershipPage({
       setCartError(err instanceof ApiError ? err.message : "Could not start checkout.");
     } finally {
       setCartBusy(false);
+      setCartPayVia(null);
     }
+  };
+
+  const handleCartCheckout = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runCartCheckout(0);
   };
 
   const audienceLabel = AUDIENCE_LABELS[audience];
@@ -1386,38 +1393,50 @@ export function MembershipPage({
                 >
                   Clear cart
                 </button>
+                {isLoggedIn &&
+                offerStripeBesideCredits(mixedQuote) &&
+                mixedQuote.creditsApplied > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    data-testid="membership-alacarte-cart-pay-credits"
+                    disabled={cartBusy || creditsLoading}
+                    onClick={() => void runCartCheckout(mixedQuote.creditsApplied)}
+                  >
+                    {cartBusy && cartPayVia === "credits" ? (
+                      <WaitLabel>
+                        {mixedQuote.cashDueCents <= 0 ? "Applying credits…" : "Opening Stripe…"}
+                      </WaitLabel>
+                    ) : (
+                      <>
+                        <Coins size={16} aria-hidden />
+                        {mixedCheckoutButtonLabel(mixedQuote)}
+                      </>
+                    )}
+                  </button>
+                ) : null}
                 <button
                   type="submit"
                   className="btn btn-primary"
                   data-testid="membership-alacarte-cart-checkout"
-                  disabled={cartBusy || creditsLoading || (!cartStripeReady && mixedQuote.cashDueCents > 0)}
+                  disabled={cartBusy || creditsLoading || !cartStripeReady}
                 >
-                  {cartBusy ? (
-                    <WaitLabel>
-                      {mixedQuote.cashDueCents <= 0 && mixedQuote.creditsApplied > 0
-                        ? "Applying credits…"
-                        : "Opening Stripe…"}
-                    </WaitLabel>
+                  {cartBusy && cartPayVia !== "credits" ? (
+                    <WaitLabel>Opening Stripe…</WaitLabel>
                   ) : creditsLoading ? (
                     <WaitLabel>Loading credits…</WaitLabel>
                   ) : (
                     <>
-                      {mixedQuote.creditsApplied > 0 ? (
-                        <Coins size={16} aria-hidden />
-                      ) : (
-                        <CreditCard size={16} aria-hidden />
-                      )}{" "}
-                      {mixedCheckoutButtonLabel(mixedQuote)}
+                      <CreditCard size={16} aria-hidden />{" "}
+                      {payWithStripeButtonLabel(formatUsd(mixedQuote.subtotalUsd || cartTotal))}
                     </>
                   )}
                 </button>
               </div>
               <p className="membership-alacarte-cart-note">
-                {mixedQuote.creditsApplied > 0 && mixedQuote.cashDueCents > 0
-                  ? `Pay ${formatUsd(mixedQuote.cashDueUsd)} with Stripe after applying ${mixedQuote.creditsApplied} credits. `
-                  : mixedQuote.cashDueCents <= 0 && mixedQuote.creditsApplied > 0
-                    ? "This cart is covered by credits — no card charge today. "
-                    : "Pay the dollar total with Stripe, or sign in to pay with credits. "}
+                {offerStripeBesideCredits(mixedQuote)
+                  ? `Pay with credits, or pay ${formatUsd(mixedQuote.subtotalUsd || cartTotal)} with Stripe. `
+                  : "Pay the dollar total with Stripe, or sign in to pay with credits. "}
                 We’ll email a GYSH confirmation after checkout.
               </p>
             </form>

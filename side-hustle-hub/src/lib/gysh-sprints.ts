@@ -496,6 +496,19 @@ export function dueDatePlusDays(days: number, ref: Date = new Date()): string {
   return `${mm}/${dd}/${yy}`;
 }
 
+/**
+ * Sprint that contains a completion timestamp.
+ * Accepts MM/DD/YY or an ISO date. Null when the value is empty or unparseable.
+ */
+export function sprintIndexForTimestamp(raw: string | null | undefined): number | null {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const fromDue = parseMmddyyDue(text);
+  const date = fromDue ?? new Date(text);
+  if (Number.isNaN(date.getTime())) return null;
+  return currentSprintIndex(date);
+}
+
 /** Parse MM/DD/YY (or M/D/YY) into a local Date at midnight, or null. */
 export function parseMmddyyDue(raw: string | null | undefined): Date | null {
   const m = String(raw || "")
@@ -863,7 +876,7 @@ export function buildDefaultPlanItems(ref: Date = new Date()): PlanItem[] {
       title: "Review workshops and conference dates",
       owner: "Unassigned",
       kind: "content",
-      notes: "Post-launch — dates TBD until confirmed (T-018). Edit in Content Factory → Workshops.",
+      notes: "Post-launch — dates TBD until confirmed (T-018). Edit in Admin → People & access → Workshops.",
     }, ref),
     planItemOnSprintDay(3, 2, {
       id: "s2-seo",

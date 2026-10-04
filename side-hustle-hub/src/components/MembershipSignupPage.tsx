@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, CreditCard, UserPlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, CheckCircle2, Coins, CreditCard, UserPlus } from "lucide-react";
 import { BusyOverlay, WaitLabel } from "./WaitFeedback";
 import { PasswordField } from "./PasswordField";
 import { registerFreeMember, updateMembershipPlan, fetchMe, type AuthUser } from "../lib/auth";
@@ -23,7 +23,15 @@ import {
   supportsMembershipStripeCheckout,
 } from "../lib/stripe-checkout";
 import { clearAlaCarteCart } from "../lib/alacarte-cart";
-import type { MembershipBillingInterval } from "../lib/stripe-catalog";
+import { CreditApplyControls } from "./CreditApplyControls";
+import { fetchMemberCredits, spendableCreditBalance } from "../lib/member-credits";
+import {
+  mixedCheckoutButtonLabel,
+  offerStripeBesideCredits,
+  payWithStripeButtonLabel,
+  quoteMixedUsdPayment,
+} from "../lib/credit-checkout";
+import { membershipStripePrice, type MembershipBillingInterval } from "../lib/stripe-catalog";
 import { ApiError } from "../lib/api";
 import {
   pendingShouldResumeCheckout,
@@ -31,11 +39,19 @@ import {
 } from "../lib/pending-membership-checkout";
 import {
   browseGuidesButtonLabel,
+  membershipSignupDropdownAudience,
+  membershipSignupDropdownTier,
   membershipSignupSubmitLabel,
   membershipStripeCheckoutHint,
   membershipUpgradeActionBubbles,
 } from "../lib/membership-signup-labels";
+import { HEARD_ABOUT_SOURCES, parseHeardAboutInput } from "../lib/heard-about";
 import { parseRequiredPhone } from "../lib/member-profile";
+import {
+  attachPendingWizardToAccount,
+  pendingWizardRegisterPayload,
+  readPendingBlueprint,
+} from "../lib/pending-blueprint";
 import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
 import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
@@ -55,6 +71,8 @@ type MembershipSignupPageProps = {
   isLoggedIn?: boolean;
   /** Current plan on the logged-in profile (for upgrade copy). */
   currentTier?: TierId | null;
+  /** Profile age lane (kids, junior, adult, senior). Wins over the last browsed Join lane. */
+  memberAudience?: string | null;
   /** Refresh app auth state after profile plan update. */
   onProfileUpdated?: (user: AuthUser) => void;
   onBackToPlans: () => void;
@@ -98,6 +116,7 @@ export function MembershipSignupPage({
   loggedInEmail = null,
   isLoggedIn = false,
   currentTier = null,
+  memberAudience = null,
   onProfileUpdated,
   onBackToPlans,
   onGoToLogin,
@@ -105,8 +124,16 @@ export function MembershipSignupPage({
   onOpenBetaNda,
   onBetaTestingUnlocked,
 }: MembershipSignupPageProps) {
-  const startingAudience = initialAudience ?? "adult";
-  const startingTier = initialTier ?? "free";
+  const startingAudience = membershipSignupDropdownAudience({
+    initialAudience: initialAudience ?? "adult",
+    memberAudience,
+    isLoggedIn,
+  });
+  const startingTier = membershipSignupDropdownTier({
+    initialTier: initialTier ?? "free",
+    currentTier,
+    isLoggedIn,
+  });
   const stripeReadyStart = supportsMembershipStripeCheckout(startingTier, startingAudience);
   const startOnCheckout = Boolean(isLoggedIn && resumeCheckout && stripeReadyStart);
   const startOnProfile = Boolean(isLoggedIn && !startOnCheckout);
@@ -123,6 +150,8 @@ export function MembershipSignupPage({
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [heardAboutSource, setHeardAboutSource] = useState("");
+  const [heardAboutDetail, setHeardAboutDetail] = useState("");
   const [applyBetaTester, setApplyBetaTester] = useState(false);
   const [betaNda, setBetaNda] = useState<BetaNdaAcceptanceValue>({
     legalName: "",
@@ -132,8 +161,13 @@ export function MembershipSignupPage({
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checkoutVia, setCheckoutVia] = useState<"credits" | "stripe" | null>(null);
   const [stripePaid, setStripePaid] = useState(false);
   const [profileApplied, setProfileApplied] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [creditsLoading, setCreditsLoading] = useState(false);
+  const [creditsToApply, setCreditsToApply] = useState(0);
+  const creditsEdited = useRef(false);
 
   // Keep Plan / Audience in sync when opened from a membership bubble (Choose Starter, etc.).
   useEffect(() => {
@@ -154,6 +188,47 @@ export function MembershipSignupPage({
   const yearlySave = yearly != null ? yearlySavingsUsd(monthly, yearly) : 0;
   const isPaid = tier.id !== "free";
   const stripeReady = supportsMembershipStripeCheckout(tier.id, audience);
+  const dueUsd =
+    membershipStripePrice(tier.id, audience, billingInterval)?.amountUsd ??
+    (billingInterval === "year" && yearly != null ? yearly : monthly);
+  const membershipQuote = useMemo(
+    () =>
+      quoteMixedUsdPayment({
+        amountUsd: dueUsd,
+        balance: isLoggedIn ? creditBalance : 0,
+        creditsToApply: isLoggedIn ? creditsToApply : 0,
+      }),
+    [dueUsd, isLoggedIn, creditBalance, creditsToApply],
+  );
+
+  useEffect(() => {
+    if (!isLoggedIn || step !== "checkout") return;
+    let cancelled = false;
+    setCreditsLoading(true);
+    void fetchMemberCredits()
+      .then((payload) => {
+        if (!cancelled) setCreditBalance(spendableCreditBalance(payload));
+      })
+      .catch(() => {
+        if (!cancelled) setCreditBalance(0);
+      })
+      .finally(() => {
+        if (!cancelled) setCreditsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, step]);
+
+  useEffect(() => {
+    if (!isLoggedIn || creditsLoading || step !== "checkout") return;
+    const max = quoteMixedUsdPayment({
+      amountUsd: dueUsd,
+      balance: creditBalance,
+      creditsToApply: creditBalance,
+    }).creditsMax;
+    setCreditsToApply((prev) => (creditsEdited.current ? Math.min(prev, max) : max));
+  }, [isLoggedIn, creditsLoading, step, creditBalance, dueUsd]);
 
   useEffect(() => {
     const { status, sessionId } = readCheckoutQuery();
@@ -318,6 +393,14 @@ export function MembershipSignupPage({
       setError(phoneParsed.error);
       return;
     }
+    const heardAbout = parseHeardAboutInput({
+      sourceId: heardAboutSource,
+      detail: heardAboutDetail,
+    });
+    if (!heardAbout.ok) {
+      setError(heardAbout.error);
+      return;
+    }
     const ndaPayload = {
       agreed: betaNda.agreed,
       legalName: betaNda.legalName.trim() || name.trim(),
@@ -335,6 +418,8 @@ export function MembershipSignupPage({
 
     setBusy(true);
     try {
+      const pending = readPendingBlueprint();
+      const wizard = pendingWizardRegisterPayload(pending);
       const result = await registerFreeMember({
         email: trimmed,
         password,
@@ -343,8 +428,11 @@ export function MembershipSignupPage({
         ageGroup: audience,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         membershipTier: tier.id,
+        claimToken: wizard.claimToken,
+        pendingBlueprint: wizard.pendingBlueprint,
         applyBetaTester,
         betaNda: applyBetaTester ? ndaPayload : undefined,
+        heardAbout: { sourceId: heardAbout.sourceId, detail: heardAbout.detail },
       });
       if (!result.ok) {
         const msg = result.error || "Could not create account.";
@@ -366,6 +454,24 @@ export function MembershipSignupPage({
         isParentAccount: isKids || undefined,
       });
       saveJoinAudience(audience);
+      if (result.user) onProfileUpdated?.(result.user);
+      if (pending?.resultIds?.length && !result.claimedBlueprintId) {
+        try {
+          await attachPendingWizardToAccount(
+            pending.ageGroup === "kids" ? result.childProfileId : null,
+          );
+        } catch {
+          /* local pending stays until My Dashboard can attach it */
+        }
+      } else if (result.claimedBlueprintId) {
+        try {
+          await attachPendingWizardToAccount(
+            pending?.ageGroup === "kids" ? result.childProfileId : null,
+          );
+        } catch {
+          /* register already stored the blueprint */
+        }
+      }
 
       if (applyBetaTester && result.testingUnlocked && result.betaNda && onBetaTestingUnlocked) {
         onBetaTestingUnlocked(result.betaNda);
@@ -383,8 +489,7 @@ export function MembershipSignupPage({
     }
   };
 
-  const handleStripeCheckout = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const beginMembershipCheckout = async (creditsToApply: number) => {
     setError("");
     if (!stripeReady) {
       setError("Stripe checkout is only available for Adult and Senior paid plans.");
@@ -397,6 +502,8 @@ export function MembershipSignupPage({
       setError("A valid email is required for checkout.");
       return;
     }
+    const credits = Math.max(0, Math.floor(creditsToApply));
+    setCheckoutVia(credits > 0 ? "credits" : "stripe");
     setBusy(true);
     try {
       const session = await startMembershipCheckout({
@@ -405,7 +512,15 @@ export function MembershipSignupPage({
         tierId: tier.id,
         audience,
         interval: billingInterval,
+        creditsToApply: isLoggedIn ? credits : 0,
       });
+      if (session.paid || (!session.url && (session.creditsApplied ?? 0) > 0)) {
+        setStripePaid(true);
+        setProfileApplied(true);
+        if (session.user) onProfileUpdated?.(session.user);
+        setStep("done");
+        return;
+      }
       if (!session.url) {
         setError("Stripe did not return a checkout link.");
         return;
@@ -415,7 +530,13 @@ export function MembershipSignupPage({
       setError(err instanceof ApiError ? err.message : "Could not start Stripe checkout.");
     } finally {
       setBusy(false);
+      setCheckoutVia(null);
     }
+  };
+
+  const handleStripeCheckout = (e: React.FormEvent) => {
+    e.preventDefault();
+    void beginMembershipCheckout(0);
   };
 
   return (
@@ -616,6 +737,37 @@ export function MembershipSignupPage({
               data-testid="membership-signup-password-confirm"
             />
 
+            <label htmlFor="membership-signup-heard-about">How did you hear about us?</label>
+            <select
+              id="membership-signup-heard-about"
+              value={heardAboutSource}
+              onChange={(e) => setHeardAboutSource(e.target.value)}
+              required
+              data-testid="membership-signup-heard-about"
+            >
+              <option value="">Select one</option>
+              {HEARD_ABOUT_SOURCES.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.label}
+                </option>
+              ))}
+            </select>
+            {heardAboutSource === "other" ? (
+              <>
+                <label htmlFor="membership-signup-heard-about-detail">Please tell us more</label>
+                <input
+                  id="membership-signup-heard-about-detail"
+                  type="text"
+                  value={heardAboutDetail}
+                  onChange={(e) => setHeardAboutDetail(e.target.value)}
+                  maxLength={80}
+                  required
+                  placeholder="Podcast, neighbor, church…"
+                  data-testid="membership-signup-heard-about-detail"
+                />
+              </>
+            ) : null}
+
             {error && (
               <p className="membership-signup-error" role="alert">
                 {error}
@@ -792,19 +944,53 @@ export function MembershipSignupPage({
               </p>
             )}
 
+            <CreditApplyControls
+              quote={membershipQuote}
+              signedIn={Boolean(isLoggedIn)}
+              loading={creditsLoading}
+              onSignIn={rememberAndGoToLogin}
+              panelId="gysh-membership-pay-with-credits"
+              onCreditsChange={(n) => {
+                creditsEdited.current = true;
+                setCreditsToApply(n);
+              }}
+            />
+
             <div className="membership-signup-actions">
+              {isLoggedIn &&
+              offerStripeBesideCredits(membershipQuote) &&
+              membershipQuote.creditsApplied > 0 ? (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={busy || creditsLoading}
+                  data-testid="membership-pay-credits"
+                  onClick={() => void beginMembershipCheckout(membershipQuote.creditsApplied)}
+                >
+                  {busy && checkoutVia === "credits" ? (
+                    <WaitLabel>
+                      {membershipQuote.cashDueCents <= 0 ? "Applying credits…" : "Opening Stripe…"}
+                    </WaitLabel>
+                  ) : (
+                    <>
+                      <Coins size={16} aria-hidden />
+                      {mixedCheckoutButtonLabel(membershipQuote)}
+                    </>
+                  )}
+                </button>
+              ) : null}
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={busy}
+                disabled={busy || creditsLoading}
                 data-testid="membership-stripe-pay"
               >
-                {busy ? (
+                {busy && checkoutVia !== "credits" ? (
                   <WaitLabel>Opening Stripe…</WaitLabel>
                 ) : (
                   <>
                     <CreditCard size={16} aria-hidden />
-                    {`Pay ${chargeLabel} with Stripe`}
+                    {payWithStripeButtonLabel(chargeLabel)}
                   </>
                 )}
               </button>

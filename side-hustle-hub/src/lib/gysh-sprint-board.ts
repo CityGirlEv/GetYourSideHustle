@@ -15,6 +15,7 @@ import {
   currentSprintIndex,
   dayOffset,
   dueDateForSprint,
+  sprintIndexForTimestamp,
   formatDisplayDate,
   getSprintWindow,
   isBacklogSprint,
@@ -371,6 +372,11 @@ export function suggestedSprintForTest(
     return currentSprintIndex();
   }
 
+  // Candace workshop roster, speakers, and blueprint / free-guide checks
+  if (id.startsWith("CANDACE-") || id.startsWith("VT-FREE-GUIDE") || id.startsWith("VT-SPEAKER")) {
+    return currentSprintIndex();
+  }
+
   // Beta Tester Member Credits guide review (Milford/Tina/Brenda/Lyriq/Evelyn)
   if (id.startsWith("BETA-CRED-")) {
     return currentSprintIndex();
@@ -438,8 +444,14 @@ export function sprintForUnstoredTest(
   },
   closed?: Iterable<number> | null,
   ref: Date = new Date(),
+  status?: TestStatus | string,
 ): number {
-  return placeUnstoredTestSprint(suggestedSprintForTest(test), closed, ref);
+  return placeUnstoredTestSprint(
+    suggestedSprintForTest(test),
+    closed,
+    ref,
+    !testStatusNeedsSprintDue(status),
+  );
 }
 
 export type BoardSource = "plan" | "task" | "test";
@@ -679,8 +691,39 @@ export function buildUnlockTestPatch(
 }
 
 /**
+ * Sprint a Done task was finished in, when that sprint is now closed.
+ * Closing the sprint must not move it.
+ */
+export function closedSprintFinishedTask(
+  task: Pick<GyshTask, "status" | "dateCompleted">,
+  closed: Iterable<number> | null | undefined,
+): number | null {
+  if (task.status !== "done") return null;
+  const finished = sprintIndexForTimestamp(task.dateCompleted);
+  if (finished == null || finished < 0) return null;
+  if (!isSprintLocked(closed, finished)) return null;
+  return finished;
+}
+
+/**
+ * Sprint a passed test was finished in, when that sprint is now closed.
+ * `finishedAt` is the completion timestamp (ISO or MM/DD/YY).
+ */
+export function closedSprintFinishedTest(
+  status: TestStatus | string | undefined,
+  finishedAt: string | null | undefined,
+  closed: Iterable<number> | null | undefined,
+): number | null {
+  if (testStatusNeedsSprintDue(status)) return null;
+  const finished = sprintIndexForTimestamp(finishedAt);
+  if (finished == null || finished < 0) return null;
+  if (!isSprintLocked(closed, finished)) return null;
+  return finished;
+}
+
+/**
  * Incomplete work still sitting in a closed sprint → next open sprint.
- * Done / Pass stay on the closed sprint as historical record.
+ * Done tasks stay on the sprint they were completed in, even after it closes.
  */
 export function healClosedSprintTaskLeftovers(
   tasks: GyshTask[],
@@ -690,6 +733,12 @@ export function healClosedSprintTaskLeftovers(
 ): { tasks: GyshTask[]; changed: GyshTask[] } {
   const changed: GyshTask[] = [];
   const next = tasks.map((t) => {
+    const finished = closedSprintFinishedTask(t, closed);
+    if (finished != null && Number(t.sprint) !== finished) {
+      const patched = { ...t, sprint: finished };
+      changed.push(patched);
+      return patched;
+    }
     if (!isSprintLocked(closed, t.sprint)) return t;
     if (!taskStatusNeedsSprintDue(t.status)) return t;
     const target = nextUnlockedSprint(closed, t.sprint, ref);
@@ -733,6 +782,8 @@ export function healClosedSprintTestLeftovers(input: {
   statuses: Record<string, TestStatus | string | undefined>;
   notes: Record<string, string | undefined>;
   dueDates: Record<string, string | undefined>;
+  /** When the test was last saved. Pass / Conditional Pass finished in a closed sprint stay there. */
+  finishedAt?: Record<string, string | undefined>;
   closed: Iterable<number> | null | undefined;
   actorLabel: string;
   caseIds?: string[];
@@ -750,6 +801,16 @@ export function healClosedSprintTestLeftovers(input: {
   const ids = input.caseIds ?? Object.keys(input.sprints);
   for (const id of ids) {
     const fromSprint = Number(input.sprints[id]);
+    const finished = closedSprintFinishedTest(
+      input.statuses[id],
+      input.finishedAt?.[id],
+      input.closed,
+    );
+    if (finished != null && fromSprint !== finished) {
+      sprints[id] = finished;
+      changedIds.push(id);
+      continue;
+    }
     if (!isSprintLocked(input.closed, fromSprint)) continue;
     if (!testStatusNeedsSprintDue(input.statuses[id])) continue;
     const target = nextUnlockedSprint(input.closed, fromSprint, input.ref);
@@ -952,7 +1013,9 @@ export function testToBoardCard(
   audit?: { updatedAt?: string; updatedBy?: string },
 ): BoardCard {
   const sprint =
-    typeof sprintOverride === "number" ? sprintOverride : sprintForUnstoredTest(test);
+    typeof sprintOverride === "number"
+      ? sprintOverride
+      : sprintForUnstoredTest(test, undefined, new Date(), status);
   // D1 override wins. Backlog without override stays Unassigned (catalog defaults would look assigned).
   const owner = assigneeOverride?.trim()
     ? ownerFromAssignees([assigneeOverride])
@@ -1145,7 +1208,7 @@ export function commitPlanSprintPlan(
       dateLabel,
       notes:
         item.id === "s0-workshops"
-          ? "Post-launch — dates TBD until confirmed (T-018). Edit in Content Factory → Workshops."
+          ? "Post-launch — dates TBD until confirmed (T-018). Edit in Admin → People & access → Workshops."
           : item.notes,
       title:
         item.id === "s0-workshops" ? "Review workshops and conference dates" : item.title,
@@ -1187,7 +1250,12 @@ export function commitTestSprintPlan(
     const hasStored = typeof stored === "number" && Number.isFinite(stored);
     let nextSprint: number;
     if (!hasStored) {
-      nextSprint = placeUnstoredTestSprint(suggested, closed, ref);
+      nextSprint = placeUnstoredTestSprint(
+        suggested,
+        closed,
+        ref,
+        !testStatusNeedsSprintDue(currentStatuses[t.id]),
+      );
     } else if (mode === "force") {
       nextSprint = suggested;
     } else if (suggested === 0) {

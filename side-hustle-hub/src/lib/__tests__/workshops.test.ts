@@ -120,6 +120,12 @@ describe("workshops", () => {
     ]);
     expect(findWorkshopById(AI_SCENE_PACKS_WORKSHOP_ID, withOldTag)?.tags).toEqual(["AI Video"]);
     expect(mergeGuestSpeakers([{ id: "guest-str", name: "Marcus Hale", title: "", bio: "", topics: [], accent: "", initials: "MH" }]).some((s) => s.id === "guest-str")).toBe(false);
+    expect(
+      mergeGuestSpeakers([
+        { id: "tina", name: "Tina Marie Barham", title: "", bio: "", topics: [], accent: "", initials: "TB" },
+        { id: "sp-guest", name: "Ada Guest", title: "Host", bio: "", topics: ["AI"], accent: "#9B2F28", initials: "AG" },
+      ]).map((s) => s.id),
+    ).toEqual(["tina", "sp-guest"]);
   });
 
   it("allows only one registration per email for the same workshop", () => {

@@ -396,16 +396,28 @@ export function seniorProfileFromCatalog(opportunityId: string): {
     if (t === "indoor") goals.purpose = Math.max(goals.purpose ?? 0, 0.45);
   }
   if (h.zeroStart) goals.income = Math.max(goals.income ?? 0, 0.55);
-  if (!Object.keys(skills).length) skills.admin = 0.45;
-  if (!Object.keys(goals).length) {
-    goals.income = 0.55;
-    goals.flexible = 0.6;
+  const tags = h.matchTags ?? [];
+  const lifestyles: string[] = [];
+  const availability: string[] = [];
+  const onYourFeet = tags.some(
+    (t) => t === "physical" || t === "outdoor" || t === "hosting" || t === "hospitality" || t === "animals",
+  );
+  const seated = tags.some(
+    (t) => t === "indoor" || t === "creative" || t === "tech" || t === "ai" || t === "admin" || t === "writing",
+  );
+  if (onYourFeet) lifestyles.push("active", "balanced");
+  if (seated) lifestyles.push("gentle", "balanced");
+  if (tags.some((t) => t === "flexible" || t === "weekend" || t === "after-work")) {
+    availability.push("flexible", "light");
+  }
+  if (tags.some((t) => t === "operations" || t === "admin" || t === "hosting")) {
+    availability.push("steady");
   }
   return {
     skills,
     goals,
-    lifestyles: ["gentle", "balanced", "active"],
-    availability: ["light", "steady", "flexible"],
+    lifestyles,
+    availability,
   };
 }
 

@@ -122,22 +122,35 @@ export function profileFromTags(matchTags: string[]): AdultWizardProfile {
   if (matchTags.includes("creative")) skills.creative = 1;
   if (matchTags.includes("tech") || matchTags.includes("ai")) skills.tech = Math.max(skills.tech ?? 0, 0.85);
   if (matchTags.includes("ai")) goals.ai = 1;
-  if (matchTags.includes("people")) skills.marketing = Math.max(skills.marketing ?? 0, 0.55);
-  if (matchTags.includes("physical") || matchTags.includes("outdoor")) skills.hands_on = 1;
+  if (matchTags.includes("marketing") || matchTags.includes("people")) {
+    skills.marketing = Math.max(skills.marketing ?? 0, matchTags.includes("marketing") ? 1 : 0.55);
+  }
+  if (matchTags.includes("operations") || matchTags.includes("hosting")) {
+    skills.operations = Math.max(skills.operations ?? 0, matchTags.includes("hosting") ? 0.8 : 1);
+  }
+  if (matchTags.includes("physical") || matchTags.includes("outdoor") || matchTags.includes("hands_on")) {
+    skills.hands_on = 1;
+  }
+  if (matchTags.includes("vehicle")) skills.vehicle = 1;
   if (matchTags.includes("animals")) skills.hands_on = Math.max(skills.hands_on ?? 0, 0.7);
   if (matchTags.includes("local")) goals.local = 1;
   if (matchTags.includes("weekend") || matchTags.includes("after-work") || matchTags.includes("fastest-dollar")) {
     goals.flexible = Math.max(goals.flexible ?? 0, 0.85);
   }
   if (matchTags.includes("indoor") && matchTags.includes("tech")) skills.tech = Math.max(skills.tech ?? 0, 0.7);
-  if (!Object.keys(skills).length) skills.operations = 0.5;
-  if (!Object.keys(goals).length) goals.flexible = 0.6;
   const lowCost = matchTags.includes("zero-start") || matchTags.includes("no-experience");
+  const lightTime =
+    matchTags.includes("weekend") ||
+    matchTags.includes("after-work") ||
+    matchTags.includes("fastest-dollar");
+  if (!Object.keys(skills).length && !Object.keys(goals).length) {
+    goals.flexible = 0.35;
+  }
   return {
     skills,
     goals,
-    budgets: lowCost ? ["low", "medium"] : ["low", "medium", "high"],
-    times: ["very_low", "medium", "high"],
+    budgets: lowCost ? ["low"] : ["medium"],
+    times: lightTime ? ["very_low", "medium"] : ["medium"],
   };
 }
 

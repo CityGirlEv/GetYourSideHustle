@@ -61,6 +61,6 @@ export function d1ClientRetryLimit(method: string, path: string): number {
   if (!shouldRetryD1ApiCall(method, path)) return 0;
   const p = path.replace(/^\//, "").toLowerCase();
   if (p === "auth/login") return 1;
-  if (p === "test-statuses" || p === "tasks" || p === "agile-plan") return 3;
+  if (p === "test-statuses" || p === "tasks" || p === "agile-plan" || p === "blueprints") return 3;
   return 1;
 }

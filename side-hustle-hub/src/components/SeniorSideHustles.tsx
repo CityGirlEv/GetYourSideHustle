@@ -225,6 +225,7 @@ function SeniorMatchFinder({
   onBrowseOpportunities,
   isLoggedIn = false,
   previewAsGuest = false,
+  membershipTier = null,
   onUnlockBlueprint,
   onOpenLaunchGuide,
   onOpenDashboard,
@@ -232,6 +233,7 @@ function SeniorMatchFinder({
   onBrowseOpportunities: () => void;
   isLoggedIn?: boolean;
   previewAsGuest?: boolean;
+  membershipTier?: string | null;
   onUnlockBlueprint?: () => void;
   onOpenLaunchGuide?: (launchGuideId: string) => void;
   onOpenDashboard?: () => void;
@@ -703,6 +705,9 @@ function SeniorMatchFinder({
                 onOpenLaunchGuide ? (id) => onOpenLaunchGuide(id) : undefined
               }
               onOpenDashboard={onOpenDashboard}
+              isLoggedIn={isLoggedIn}
+              previewAsGuest={previewAsGuest}
+              membershipTier={membershipTier}
               extraActions={
                 unlocked ? (
                   <button
@@ -846,6 +851,7 @@ export function SeniorSideHustles({
             onBrowseOpportunities={() => setTab("opportunities")}
             isLoggedIn={isLoggedIn}
             previewAsGuest={previewAsGuest}
+            membershipTier={membershipTier}
             onUnlockBlueprint={onUnlockBlueprint ?? onGoToJoin}
             onOpenLaunchGuide={onOpenLaunchGuide}
             onOpenDashboard={onOpenDashboard}

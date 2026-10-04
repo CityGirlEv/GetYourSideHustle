@@ -1,4 +1,5 @@
-import { MEMBERSHIP_TIERS, TIER_LADDER, type TierId } from "./membership";
+import { isAudienceGroup, normalizeAudienceGroup } from "./join-audience";
+import { MEMBERSHIP_TIERS, TIER_LADDER, type AudienceGroup, type TierId } from "./membership";
 
 /** Plan shown in the signup / upgrade dropdown. */
 export function membershipSignupDropdownTier(opts: {
@@ -17,6 +18,23 @@ export function membershipSignupDropdownTier(opts: {
   ) {
     return current;
   }
+  return initial;
+}
+
+/**
+ * Age lane on the upgrade form. A signed-in member stays on their profile
+ * audience (Senior, Adult, Kids, Teens) even if Join was last opened on Adults.
+ */
+export function membershipSignupDropdownAudience(opts: {
+  initialAudience: AudienceGroup | null | undefined;
+  memberAudience: string | null | undefined;
+  isLoggedIn?: boolean;
+}): AudienceGroup {
+  const initial = normalizeAudienceGroup(opts.initialAudience, "adult");
+  if (!opts.isLoggedIn) return initial;
+  const raw = String(opts.memberAudience || "").toLowerCase();
+  if (raw === "parent") return "kids";
+  if (isAudienceGroup(raw)) return raw;
   return initial;
 }
 

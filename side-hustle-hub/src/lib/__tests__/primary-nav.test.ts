@@ -1,20 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { dashboardNavPlanLabel, dashboardNavTone } from "../membership";
-import { COMMUNITY_NAV_CHILDREN, isCommunityNavView } from "../primary-nav";
+import {
+  COMMUNITY_NAV_CHILDREN,
+  MATCH_WIZARDS_NAV_LABEL,
+  MATCH_WIZARD_NAV_CHILDREN,
+  isCommunityNavView,
+} from "../primary-nav";
 
 describe("primary nav", () => {
-  it("nests Blog, Workshops, Newsletter, and GEAR under Community; Guides is primary", () => {
+  it("nests Adults, Seniors, and Kids under Match Wizards", () => {
+    expect(MATCH_WIZARDS_NAV_LABEL).toBe("Match Wizards");
+    expect(MATCH_WIZARD_NAV_CHILDREN.map((c) => c.label)).toEqual([
+      "Adults",
+      "Seniors",
+      "Kids & Teens",
+    ]);
+  });
+
+  it("nests Blog, Newsletter, and GEAR under Community; Workshops is a main-menu item", () => {
     expect(COMMUNITY_NAV_CHILDREN.map((c) => c.label)).toEqual([
       "Blog",
-      "Workshops",
       "Newsletter",
       "GEAR",
     ]);
+    expect(COMMUNITY_NAV_CHILDREN.some((c) => c.id === "workshops")).toBe(false);
     expect(COMMUNITY_NAV_CHILDREN[0]?.view).toBe("community");
     expect(COMMUNITY_NAV_CHILDREN.find((c) => c.id === "gear")?.view).toBe("shop");
     expect(isCommunityNavView("community")).toBe(true);
     expect(isCommunityNavView("guides")).toBe(false);
     expect(isCommunityNavView("shop")).toBe(true);
+    expect(isCommunityNavView("workshops")).toBe(false);
     expect(isCommunityNavView("join")).toBe(false);
   });
 

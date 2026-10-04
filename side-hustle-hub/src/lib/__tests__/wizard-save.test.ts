@@ -6,6 +6,8 @@ import {
   wizardResultGuideButtonLabel,
   wizardResultGuideDestination,
   wizardResultGuideHref,
+  guestLockedFreeGuide,
+  guestLockedFreeGuideNote,
 } from "../wizard-save";
 
 describe("wizard save copy", () => {
@@ -61,13 +63,32 @@ describe("wizard save copy", () => {
     ).toBe("blueprint");
   });
 
-  it("keeps Unique Unique Free and already-unlocked matches on the guide", () => {
+  it("keeps guests off the free guide until they have an account", () => {
     expect(
       wizardResultGuideDestination({
         guideUnlocked: false,
         minTier: "free",
         offerComplimentaryPick: true,
         needsJoin: true,
+      }),
+    ).toBe("blueprint");
+    const preview = guestLockedFreeGuide([
+      { id: "airbnb", title: "Airbnb Host", minTier: "starter" },
+      { id: "dog-walk", title: "Neighborhood Dog Walker", minTier: "free" },
+    ]);
+    expect(preview?.id).toBe("dog-walk");
+    expect(guestLockedFreeGuideNote(preview?.title ?? "")).toMatch(/Neighborhood Dog Walker/);
+    expect(guestLockedFreeGuideNote(preview?.title ?? "")).toMatch(/free account/i);
+    expect(guestLockedFreeGuideNote(preview?.title ?? "")).toMatch(/unlocks/i);
+    expect(guestLockedFreeGuide([])).toBeNull();
+  });
+
+  it("keeps Unique Unique Free and already-unlocked matches on the guide", () => {
+    expect(
+      wizardResultGuideDestination({
+        guideUnlocked: true,
+        minTier: "free",
+        needsJoin: false,
       }),
     ).toBe("guide");
     expect(

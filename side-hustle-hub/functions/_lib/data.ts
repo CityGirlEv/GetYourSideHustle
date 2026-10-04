@@ -34,6 +34,7 @@ import {
 } from "../../src/lib/admin-membership";
 import { parseRequiredPhone } from "../../src/lib/member-profile";
 import { parseAuditListQuery } from "./audit-list-query";
+import { storedComplimentaryPayload } from "../../src/lib/wizard-comp-pick";
 import { mergeAuditEventsWithEmails, type EmailLogAuditRow } from "./audit-email-events";
 import { ensurePartnerAdmins } from "./partners";
 import {
@@ -544,6 +545,37 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
   });
 }
 
+/**
+ * Drop family rows that reattach by parent email or parent user id.
+ * Soft-delete frees the email for a new account; without this, old Kids/Teens
+ * signups (junior_signups.parent_email) show up on the new account.
+ */
+async function clearFamilyRecordsForDeletedUser(
+  env: Env,
+  userId: string,
+  email: string,
+): Promise<void> {
+  const parentEmail = canonicalizeEmail(email);
+  const statements = [
+    `DELETE FROM child_profiles WHERE parent_user_id = ?`,
+    `DELETE FROM family_accounts WHERE parent_user_id = ?`,
+    `DELETE FROM side_hustle_blueprints WHERE user_id = ?`,
+  ];
+  for (const sql of statements) {
+    try {
+      await env.DB.prepare(sql).bind(userId).run();
+    } catch {
+      /* table may be missing on an older database */
+    }
+  }
+  if (!parentEmail) return;
+  try {
+    await env.DB.prepare(`DELETE FROM junior_signups WHERE parent_email = ?`).bind(parentEmail).run();
+  } catch {
+    /* junior_signups may be missing */
+  }
+}
+
 export async function softDeleteUserRecord(
   env: Env,
   existing: DbUser,
@@ -561,6 +593,7 @@ export async function softDeleteUserRecord(
   const prev = String(existing.notes || "").trim();
   const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
 
+  await clearFamilyRecordsForDeletedUser(env, targetId, originalEmail);
   await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(targetId).run();
   for (const sql of [`DELETE FROM password_reset_tokens WHERE user_id = ?`]) {
     try {
@@ -2718,7 +2751,9 @@ export async function saveWorkshops(env: Env, request: Request): Promise<Respons
   }
 
   const now = new Date().toISOString();
-  await env.DB.prepare(`DELETE FROM workshops`).run();
+  // Speakers have no registration rows. Workshops do: workshop_registrations
+  // references workshops(id) ON DELETE CASCADE, so deleting every workshop
+  // and inserting them again erases the roster. Update in place instead.
   await env.DB.prepare(`DELETE FROM guest_speakers`).run();
 
   let speakerOrder = 0;
@@ -2742,29 +2777,52 @@ export async function saveWorkshops(env: Env, request: Request): Promise<Respons
   }
 
   let workshopOrder = 0;
+  const keepIds: string[] = [];
   for (const w of body.workshops as Array<Record<string, unknown>>) {
-    await env.DB.prepare(
-      `INSERT INTO workshops (id, title, blurb, date, time, format, audience, status, registration_open, capacity, registration_note, speaker_ids_json, tags_json, sort_order, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(
-        String(w.id || `ws-${crypto.randomUUID()}`),
-        String(w.title || ""),
-        String(w.blurb || ""),
-        String(w.date || "TBD"),
-        String(w.time || "TBD"),
-        String(w.format || "Live Zoom"),
-        String(w.audience || "all"),
-        String(w.status || "upcoming"),
-        w.registrationOpen === true ? 1 : 0,
-        Math.max(0, Number(w.capacity ?? 25) || 0),
-        String(w.registrationNote || "Registration is not open yet. Check back after the schedule is confirmed."),
-        JSON.stringify(Array.isArray(w.speakerIds) ? w.speakerIds : []),
-        JSON.stringify(Array.isArray(w.tags) ? w.tags : []),
-        workshopOrder++,
-        now,
+    const id = String(w.id || `ws-${crypto.randomUUID()}`);
+    keepIds.push(id);
+    const fields = [
+      String(w.title || ""),
+      String(w.blurb || ""),
+      String(w.date || "TBD"),
+      String(w.time || "TBD"),
+      String(w.format || "Live Zoom"),
+      String(w.audience || "all"),
+      String(w.status || "upcoming"),
+      w.registrationOpen === true ? 1 : 0,
+      Math.max(0, Number(w.capacity ?? 25) || 0),
+      String(w.registrationNote || "Registration is not open yet. Check back after the schedule is confirmed."),
+      JSON.stringify(Array.isArray(w.speakerIds) ? w.speakerIds : []),
+      JSON.stringify(Array.isArray(w.tags) ? w.tags : []),
+      workshopOrder++,
+      now,
+    ];
+    const existing = await env.DB.prepare(`SELECT id FROM workshops WHERE id = ?`).bind(id).first();
+    if (existing) {
+      await env.DB.prepare(
+        `UPDATE workshops
+         SET title = ?, blurb = ?, date = ?, time = ?, format = ?, audience = ?, status = ?,
+             registration_open = ?, capacity = ?, registration_note = ?, speaker_ids_json = ?,
+             tags_json = ?, sort_order = ?, updated_at = ?
+         WHERE id = ?`,
       )
-      .run();
+        .bind(...fields, id)
+        .run();
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO workshops (id, title, blurb, date, time, format, audience, status, registration_open, capacity, registration_note, speaker_ids_json, tags_json, sort_order, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(id, ...fields)
+        .run();
+    }
+  }
+
+  if (keepIds.length === 0) {
+    await env.DB.prepare(`DELETE FROM workshops`).run();
+  } else {
+    const placeholders = keepIds.map(() => "?").join(", ");
+    await env.DB.prepare(`DELETE FROM workshops WHERE id NOT IN (${placeholders})`).bind(...keepIds).run();
   }
 
   return listWorkshops(env);
@@ -3015,6 +3073,24 @@ export async function adminAddWorkshopRegistration(env: Env, request: Request): 
     resendIfExists: true,
     notifyAdmins: true,
   });
+}
+
+export async function adminDeleteWorkshopRegistration(env: Env, request: Request): Promise<Response> {
+  await ensureWorkshopRegistrationSchema(env);
+  const url = new URL(request.url);
+  const id = String(url.searchParams.get("id") || "").trim();
+  const workshopId = resolveWorkshopId(String(url.searchParams.get("workshopId") || "").trim());
+  if (!id || !workshopId) return error("Registrant and workshop are required.");
+  const existing = await env.DB.prepare(
+    `SELECT id, name FROM workshop_registrations WHERE id = ? AND workshop_id = ? LIMIT 1`,
+  )
+    .bind(id, workshopId)
+    .first<{ id: string; name: string }>();
+  if (!existing) return error("Registrant not found.", 404);
+  await env.DB.prepare(`DELETE FROM workshop_registrations WHERE id = ? AND workshop_id = ?`)
+    .bind(id, workshopId)
+    .run();
+  return json({ ok: true, message: `${existing.name} was removed from the roster.` });
 }
 
 /* ————————————————————————————————————————————————————————————
@@ -4343,6 +4419,7 @@ const PROGRESS_KINDS = new Set([
   "junior_team",
   "senior_team",
   "hustle_schedule",
+  "wizard_comp_guides",
 ]);
 
 export async function getMemberProgress(env: Env, user: DbUser, kind: string): Promise<Response> {
@@ -4360,6 +4437,9 @@ export async function getMemberProgress(env: Env, user: DbUser, kind: string): P
       } catch {
         payload = {};
       }
+    }
+    if (kind === "wizard_comp_guides") {
+      payload = storedComplimentaryPayload(payload);
     }
     return json({ kind, payload });
   } catch (e) {
@@ -4380,9 +4460,33 @@ export async function putMemberProgress(env: Env, request: Request, user: DbUser
   }
   const kind = String(body.kind || "");
   if (!PROGRESS_KINDS.has(kind)) return error("Unknown progress kind.");
-  const payload = body.payload ?? {};
+  let payload = body.payload ?? {};
   const now = new Date().toISOString();
   try {
+    if (kind === "wizard_comp_guides") {
+      const incoming = storedComplimentaryPayload(payload);
+      const existing = await env.DB.prepare(
+        `SELECT payload FROM member_progress WHERE user_id = ? AND kind = ?`,
+      )
+        .bind(user.id, kind)
+        .first<{ payload: string }>();
+      let prior = storedComplimentaryPayload(null);
+      if (existing?.payload) {
+        try {
+          prior = storedComplimentaryPayload(JSON.parse(existing.payload));
+        } catch {
+          prior = {};
+        }
+      }
+      const keep = prior.extra ? prior : incoming;
+      if (!keep.extra) {
+        await env.DB.prepare(`DELETE FROM member_progress WHERE user_id = ? AND kind = ?`)
+          .bind(user.id, kind)
+          .run();
+        return json({ kind, payload: {}, updatedAt: now });
+      }
+      payload = keep;
+    }
     await env.DB.prepare(
       `INSERT INTO member_progress (user_id, kind, payload, updated_at)
        VALUES (?, ?, ?, ?)

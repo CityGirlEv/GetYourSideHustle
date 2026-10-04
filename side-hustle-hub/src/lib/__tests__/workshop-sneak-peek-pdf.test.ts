@@ -68,6 +68,7 @@ describe("workshop sneak peek PDF", () => {
     expect(raw).not.toContain("☐");
     expect(raw).not.toContain("—");
     expect(raw).not.toContain("Last updated");
+    expect(raw).toMatch(/\/Subtype\s*\/Image/);
     expect(await buildWorkshopSneakPeekPdf("glow-getter-launch")).toBeNull();
 
     const b64 = workshopGuidePdfBase64(doc!);

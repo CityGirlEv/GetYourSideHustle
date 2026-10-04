@@ -3,6 +3,7 @@
  * Production source of truth: Cloudflare D1 (binding DB).
  */
 import {
+  handleConfirmEmail,
   handleConfirmPasswordReset,
   handleForgotPassword,
   handleLogin,
@@ -32,6 +33,7 @@ import {
   createWorkshopRegistration,
   listWorkshopRegistrations,
   adminAddWorkshopRegistration,
+  adminDeleteWorkshopRegistration,
   createJuniorSignup,
   getJuniorConsent,
   grantJuniorConsent,
@@ -98,10 +100,15 @@ import {
   getBlueprint,
   getPendingBlueprint,
   listBlueprints,
+  listAdminWizardBlueprints,
   saveBlueprint,
   saveBlueprintFavorite,
 } from "../_lib/blueprints";
 import { listAutomatedTestRuns, runAutomatedTests } from "../_lib/automated-runner";
+import {
+  isMemberDashboardActAsRoute,
+  resolveMemberUserForRequest,
+} from "../_lib/admin-act-as-user";
 import { handleAdminEntityLinks } from "../_lib/admin-entity-links";
 import { handleSoftLaunchOverrides } from "../_lib/soft-launch-overrides";
 import { handleSoftLaunchAttachments } from "../_lib/soft-launch-attachments";
@@ -131,7 +138,7 @@ function corsHeaders(request: Request): HeadersInit {
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-credentials": "true",
-    "access-control-allow-headers": "content-type, authorization",
+    "access-control-allow-headers": "content-type, authorization, x-gysh-act-as-user",
     "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   };
 }
@@ -146,6 +153,7 @@ export async function onRequest(context: {
   request: Request;
   env: Env;
   params: { path?: string | string[] };
+  waitUntil?: (promise: Promise<unknown>) => void;
 }) {
   const { request, env, params } = context;
   if (request.method === "OPTIONS") {
@@ -168,7 +176,10 @@ export async function onRequest(context: {
       return withCors(request, await handleLogin(env, request));
     }
     if (route === "auth/register" && method === "POST") {
-      return withCors(request, await handleRegister(env, request));
+      return withCors(request, await handleRegister(env, request, context.waitUntil));
+    }
+    if (route === "auth/confirm-email" && method === "POST") {
+      return withCors(request, await handleConfirmEmail(env, request, context.waitUntil));
     }
     if (route === "auth/logout" && method === "POST") {
       return withCors(request, await handleLogout(env, request));
@@ -226,7 +237,13 @@ export async function onRequest(context: {
       // Fall through only if route doesn't need auth? No — remaining routes need auth.
       return withCors(request, memberAuth);
     }
-    const { user } = memberAuth;
+    const sessionUser = memberAuth.user;
+    let user = sessionUser;
+    if (isMemberDashboardActAsRoute(route, parts)) {
+      const resolved = await resolveMemberUserForRequest(env, request, sessionUser);
+      if (resolved instanceof Response) return withCors(request, resolved);
+      user = resolved.user;
+    }
 
     if (route === "auth/me" && method === "GET") {
       return withCors(request, await handleMe(env, request));
@@ -241,6 +258,10 @@ export async function onRequest(context: {
     }
     if (route === "auth/membership-plan" && method === "POST") {
       return withCors(request, await handleUpdateMembershipPlan(env, request, user));
+    }
+    if (route === "membership/cancel" && method === "POST") {
+      const { handleMembershipCancel } = await import("../_lib/membership-cancel");
+      return withCors(request, await handleMembershipCancel(env, request, user));
     }
     if (parts[0] === "member-progress" && parts[1] && method === "GET") {
       return withCors(request, await getMemberProgress(env, user, parts[1]));
@@ -376,11 +397,17 @@ export async function onRequest(context: {
     if (route === "workshops" && method === "PUT") {
       return withCors(request, await saveWorkshops(env, request));
     }
+    if (route === "admin/wizard-blueprints" && method === "GET") {
+      return withCors(request, await listAdminWizardBlueprints(env));
+    }
     if (route === "workshop-registrations" && method === "GET") {
       return withCors(request, await listWorkshopRegistrations(env, request));
     }
     if (parts[0] === "workshop-registrations" && parts[1] === "admin" && method === "POST") {
       return withCors(request, await adminAddWorkshopRegistration(env, request));
+    }
+    if (parts[0] === "workshop-registrations" && parts[1] === "admin" && method === "DELETE") {
+      return withCors(request, await adminDeleteWorkshopRegistration(env, request));
     }
     if (route === "junior-signups" && method === "GET") {
       return withCors(request, await listJuniorSignups(env));

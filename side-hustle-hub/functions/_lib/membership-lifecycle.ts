@@ -30,6 +30,8 @@ type LifecycleRow = {
   membership_expires_at?: string | null;
   membership_last_paid_at?: string | null;
   membership_renewal_reminded_for?: string | null;
+  membership_pending_tier?: string | null;
+  membership_pending_effective_at?: string | null;
 };
 
 type StripeSubscription = {
@@ -74,6 +76,14 @@ export async function ensureMembershipBillingColumns(env: Env): Promise<void> {
   await add(
     "membership_renewal_reminded_for",
     `ALTER TABLE users ADD COLUMN membership_renewal_reminded_for TEXT NOT NULL DEFAULT ''`,
+  );
+  await add(
+    "membership_pending_tier",
+    `ALTER TABLE users ADD COLUMN membership_pending_tier TEXT NOT NULL DEFAULT ''`,
+  );
+  await add(
+    "membership_pending_effective_at",
+    `ALTER TABLE users ADD COLUMN membership_pending_effective_at TEXT NOT NULL DEFAULT ''`,
   );
 }
 
@@ -128,6 +138,8 @@ async function revertMemberToFree(
          notes = ?,
          membership_expires_at = '',
          membership_renewal_reminded_for = '',
+         membership_pending_tier = '',
+         membership_pending_effective_at = '',
          updated_at = ?
      WHERE id = ?`,
   )
@@ -190,7 +202,9 @@ export async function runMembershipLifecycle(env: Env, todayIso?: string): Promi
               COALESCE(stripe_subscription_id, '') AS stripe_subscription_id,
               COALESCE(membership_expires_at, '') AS membership_expires_at,
               COALESCE(membership_last_paid_at, '') AS membership_last_paid_at,
-              COALESCE(membership_renewal_reminded_for, '') AS membership_renewal_reminded_for
+              COALESCE(membership_renewal_reminded_for, '') AS membership_renewal_reminded_for,
+              COALESCE(membership_pending_tier, '') AS membership_pending_tier,
+              COALESCE(membership_pending_effective_at, '') AS membership_pending_effective_at
        FROM users
        WHERE LOWER(COALESCE(status, '')) != 'deleted'
          AND LOWER(COALESCE(membership_tier, 'free')) IN ('starter', 'pro', 'elite')`,
@@ -203,6 +217,25 @@ export async function runMembershipLifecycle(env: Env, todayIso?: string): Promi
   const secret = stripeSecret(env);
 
   for (const row of rows) {
+    const pendingTier = String(row.membership_pending_tier || "").trim().toLowerCase();
+    const pendingOn = isoDay(row.membership_pending_effective_at);
+    if (pendingTier && pendingOn && pendingOn <= today) {
+      const now = new Date().toISOString();
+      if (pendingTier === "free") {
+        await revertMemberToFree(env, row, `Scheduled downgrade to Free effective ${pendingOn}`);
+      } else if (pendingTier === "starter" || pendingTier === "pro" || pendingTier === "elite") {
+        await env.DB.prepare(
+          `UPDATE users
+           SET membership_tier = ?, membership_pending_tier = '', membership_pending_effective_at = '', updated_at = ?
+           WHERE id = ?`,
+        )
+          .bind(pendingTier, now, row.id)
+          .run();
+        await appendAudit(env.DB, "membership_downgrade_applied", row.email, `${row.membership_tier}→${pendingTier}`);
+      }
+      continue;
+    }
+
     const subId = String(row.stripe_subscription_id || "").trim();
     if (subId && secret) {
       const sub = await fetchStripeSubscription(secret, subId);

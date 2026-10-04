@@ -41,7 +41,8 @@ export type WizardResultGuideDest = "guide" | "blueprint";
 
 /**
  * Locked paid matches go to My Dashboard Blueprint so a Free member can use
- * their 1 complimentary unlock. Unique Unique Free and already-open guides stay on /guides.
+ * their 1 complimentary unlock. Unique Unique Free stays on /guides only after
+ * the viewer has an account. Guests stay on the Blueprint gate.
  */
 export function wizardResultGuideDestination(input: {
   guideUnlocked: boolean;
@@ -49,11 +50,33 @@ export function wizardResultGuideDestination(input: {
   offerComplimentaryPick?: boolean;
   needsJoin?: boolean;
 }): WizardResultGuideDest {
+  if (input.needsJoin && !input.guideUnlocked) return "blueprint";
   if (input.guideUnlocked) return "guide";
   const minTier = String(input.minTier || "free").toLowerCase().trim();
   if (minTier === "free") return "guide";
   if (input.offerComplimentaryPick || input.needsJoin) return "blueprint";
   return "guide";
+}
+
+export type GuestLockedFreeGuide = {
+  id: string;
+  title: string;
+  minTier?: string | null;
+};
+
+/** Highest-ranked Free-plan match to preview under the guest lock. */
+export function guestLockedFreeGuide<T extends GuestLockedFreeGuide>(
+  matches: readonly T[],
+): T | null {
+  return (
+    matches.find((row) => String(row.minTier || "free").toLowerCase().trim() === "free") ?? null
+  );
+}
+
+/** Shown with the free-guide name under “Your matches are locked”. */
+export function guestLockedFreeGuideNote(title: string): string {
+  const name = title.trim() || "Your free guide";
+  return `${name} is your free guide. Create a free account and this guide unlocks.`;
 }
 
 export function wizardResultGuideHref(

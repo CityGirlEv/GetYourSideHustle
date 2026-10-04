@@ -274,9 +274,10 @@ export function summarizeMemberCredits(payload: MemberCreditsPayload): MemberCre
   const totalsRaw = payload.totals;
   const earned = Math.max(0, roundCreditAmount(Number(totalsRaw?.earned) || 0));
   const spent = Math.max(0, roundCreditAmount(Number(totalsRaw?.spent) || 0));
-  // The wallet cache can lag duplicate ledger grants. When earned/spent exist,
-  // current balance follows the trail so the card matches the table.
-  const balance = totalsRaw ? ledgerNetBalance(earned, spent) : walletBalance;
+  // Wallet and ledger can drift. Show whichever is higher so a grant on the
+  // user list is the same number on the member Credits page.
+  const fromLedger = totalsRaw ? ledgerNetBalance(earned, spent) : 0;
+  const balance = Math.max(walletBalance, fromLedger);
   const totals: MemberCreditTotals = {
     earned,
     spent,

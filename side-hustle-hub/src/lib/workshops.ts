@@ -503,23 +503,13 @@ export function filterWorkshops(
   });
 }
 
-/** Merge DB speakers with defaults so newly seeded guests (e.g. Lyriq) still appear. */
+/**
+ * An empty or missing catalog falls back to the seed list.
+ * Once D1 has speakers, that saved list is the catalog — removed defaults stay removed.
+ */
 export function mergeGuestSpeakers(fromDb: GuestSpeaker[] | undefined | null): GuestSpeaker[] {
   if (!fromDb?.length) return [...DEFAULT_SPEAKERS];
-  const byId = new Map(fromDb.filter((s) => !HIDDEN_SPEAKER_IDS.has(s.id)).map((s) => [s.id, s]));
-  for (const d of DEFAULT_SPEAKERS) {
-    if (!byId.has(d.id)) byId.set(d.id, d);
-  }
-  const ordered: GuestSpeaker[] = [];
-  for (const d of DEFAULT_SPEAKERS) {
-    const s = byId.get(d.id);
-    if (s) ordered.push(s);
-  }
-  for (const s of fromDb) {
-    if (HIDDEN_SPEAKER_IDS.has(s.id)) continue;
-    if (!DEFAULT_SPEAKERS.some((d) => d.id === s.id)) ordered.push(s);
-  }
-  return ordered;
+  return fromDb.filter((s) => s?.id && !HIDDEN_SPEAKER_IDS.has(s.id));
 }
 
 export async function fetchWorkshops(): Promise<{ workshops: Workshop[]; speakers: GuestSpeaker[] }> {
@@ -576,5 +566,18 @@ export async function adminAddWorkshopRegistrant(
   return api("workshop-registrations/admin", {
     method: "POST",
     body: input,
+  });
+}
+
+export async function adminDeleteWorkshopRegistrant(input: {
+  id: string;
+  workshopId: string;
+}): Promise<{ ok: boolean; message: string }> {
+  const params = new URLSearchParams({
+    id: input.id,
+    workshopId: input.workshopId,
+  });
+  return api(`workshop-registrations/admin?${params.toString()}`, {
+    method: "DELETE",
   });
 }

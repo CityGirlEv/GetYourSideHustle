@@ -33,7 +33,7 @@ export function workshopMemberGateWorkshopName(workshopId: string, title: string
 /** Manual path back if signup does not auto-return them to Register. */
 export function workshopMemberGateDirections(workshopId: string, title: string): string {
   const name = workshopMemberGateWorkshopName(workshopId, title);
-  return `Create a FREE account, then come back by clicking Community → Workshops → look for ${name} and click Register again.`;
+  return `Create a FREE account, then come back by clicking Workshops → look for ${name} and click Register again.`;
 }
 
 export function saveWorkshopRegistrationJoinReturn(workshopId: string) {

@@ -20,16 +20,19 @@ import { PasswordField } from "./PasswordField";
 import {
   isPaidMembershipTier,
   membershipCancelConfirmCopy,
+  membershipDowngradeChargeLabel,
+  membershipDowngradeNotice,
   membershipDowngradeOptions,
   membershipUpgradeOptions,
   normalizeMembershipTierId,
 } from "../lib/membership-cancel";
-import { postMembershipCancel } from "../lib/membership-cancel-api";
+import { postMembershipCancel, postMembershipDowngrade } from "../lib/membership-cancel-api";
 import {
   CREDIT_EARN_ACTIONS,
   MEMBERSHIP_TIERS,
   formatEarnCreditDelta,
   type AudienceGroup,
+  type TierId,
 } from "../lib/membership";
 import {
   creditsBalanceHeadline,
@@ -75,7 +78,7 @@ import { MEMBER_PROFILE_NAME_MAX, PROFILE_DASHBOARD_HREF, parseMemberProfileUpda
 import { inviteFriendCredits, inviteFriendSteps } from "../lib/invite-friend";
 import {
   assignSavedBlueprint,
-  friendlyBlueprintsLoadError,
+  blueprintLoadRetryDelayMs,
   listSavedBlueprints,
   type SavedBlueprint,
 } from "../lib/blueprints-api";
@@ -102,14 +105,17 @@ import { HustleScheduleSuite } from "./HustleScheduleSuite";
 import { PageCollapse } from "./PageCollapse";
 import { MembershipMerchClaim } from "./MembershipMerchClaim";
 import { libraryMinTierForAge } from "../lib/guide-library-pool";
-import { complimentaryExtraUnlockBadge, complimentaryUnlockAppliesToGuide } from "../lib/guide-access";
+import { actAsUserId, readActAsTarget } from "../lib/admin-act-as";
+import { complimentaryExtraUnlockBadge, resolveGuideAccess } from "../lib/guide-access";
 import { GuideMembershipBadges } from "./GuideMembershipBadges";
+import { wizardResultGuideHref } from "../lib/wizard-save";
 import {
   canOfferComplimentaryPick,
   claimSelectedComplimentaryGuide,
   complimentaryPickNotice,
   explicitComplimentaryGuideId,
   loadComplimentaryGuides,
+  prepareComplimentaryLoadForCurrentUser,
 } from "../lib/wizard-comp-guide";
 
 type PortalBlueprint = {
@@ -241,8 +247,13 @@ function MatchRow({
   const minTier = libraryMinTierForAge(match.id, ageGroup);
   const isClaimedExtra = Boolean(claimedExtraId && claimedExtraId === match.id);
   const thisUnlockBusy = Boolean(unlockBusy && unlockingGuideId === match.id);
-  const showComplimentaryUnlock =
-    Boolean(offerComplimentaryPick) && complimentaryUnlockAppliesToGuide(minTier);
+  const alreadyUnlocked = resolveGuideAccess({
+    isMember: true,
+    membershipTier: "free",
+    minTier,
+    guideId: match.id,
+  }).unlocked;
+  const showComplimentaryUnlock = Boolean(offerComplimentaryPick && !alreadyUnlocked);
 
   return (
     <li className={showComplimentaryUnlock ? "has-comp-pick" : undefined}>
@@ -269,7 +280,7 @@ function MatchRow({
           onClick={() => onUnlockComplimentary?.(match.id)}
         >
           <Unlock size={14} aria-hidden />
-          {thisUnlockBusy ? "Unlocking…" : "Unlock this complimentary guide"}
+          {thisUnlockBusy ? "Unlocking…" : "Select this as my free guide"}
         </button>
       ) : null}
       {canOpenGuide && (
@@ -353,15 +364,15 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const [planActionBusy, setPlanActionBusy] = useState(false);
   const [planActionMsg, setPlanActionMsg] = useState("");
   const [planActionError, setPlanActionError] = useState("");
-  const [confirmPlanAction, setConfirmPlanAction] = useState<
-    "cancel_to_free" | "deactivate_account" | null
-  >(null);
+  const [confirmPlanAction, setConfirmPlanAction] = useState<"deactivate_account" | null>(null);
+  const [pendingDowngradeTier, setPendingDowngradeTier] = useState<TierId | null>(null);
   const [localMembershipTier, setLocalMembershipTier] = useState(
     () => String(membershipTierProp || "free"),
   );
   const [blueprints, setBlueprints] = useState<PortalBlueprint[]>([]);
   const [blueprintsLoading, setBlueprintsLoading] = useState(true);
   const [blueprintsError, setBlueprintsError] = useState<string | null>(null);
+  const [blueprintsFetched, setBlueprintsFetched] = useState(false);
   const [familyChildren, setFamilyChildren] = useState<FamilyChild[]>([]);
   const [familyLoading, setFamilyLoading] = useState(true);
   const [familyError, setFamilyError] = useState<string | null>(null);
@@ -422,16 +433,30 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   );
   const selfBlueprintResultIds = useMemo(
     () =>
-      blueprints
-        .filter((bp) => !bp.childProfileId)
-        .flatMap((bp) => bp.resultIds.map((id) => id.trim()).filter(Boolean)),
+      blueprints.flatMap((bp) => bp.resultIds.map((id) => id.trim()).filter(Boolean)),
     [blueprints],
   );
+  const visibleClaimedId = useMemo(() => {
+    const id = String(claimedExtraId || "").trim();
+    if (!id) return null;
+    if (!blueprintsFetched) return null;
+    const owned = blueprints.some((row) => row.resultIds.includes(id));
+    return owned ? id : null;
+  }, [blueprints, blueprintsFetched, claimedExtraId]);
   const offerComplimentaryPick = canOfferComplimentaryPick({
     isLoggedIn: true,
     membershipTier: effectiveMembershipTier,
-    claimedId: claimedExtraId,
+    claimedId: visibleClaimedId,
   });
+  const claimedFreeGuide = useMemo(() => {
+    const id = String(visibleClaimedId || "").trim();
+    if (!id) return null;
+    const bp =
+      blueprints.find((row) => !row.childProfileId && row.resultIds.includes(id)) ??
+      blueprints.find((row) => row.resultIds.includes(id));
+    if (!bp) return null;
+    return { id, ageGroup: bp.ageGroup, title: blueprintMatchLabel(bp.ageGroup, id) };
+  }, [blueprints, visibleClaimedId]);
 
   const handleUnlockComplimentary = async (guideId: string) => {
     setCompPickBusy(true);
@@ -451,9 +476,14 @@ export const UserPortal: React.FC<UserPortalProps> = ({
         return;
       }
       if (result.claimedId) {
-        setClaimedExtraId(result.claimedId);
+        const pickedId = result.claimedId;
+        setClaimedExtraId(pickedId);
         setCompPickMsg("Unlocked. That complimentary guide is yours.");
-        onComplimentaryClaimed?.(result.claimedId);
+        onComplimentaryClaimed?.(pickedId);
+        const bp =
+          blueprints.find((row) => !row.childProfileId && row.resultIds.includes(pickedId)) ??
+          blueprints.find((row) => row.resultIds.includes(pickedId));
+        onOpenGuide?.(bp?.ageGroup ?? "adult", pickedId);
       }
     } catch (err: unknown) {
       setCompPickError(err instanceof Error ? err.message : "Could not unlock that guide.");
@@ -463,7 +493,23 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     }
   };
 
-  const runPlanAction = async (action: "cancel_to_free" | "deactivate_account") => {
+  const runDowngrade = async (tier: TierId) => {
+    setPlanActionBusy(true);
+    setPlanActionError("");
+    setPlanActionMsg("");
+    try {
+      const result = await postMembershipDowngrade(tier);
+      setPendingDowngradeTier(null);
+      setPlanActionMsg(result.message || "Downgrade scheduled.");
+      setPurchasesLoaded(false);
+    } catch (err: unknown) {
+      setPlanActionError(err instanceof Error ? err.message : "Could not schedule the downgrade.");
+    } finally {
+      setPlanActionBusy(false);
+    }
+  };
+
+  const runPlanAction = async (action: "deactivate_account") => {
     setPlanActionBusy(true);
     setPlanActionError("");
     setPlanActionMsg("");
@@ -475,10 +521,6 @@ export const UserPortal: React.FC<UserPortalProps> = ({
         onAccountDeactivated?.();
         return;
       }
-      const nextTier = String(result.user?.membershipTier || "free");
-      setLocalMembershipTier(nextTier);
-      onMembershipChanged?.(nextTier);
-      setPurchasesLoaded(false);
     } catch (err: unknown) {
       setPlanActionError(err instanceof Error ? err.message : "Could not update membership.");
     } finally {
@@ -584,50 +626,70 @@ export const UserPortal: React.FC<UserPortalProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    setBlueprintsLoading(true);
-    void (async () => {
+    let timer = 0;
+    const viewingAnotherMember = Boolean(actAsUserId(readActAsTarget()));
+    setBlueprints([]);
+    setBlueprintsFetched(false);
+    const load = async (attempt: number) => {
+      if (cancelled) return;
+      setBlueprintsLoading(true);
       try {
         let rows = await listSavedBlueprints();
-        if (rows.length === 0 && readPendingBlueprint()?.resultIds?.length) {
+        if (
+          !viewingAnotherMember &&
+          rows.length === 0 &&
+          readPendingBlueprint()?.resultIds?.length
+        ) {
           const attached = await attachPendingWizardToAccount(null);
           if (attached) rows = await listSavedBlueprints();
         }
         if (cancelled) return;
         if (rows.length > 0) {
           setBlueprints(rows.map(toPortalBlueprint));
-          clearPendingBlueprint();
-          setBlueprintsError(null);
-          return;
+          if (!viewingAnotherMember) clearPendingBlueprint();
+        } else if (!viewingAnotherMember) {
+          const pending = readPendingBlueprint();
+          setBlueprints(pending?.resultIds?.length ? [fromPendingLocal(pending)] : []);
+        } else {
+          setBlueprints([]);
         }
-        const pending = readPendingBlueprint();
+        setBlueprintsError(null);
+        setBlueprintsFetched(true);
+        setBlueprintsLoading(false);
+      } catch {
+        if (cancelled) return;
+        const pending = viewingAnotherMember ? null : readPendingBlueprint();
         if (pending?.resultIds?.length) {
           setBlueprints([fromPendingLocal(pending)]);
           setBlueprintsError(null);
+          setBlueprintsFetched(true);
+          setBlueprintsLoading(false);
+          return;
+        }
+        const wait = blueprintLoadRetryDelayMs(attempt);
+        if (wait != null) {
+          timer = window.setTimeout(() => void load(attempt + 1), wait);
           return;
         }
         setBlueprints([]);
         setBlueprintsError(null);
-      } catch (err: unknown) {
-        if (cancelled) return;
-        const pending = readPendingBlueprint();
-        if (pending?.resultIds?.length) {
-          setBlueprints([fromPendingLocal(pending)]);
-          setBlueprintsError(null);
-          return;
-        }
-        setBlueprints([]);
-        setBlueprintsError(friendlyBlueprintsLoadError(err));
-      } finally {
-        if (!cancelled) setBlueprintsLoading(false);
+        setBlueprintsFetched(true);
+        setBlueprintsLoading(false);
       }
-    })();
+    };
+    void load(0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, []);
+  }, [memberEmail]);
 
   useEffect(() => {
     let cancelled = false;
+    setClaimedExtraId(null);
+    setCompPickMsg("");
+    setCompPickError("");
+    prepareComplimentaryLoadForCurrentUser();
     void loadComplimentaryGuides(true).then((map) => {
       if (cancelled) return;
       setClaimedExtraId(explicitComplimentaryGuideId(map));
@@ -635,7 +697,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [memberEmail]);
 
   const refreshFamily = async () => {
     setFamilyLoading(true);
@@ -975,7 +1037,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                       onOpenMatchWizard();
                     }}
                   >
-                    Retake Match Wizard
+                    {blueprints.length > 0 ? "Retake Match Wizard" : "Take Match Wizard"}
                   </a>
                 )}
               </div>
@@ -995,7 +1057,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               )}
               {!blueprintsLoading &&
                 !blueprintsError &&
-                (offerComplimentaryPick || claimedExtraId || compPickMsg) &&
+                (offerComplimentaryPick || visibleClaimedId || compPickMsg) &&
                 blueprints.some((bp) => !bp.childProfileId && bp.resultIds.length > 0) && (
                   <div className="user-portal-comp-pick-banner" data-testid="user-portal-comp-pick">
                     {offerComplimentaryPick ? (
@@ -1009,13 +1071,32 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                       </>
                     ) : (
                       <p data-testid="user-portal-comp-pick-done">
-                        {compPickMsg ||
-                          "You already used your 1 complimentary guide unlock. Unique Unique Free guides stay available on Free."}
+                        {compPickMsg ? (
+                          compPickMsg
+                        ) : claimedFreeGuide ? (
+                          <>
+                            You already used your 1 free guide:{" "}
+                            <a
+                              href={wizardResultGuideHref(claimedFreeGuide.id, "guide")}
+                              data-testid="user-portal-comp-pick-guide-link"
+                              onClick={(e) => {
+                                if (!onOpenGuide) return;
+                                e.preventDefault();
+                                onOpenGuide(claimedFreeGuide.ageGroup, claimedFreeGuide.id);
+                              }}
+                            >
+                              {claimedFreeGuide.title}
+                            </a>
+                            .
+                          </>
+                        ) : (
+                          "You already used your 1 free guide."
+                        )}
                       </p>
                     )}
                   </div>
                 )}
-              {!blueprintsLoading && !blueprintsError && blueprints.length === 0 && (
+              {blueprintsFetched && !blueprintsLoading && !blueprintsError && blueprints.length === 0 && (
                 <div className="user-portal-blueprint-empty" data-testid="user-portal-blueprint-empty">
                   <p>
                     No Blueprint saved yet. Take the GYSH Match Wizard to unlock personalized Side
@@ -1031,7 +1112,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                         onOpenMatchWizard();
                       }}
                     >
-                      <Compass size={16} aria-hidden /> Start Match Wizard
+                      <Compass size={16} aria-hidden /> Take Match Wizard
                     </a>
                   )}
                 </div>
@@ -1129,10 +1210,8 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                             match={m}
                             ageGroup={bp.ageGroup}
                             onOpenGuide={onOpenGuide}
-                            claimedExtraId={claimedExtraId}
-                            offerComplimentaryPick={
-                              offerComplimentaryPick && !bp.childProfileId
-                            }
+                            claimedExtraId={visibleClaimedId}
+                            offerComplimentaryPick={offerComplimentaryPick}
                             unlockBusy={compPickBusy}
                             unlockingGuideId={unlockingGuideId}
                             onUnlockComplimentary={(id) => void handleUnlockComplimentary(id)}
@@ -1163,10 +1242,8 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                                 match={m}
                                 ageGroup={bp.ageGroup}
                                 onOpenGuide={onOpenGuide}
-                                claimedExtraId={claimedExtraId}
-                                offerComplimentaryPick={
-                                  offerComplimentaryPick && !bp.childProfileId
-                                }
+                                claimedExtraId={visibleClaimedId}
+                                offerComplimentaryPick={offerComplimentaryPick}
                                 unlockBusy={compPickBusy}
                                 unlockingGuideId={unlockingGuideId}
                                 onUnlockComplimentary={(id) => void handleUnlockComplimentary(id)}
@@ -1568,7 +1645,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                                             match={m}
                                             ageGroup={bp.ageGroup}
                                             onOpenGuide={onOpenGuide}
-                                            claimedExtraId={claimedExtraId}
+                                            claimedExtraId={visibleClaimedId}
                                           />
                                         ))}
                                       </ol>
@@ -1987,28 +2064,25 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                       {downgradeOptions.map((opt, i) => (
                         <span key={opt.id}>
                           {i > 0 ? <span aria-hidden> · </span> : null}
-                          {opt.id === "free" ? (
-                            <button
-                              type="button"
-                              className="user-portal-inline-link"
-                              disabled={planActionBusy}
-                              data-testid="user-portal-cancel-to-free"
-                              onClick={() => setConfirmPlanAction("cancel_to_free")}
-                            >
-                              Free
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="user-portal-inline-link"
-                              disabled={!onOpenJoin || planActionBusy}
-                              data-testid={`user-portal-downgrade-open-${opt.id}`}
-                              onClick={() => onOpenJoin?.()}
-                            >
-                              {opt.name}
-                              {opt.priceMonthlyUsd > 0 ? ` ($${opt.priceMonthlyUsd}/mo)` : ""}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            className="user-portal-inline-link"
+                            disabled={planActionBusy}
+                            data-testid={
+                              opt.id === "free"
+                                ? "user-portal-cancel-to-free"
+                                : `user-portal-downgrade-open-${opt.id}`
+                            }
+                            onClick={() => {
+                              setConfirmPlanAction(null);
+                              setPendingDowngradeTier(opt.id);
+                            }}
+                          >
+                            {opt.name}
+                            {opt.id !== "free" && opt.priceMonthlyUsd > 0
+                              ? ` ($${opt.priceMonthlyUsd}/mo)`
+                              : ""}
+                          </button>
                         </span>
                       ))}
                     </p>
@@ -2019,7 +2093,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                   )}
                 </div>
 
-                {confirmPlanAction ? (
+                {pendingDowngradeTier ? (
                   <div
                     className="user-portal-plan-confirm"
                     role="alertdialog"
@@ -2027,11 +2101,56 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                     data-testid="user-portal-plan-confirm"
                   >
                     <p id="user-portal-plan-confirm-title">
-                      <strong>
-                        {confirmPlanAction === "cancel_to_free"
-                          ? "Downgrade account?"
-                          : "Deactivate account?"}
-                      </strong>
+                      <strong>Downgrade account?</strong>
+                    </p>
+                    <p>
+                      {membershipDowngradeNotice({
+                        currentName: currentTierDef.name,
+                        nextName:
+                          MEMBERSHIP_TIERS.find((row) => row.id === pendingDowngradeTier)?.name ||
+                          pendingDowngradeTier,
+                        nextTier: pendingDowngradeTier,
+                        chargeLabel: membershipDowngradeChargeLabel({
+                          nextTier: pendingDowngradeTier,
+                          audience,
+                        }),
+                      })}
+                    </p>
+                    <div className="user-portal-plan-confirm-actions">
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        disabled={planActionBusy}
+                        data-testid="user-portal-plan-confirm-cancel"
+                        onClick={() => setPendingDowngradeTier(null)}
+                      >
+                        Keep my plan
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={planActionBusy}
+                        data-testid="user-portal-plan-confirm-yes"
+                        onClick={() => void runDowngrade(pendingDowngradeTier)}
+                      >
+                        {pendingDowngradeTier === "free"
+                          ? "Yes, downgrade to Free"
+                          : `Yes, downgrade to ${
+                              MEMBERSHIP_TIERS.find((row) => row.id === pendingDowngradeTier)?.name ||
+                              pendingDowngradeTier
+                            }`}
+                      </button>
+                    </div>
+                  </div>
+                ) : confirmPlanAction ? (
+                  <div
+                    className="user-portal-plan-confirm"
+                    role="alertdialog"
+                    aria-labelledby="user-portal-plan-confirm-title"
+                    data-testid="user-portal-plan-confirm"
+                  >
+                    <p id="user-portal-plan-confirm-title">
+                      <strong>Deactivate account?</strong>
                     </p>
                     <p>
                       {membershipCancelConfirmCopy(confirmPlanAction, {
@@ -2050,16 +2169,12 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                       </button>
                       <button
                         type="button"
-                        className={
-                          confirmPlanAction === "deactivate_account" ? "btn btn-danger" : "btn btn-primary"
-                        }
+                        className="btn btn-danger"
                         disabled={planActionBusy}
                         data-testid="user-portal-plan-confirm-yes"
                         onClick={() => void runPlanAction(confirmPlanAction)}
                       >
-                        {confirmPlanAction === "cancel_to_free"
-                          ? "Yes, downgrade to Free"
-                          : "Yes, deactivate my account"}
+                        Yes, deactivate my account
                       </button>
                     </div>
                   </div>

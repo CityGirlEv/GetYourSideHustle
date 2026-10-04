@@ -9,6 +9,8 @@ import {
   clampCreditsByItem,
   clampCreditsToApply,
   mixedCheckoutButtonLabel,
+  offerStripeBesideCredits,
+  payWithStripeButtonLabel,
   shouldShowApplyAllCredits,
   parseCreditSpendRequest,
   quoteCreditPurchase,
@@ -155,6 +157,9 @@ describe("credit checkout", () => {
     expect(payWithCredits.creditsAvailable).toBe(145);
     expect(payWithCredits.fullyCoveredByCredits).toBe(true);
     expect(mixedCheckoutButtonLabel(payWithCredits)).toBe("Pay 15 credits");
+    expect(offerStripeBesideCredits(payWithCredits)).toBe(true);
+    expect(payWithStripeButtonLabel("$15")).toBe("Pay $15 with Stripe");
+    expect(offerStripeBesideCredits({ creditsMax: 0, subtotalUsd: 15 })).toBe(false);
     expect(shouldShowApplyAllCredits(payWithCredits)).toBe(false);
     expect(shouldShowApplyAllCredits({ creditsApplied: 10, creditsMax: 15 })).toBe(true);
     expect(shouldShowApplyAllCredits({ creditsApplied: 0, creditsMax: 0 })).toBe(false);

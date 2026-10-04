@@ -9,7 +9,6 @@ import {
 import {
   JUNIOR_CORNER_TABS,
   KIDS_CORNER_TABS,
-  MATCH_WIZARD_AGES,
   SENIOR_CORNER_TABS,
 } from "../audience-nav";
 import { MARKETING_GUIDE_MENU } from "../marketing-guides";
@@ -59,10 +58,12 @@ describe("site-map stays in sync with nav sources", () => {
     const community = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-community");
     expect(community?.children?.map((c) => c.label)).toEqual([
       "Blog",
-      "Workshops",
       "Newsletter",
       "GEAR",
     ]);
+    const workshops = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-workshops");
+    expect(workshops?.label).toBe("Workshops");
+    expect(workshops?.kind).toBe("menu");
     expect(hrefForSiteMapNode("nav-community-gear")).toEqual({ kind: "shop" });
     expect(hrefForSiteMapNode("nav-gear")).toEqual({ kind: "shop" });
     expect(hrefForSiteMapNode("nav-memberships")).toEqual({ kind: "join" });
@@ -78,18 +79,22 @@ describe("site-map stays in sync with nav sources", () => {
     );
   });
 
-  it("Kids / Teens / Seniors tabs match audience-nav", () => {
-    const kidsMenu = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-kids");
+  it("Kids / Teens / Seniors tabs match audience-nav under Match Wizards", () => {
+    const match = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-match");
+    expect(match?.label).toBe("Match Wizards");
+    const publicIds = (GYSH_PUBLIC_MAP.children ?? []).map((n) => n.id);
+    expect(publicIds.indexOf("nav-match")).toBeLessThan(publicIds.indexOf("nav-guides"));
+    expect(match?.children?.map((c) => c.label)).toEqual(["Adults", "Seniors", "Kids & Teens"]);
+    expect(hrefForSiteMapNode("nav-adults")).toEqual({ kind: "quiz-adult" });
+
+    const kidsMenu = (match?.children ?? []).find((n) => n.id === "nav-kids");
     const kidsMode = (kidsMenu?.children ?? []).find((n) => n.id === "kids-mode");
     const teensMode = (kidsMenu?.children ?? []).find((n) => n.id === "teens-mode");
     expect(kidsMode?.children?.map((c) => c.label)).toEqual(KIDS_CORNER_TABS.map((t) => t.label));
     expect(teensMode?.children?.map((c) => c.label)).toEqual(JUNIOR_CORNER_TABS.map((t) => t.label));
 
-    const seniors = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-seniors");
+    const seniors = (match?.children ?? []).find((n) => n.id === "nav-seniors");
     expect(seniors?.children?.map((c) => c.label)).toEqual(SENIOR_CORNER_TABS.map((t) => t.label));
-
-    const match = (GYSH_PUBLIC_MAP.children ?? []).find((n) => n.id === "nav-match");
-    expect(match?.children?.map((c) => c.id)).toEqual(MATCH_WIZARD_AGES.map((a) => a.id));
   });
 
   it("every navigable site-map id has an href (except structural roots)", () => {

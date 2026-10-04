@@ -14,7 +14,12 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
   {
     slug: "registration_confirmation",
     name: "Registration confirmation",
-    description: "Sent when someone registers — pending admin activation.",
+    description: "Sent when someone joins a membership — includes the link that activates the account.",
+  },
+  {
+    slug: "account_email_verification",
+    name: "Membership email verification",
+    description: "Click-to-verify link that sets a new membership from Pending to Active.",
   },
   {
     slug: "workshop_registration_confirmation",

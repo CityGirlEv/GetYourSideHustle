@@ -4,6 +4,8 @@ import {
   membershipCancelActionForTier,
   membershipCancelButtonLabel,
   membershipCancelConfirmCopy,
+  membershipDowngradeChargeLabel,
+  membershipDowngradeNotice,
   membershipDowngradeOptions,
   membershipUpgradeOptions,
   purchaseRowShowsCancel,
@@ -42,11 +44,39 @@ describe("membership cancel / downgrade / deactivate", () => {
     expect(purchaseRowShowsCancel("alacarte", "elite")).toBe(false);
   });
 
-  it("explains Free conversion and soft-delete (including linked kids)", () => {
-    expect(membershipCancelConfirmCopy("cancel_to_free")).toMatch(/Free account/i);
+  it("explains the next billing charge and soft-delete (including linked kids)", () => {
+    expect(membershipCancelConfirmCopy("cancel_to_free")).toMatch(/upcoming billing cycle/i);
+    expect(membershipCancelConfirmCopy("cancel_to_free")).toMatch(/not charge you again/i);
     expect(membershipCancelConfirmCopy("deactivate_account")).toMatch(/soft-deleted/i);
     expect(membershipCancelConfirmCopy("deactivate_account", { linkedKidCount: 2 })).toMatch(
       /2 linked kid accounts/i,
     );
+  });
+
+  it("names the new charge on the upcoming billing cycle", () => {
+    const label = membershipDowngradeChargeLabel({
+      nextTier: "starter",
+      audience: "adult",
+      interval: "month",
+    });
+    expect(label).toBe("$117 every 3 months");
+    const notice = membershipDowngradeNotice({
+      currentName: "Elite",
+      nextName: "Starter",
+      nextTier: "starter",
+      chargeLabel: label,
+      effectiveOn: "June 1, 2026",
+    });
+    expect(notice).toMatch(/keep Elite until June 1, 2026/i);
+    expect(notice).toMatch(/charge \$117 every 3 months for Starter/i);
+    expect(notice).toMatch(/Nothing is charged today/);
+    expect(
+      membershipDowngradeNotice({
+        currentName: "Pro",
+        nextName: "Free",
+        nextTier: "free",
+        chargeLabel: "no further charge",
+      }),
+    ).toMatch(/not charge you again/i);
   });
 });

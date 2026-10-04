@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { suggestedSprintForTest } from "../gysh-sprint-board";
+import { currentSprintIndex } from "../gysh-sprints";
 import {
   TEST_CASES,
   TEST_CATEGORIES,
@@ -118,6 +120,23 @@ describe("gysh-test-plan", () => {
     for (const id of ["LEGAL-DISC-001", "LEGAL-NDA-001", "LEGAL-SIGNUP-001"]) {
       const t = TEST_CASES.find((c) => c.id === id);
       expect(t?.assignees).toEqual(["candace"]);
+    }
+  });
+
+  it("assigns workshop, blueprint, and free-guide checks to Candace on the current sprint", () => {
+    const owned = TEST_CASES.filter((t) => t.id.startsWith("CANDACE-"));
+    expect(owned.map((t) => t.id).sort()).toEqual([
+      "CANDACE-BP-001",
+      "CANDACE-BP-002",
+      "CANDACE-BP-003",
+      "CANDACE-WORK-001",
+      "CANDACE-WORK-002",
+      "CANDACE-WORK-003",
+    ]);
+    for (const t of owned) {
+      expect(t.assignees).toEqual(["candace"]);
+      expect(t.suite).toBe("manual");
+      expect(suggestedSprintForTest(t)).toBe(currentSprintIndex());
     }
   });
 

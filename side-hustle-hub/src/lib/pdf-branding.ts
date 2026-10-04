@@ -236,10 +236,10 @@ function drawFooterChrome(doc: jsPDF) {
 }
 
 /** Copyright + legal disclaimer block in the PDF footer (every printable page). */
-export function drawPdfLegalDisclaimer(doc: jsPDF): void {
+export function drawPdfLegalDisclaimer(doc: jsPDF, opts?: { maxW?: number }): void {
   const paras = legalDisclaimerPdfParagraphs();
   const top = PDF_PAGE_H - PDF_FOOTER_BAND + 8;
-  const maxW = PDF_CONTENT_W;
+  const maxW = opts?.maxW ?? PDF_CONTENT_W;
   const lineH = 7;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6);
@@ -437,11 +437,12 @@ export function applyPdfPageBranding(
   label: string,
   logoDataUrl?: string,
   updatedAt: Date = new Date(),
-  opts?: { draft?: boolean; updatedBy?: string; hideLastUpdated?: boolean },
+  opts?: { draft?: boolean; updatedBy?: string; hideLastUpdated?: boolean; footerLogo?: boolean },
 ) {
   // Opt-in only — marketing/member/audience guide PDFs must not show DRAFT by default.
   const showDraft = opts?.draft === true;
   const hideLastUpdated = opts?.hideLastUpdated === true;
+  const showFooterLogo = opts?.footerLogo === true && Boolean(logoDataUrl);
   const pages = doc.getNumberOfPages();
   const by = String(opts?.updatedBy || "").trim();
   const updatedLabel = by
@@ -452,7 +453,17 @@ export function applyPdfPageBranding(
     if (showDraft) drawPdfDraftWatermark(doc);
     drawPdfBrandedHeader(doc, label, logoDataUrl);
     drawFooterChrome(doc);
-    drawPdfLegalDisclaimer(doc);
+    let footerLogoW = 0;
+    if (showFooterLogo && logoDataUrl) {
+      const slot = 28;
+      const drawn = drawPdfHeaderLogo(doc, logoDataUrl, {
+        height: slot,
+        x: PDF_PAGE_W - PDF_MARGIN - 86,
+        y: PDF_PAGE_H - PDF_FOOTER_BAND + 6,
+      });
+      footerLogoW = drawn.w > 0 ? drawn.w + 10 : 0;
+    }
+    drawPdfLegalDisclaimer(doc, footerLogoW ? { maxW: PDF_CONTENT_W - footerLogoW } : undefined);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);

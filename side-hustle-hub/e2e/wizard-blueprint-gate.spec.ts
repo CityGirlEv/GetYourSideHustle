@@ -30,7 +30,7 @@ async function openTeensWizardOnPhone(page: Page) {
 }
 
 test.describe("Wizard Blueprint membership gate", () => {
-  test("Teens guest (and team join) cannot see ranked matches", async ({ page }) => {
+  test("Teens guest sees ranked matches with a Sign up button and cannot open guides", async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem("gysh_junior_side_hustle_team", "1");
     });
@@ -42,15 +42,13 @@ test.describe("Wizard Blueprint membership gate", () => {
     await expect(blueprint).toHaveAttribute("data-unlocked", "false");
     await expect(blueprint).toHaveAttribute("data-age-group", "junior");
     await expect(page.getByTestId("blueprint-unlock-gate")).toBeVisible();
-    await expect(page.getByTestId("blueprint-top-match")).toHaveCount(0);
+    await expect(page.getByTestId("blueprint-top-match")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Select this as my free guide" }).first()).toBeVisible();
     await expect(page.getByTestId("blueprint-dashboard-link")).toHaveCount(0);
     await expect(page.getByTestId("blueprint-open-dashboard")).toHaveCount(0);
     await expect(page.getByText("Open guide")).toHaveCount(0);
-    await expect(page.getByText("Your matches are locked")).toBeVisible();
-
-    for (const name of TEEN_MATCH_NAMES) {
-      await expect(page.getByText(name, { exact: true })).toHaveCount(0);
-    }
+    await expect(page.getByText("Take me to this guide")).toHaveCount(0);
+    await expect(page.getByText("Sign up to open these guides")).toBeVisible();
   });
 
   test("localStorage free-session marker does not unlock the ranked Teens Blueprint", async ({
@@ -74,9 +72,10 @@ test.describe("Wizard Blueprint membership gate", () => {
     await expect(blueprint).toBeVisible();
     await expect(blueprint).toHaveAttribute("data-unlocked", "false");
     await expect(page.getByTestId("blueprint-unlock-gate")).toBeVisible();
-    await expect(page.getByTestId("blueprint-top-match")).toHaveCount(0);
+    await expect(page.getByTestId("blueprint-top-match")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Select this as my free guide" }).first()).toBeVisible();
     await expect(page.getByTestId("blueprint-dashboard-link")).toHaveCount(0);
-    await expect(page.getByText("Neighborhood Dog Walker")).toHaveCount(0);
+    await expect(page.getByText("Take me to this guide")).toHaveCount(0);
   });
 
   test("Unlock Blueprint opens Free signup with email, password, confirm, and how you heard about us", async ({

@@ -1296,6 +1296,7 @@ export function SchedulePage({
         statuses: testData.statuses,
         notes: testData.notes,
         dueDates: workingTestDueDates,
+        finishedAt: testData.updatedAt,
         closed: closedList,
         actorLabel: actingAssignBy,
       });

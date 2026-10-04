@@ -150,6 +150,18 @@ describe("sprint schedule assignments", () => {
     expect(suggestedSprintForTest({ id: "LEGAL-SIGNUP-001", area: "Registration", priority: "P0" })).toBe(
       currentSprintIndex(),
     );
+    expect(
+      suggestedSprintForTest({ id: "CANDACE-WORK-001", area: "Workshops", priority: "P1" }),
+    ).toBe(currentSprintIndex());
+    expect(
+      suggestedSprintForTest({ id: "CANDACE-BP-002", area: "Blueprint", priority: "P0" }),
+    ).toBe(currentSprintIndex());
+    expect(
+      suggestedSprintForTest({ id: "VT-FREE-GUIDE-001", area: "Vitest", priority: "P0" }),
+    ).toBe(currentSprintIndex());
+    expect(
+      suggestedSprintForTest({ id: "VT-SPEAKER-001", area: "Vitest", priority: "P1" }),
+    ).toBe(currentSprintIndex());
   });
 
   it("commitPlanSprintPlan force moves workshops and upserts soft-launch milestones", () => {

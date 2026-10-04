@@ -22,6 +22,7 @@ import {
 } from "./email-brand";
 import { PARTNER_ADMINS } from "./partners";
 import { ensureEmailLegalDisclaimer } from "../../src/lib/legal-disclaimer";
+import { ensureMembershipRegistrationNotice } from "../../src/lib/membership-registration-notice";
 import { STRIPE_CATALOG } from "./stripe-catalog.generated";
 import { formatPurchasePaymentDetail } from "../../src/lib/purchase-payment";
 import { merchItemCount } from "../../src/lib/membership";
@@ -464,12 +465,17 @@ export async function sendAdminFormNotify(
   const recipients = adminRecipients(env);
   const ctaUrl = adminFormNotifyCtaUrl(input.ctaUrl);
   const { renderCatalogEmail } = await import("./email-admin");
-  const rendered = await renderCatalogEmail(env, "admin_form_notify", {
-    name: input.formName,
-    message: input.detailsHtml,
-    email: input.replyTo || "",
-    ctaUrl,
-  });
+  const rendered = await renderCatalogEmail(
+    env,
+    "admin_form_notify",
+    {
+      name: input.formName,
+      message: input.detailsHtml,
+      email: input.replyTo || "",
+      ctaUrl,
+    },
+    { ctaLabel: "Open GYSH" },
+  );
   const subject = rendered
     ? `${rendered.subject} ${input.summary.slice(0, 80)}`.trim()
     : `[GYSH ${input.formName}] ${input.summary.slice(0, 80)}`;
@@ -537,12 +543,15 @@ export async function sendRegistrationConfirmation(
      */
     includeCertificate?: boolean;
     heardAbout?: string | null;
+    /** Click-to-verify link. When set, the member email activates the membership. */
+    confirmUrl?: string | null;
   },
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
   const tier = normalizeTier(user.membership_tier);
   const audience = normalizeAudience(user.audience) as PerkAudience;
-  const joinUrl = membershipDeepLink();
+  const confirmUrl = String(opts?.confirmUrl || "").trim();
+  const joinUrl = confirmUrl || membershipDeepLink();
   const includeCertificate = opts?.includeCertificate === true;
   const cert = includeCertificate
     ? await certificateAttachment(env, {
@@ -554,21 +563,30 @@ export async function sendRegistrationConfirmation(
       })
     : null;
   const { renderCatalogEmail } = await import("./email-admin");
-  const rendered = await renderCatalogEmail(env, "registration_confirmation", {
-    name: user.name || "Side Hustler",
-    audience: audiencePretty(audience),
-    certHtml: cert?.certHtml || "",
-    ctaUrl: joinUrl,
-    ...membershipCatalogEmailVars(tier, audience),
-  });
+  const rendered = await renderCatalogEmail(
+    env,
+    confirmUrl ? "account_email_verification" : "registration_confirmation",
+    {
+      name: user.name || "Side Hustler",
+      audience: audiencePretty(audience),
+      certHtml: cert?.certHtml || "",
+      ctaUrl: joinUrl,
+      ...membershipCatalogEmailVars(tier, audience),
+    },
+    { ctaLabel: "Open GYSH" },
+  );
   if (!rendered) return false;
+  const withNotice = ensureMembershipRegistrationNotice({
+    html: rendered.html,
+    text: rendered.text,
+  });
   await sendResendEmail(env, {
     to: user.email,
     cc: adminCopyRecipients(env, user.email),
     subject: rendered.subject,
-    html: rendered.html,
-    text: rendered.text,
-    templateSlug: "registration_confirmation",
+    html: withNotice.html,
+    text: withNotice.text,
+    templateSlug: confirmUrl ? "account_email_verification" : "registration_confirmation",
     userId: user.id,
     attachments: cert?.attachments,
     meta: { tier, audience, certificateAttached: Boolean(cert) },
@@ -587,48 +605,16 @@ export async function sendRegistrationConfirmation(
       summary: `${user.name} · ${user.email} · ${tierLabel(tier)} / ${audiencePretty(audience)}${summaryHeard}`,
       detailsHtml: `<p style="margin:0 0 8px;"><strong>Name:</strong> ${escapeHtml(user.name)}</p>
         <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${escapeHtml(user.email)}" style="color:#9B2F28;">${escapeHtml(user.email)}</a></p>
-        <p style="margin:0 0 8px;"><strong>Plan:</strong> ${escapeHtml(tierLabel(tier))} (pending activation)</p>
+        <p style="margin:0 0 8px;"><strong>Plan:</strong> ${escapeHtml(tierLabel(tier))} (pending until they verify email)</p>
         <p style="margin:0 0 8px;"><strong>Lane:</strong> ${escapeHtml(audiencePretty(audience))}</p>
         ${heardLine}
-        <p style="margin:12px 0 0;padding:12px;background:#fff4e8;border-radius:10px;"><strong>Action needed:</strong> Open Admin → Users Area and set status to <strong>active</strong> to let them sign in. Activation sends their welcome email + certificate.</p>`,
+        <p style="margin:12px 0 0;padding:12px;background:#fff4e8;border-radius:10px;">They activate their own membership by clicking the verification link in their email. No admin approval is required.</p>`,
       replyTo: user.email,
       meta: { userId: user.id, tier, audience, heardAbout: heardAbout || null },
     });
   } catch {
     /* non-fatal */
   }
-  return true;
-}
-
-/** Confirmation to the attendee after a public workshop registration. */
-export async function sendWorkshopRegistrationConfirmation(
-  env: Env,
-  input: {
-    name: string;
-    email: string;
-    workshopId: string;
-    title: string;
-    date?: string;
-    time?: string;
-    format?: string;
-    registrationNote?: string;
-    registrationOpen?: boolean;
-  },
-): Promise<boolean> {
-  if (!emailConfigured(env)) return false;
-  const vars = workshopRegistrationConfirmVars(input);
-  const { renderCatalogEmail } = await import("./email-admin");
-  const rendered = await renderCatalogEmail(env, "workshop_registration_confirmation", vars);
-  if (!rendered) return false;
-  await sendResendEmail(env, {
-    to: input.email,
-    cc: adminCopyRecipients(env, input.email),
-    subject: rendered.subject,
-    html: rendered.html,
-    text: rendered.text,
-    templateSlug: "workshop_registration_confirmation",
-    meta: { workshopId: input.workshopId, email: input.email },
-  });
   return true;
 }
 

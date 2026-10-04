@@ -775,7 +775,8 @@ export function TestingPortal({
   };
 
   const effectiveSprint = (t: TestCase) =>
-    sprintByCase[t.id] ?? sprintForUnstoredTest(t, closedSprints);
+    sprintByCase[t.id] ??
+    sprintForUnstoredTest(t, closedSprints, new Date(), statuses[t.id]);
 
   const applyServerData = (data: TestStatusesPayload, savedId?: string) => {
     if (savedId) {
@@ -1136,6 +1137,7 @@ export function TestingPortal({
         statuses: data.statuses,
         notes: data.notes,
         dueDates: data.dueDates ?? {},
+        finishedAt: data.updatedAt,
         closed: closedList,
         actorLabel: actingAssignBy || "System",
       });
@@ -1202,7 +1204,8 @@ export function TestingPortal({
       return;
     }
     const sprint =
-      sprintByCase[focusTestId] ?? sprintForUnstoredTest(caseDef, closedSprints);
+      sprintByCase[focusTestId] ??
+      sprintForUnstoredTest(caseDef, closedSprints, new Date(), statuses[focusTestId]);
     const sprintKey: SprintFilterKey = sprint === BACKLOG_SPRINT ? "backlog" : sprint;
     setQuery(focusTestId);
     setAreaFilter("all");
@@ -1316,7 +1319,12 @@ export function TestingPortal({
     const t = ALL_CASES.find((c) => c.id === id);
     return (
       sprintByCase[id] ??
-      sprintForUnstoredTest(t ?? { id, area: "", priority: "P2", suite: "manual" }, closedSprints)
+      sprintForUnstoredTest(
+        t ?? { id, area: "", priority: "P2", suite: "manual" },
+        closedSprints,
+        new Date(),
+        statusesRef.current[id],
+      )
     );
   };
 
@@ -2409,7 +2417,11 @@ export function TestingPortal({
       const items = ids.map((id) => {
         const status = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
         const caseDef = ALL_CASES.find((c) => c.id === id);
-        const sprint = sprintByCase[id] ?? (caseDef ? sprintForUnstoredTest(caseDef, closedSprints) : BACKLOG_SPRINT);
+        const sprint =
+          sprintByCase[id] ??
+          (caseDef
+            ? sprintForUnstoredTest(caseDef, closedSprints, new Date(), status)
+            : BACKLOG_SPRINT);
         return {
           caseId: id,
           status,
@@ -2705,7 +2717,11 @@ export function TestingPortal({
       const items = ids.map((id) => {
         const status = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
         const caseDef = ALL_CASES.find((c) => c.id === id);
-        const sprint = sprintByCase[id] ?? (caseDef ? sprintForUnstoredTest(caseDef, closedSprints) : BACKLOG_SPRINT);
+        const sprint =
+          sprintByCase[id] ??
+          (caseDef
+            ? sprintForUnstoredTest(caseDef, closedSprints, new Date(), status)
+            : BACKLOG_SPRINT);
         return {
           caseId: id,
           status,

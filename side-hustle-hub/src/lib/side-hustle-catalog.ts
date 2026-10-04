@@ -93,7 +93,6 @@ export const FREE_WIZARD_HUSTLE_IDS = [
   "cleaning-service",
   "leaf-raking",
   "gift-wrapping",
-  "property-mgmt",
 ] as const;
 
 /**
@@ -136,6 +135,7 @@ export const PRO_SPREAD_HUSTLE_IDS = [
   "google-business-helper",
   "community-newsletter-creator",
   "nonprofit-social-helper",
+  "property-mgmt",
 ] as const;
 
 /** Digital / premium creative + Senior community clubs + Elite call assist → Elite. */
@@ -498,8 +498,8 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     fullDescription: "Manage rentals or short-term stays for owners who want hands-off operations — leasing coordination, guest turns, vendors, maintenance communication, calendars, and owner reporting. Their Property. Your Systems. Smoother Operations.",
     audiences: ["adult","senior"],
     category: "Real Estate / Property Services",
-    minTier: "free",
-    freeWizardEligible: true,
+    minTier: "pro",
+    freeWizardEligible: false,
     startupCost: "Low to Moderate",
     zeroStart: false,
     locationMode: "local",

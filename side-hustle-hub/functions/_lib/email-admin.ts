@@ -299,6 +299,7 @@ export async function renderCatalogEmail(
   env: Env,
   slug: string,
   vars: EmailTemplateVars = {},
+  overrides?: Partial<Pick<EmailTemplateContent, "ctaLabel" | "ctaUrl">>,
 ): Promise<{ subject: string; html: string; text: string } | null> {
   if (slug === DIGEST_TEMPLATE_SLUG || slug === "daily_admin_digest") {
     const content = await getTemplateContent(env, "daily_admin_digest");
@@ -309,7 +310,7 @@ export async function renderCatalogEmail(
 
   const content = await getTemplateContent(env, slug);
   if (!content) return null;
-  return renderContent(content, vars);
+  return renderContent(overrides ? { ...content, ...overrides } : content, vars);
 }
 
 /** @deprecated Prefer renderCatalogEmail — kept for callers expecting sync preview. */

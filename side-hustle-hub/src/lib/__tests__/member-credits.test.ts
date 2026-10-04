@@ -290,6 +290,18 @@ describe("member-credits helpers", () => {
     expect(formatCreditCount(rebuilt[0]!.balanceAfter)).toBe("145 credits");
   });
 
+  it("keeps a wallet balance the ledger totals have not caught up to", () => {
+    const summary = summarizeMemberCredits({
+      balance: 10,
+      membershipTier: "free",
+      audience: "adult",
+      totals: { earned: 0, spent: 0, balance: 0 },
+      recent: [],
+    });
+    expect(summary.balance).toBe(10);
+    expect(summary.totals.balance).toBe(10);
+  });
+
   it("uses earned minus spent as current balance when the wallet cache is behind", () => {
     expect(ledgerNetBalance(165, 20)).toBe(145);
     const summary = summarizeMemberCredits({

@@ -6,8 +6,16 @@
 import {
   MEMBERSHIP_TIERS,
   TIER_LADDER,
+  formatUsd,
+  tierPriceMonthlyUsd,
+  tierPriceYearlyUsd,
+  type AudienceGroup,
   type TierId,
 } from "./membership";
+import {
+  membershipBillingCadenceLabel,
+  membershipJoinDueUsd,
+} from "./membership-commitment-billing";
 
 export type MembershipCancelAction = "cancel_to_free" | "deactivate_account";
 
@@ -40,7 +48,12 @@ export function membershipCancelConfirmCopy(
   opts?: { linkedKidCount?: number },
 ): string {
   if (action === "cancel_to_free") {
-    return "Downgrade your paid membership? Stripe billing stops and your account becomes a Free account. You keep access to free guides.";
+    return membershipDowngradeNotice({
+      currentName: "your paid plan",
+      nextName: "Free",
+      nextTier: "free",
+      chargeLabel: "no further charge",
+    });
   }
   const kids = Math.max(0, Math.floor(Number(opts?.linkedKidCount) || 0));
   if (kids > 0) {
@@ -91,6 +104,57 @@ export function membershipUpgradeOptions(tier: string | null | undefined): {
       priceMonthlyUsd: def?.priceMonthlyUsd ?? 0,
     };
   });
+}
+
+/** Dollar amount Stripe will bill on the next cycle after a downgrade. */
+export function membershipDowngradeChargeLabel(input: {
+  nextTier: TierId;
+  audience?: string | null;
+  interval?: "month" | "year";
+}): string {
+  if (input.nextTier === "free") return "no further charge";
+  const lane = String(input.audience || "adult").toLowerCase();
+  if (lane === "kids" || lane === "junior") return "the new Kid Credit plan rate";
+  const tier = MEMBERSHIP_TIERS.find((row) => row.id === input.nextTier);
+  if (!tier) return "the new plan rate";
+  const audience: AudienceGroup = input.audience === "senior" ? "senior" : "adult";
+  const interval = input.interval === "year" ? "year" : "month";
+  const due = membershipJoinDueUsd(
+    interval,
+    tierPriceMonthlyUsd(tier, audience),
+    tierPriceYearlyUsd(tier, audience) ?? null,
+  );
+  return `${formatUsd(due)} ${membershipBillingCadenceLabel(interval)}`;
+}
+
+export function formatMembershipBillingDay(isoDay: string | null | undefined): string | null {
+  const day = String(isoDay || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, (month ?? 1) - 1, date ?? 1)).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** What the member sees before a downgrade is scheduled. */
+export function membershipDowngradeNotice(input: {
+  currentName: string;
+  nextName: string;
+  nextTier: TierId;
+  chargeLabel: string;
+  effectiveOn?: string | null;
+}): string {
+  const when = input.effectiveOn?.trim() || "your upcoming billing cycle";
+  if (input.nextTier === "free") {
+    return `You keep ${input.currentName} until ${when}. Stripe will not charge you again after that. Your membership becomes Free on that date. Nothing changes today.`;
+  }
+  const chargeLine = /kid credit/i.test(input.chargeLabel)
+    ? `On that date your membership changes to ${input.nextName} at ${input.chargeLabel}.`
+    : `On that billing cycle Stripe will charge ${input.chargeLabel} for ${input.nextName}. Your membership level changes to ${input.nextName} that day.`;
+  return `You keep ${input.currentName} until ${when}. ${chargeLine} Nothing is charged today.`;
 }
 
 /** Billing history rows that can show Cancel (active paid membership purchase). */

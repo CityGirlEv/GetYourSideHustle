@@ -18,11 +18,14 @@ import {
   Mail,
   FileText,
   BadgeCheck,
+  Mic2,
+  ScrollText,
 } from "lucide-react";
 import { ROOT_DOMAIN } from "../lib/site-config";
 import { TestingPortal } from "./admin/TestingPortal";
 import { QaTestingManualPage } from "./admin/QaTestingManualPage";
 import { UsersArea } from "./admin/UsersArea";
+import { BlueprintList } from "./admin/BlueprintList";
 import { ContentFactory } from "./admin/ContentFactory";
 import { TaskList } from "./admin/TaskList";
 import { Financials } from "./admin/Financials";
@@ -38,9 +41,10 @@ import { CertificatesAdmin } from "./admin/CertificatesAdmin";
 import { EmailTemplates } from "./admin/EmailTemplates";
 import { DailyProgressPage } from "./admin/DailyProgressPage";
 import { MembershipsPage } from "./admin/MembershipsPage";
+import { WorkshopsAdmin } from "./admin/WorkshopsAdmin";
 import { AdminHustleSchedulesPage } from "./admin/AdminHustleSchedulesPage";
 import type { AuthUser } from "../lib/auth";
-import { canAccessAdminPortal } from "../lib/gysh-roles";
+import { canAccessAdminPortal, type GyshUser } from "../lib/gysh-roles";
 import {
   assigneeForAuthUser,
   dueAttentionTasks,
@@ -101,6 +105,8 @@ type Props = {
   onSiteMapNavigate?: (href: SiteMapHref) => void;
   /** Notify App so site-wide nav can lock until Tina/Lyriq submit meeting times. */
   onMeetingGateChange?: (locked: boolean) => void;
+  /** Open that member's dashboard while acting as them. */
+  onViewMemberDashboard?: (user: GyshUser) => void;
 };
 
 export const AdminPortal: React.FC<Props> = ({
@@ -111,6 +117,7 @@ export const AdminPortal: React.FC<Props> = ({
   onUserGuideChange,
   onSiteMapNavigate,
   onMeetingGateChange,
+  onViewMemberDashboard,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"calendar" | "monetize" | "growth">("calendar");
   const [localGuide, setLocalGuide] = useState<UserGuideId>(userGuide);
@@ -142,12 +149,16 @@ export const AdminPortal: React.FC<Props> = ({
     { id: "timesheet", label: "Timesheet", icon: <Clock size={16} /> },
     { id: "daily-progress", label: "Daily Progress", icon: <FileText size={16} /> },
     { id: "users", label: "Users Area", icon: <Users size={16} /> },
+    ...(isAdmin
+      ? [{ id: "blueprints" as const, label: "Blueprint List", icon: <ScrollText size={16} /> }]
+      : []),
     { id: "memberships", label: "Memberships", icon: <BadgeCheck size={16} /> },
     { id: "hustle-schedules", label: "Schedule Suites", icon: <CalendarDays size={16} /> },
     { id: "certificates", label: "Certificates", icon: <Award size={16} /> },
     { id: "email", label: "Email Templates", icon: <Mail size={16} /> },
     ...(isAdmin
       ? [
+          { id: "workshops" as const, label: "Workshops", icon: <Mic2 size={16} /> },
           { id: "factory" as const, label: "Content Factory", icon: <Sparkles size={16} /> },
           { id: "financials" as const, label: "Financials", icon: <DollarSign size={16} /> },
         ]
@@ -202,7 +213,7 @@ export const AdminPortal: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    if ((activeTab === "financials" || activeTab === "factory") && !isAdmin) {
+    if ((activeTab === "financials" || activeTab === "factory" || activeTab === "workshops" || activeTab === "blueprints") && !isAdmin) {
       requestTabChange("tasks");
     }
     if (activeTab !== "testing") setShowQaManual(false);
@@ -223,7 +234,7 @@ export const AdminPortal: React.FC<Props> = ({
           ? detail
           : readAdminDeepLink();
       if (link.tab) {
-        if ((link.tab === "factory" || link.tab === "financials") && !userIsAdmin(authUser)) {
+        if ((link.tab === "factory" || link.tab === "financials" || link.tab === "workshops" || link.tab === "blueprints") && !userIsAdmin(authUser)) {
           onTabChange("tasks");
         } else {
           onTabChange(link.tab);
@@ -511,10 +522,14 @@ export const AdminPortal: React.FC<Props> = ({
         />
       )}
       {activeTab === "users" && <UsersArea currentUserId={authUser?.id ?? null} />}
+      {activeTab === "blueprints" && isAdmin && (
+        <BlueprintList onViewMemberDashboard={onViewMemberDashboard} />
+      )}
       {activeTab === "memberships" && <MembershipsPage />}
       {activeTab === "hustle-schedules" && <AdminHustleSchedulesPage />}
       {activeTab === "certificates" && <CertificatesAdmin />}
       {activeTab === "email" && <EmailTemplates focusSlug={focusEmailTemplate} />}
+      {activeTab === "workshops" && isAdmin && <WorkshopsAdmin />}
       {activeTab === "factory" && isAdmin && (
         <ContentFactory
           focusItemId={focusItemId}
