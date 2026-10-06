@@ -2,11 +2,11 @@
 export const SPA_PUBLIC_BASE = '/';
 
 /** Bump when replacing files in public/images so production does not keep a cached copy. */
-export const PUBLIC_IMAGE_CACHE_VERSION = '20260904';
+export const PUBLIC_IMAGE_CACHE_VERSION = '20261003b';
 
 export function cacheBustPublicUrl(path: string, version = PUBLIC_IMAGE_CACHE_VERSION): string {
   const value = String(path ?? '').trim();
-  if (!value.startsWith('/images/')) return value;
+  if (!value.startsWith('/images/') && !value.startsWith('/videos/')) return value;
   const join = value.includes('?') ? '&' : '?';
   return `${value}${join}v=${version}`;
 }

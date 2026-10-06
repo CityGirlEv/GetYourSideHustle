@@ -219,7 +219,7 @@ describe('workBoardStore', () => {
       tests: [{ id: 'qa1', title: 'FAQ', status: 'passed', sprint: 'Sprint 3', category: 'Content QA', priority: 'high', assignee: 'angela' }],
       updatedAt: '2026-09-19T12:00:00.000Z',
     });
-    expect(parsed?.tasks.find((task) => task.id === 't-1')?.completedOn).toBe('2026-09-19');
+    expect(parsed?.tasks.find((task) => task.id === 't-1')?.completedOn).toBe('2026-09-13');
     expect(parsed?.tests.find((test) => test.id === 'qa1')?.completedOn).toBe('2026-09-19');
   });
 
@@ -308,11 +308,11 @@ describe('workBoardStore', () => {
     );
     expect(hydrated.tasks.find((task) => task.id === 't-58')?.dueDate).toBe('2026-09-03');
     expect(hydrated.tasks.find((task) => task.id === 't-59')?.assignee).toBe('angela');
-    expect(hydrated.tasks.find((task) => task.id === 't-60')?.sprint).toBe('Sprint 2');
+    expect(hydrated.tasks.find((task) => task.id === 't-60')?.sprint).toBe('Sprint 4');
     expect(hydrated.tasks.find((task) => task.id === 't-61')?.title).toMatch(/My Plan, Not My Mood/i);
   });
 
-  it('rolls saved Sprint 0 and Sprint 1 tasks and tests onto Sprint 2 without changing assignee', () => {
+  it('rolls saved Sprint 0 and Sprint 1 tasks and tests onto Sprint 4 without changing assignee', () => {
     const parsed = parseWorkBoardStorePayload({
       tasks: [
         {
@@ -341,19 +341,19 @@ describe('workBoardStore', () => {
       ],
     });
     expect(parsed?.tasks.find((task) => task.id === 't-49')).toMatchObject({
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'evelyn',
       assignor: 'angela',
       status: 'in_progress',
       dueDate: '2026-09-03',
     });
     expect(parsed?.tests.find((test) => test.id === 'home-qa1')).toMatchObject({
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'unassigned',
       rolledOver: true,
     });
     expect(parsed?.tasks.find((task) => task.id === 't-49')?.rolledOver).toBe(true);
-    expect(parsed?.tasks.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 2/);
+    expect(parsed?.tasks.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 4/);
   });
 
   it('keeps finished closed-sprint work on its locked sprint instead of rolling it forward', () => {

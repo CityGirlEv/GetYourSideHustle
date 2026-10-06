@@ -185,6 +185,7 @@ import {
   toggleAngelaPick,
   toggleShirtHoodieStyle,
 } from '../gearSelections';
+import { cacheBustPublicUrl } from '../spaAssets';
 
 const PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -308,13 +309,13 @@ describe('gearSelections', () => {
     expect(gearSelectButtonDisabled(store, 'tee-c')).toBe(false);
     store = toggleAngelaPick(store, 'tee-c', 'tee').store;
 
-    expect(GEAR_HAT_COLOR_IMAGE).toBe('/images/apparel_hat_white.png?v=20260904');
+    expect(GEAR_HAT_COLOR_IMAGE).toBe(cacheBustPublicUrl('/images/apparel_hat_white.png'));
     expect(GEAR_HAT_COLOR_IMAGES).toEqual({
-      white: '/images/apparel_hat_white.png?v=20260904',
-      black: '/images/apparel_hat_black.png?v=20260904',
-      red: '/images/apparel_hat_red.png?v=20260904',
-      blue: '/images/apparel_hat_blue.png?v=20260904',
-      purple: '/images/apparel_hat_purple.png?v=20260904',
+      white: cacheBustPublicUrl('/images/apparel_hat_white.png'),
+      black: cacheBustPublicUrl('/images/apparel_hat_black.png'),
+      red: cacheBustPublicUrl('/images/apparel_hat_red.png'),
+      blue: cacheBustPublicUrl('/images/apparel_hat_blue.png'),
+      purple: cacheBustPublicUrl('/images/apparel_hat_purple.png'),
     });
     expect(GEAR_HAT_COLOR_OPTIONS).toHaveLength(5);
     expect(GEAR_HAT_COLOR_OPTIONS.map((color) => color.label)).toEqual([
@@ -325,16 +326,16 @@ describe('gearSelections', () => {
       'Purple',
     ]);
     expect(GEAR_HAT_COLOR_OPTIONS.map((color) => color.image)).toEqual([
-      '/images/apparel_hat_white.png?v=20260904',
-      '/images/apparel_hat_black.png?v=20260904',
-      '/images/apparel_hat_red.png?v=20260904',
-      '/images/apparel_hat_blue.png?v=20260904',
-      '/images/apparel_hat_purple.png?v=20260904',
+      cacheBustPublicUrl('/images/apparel_hat_white.png'),
+      cacheBustPublicUrl('/images/apparel_hat_black.png'),
+      cacheBustPublicUrl('/images/apparel_hat_red.png'),
+      cacheBustPublicUrl('/images/apparel_hat_blue.png'),
+      cacheBustPublicUrl('/images/apparel_hat_purple.png'),
     ]);
-    expect(gearHatColorImage('blue')).toBe('/images/apparel_hat_blue.png?v=20260904');
+    expect(gearHatColorImage('blue')).toBe(cacheBustPublicUrl('/images/apparel_hat_blue.png'));
     expect(GEAR_HAT_COLOR_IMAGE_CLASS).toContain('max-h-56');
     expect(GEAR_HAT_COLOR_IMAGE_CLASS).toContain('sm:max-h-64');
-    expect(gearHatPreviewSrc()).toBe('/images/apparel_hat_white.png?v=20260904');
+    expect(gearHatPreviewSrc()).toBe(cacheBustPublicUrl('/images/apparel_hat_white.png'));
     expect(GEAR_HAT_CHOOSE_LABEL).toBe('2. Choose Hat Color');
     expect(GEAR_DONE_LABEL).toBe('Done');
     expect(GEAR_SHIRT_HOODIE_STEP).toBe(1);
@@ -376,14 +377,14 @@ describe('gearSelections', () => {
     expect(gearHatColorPickerStartsOpen(2, true)).toBe(true);
     expect(gearShirtHoodiePickerStartsOpen(0, true)).toBe(true);
     store = addHatColor(store, 'white').store;
-    expect(gearHatPreviewSrc(store)).toBe('/images/apparel_hat_white.png?v=20260904');
+    expect(gearHatPreviewSrc(store)).toBe(cacheBustPublicUrl('/images/apparel_hat_white.png'));
     store = addHatColor(store, 'black').store;
     store = addHatColor(store, 'red').store;
     expect(addHatColor(store, 'purple').error).toMatch(/3 Hat colors/);
     expect(canPickAnother(store, 'hat')).toBe(false);
     store = removeHatColor(store, 'white');
     expect(pickedHatColorIds(store)).toEqual(['black', 'red']);
-    expect(gearHatPreviewSrc(store)).toBe('/images/apparel_hat_black.png?v=20260904');
+    expect(gearHatPreviewSrc(store)).toBe(cacheBustPublicUrl('/images/apparel_hat_black.png'));
     store = addHatColor(store, 'white').store;
     expect(GEAR_PICK_LIMITS).toEqual({
       tee: GEAR_SHIRT_HOODIE_STYLE_LIMIT,

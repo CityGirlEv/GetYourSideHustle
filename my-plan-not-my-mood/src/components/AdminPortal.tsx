@@ -124,6 +124,7 @@ import { ComingSoonBadge } from './ComingSoonBadge';
 import { BRAND_TAB_ROW_CLASS, brandTabClass } from '../lib/brandUi';
 import { GearSelectionsPage } from './GearSelectionsPage';
 import { ContentFactoryPage } from './ContentFactoryPage';
+import { GrowthStudioPage } from './GrowthStudioPage';
 import { PostingSchedulePage } from './PostingSchedulePage';
 import { AssetLibraryPage } from './AssetLibraryPage';
 import { LogoConceptsPage } from './LogoConceptsPage';
@@ -246,6 +247,7 @@ import {
   type QaCategory,
   defaultTaskBoardFilters,
   defaultTestingPortalFilters,
+  hideEmptyWorkBoardSprintSections,
   filterTasks,
   filterQaTests,
   isWorkDueDatePast,
@@ -285,6 +287,10 @@ import {
   applyQaInlinePatch,
   applyTasksBlockedWithNote,
   taskNeedsBlockedNote,
+  canCompleteWithChecklist,
+  checklistBlockMessage,
+  cycleTaskStatus,
+  cycleQaStatus,
   currentSprintLabel,
   defaultOpenSprintSections,
   SPRINT_SECTION_TONES,
@@ -1024,7 +1030,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         activeTab === 'calendar' ||
         activeTab === 'gear-selections' ||
         activeTab === 'asset-library' ||
-        activeTab === 'logo-concepts') &&
+        activeTab === 'logo-concepts' ||
+        activeTab === 'growth') &&
       !permissions.canManageContentFactory
     ) {
       setActiveTab(canOpenPlanTab(permissions.canViewProposal, permissions.canViewIP) ? 'plan' : 'testing');
@@ -1869,6 +1876,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     }
     const current = tasksRef.current.find((task) => task.id === id);
     if (!current) return;
+    const nextSteps = patch.steps ?? current.steps;
+    if (patch.status === 'done' && !canCompleteWithChecklist('task', nextSteps, 'done').ok) {
+      setWorkBoardNotice(checklistBlockMessage('task'));
+      return;
+    }
     const patched = applyTaskInlinePatch(current, patch, actor);
     const nextItem = attachWorkItemFieldAudit(current, patched, workBoardAuditActor(), 'task');
     const next = tasksRef.current.map((task) => (task.id === id ? nextItem : task));
@@ -1889,6 +1901,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         setBlockedNoteTaskIds(needingNote);
         return;
       }
+    }
+    if (patch.status === 'done') {
+      const blocked = ids.filter((id) => {
+        const current = tasksRef.current.find((task) => task.id === id);
+        return current ? !canCompleteWithChecklist('task', current.steps, 'done').ok : false;
+      });
+      if (blocked.length === ids.length) {
+        setWorkBoardNotice(checklistBlockMessage('task'));
+        return;
+      }
+      if (blocked.length > 0) setWorkBoardNotice(checklistBlockMessage('task'));
     }
     const selected = new Set(ids);
     const auditActor = workBoardAuditActor();
@@ -1923,6 +1946,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     const actor = workAssigneeFromActor(permissionActor ?? currentUser);
     const current = qaTestsRef.current.find((test) => test.id === id);
     if (!current) return;
+    const nextSteps = patch.steps ?? current.steps;
+    if (patch.status === 'passed' && !canCompleteWithChecklist('test', nextSteps, 'passed').ok) {
+      setWorkBoardNotice(checklistBlockMessage('test'));
+      return;
+    }
     const patched = applyQaInlinePatch(current, patch, actor);
     const nextItem = attachWorkItemFieldAudit(current, patched, workBoardAuditActor(), 'test');
     const next = qaTestsRef.current.map((test) => (test.id === id ? nextItem : test));
@@ -1934,6 +1962,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
 
   const handleBulkUpdateQa = (ids: string[], patch: QaInlinePatch) => {
     const actor = workAssigneeFromActor(permissionActor ?? currentUser);
+    if (patch.status === 'passed') {
+      const blocked = ids.filter((id) => {
+        const current = qaTestsRef.current.find((test) => test.id === id);
+        return current ? !canCompleteWithChecklist('test', current.steps, 'passed').ok : false;
+      });
+      if (blocked.length === ids.length) {
+        setWorkBoardNotice(checklistBlockMessage('test'));
+        return;
+      }
+      if (blocked.length > 0) setWorkBoardNotice(checklistBlockMessage('test'));
+    }
     const selected = new Set(ids);
     const auditActor = workBoardAuditActor();
     const next = qaTestsRef.current.map((test) => {
@@ -1950,24 +1989,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   const handleCycleTaskStatus = (id: string) => {
     const current = tasksRef.current.find((t) => t.id === id);
     if (!current) return;
-    const order: TaskStatus[] = ['not_started', 'in_progress', 'done', 'blocked'];
-    const status = order[(Math.max(0, order.indexOf(current.status)) + 1) % order.length];
+    const status = cycleTaskStatus(current.status, current.steps);
+    if (status === current.status) return;
     handleUpdateTask(id, { status });
   };
 
   const handleCycleQaStatus = (id: string) => {
     const current = qaTestsRef.current.find((t) => t.id === id);
     if (!current) return;
-    const order: QaStatus[] = [
-      'untested',
-      'in_progress',
-      'passed',
-      'failed',
-      'fixed_retest',
-      'failed_retest',
-      'blocked',
-    ];
-    const status = order[(Math.max(0, order.indexOf(current.status)) + 1) % order.length];
+    const status = cycleQaStatus(current.status, current.steps);
+    if (status === current.status) return;
     handleUpdateQa(id, { status });
   };
 
@@ -3276,6 +3307,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   items={filteredQaTests}
                   openSections={qaOpenSections}
                   onToggleSection={toggleQaSection}
+                  hideEmptySections={hideEmptyWorkBoardSprintSections(qaFilters.sprint)}
                   isDone={(test) => test.status === 'passed'}
                   selectedIds={selectedQaIds}
                   onToggleSelected={(id) => setSelectedQaIds((current) => toggleSelectedId(current, id))}
@@ -3454,6 +3486,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                               </option>
                             ))}
                           </select>
+                          {!canCompleteWithChecklist('test', test.steps, 'passed').ok ? (
+                            <p className="text-[10px] text-[#9A3412] leading-snug mt-1" data-testid={`qa-checklist-gate-${test.id}`}>
+                              {checklistBlockMessage('test')}
+                            </p>
+                          ) : null}
                           <p className="text-[10px] text-[#6B5344] leading-snug mt-1">
                             Fail → Dev. Dev sets Fixed/Retest (FXR) or Failed/Retest (FD/R) → back to tester to Pass or Fail.
                             Tasks do not use this cycle.
@@ -3749,6 +3786,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   items={filteredTasks}
                   openSections={taskOpenSections}
                   onToggleSection={toggleTaskSection}
+                  hideEmptySections={hideEmptyWorkBoardSprintSections(taskFilters.sprint)}
                   isDone={(task) => task.status === 'done'}
                   selectedIds={selectedTaskIds}
                   onToggleSelected={(id) => setSelectedTaskIds((current) => toggleSelectedId(current, id))}
@@ -3820,7 +3858,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             testId={`work-row-status-${t.id}`}
                             value={t.status}
                             onChange={(value) => handleUpdateTask(t.id, { status: value as TaskStatus })}
-                            options={TASK_STATUSES.map((status) => ({ value: status, label: TASK_STATUS_LABELS[status] }))}
+                            options={TASK_STATUSES.map((status) => ({
+                              value: status,
+                              label: TASK_STATUS_LABELS[status],
+                            }))}
                             className={taskStatusBadgeClass(t.status)}
                           />
                           <WorkBoardHeaderSelect
@@ -3935,8 +3976,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             className={`${workBoardFieldClassName} border-2 ${taskStatusBadgeClass(t.status)}`}
                             aria-label="Status"
                           >
-                            {TASK_STATUSES.map((s) => <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>)}
+                            {TASK_STATUSES.map((s) => (
+                              <option key={s} value={s}>
+                                {TASK_STATUS_LABELS[s]}
+                              </option>
+                            ))}
                           </select>
+                          {!canCompleteWithChecklist('task', t.steps, 'done').ok ? (
+                            <p className="text-[10px] text-[#9A3412] leading-snug mt-1" data-testid={`task-checklist-gate-${t.id}`}>
+                              {checklistBlockMessage('task')}
+                            </p>
+                          ) : null}
                         </WorkBoardField>
                         <WorkBoardField label="Assignee">
                           <select
@@ -4081,7 +4131,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
           />
         ) : null}
 
-        {(['timesheet', 'daily-progress', 'memberships', 'certificates', 'growth'] as const).map((tab) =>
+        {activeTab === 'growth' && getRolePermissions(currentUser).canManageContentFactory && (
+          <GrowthStudioPage onOpenTab={(tab) => selectAdminTab(tab)} />
+        )}
+
+        {(['timesheet', 'daily-progress', 'memberships', 'certificates'] as const).map((tab) =>
           activeTab === tab ? <AdminStudioPlaceholder key={tab} tab={tab} /> : null,
         )}
 

@@ -10,6 +10,7 @@ import {
   normalizeQaTests,
   normalizeTasks,
 } from '../workBoard';
+import { OPEN_ROLLOVER_SPRINT } from '../sprintRollover';
 import { linkedTestsForTask, pageHrefForWorkItem, taskContentSeed } from '../workItemContentSeed';
 import { sprintWindowByLabel } from '../sprintCalendar';
 import {
@@ -86,7 +87,7 @@ describe('journalMakeReview', () => {
     expect(board).toHaveLength(seeds.length);
     const normalized = normalizeQaTests(board);
     for (const test of normalized) {
-      expect(test.sprint).toBe(JOURNAL_MAKE_REVIEW_SPRINT);
+      expect(test.sprint).toBe(OPEN_ROLLOVER_SPRINT);
       expect(test.assignee).toBe('angela');
       expect(test.dueDate).toBe(JOURNAL_ANGELA_DUE);
       expect(test.steps?.[0]?.href).toBe(JOURNAL_PLANNERS_HREF);
@@ -120,13 +121,13 @@ describe('journalMakeReview', () => {
       { ...INITIAL_TASKS.find((task) => task.id === 't-211')!, dueDate: '2026-09-19', sprint: 'Sprint 2' },
       { ...INITIAL_TASKS.find((task) => task.id === 't-208')!, dueDate: '2026-09-19', sprint: 'Sprint 2' },
     ]);
-    expect(staleTasks[0]).toMatchObject({ dueDate: JOURNAL_EVELYN_DUE, sprint: JOURNAL_MAKE_REVIEW_SPRINT });
-    expect(staleTasks[1]).toMatchObject({ dueDate: JOURNAL_ANGELA_DUE, sprint: JOURNAL_MAKE_REVIEW_SPRINT });
+    expect(staleTasks[0]).toMatchObject({ dueDate: JOURNAL_EVELYN_DUE, sprint: OPEN_ROLLOVER_SPRINT });
+    expect(staleTasks[1]).toMatchObject({ dueDate: JOURNAL_ANGELA_DUE, sprint: OPEN_ROLLOVER_SPRINT });
 
     const staleTest = overlayCatalogQaSchedule([
       { ...INITIAL_QA_TESTS.find((test) => test.id === 'journal-90day')!, dueDate: '2026-09-19', sprint: 'Sprint 2' },
     ]);
-    expect(staleTest[0]).toMatchObject({ dueDate: JOURNAL_ANGELA_DUE, sprint: JOURNAL_MAKE_REVIEW_SPRINT });
+    expect(staleTest[0]).toMatchObject({ dueDate: JOURNAL_ANGELA_DUE, sprint: OPEN_ROLLOVER_SPRINT });
 
     expect(nextTaskId(INITIAL_TASKS)).toBe('t-212');
   });

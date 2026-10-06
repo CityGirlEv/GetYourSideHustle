@@ -36,7 +36,11 @@ import {
   type TierId,
 } from "../../src/lib/membership";
 import { heardAboutFromNotes, mergeHeardAboutNote, parseHeardAboutInput } from "../../src/lib/heard-about";
-import { registerUserStatus } from "../../src/lib/register-activation";
+import {
+  ACCOUNT_ACTIVATION_REQUIRED_ERROR,
+  accountNeedsEmailActivation,
+  registerUserStatus,
+} from "../../src/lib/register-activation";
 import { parseRequiredPhone } from "../../src/lib/member-profile";
 
 export type Env = {
@@ -590,7 +594,17 @@ export async function handleRegister(
   }
 
   const existing = await getUserByEmail(env.DB, email);
-  if (existing) return error("An account with that email already exists. Sign in instead.", 409);
+  if (existing) {
+    if (accountNeedsEmailActivation(existing.status)) {
+      try {
+        await emailPendingMembershipVerification(env, request, existing);
+      } catch {
+        /* the original activation email still stands */
+      }
+      return error(ACCOUNT_ACTIVATION_REQUIRED_ERROR, 403);
+    }
+    return error("An account with that email already exists. Sign in instead.", 409);
+  }
 
   const now = new Date().toISOString();
   const userId = `u-${crypto.randomUUID()}`;

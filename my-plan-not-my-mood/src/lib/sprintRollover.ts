@@ -3,28 +3,38 @@
 import { parseWorkNotes, serializeWorkNotes } from './workNoteEntries';
 import { sprintDatesForLabel } from './sprintCalendar';
 
-export const LOCKED_SPRINTS = ['Sprint 0', 'Sprint 1'] as const;
-export const LATEST_CLOSED_SPRINT = 'Sprint 1';
+export const LOCKED_SPRINTS = ['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3'] as const;
+export const LATEST_CLOSED_SPRINT = 'Sprint 3';
 /** Sprint 0 ended Sunday Sep 6, 2026. Only work finished on or before this date stays on Sprint 0. */
 export const SPRINT_0_END_ISO = '2026-09-06';
 /** Sprint 1 ran Mon Sep 7 – Sun Sep 13, 2026. */
 export const SPRINT_1_START_ISO = '2026-09-07';
-/** Sprint 1 closed Sunday Sep 13, 2026. Native Sprint 2 work finished after this date stays on Sprint 2. */
-export const LATEST_CLOSED_SPRINT_END_ISO = '2026-09-13';
-/** Late Done/Passed marks on Sep 13–14 still count as Sprint 1 work. */
+export const SPRINT_1_END_ISO = '2026-09-13';
+/** Sprint 1 closed Sunday Sep 13, 2026. Late Done/Passed marks on Sep 14 still count as Sprint 1 for Sprint 0/1 carryover. */
+export const LATEST_CLOSED_SPRINT_END_ISO = '2026-09-27';
+/** Late Done/Passed marks on Sep 13–14 still count as Sprint 1 work for Sprint 0/1 carryover. */
 export const SPRINT_1_LATE_DONE_ISO = '2026-09-14';
-export const OPEN_ROLLOVER_SPRINT = 'Sprint 2';
+/** Sprint 2 ran Mon Sep 14 – Sun Sep 20, 2026. */
+export const SPRINT_2_END_ISO = '2026-09-20';
+export const SPRINT_2_LATE_DONE_ISO = '2026-09-21';
+/** Sprint 3 ran Mon Sep 21 – Sun Sep 27, 2026. */
+export const SPRINT_3_END_ISO = '2026-09-27';
+export const SPRINT_3_LATE_DONE_ISO = '2026-09-28';
+export const OPEN_ROLLOVER_SPRINT = 'Sprint 4';
 
 export const SPRINT_ROLLOVER: Record<string, string> = {
-  'Sprint 0': 'Sprint 2',
-  'Sprint 1': 'Sprint 2',
+  'Sprint 0': 'Sprint 4',
+  'Sprint 1': 'Sprint 4',
+  'Sprint 2': 'Sprint 4',
+  'Sprint 3': 'Sprint 4',
 };
 
-export const ROLLOVER_NOTE_TEXT = 'Rolled Over to Sprint 2';
-export const ROLLOVER_NOTE_ID = 'n-rollover-sprint-2';
-export const ROLLOVER_NOTE_AT = '2026-09-14T00:00:00.000Z';
-export const PRIOR_ROLLOVER_NOTE_TEXT = 'Rolled Over to Sprint 1';
-export const PRIOR_ROLLOVER_NOTE_ID = 'n-rollover-sprint-1';
+export const ROLLOVER_NOTE_TEXT = 'Rolled Over to Sprint 4';
+export const ROLLOVER_NOTE_ID = 'n-rollover-sprint-4';
+export const ROLLOVER_NOTE_AT = '2026-09-28T00:00:00.000Z';
+export const PRIOR_ROLLOVER_NOTE_TEXT = 'Rolled Over to Sprint 2';
+export const PRIOR_ROLLOVER_NOTE_ID = 'n-rollover-sprint-2';
+export const SPRINT_1_ROLLOVER_NOTE_ID = 'n-rollover-sprint-1';
 export const ROLLOVER_STATUS_ID = 'rolled_over';
 export const ROLLOVER_STATUS_LABEL = 'Rolled Over';
 
@@ -91,7 +101,7 @@ export function rolloverSprint<T extends string>(sprint: T): T {
   return (next ?? OPEN_ROLLOVER_SPRINT) as T;
 }
 
-/** Walk locked sprints until the first open one (Sprint 0 → Sprint 2). */
+/** Walk locked sprints until the first open one (Sprint 0 → Sprint 4). */
 export function firstOpenRolloverSprint(sprint: string | null | undefined): string {
   let current = String(sprint ?? OPEN_ROLLOVER_SPRINT);
   const seen = new Set<string>();
@@ -109,24 +119,26 @@ export function workItemRootId(id: string | null | undefined): string {
 
 export function isClosedSprintCarryoverId(id: string | null | undefined): boolean {
   const root = workItemRootId(id);
-  return CLOSED_SPRINT_CARRYOVER_IDS.has(root) || root.startsWith('cf-s0-') || root.startsWith('cf-s1-');
+  return (
+    CLOSED_SPRINT_CARRYOVER_IDS.has(root) ||
+    root.startsWith('cf-s0-') ||
+    root.startsWith('cf-s1-') ||
+    root.startsWith('cf-s2-') ||
+    root.startsWith('cf-s3-')
+  );
+}
+
+function isRolloverNoteId(id: string | null | undefined): boolean {
+  return String(id ?? '').startsWith('n-rollover-sprint-');
 }
 
 function noteLooksLikeRollover(text: string): boolean {
-  const trimmed = text.trim();
-  return (
-    trimmed === ROLLOVER_NOTE_TEXT ||
-    trimmed === PRIOR_ROLLOVER_NOTE_TEXT ||
-    trimmed.startsWith('Rolled Over to Sprint ')
-  );
+  return text.trim().startsWith('Rolled Over to Sprint ');
 }
 
 export function hasRolloverNote(raw: string | null | undefined): boolean {
   return parseWorkNotes(raw).some(
-    (entry) =>
-      entry.id === ROLLOVER_NOTE_ID ||
-      entry.id === PRIOR_ROLLOVER_NOTE_ID ||
-      noteLooksLikeRollover(entry.text),
+    (entry) => isRolloverNoteId(entry.id) || noteLooksLikeRollover(entry.text),
   );
 }
 
@@ -149,10 +161,7 @@ export function stampRolloverNote(raw: string | null | undefined): string {
 
 export function unstampRolloverNote(raw: string | null | undefined): string {
   const entries = parseWorkNotes(raw).filter(
-    (entry) =>
-      entry.id !== ROLLOVER_NOTE_ID &&
-      entry.id !== PRIOR_ROLLOVER_NOTE_ID &&
-      !noteLooksLikeRollover(entry.text),
+    (entry) => !isRolloverNoteId(entry.id) && !noteLooksLikeRollover(entry.text),
   );
   return serializeWorkNotes(entries);
 }
@@ -248,6 +257,17 @@ function notesKeyForItem(item: Record<string, unknown>): 'notes' | 'desc' | 'not
   return 'notes';
 }
 
+function originatedFromSprint01(item: { id?: string; sprint?: string }): boolean {
+  const root = workItemRootId(item.id);
+  return (
+    item.sprint === 'Sprint 0' ||
+    item.sprint === 'Sprint 1' ||
+    CLOSED_SPRINT_CARRYOVER_IDS.has(root) ||
+    root.startsWith('cf-s0-') ||
+    root.startsWith('cf-s1-')
+  );
+}
+
 function finishedHomeSprint(item: {
   id?: string;
   sprint: string;
@@ -260,22 +280,25 @@ function finishedHomeSprint(item: {
   note?: string;
 }): string {
   const finishedOn = workItemFinishedOnIso(item);
+  const due = isoDateFromUnknown(item.dueDate);
+  const fromSprint01 = originatedFromSprint01(item);
+
   if (finishedOn && finishedOn <= SPRINT_0_END_ISO) return 'Sprint 0';
+  if (finishedOn && finishedOn <= SPRINT_1_END_ISO) return 'Sprint 1';
+  if (finishedOn && fromSprint01 && finishedOn <= SPRINT_1_LATE_DONE_ISO) return 'Sprint 1';
+  if (due && due <= SPRINT_0_END_ISO) return 'Sprint 0';
+  if (finishedOn && finishedOn <= SPRINT_2_LATE_DONE_ISO) return 'Sprint 2';
+  if (finishedOn && finishedOn <= SPRINT_3_LATE_DONE_ISO) return 'Sprint 3';
+  if (!finishedOn && item.sprint === 'Sprint 0') return 'Sprint 0';
+  if (fromSprint01) return 'Sprint 1';
+  if (finishedOn) return OPEN_ROLLOVER_SPRINT;
 
-  const originatedClosed = isSprintLocked(item.sprint) || originatedInClosedSprint(item);
-  if (originatedClosed) {
-    if (finishedOn && finishedOn <= SPRINT_1_LATE_DONE_ISO) return LATEST_CLOSED_SPRINT;
-    const due = isoDateFromUnknown(item.dueDate);
-    if (due && due <= SPRINT_0_END_ISO) return 'Sprint 0';
-    if (item.sprint === 'Sprint 0') return 'Sprint 0';
-    return LATEST_CLOSED_SPRINT;
-  }
-
-  if (finishedOn && finishedOn <= SPRINT_1_LATE_DONE_ISO) return LATEST_CLOSED_SPRINT;
-  if (finishedOn && finishedOn > SPRINT_1_LATE_DONE_ISO) return OPEN_ROLLOVER_SPRINT;
-  // No completion date: Sprint 0 Done stays on Sprint 0. Other finished work is Sprint 1.
+  if (due && due <= SPRINT_0_END_ISO) return 'Sprint 0';
   if (item.sprint === 'Sprint 0') return 'Sprint 0';
-  return LATEST_CLOSED_SPRINT;
+  if (fromSprint01) return 'Sprint 1';
+  if (item.sprint === 'Sprint 2' || item.sprint === 'Sprint 3') return item.sprint;
+  if (isSprintLocked(item.sprint)) return item.sprint;
+  return 'Sprint 1';
 }
 
 function shouldKeepOnClosedSprint(item: {
@@ -288,12 +311,10 @@ function shouldKeepOnClosedSprint(item: {
   note?: string;
   completedOn?: string;
   audit?: Array<{ field?: string; to?: string; at?: string }>;
+  dueDate?: string;
 }): boolean {
   if (isOutstandingWorkStatus(item.status)) return false;
-  if (isSprintLocked(item.sprint) || originatedInClosedSprint(item)) return true;
-  const finishedOn = workItemFinishedOnIso(item);
-  if (finishedOn && finishedOn > SPRINT_1_LATE_DONE_ISO) return false;
-  return finishedOnOrBeforeClosedSprint(item);
+  return isSprintLocked(finishedHomeSprint({ ...item, sprint: String(item.sprint ?? '') }));
 }
 
 function clearRolloverMarks<T extends { sprint: string }>(item: T): T {

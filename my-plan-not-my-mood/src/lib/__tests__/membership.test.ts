@@ -8,6 +8,8 @@ import {
   clearMembershipJoined,
   MEMBERSHIP_JOINED_STORAGE_KEY,
   MEMBERSHIP_TIERS,
+  MEMBERSHIP_INTRO_RATE_NOTE,
+  membershipTierShowsIntroRate,
   AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE,
 } from '../membership';
 
@@ -22,6 +24,13 @@ describe('membership', () => {
     expect(AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE).toMatch(/scope change/i);
     expect(AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE).toMatch(/Join to Unlock/);
     expect(MEMBERSHIP_TIERS.some((t) => t.perks.some((p) => p.toLowerCase().includes('mentorship')))).toBe(true);
+    expect(MEMBERSHIP_INTRO_RATE_NOTE).toBe('Ends on Oct 31!');
+    expect(membershipTierShowsIntroRate(MEMBERSHIP_TIERS[0]!)).toBe(false);
+    expect(MEMBERSHIP_TIERS.filter(membershipTierShowsIntroRate).map((tier) => tier.priceLabel)).toEqual([
+      '$19 / mo',
+      '$49 / mo',
+      '$99 / mo',
+    ]);
   });
 
   it('grants access when membership joined flag is set', () => {

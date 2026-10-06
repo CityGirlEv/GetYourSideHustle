@@ -12,12 +12,15 @@ export type FreeMemberSession = {
   /** When ageGroup is kids, marks parent-owned family account. */
   isParentAccount?: boolean;
   createdAt: string;
+  /** True until they click the activation email and sign in. */
+  activationPending?: boolean;
 };
 
 export function grantFreeMemberSession(input: {
   email: string;
   ageGroup: BlueprintAgeGroup;
   isParentAccount?: boolean;
+  activationPending?: boolean;
 }): FreeMemberSession {
   const email = input.email.trim().toLowerCase();
   const session: FreeMemberSession = {
@@ -26,9 +29,23 @@ export function grantFreeMemberSession(input: {
     ageGroup: input.ageGroup,
     isParentAccount: input.isParentAccount,
     createdAt: new Date().toISOString(),
+    activationPending: input.activationPending === true,
   };
   getLocalStore().setItem(FREE_MEMBER_SESSION_KEY, JSON.stringify(session));
   return session;
+}
+
+/** Signup finished, but the activation email has not been used yet. */
+export function accountActivationStillPending(): boolean {
+  return readFreeMemberSession()?.activationPending === true;
+}
+
+/** Activation link or a successful sign-in clears the reminder. */
+export function clearAccountActivationPending(): void {
+  const session = readFreeMemberSession();
+  if (!session?.activationPending) return;
+  const next: FreeMemberSession = { ...session, activationPending: false };
+  getLocalStore().setItem(FREE_MEMBER_SESSION_KEY, JSON.stringify(next));
 }
 
 export function readFreeMemberSession(): FreeMemberSession | null {

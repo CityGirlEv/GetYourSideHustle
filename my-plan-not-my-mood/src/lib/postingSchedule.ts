@@ -4,7 +4,7 @@ import {
   cfPostIsImageOnly,
   type ContentFactoryItem,
 } from './contentFactory';
-import { ASSIGNEE_LABELS, formatWorkDueDate } from './workBoard';
+import { ASSIGNEE_LABELS, formatWorkDueDate, TASK_STATUS_LABELS, type TaskStatus } from './workBoard';
 
 export const POSTING_SCHEDULE_PATH = '/admin/calendar';
 export const POSTING_SCHEDULE_TITLE = 'Angela’s Posting Schedule';
@@ -22,6 +22,8 @@ export interface PostingScheduleRow {
   title: string;
   whatToPost: string;
   format: string;
+  status: TaskStatus;
+  statusLabel: string;
   assignee: string;
   sprint: string;
 }
@@ -80,6 +82,8 @@ export function toPostingScheduleRow(item: ContentFactoryItem): PostingScheduleR
     title: item.title,
     whatToPost: postingScheduleWhatToPost(item),
     format: postingScheduleFormat(item),
+    status: item.status,
+    statusLabel: TASK_STATUS_LABELS[item.status],
     assignee: ASSIGNEE_LABELS[item.assignee] ?? item.assignee,
     sprint: item.sprint,
   };
@@ -150,6 +154,7 @@ export function buildPostingScheduleDocumentHtml(
             <td>${escapeHtml(row.kindLabel)}</td>
             <td>${escapeHtml(row.title)}</td>
             <td>${escapeHtml(row.whatToPost)}</td>
+            <td>${escapeHtml(row.statusLabel)}</td>
             <td>${escapeHtml(row.format)}</td>
             <td>${escapeHtml(row.assignee)}</td>
           </tr>`,
@@ -166,6 +171,7 @@ export function buildPostingScheduleDocumentHtml(
               <th>Kind</th>
               <th>What</th>
               <th>Caption / notes</th>
+              <th>Status</th>
               <th>Format</th>
               <th>Who</th>
             </tr>
@@ -195,7 +201,7 @@ export function buildPostingScheduleDocumentHtml(
 </head>
 <body>
   <h1>${escapeHtml(POSTING_SCHEDULE_TITLE)}</h1>
-  <p class="lede">One document for Phase 1. ${summary.dayCount} days, ${summary.postCount} posts, ${summary.itemCount} rows. Most posts go up at 7:00 PM CT. Shop link in every public post: https://nonnegotiation.com/gear.</p>
+  <p class="lede">One document for Phase 1. ${summary.dayCount} days, ${summary.postCount} posts, ${summary.itemCount} rows. Status is the same Not Started / In Progress / Done / Blocked list as the Task List and Content Factory. Most posts go up at 7:00 PM CT. Shop link in every public post: https://nonnegotiation.com/gear.</p>
   ${body}
 </body>
 </html>`;

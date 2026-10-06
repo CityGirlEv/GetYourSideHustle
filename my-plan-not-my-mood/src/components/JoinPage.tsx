@@ -10,7 +10,13 @@ import {
   Calendar,
   Mic,
 } from 'lucide-react';
-import { MEMBERSHIP_TIERS, MembershipTier, AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE } from '../lib/membership';
+import {
+  MEMBERSHIP_TIERS,
+  MEMBERSHIP_INTRO_RATE_NOTE,
+  membershipTierShowsIntroRate,
+  MembershipTier,
+  AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE,
+} from '../lib/membership';
 import { HEADER_COMPACT_PAGE_OFFSET } from '../lib/headerClearance';
 import { PAGE_CANVAS_CLASS } from '../lib/brandUi';
 import { Logo } from './Logo';
@@ -128,8 +134,14 @@ export const JoinPage: React.FC<JoinPageProps> = ({
         <h2 className="text-2xl sm:text-3xl font-black uppercase text-[#1F1917] font-serif text-center mb-2">
           Memberships Coming Soon
         </h2>
-        <p className="text-center text-sm text-[#3F3832] font-medium mb-8 max-w-2xl mx-auto">
+        <p className="text-center text-sm text-[#3F3832] font-medium mb-2 max-w-2xl mx-auto">
           Tiers below are a preview only. Checkout and member setup wait for Phase 2.
+        </p>
+        <p
+          className="text-center text-sm sm:text-base font-black uppercase tracking-wide text-[#C2410C] mb-8"
+          data-testid="membership-intro-rate"
+        >
+          Introductory rate {MEMBERSHIP_INTRO_RATE_NOTE}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -159,6 +171,11 @@ export const JoinPage: React.FC<JoinPageProps> = ({
 
               <h3 className="text-lg font-black uppercase text-[#1F1917]">{tier.name}</h3>
               <div className="text-2xl font-black text-[#C2410C] font-serif my-1">{tier.priceLabel}</div>
+              {membershipTierShowsIntroRate(tier) ? (
+                <p className="text-[11px] font-black uppercase tracking-wider text-[#C2410C] mb-1">
+                  {MEMBERSHIP_INTRO_RATE_NOTE}
+                </p>
+              ) : null}
               <p className="text-xs text-[#3F3832] font-medium mb-4">{tier.tagline}</p>
 
               <ul className="space-y-2 flex-1 mb-5">

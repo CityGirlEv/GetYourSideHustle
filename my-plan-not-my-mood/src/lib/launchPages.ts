@@ -1,15 +1,8 @@
 import { DEFAULT_FROM_ADDRESS } from './email/sendPayload';
 import { ORDER_STORE_URL } from './websiteScope';
 import { HOUSE_BRAND_NAME, HOUSE_FOOTER_LINE, HOUSE_INTRO_LINE, TEE_SALES_SHOP_URL } from './teeSalesPlaybook';
-import {
-  ANGELA_FOUNDER_LINE,
-  ANGELA_NIECE_ORIGIN,
-  ANGELA_PORTRAIT_ALT,
-  ANGELA_PORTRAIT_PATH,
-  ANGELA_PUBLIC_BIO,
-  ANGELA_PUBLIC_ROLE,
-} from './planIntro';
 import { MAILING_LIST_NOT_MEMBERSHIP_NOTE } from './mailingList';
+import { WELCOME_VIDEO_PATH, WELCOME_VIDEO_POSTER } from './welcomeVideo';
 
 export const LAUNCH_PAGE_IDS = ['about', 'contact', 'privacy', 'terms', 'faq', 'list'] as const;
 export type LaunchPageId = (typeof LAUNCH_PAGE_IDS)[number];
@@ -33,8 +26,58 @@ export type LaunchFaqGroup = {
   items: LaunchFaqItem[];
 };
 
+export const ABOUT_WELCOME_VIDEO_PATH = WELCOME_VIDEO_PATH;
+export const ABOUT_WELCOME_VIDEO_POSTER = WELCOME_VIDEO_POSTER;
+export const ABOUT_DISCOVER_STORY_HREF = '/about';
+export const ABOUT_DISCOVER_STORY_LABEL = 'Discover Our Story';
+
+export const ABOUT_VISION = {
+  envision: "Here's what I envision.",
+  brandLead: 'MY PLAN.',
+  brandAccent: 'NOT MY MOOD.',
+  feelings: 'Your Feelings Are Real.',
+  goals: 'Your Goals Matter Too.',
+  beats: 'One tough day. One family conversation. One powerful realization.',
+  temporary: "A temporary feeling shouldn't determine a lasting outcome.",
+  vote: 'The mood gets a vote. The plan gets the final decision.',
+  attribution: '— Angela Harris, Founder',
+} as const;
+
+export const ABOUT_VISION_LINES = [
+  ABOUT_VISION.envision,
+  ABOUT_VISION.brandLead,
+  ABOUT_VISION.brandAccent,
+  ABOUT_VISION.feelings,
+  ABOUT_VISION.goals,
+  ABOUT_VISION.beats,
+  ABOUT_VISION.temporary,
+  ABOUT_VISION.vote,
+  ABOUT_VISION.attribution,
+] as const;
+
+export const ABOUT_SITE_ROLES = [
+  { label: 'Homepage', body: 'Capture attention and establish the message.', href: '/' },
+  { label: 'About page', body: 'Tell your story and build an emotional connection.', href: '/about' },
+  { label: 'Shop', body: 'Give people an opportunity to wear the message.', href: '/gear' },
+] as const;
+
+export const ABOUT_PHILOSOPHY = {
+  kicker: 'One additional thought, Angela.',
+  love: 'I particularly love “Your Feelings Are Real. Your Goals Matter Too.”',
+  distinguishes:
+    'It distinguishes your movement from motivational brands that simply tell people to ignore their emotions and push harder.',
+  acknowledges: 'Your philosophy acknowledges emotions while encouraging intentional choices.',
+  brandAround: 'THAT is a perspective you can consistently build an entire brand around.',
+  close: '🤣❤️',
+} as const;
+
+export function isExternalLaunchHref(href: string): boolean {
+  return /^https?:\/\//i.test(String(href ?? '').trim());
+}
+
 export type LaunchSection = {
   heading: string;
+  id?: string;
   body: string | string[];
   link?: { href: string; label: string };
   image?: { src: string; alt: string };
@@ -90,29 +133,19 @@ export const LAUNCH_PAGES: LaunchPageCopy[] = [
     title: 'About',
     headline: 'About My Plan, Not My Mood',
     kicker: 'The brand',
-    lede: 'Founded by Angela Harris. Feel it. Follow the plan anyway.',
+    lede: `${ABOUT_VISION.feelings} ${ABOUT_VISION.goals}`,
     compactHero: true,
     metaTitle: 'About | My Plan, Not My Mood',
-    metaDescription: `${HOUSE_INTRO_LINE} Founded by Angela Harris. ${ANGELA_NIECE_ORIGIN}`,
+    metaDescription: `${ABOUT_VISION.feelings} ${ABOUT_VISION.goals} ${HOUSE_INTRO_LINE} Founded by Angela Harris.`,
     sections: [
-      {
-        heading: 'Where the idea came from',
-        body: ANGELA_NIECE_ORIGIN,
-      },
-      {
-        heading: 'The founder',
-        body: [ANGELA_FOUNDER_LINE, ANGELA_PUBLIC_ROLE, ANGELA_PUBLIC_BIO],
-        image: { src: ANGELA_PORTRAIT_PATH, alt: ANGELA_PORTRAIT_ALT },
-      },
       {
         heading: 'The teaching',
         body: HOUSE_FOOTER_LINE,
-        besideImage: true,
       },
       {
-        heading: 'Phase 1',
-        body: `${HOUSE_BRAND_NAME} is live as a gear-sales site. Shop tees, hoodies, and hats. Memberships stay Coming Soon. Join the Movement for shop and brand notes — that is not a membership.`,
-        besideImage: true,
+        heading: 'Wear the message',
+        body: `${HOUSE_BRAND_NAME} is live as a gear-sales site. Shop tees, hoodies, and hats — wear the plan, not just the mood. Memberships stay Coming Soon. Join the Movement for shop and brand notes — that is not a membership.`,
+        link: { href: '/gear', label: 'Shop Gear' },
       },
     ],
   },

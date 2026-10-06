@@ -96,8 +96,8 @@ describe('homePageCopy', () => {
 
   it('maps Join and Shop hotspots onto the painted hero buttons without overlap', () => {
     expect(HOME_HERO_SHOP_HREF).toBe('/gear');
-    expect(HOME_HERO_JOIN_HOTSPOT.top).toBe('66.5%');
-    expect(HOME_HERO_SHOP_HOTSPOT.top).toBe('76%');
+    expect(HOME_HERO_JOIN_HOTSPOT.top).toBe('58.5%');
+    expect(HOME_HERO_SHOP_HOTSPOT.top).toBe('69.5%');
     expect(heroShopHotspotOverlapsJoin()).toBe(false);
     expect(
       heroShopHotspotOverlapsJoin(

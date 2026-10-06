@@ -19,6 +19,7 @@ import {
   normalizeQaTests,
   currentSprintLabel,
   defaultWorkBoardFilters,
+  hideEmptyWorkBoardSprintSections,
   defaultTaskBoardFilters,
   defaultTestingPortalFilters,
   emptyFilters,
@@ -73,6 +74,7 @@ import {
   buildStatusChipCounts,
   QA_STATUSES,
   QA_STATUS_LABELS,
+  type QaStatusFilter,
   type QaTestItem,
   TEST_ASSIGNEE_OPTIONS,
   testingPortalAssigneeOptions,
@@ -111,6 +113,7 @@ import {
   type SprintCategory,
 } from '../workBoard';
 import { phase1WebsiteReviewTestCount } from '../phase1WebsiteReview';
+import { checkAllChecklistSteps } from '../workChecklist';
 import { sprint2WebsiteReviewTestCount } from '../sprint2WebsiteReview';
 import { formWalkthroughTestCount } from '../formWalkthroughTests';
 import { moodWorkflowTestCount } from '../moodWorkflow';
@@ -141,7 +144,7 @@ describe('workBoard seed merge', () => {
     const createPage = INITIAL_TASKS.find((t) => t.id === 't-27');
     expect(createPage?.title).toMatch(/Gear Selections/i);
     expect(createPage?.assignee).toBe('evelyn');
-    expect(createPage?.sprint).toBe('Sprint 2');
+    expect(createPage?.sprint).toBe('Sprint 4');
     expect(createPage?.category).toBe('Apparel');
     expect(INITIAL_QA_TESTS.some((t) => t.id === 'gear-sel-qa1')).toBe(true);
     expect(INITIAL_QA_TESTS.some((t) => t.id === 'sprint-roi-qa1')).toBe(true);
@@ -168,9 +171,9 @@ describe('workBoard seed merge', () => {
     expect(INITIAL_TASKS.find((t) => t.id === 't-203')?.title).toMatch(/Phase 1 Website Review \(\d+ tests\)/);
     expect(INITIAL_TASKS.find((t) => t.id === 't-204')?.assignee).toBe('angela');
     expect(INITIAL_TASKS.find((t) => t.id === 't-204')?.title).toMatch(/Sprint 2 Website Review \(\d+ tests\)/);
-    expect(INITIAL_TASKS.find((t) => t.id === 't-204')?.sprint).toBe('Sprint 3');
+    expect(INITIAL_TASKS.find((t) => t.id === 't-204')?.sprint).toBe('Sprint 4');
     expect(INITIAL_QA_TESTS.filter((t) => t.id.startsWith('p1web-')).every((t) => t.assignee === 'angela')).toBe(true);
-    expect(INITIAL_QA_TESTS.filter((t) => t.id.startsWith('s2web-')).every((t) => t.assignee === 'angela' && t.sprint === 'Sprint 3')).toBe(true);
+    expect(INITIAL_QA_TESTS.filter((t) => t.id.startsWith('s2web-')).every((t) => t.assignee === 'angela' && t.sprint === 'Sprint 4')).toBe(true);
     expect(INITIAL_QA_TESTS.some((t) => t.id === 'gear-brand-qa1')).toBe(true);
     const merged = mergeMissingSeedQaTests(INITIAL_QA_TESTS.filter((t) => t.id !== 'gear-sel-qa1' && t.id !== 'sprint-roi-qa1' && t.id !== 'logo-qa1' && t.id !== 'pay-qa1' && t.id !== 'shop-gear-page-qa1' && t.id !== 'gear-brand-qa1'));
     expect(merged.some((t) => t.id === 'gear-sel-qa1')).toBe(true);
@@ -184,7 +187,7 @@ describe('workBoard seed merge', () => {
     const pay = INITIAL_TASKS.find((t) => t.id === 't-43');
     expect(pay?.title).toMatch(/Make Payment/i);
     expect(pay?.assignee).toBe('angela');
-    expect(pay?.sprint).toBe('Sprint 2');
+    expect(pay?.sprint).toBe('Sprint 4');
     expect(pay?.priority).toBe('high');
     const payQa = INITIAL_QA_TESTS.find((t) => t.id === 'pay-qa1');
     expect(payQa?.description ?? payQa?.desc).toMatch(/Zelle/);
@@ -195,7 +198,7 @@ describe('workBoard seed merge', () => {
     const resend = INITIAL_TASKS.find((t) => t.id === 't-49');
     expect(resend?.title).toMatch(/Resend/i);
     expect(resend?.assignee).toBe('evelyn');
-    expect(resend?.sprint).toBe('Sprint 2');
+    expect(resend?.sprint).toBe('Sprint 4');
     expect(resend?.priority).toBe('high');
     expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => t.id !== 't-49')).some((t) => t.id === 't-49')).toBe(true);
   });
@@ -206,19 +209,19 @@ describe('workBoard seed merge', () => {
     const instagram = INITIAL_TASKS.find((t) => t.id === 't-57');
     expect(tiktok).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation TikTok page',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'angela',
       category: 'Content',
       status: 'not_started',
     });
     expect(youtube).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation YouTube channel',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'angela',
     });
     expect(instagram).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation Instagram page',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'angela',
     });
     const without = INITIAL_TASKS.filter((t) => t.id !== 't-55' && t.id !== 't-56' && t.id !== 't-57');
@@ -235,25 +238,25 @@ describe('workBoard seed merge', () => {
     const brandDecision = INITIAL_TASKS.find((t) => t.id === 't-61');
     expect(tiktokAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation TikTok page',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(youtubeAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation YouTube channel',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(instagramAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation Instagram page',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(brandDecision).toMatchObject({
       title: 'Keep NonNegotiation as the house — introduce MY PLAN, NOT MY MOOD as a brand under it',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
@@ -287,7 +290,7 @@ describe('workBoard seed merge', () => {
     expect(INITIAL_TASKS.find((t) => t.id === 't-74')?.dueDate).toBe('2026-09-04');
     const videoIds = ['t-75', 't-76', 't-77', 't-78', 't-79'] as const;
     const videoTitles = ['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
-    const videoSprints = ['Sprint 2', 'Sprint 2', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
+    const videoSprints = ['Sprint 4', 'Sprint 4', 'Sprint 4', 'Sprint 4', 'Sprint 4'] as const;
     videoIds.forEach((id, index) => {
       expect(INITIAL_TASKS.find((t) => t.id === id)).toMatchObject({
         title: `Create 3 T-shirt sales videos for ${videoTitles[index]}`,
@@ -306,9 +309,9 @@ describe('workBoard seed merge', () => {
       rolledOver: true,
       assignee: 'evelyn',
     });
-    expect(INITIAL_TASKS.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 2/);
+    expect(INITIAL_TASKS.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 4/);
     expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.rolledOver).toBe(true);
-    expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.desc).toMatch(/Rolled Over to Sprint 2/);
+    expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.desc).toMatch(/Rolled Over to Sprint 4/);
     expect(analytics.filter((task) => task.assignee === 'angela')).toHaveLength(60);
     expect(analytics.filter((task) => task.assignee === 'evelyn')).toHaveLength(60);
     expect(INITIAL_TASKS.find((t) => t.id === 't-83')?.title).toMatch(/Gather Facebook analytics/i);
@@ -420,12 +423,12 @@ describe('workBoard seed merge', () => {
     ]);
     expect(staleAnalytics.find((task) => task.id === 't-83')).toMatchObject({
       dueDate: '2026-09-18',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
     });
     expect(staleAnalytics.find((task) => task.id === 't-84')?.dueDate).toBe('2026-09-19');
     expect(staleAnalytics.find((task) => task.id === 't-203')).toMatchObject({
       dueDate: '2026-09-27',
-      sprint: 'Sprint 3',
+      sprint: 'Sprint 4',
     });
     const doneKept = overlaySupersededSeedTasks([
       { ...INITIAL_TASKS.find((task) => task.id === 't-83')!, status: 'done', dueDate: '2026-09-17' },
@@ -435,7 +438,7 @@ describe('workBoard seed merge', () => {
     const staleTest = overlayCatalogQaSchedule([
       { ...INITIAL_QA_TESTS.find((test) => test.id === 'p1web-home')!, dueDate: '2026-09-19', sprint: 'Sprint 2' },
     ]);
-    expect(staleTest[0]?.sprint).toBe('Sprint 3');
+    expect(staleTest[0]?.sprint).toBe('Sprint 4');
     expect(staleTest[0]?.dueDate).toBe('2026-09-21');
   });
 
@@ -444,7 +447,7 @@ describe('workBoard seed merge', () => {
     const updated = applyTaskInlinePatch(task, {
       title: 'Rename domain setup',
       notes: 'Wait on Angela’s Zelle.',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       category: 'Features',
       priority: 'low',
       status: 'blocked',
@@ -456,7 +459,7 @@ describe('workBoard seed merge', () => {
       id: task.id,
       title: 'Rename domain setup',
       notes: 'Wait on Angela’s Zelle.',
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       category: 'Features',
       priority: 'low',
       status: 'blocked',
@@ -470,7 +473,10 @@ describe('workBoard seed merge', () => {
     expect(applyTaskInlinePatch(task, { sprint: 'Sprint 1' }).sprint).toBe(task.sprint);
     expect(applyQaInlinePatch(INITIAL_QA_TESTS[0], { sprint: 'Sprint 0' }).sprint).toBe(INITIAL_QA_TESTS[0].sprint);
     expect(applyQaInlinePatch(INITIAL_QA_TESTS[0], { sprint: 'Sprint 1' }).sprint).toBe(INITIAL_QA_TESTS[0].sprint);
-    const finishedCarryover = applyTaskInlinePatch(INITIAL_TASKS.find((row) => row.id === 't-1')!, { status: 'done' });
+    const finishedCarryover = applyTaskInlinePatch(INITIAL_TASKS.find((row) => row.id === 't-1')!, {
+      steps: checkAllChecklistSteps(INITIAL_TASKS.find((row) => row.id === 't-1')!.steps),
+      status: 'done',
+    });
     expect(finishedCarryover).toMatchObject({
       id: 't-1',
       status: 'done',
@@ -478,10 +484,10 @@ describe('workBoard seed merge', () => {
       rolledOver: false,
       completedOn: workBoardTodayIso(),
     });
-    expect(finishedCarryover.notes).not.toMatch(/Rolled Over to Sprint 2/);
+    expect(finishedCarryover.notes).not.toMatch(/Rolled Over to Sprint /);
     const lateSprint1Mark = applyTaskInlinePatch(
       { ...INITIAL_TASKS.find((row) => row.id === 't-1')!, completedOn: '2026-09-14' },
-      { status: 'done' },
+      { steps: checkAllChecklistSteps(INITIAL_TASKS.find((row) => row.id === 't-1')!.steps), status: 'done' },
     );
     expect(lateSprint1Mark).toMatchObject({
       id: 't-1',
@@ -511,7 +517,7 @@ describe('workBoard seed merge', () => {
     });
     const passedBeforeClose = applyQaInlinePatch(
       { ...INITIAL_QA_TESTS[0], sprint: 'Sprint 2', rolledOver: false, completedOn: '2026-09-10' },
-      { status: 'passed' },
+      { steps: checkAllChecklistSteps(INITIAL_QA_TESTS[0].steps), status: 'passed' },
     );
     expect(passedBeforeClose).toMatchObject({
       sprint: 'Sprint 1',
@@ -616,21 +622,25 @@ describe('workBoard seed merge', () => {
     expect(stats[0].sprint).toBe('Sprint 0');
     expect(stats[0].total).toBe(0);
     expect(stats.find((row) => row.sprint === 'Sprint 1')?.total).toBe(0);
-    expect(stats.find((row) => row.sprint === 'Sprint 2')?.total).toBeGreaterThan(0);
-    expect(stats.find((row) => row.sprint === 'Sprint 2')?.rolledOver).toBe(countRolledOverItems(INITIAL_TASKS.filter((task) => task.sprint === 'Sprint 2')));
+    expect(stats.find((row) => row.sprint === 'Sprint 2')?.total).toBe(0);
+    expect(stats.find((row) => row.sprint === 'Sprint 3')?.total).toBe(0);
+    expect(stats.find((row) => row.sprint === 'Sprint 4')?.total).toBeGreaterThan(0);
+    expect(stats.find((row) => row.sprint === 'Sprint 4')?.rolledOver).toBe(countRolledOverItems(INITIAL_TASKS.filter((task) => task.sprint === 'Sprint 4')));
     expect(countRolledOverItems(INITIAL_TASKS)).toBeGreaterThan(0);
     expect(countRolledOverItems(INITIAL_QA_TESTS)).toBeGreaterThan(0);
     expect(formatRolledOverCount(countRolledOverItems(INITIAL_TASKS))).toMatch(/rolled over/);
   });
 
-  it('defaults every sprint section open on the task and test boards', () => {
+  it('defaults locked sprint sections closed and the open sprint open', () => {
     const current = currentSprintLabel(new Date('2026-08-26T12:00:00'));
     expect(current).toBe('Sprint 0');
     const open = defaultOpenSprintSections(current);
     expect(open['Sprint 0']).toBe(false);
     expect(open['Sprint 1']).toBe(false);
-    expect(SPRINT_OPTIONS.filter((sprint) => sprint !== 'Sprint 0' && sprint !== 'Sprint 1').every((sprint) => open[sprint])).toBe(true);
-    expect(toggleSprintSection(open, 'Sprint 2')['Sprint 2']).toBe(false);
+    expect(open['Sprint 2']).toBe(false);
+    expect(open['Sprint 3']).toBe(false);
+    expect(open['Sprint 4']).toBe(true);
+    expect(toggleSprintSection(open, 'Sprint 4')['Sprint 4']).toBe(false);
   });
 
   it('grays save until a task or test card is dirty, then enables that card and Save All', () => {
@@ -662,6 +672,8 @@ describe('workBoard seed merge', () => {
     expect(taskFilters.status.size).toBe(0);
     expect(testFilters.assignee.size).toBe(0);
     expect(taskFilters.due).toBe('all');
+    expect(hideEmptyWorkBoardSprintSections(new Set(['Sprint 4']))).toBe(true);
+    expect(hideEmptyWorkBoardSprintSections(new Set())).toBe(false);
   });
 
   it('defaults Testing Portal filters to the current sprint and all assignees', () => {
@@ -806,7 +818,9 @@ describe('workBoard seed merge', () => {
     });
     expect(sprintChips.find((chip) => chip.id === 'Sprint 0')?.label).toMatch(/Locked/i);
     expect(sprintChips.find((chip) => chip.id === 'Sprint 1')?.label).toMatch(/Locked/i);
-    expect(sprintChips.find((chip) => chip.id === 'Sprint 2')?.locked).toBeFalsy();
+    expect(sprintChips.find((chip) => chip.id === 'Sprint 2')?.locked).toBe(true);
+    expect(sprintChips.find((chip) => chip.id === 'Sprint 3')?.locked).toBe(true);
+    expect(sprintChips.find((chip) => chip.id === 'Sprint 2')?.label).toMatch(/Locked/i);
     expect(FILTER_CHIP_COUNT_CLASS).toContain('#1F1917');
     expect(FILTER_CHIP_COUNT_CLASS).toContain('font-black');
     expect(TASK_STATUS_TONES.done).toContain('#B8D4C4');
@@ -1033,7 +1047,7 @@ describe('workBoard seed merge', () => {
         assignee: 'angela',
       },
     ];
-    const evelynFilters = { ...emptyFilters(), assignee: new Set(['evelyn'] as const) };
+    const evelynFilters = { ...emptyFilters<QaStatusFilter>(), assignee: new Set(['evelyn'] as const) };
     const sprintUnderEvelyn = buildSprintChipCounts(
       filterQaTests(tests, filtersOmittingSection(evelynFilters, 'sprint'), ''),
       qaIsDone,
@@ -1051,7 +1065,7 @@ describe('workBoard seed merge', () => {
     expect(statusUnderEvelyn.find((chip) => chip.id === 'passed')?.total).toBe(1);
     expect(statusUnderEvelyn.find((chip) => chip.id === 'failed')?.total).toBe(0);
 
-    const untestedFilters = { ...emptyFilters(), status: new Set(['untested'] as const) };
+    const untestedFilters = { ...emptyFilters<QaStatusFilter>(), status: new Set(['untested'] as const) };
     const assigneesUnderUntested = buildAssigneeChipCounts(
       filterQaTests(tests, filtersOmittingSection(untestedFilters, 'assignee'), ''),
       qaIsDone,
@@ -1085,7 +1099,7 @@ describe('workBoard seed merge', () => {
       },
     ]);
     expect(task.assignor).toBe('system');
-    expect(task.sprint).toBe('Sprint 2');
+    expect(task.sprint).toBe('Sprint 4');
     expect(task.assignee).toBe('angela');
     const reassigned = applyTaskInlinePatch(task, { assignee: 'evelyn' }, 'angela');
     expect(reassigned.assignee).toBe('evelyn');

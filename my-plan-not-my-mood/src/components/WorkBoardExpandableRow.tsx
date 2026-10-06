@@ -58,7 +58,7 @@ export function WorkBoardHeaderSelect({
 }: {
   value: string;
   onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label: string; disabled?: boolean }>;
   className?: string;
   ariaLabel: string;
   testId?: string;
@@ -83,7 +83,7 @@ export function WorkBoardHeaderSelect({
       }}
     >
       {options.map((option) => (
-        <option key={option.value} value={option.value}>
+        <option key={option.value} value={option.value} disabled={option.disabled}>
           {option.label}
         </option>
       ))}

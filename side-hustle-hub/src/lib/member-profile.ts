@@ -66,19 +66,17 @@ export function normalizePhone(value: unknown): string {
 }
 
 export const REGISTER_PHONE_REQUIRED_ERROR = "A phone number is required.";
-export const REGISTER_PHONE_INVALID_ERROR = "Enter a valid phone number.";
+export const REGISTER_PHONE_INVALID_ERROR = "Enter a 10-digit phone number.";
+export const REGISTER_PHONE_DIGITS = 10;
 
-/** Join, account registration, and workshop registration require a real phone number. */
+/** Join, account registration, and workshop registration require a 10-digit phone number. */
 export function parseRequiredPhone(
   value: unknown,
 ): { ok: true; phone: string } | { ok: false; error: string } {
   const phone = normalizePhone(value);
   if (!phone) return { ok: false, error: REGISTER_PHONE_REQUIRED_ERROR };
   const digits = digitsOnly(phone);
-  if (
-    digits.length < MEMBER_PROFILE_PHONE_MIN_DIGITS ||
-    digits.length > MEMBER_PROFILE_PHONE_MAX_DIGITS
-  ) {
+  if (digits.length !== REGISTER_PHONE_DIGITS) {
     return { ok: false, error: REGISTER_PHONE_INVALID_ERROR };
   }
   return { ok: true, phone };

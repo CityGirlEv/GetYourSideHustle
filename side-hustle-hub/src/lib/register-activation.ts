@@ -10,6 +10,14 @@ export function registerUserStatus(
   return "pending";
 }
 
+/** Shown when someone tries to pick a free guide before clicking the activation email. */
+export const ACCOUNT_ACTIVATION_REQUIRED_ERROR =
+  "Activate your account first from the activation email we sent you.";
+
+export function accountNeedsEmailActivation(status: string | null | undefined): boolean {
+  return String(status || "").trim().toLowerCase() === "pending";
+}
+
 /**
  * Login must not skip the verification email.
  * Pending memberships become Active only from the emailed link.

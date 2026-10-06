@@ -2,6 +2,7 @@ import { isLogoApiUnavailable } from './logoStore';
 import { pruneInflatedQaTests, inflatedQaIdsFromRaw, suiteForQaTest } from './testSuites';
 import { rolloverLockedSprintItems } from './sprintRollover';
 import { overlayWorkItemAudit } from './workItemAudit';
+import { sprintWindowByLabel } from './sprintCalendar';
 import {
   INITIAL_TASKS,
   allSeedQaTests,
@@ -104,14 +105,16 @@ export const WORKBOARD_AUTOSAVE_MS = 0;
 export const WORKBOARD_POLL_MS = 0;
 
 /** Stamp a completion date on Done/Passed rows so later stale saves cannot look unfinished. */
-export function stampFinishedWorkDates<T extends { status: string; completedOn?: string }>(
+export function stampFinishedWorkDates<T extends { status: string; completedOn?: string; sprint?: string }>(
   items: T[],
   finishedStatus: string,
   fallbackDate = workBoardTodayIso(),
 ): T[] {
   return items.map((item) => {
     if (item.status !== finishedStatus || item.completedOn) return item;
-    return { ...item, completedOn: fallbackDate };
+    const sprintEnd = sprintWindowByLabel(String(item.sprint ?? ''))?.endIso;
+    const completedOn = sprintEnd && sprintEnd < fallbackDate ? sprintEnd : fallbackDate;
+    return { ...item, completedOn };
   });
 }
 

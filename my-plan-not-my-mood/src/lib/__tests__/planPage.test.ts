@@ -167,6 +167,7 @@ describe('planPage', () => {
     expect(parseAdminPortalTab('/admin/schedule-suites')).toBe(PLAN_TAB_ID);
     expect(parseAdminPortalTab('/admin/factory')).toBe('factory');
     expect(parseAdminPortalTab('/admin/calendar')).toBe('calendar');
+    expect(parseAdminPortalTab('/admin/growth')).toBe('growth');
     expect(adminPortalPath('calendar')).toBe('/admin/calendar');
     expect(parseAdminPortalTab('/admin/gear-selections')).toBe('gear-selections');
     expect(adminPortalPath('gear-selections')).toBe('/admin/gear-selections');

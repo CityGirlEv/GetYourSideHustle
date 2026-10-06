@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { setSessionToken } from "../api";
 import { clearMemoryStore } from "../browser-storage";
 import {
+  clearAccountActivationPending,
+  clearFreeMemberSession,
+  grantFreeMemberSession,
+} from "../free-member-session";
+import {
+  ACCOUNT_ACTIVATION_REQUIRED_ERROR,
   claimComplimentaryGuide,
+  claimSelectedComplimentaryGuide,
   claimedExtraGuideId,
   complimentaryGuideIds,
   complimentaryPickNotice,
@@ -11,6 +18,7 @@ import {
   ensureComplimentaryClaim,
   explicitComplimentaryGuideId,
   freeGuideCardLine,
+  freeGuideSelectionBlock,
   mergeCompMaps,
   readLocalComplimentaryExtraId,
   resolveStoredComplimentaryPick,
@@ -23,6 +31,7 @@ import {
 afterEach(() => {
   setSessionToken(null);
   setCachedComplimentaryGuideIds([]);
+  clearFreeMemberSession();
   clearMemoryStore();
 });
 
@@ -118,6 +127,34 @@ describe("wizard complimentary extra guide", () => {
         alreadyOnFree: false,
       }),
     ).toBeNull();
+  });
+
+  it("tells an unactivated account to use the activation email before selecting a free guide", async () => {
+    grantFreeMemberSession({
+      email: "new@example.com",
+      ageGroup: "adult",
+      activationPending: true,
+    });
+    expect(freeGuideSelectionBlock({ isLoggedIn: false })).toBe(ACCOUNT_ACTIVATION_REQUIRED_ERROR);
+
+    const blocked = selectGuestFreeGuide("airbnb", ["airbnb", "dog-walk"]);
+    expect(blocked.error).toBe(ACCOUNT_ACTIVATION_REQUIRED_ERROR);
+    expect(blocked.claimedId).toBeNull();
+    expect(readLocalComplimentaryExtraId()).toBeNull();
+
+    const memberBlocked = await claimSelectedComplimentaryGuide({
+      isLoggedIn: true,
+      accountStatus: "pending",
+      membershipTier: "free",
+      guideId: "airbnb",
+      resultIds: ["airbnb"],
+    });
+    expect(memberBlocked.error).toBe(ACCOUNT_ACTIVATION_REQUIRED_ERROR);
+    expect(memberBlocked.claimedId).toBeNull();
+
+    clearAccountActivationPending();
+    expect(freeGuideSelectionBlock({ isLoggedIn: false })).toBeNull();
+    expect(freeGuideSelectionBlock({ isLoggedIn: true, accountStatus: "active" })).toBeNull();
   });
 
   it("lets a guest select one free guide and keeps that choice for life", () => {

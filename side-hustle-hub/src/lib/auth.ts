@@ -2,6 +2,7 @@
 
 import { api, ApiError, setSessionToken } from "./api";
 import { clearAlaCarteCart } from "./alacarte-cart";
+import { clearAccountActivationPending } from "./free-member-session";
 import {
   D1_QUOTA_USER_MESSAGE,
   isD1QuotaExceededMessage,
@@ -126,6 +127,7 @@ export async function login(email: string, password: string): Promise<{
     setSessionToken(data.token ?? null);
     markTabAlive();
     writeCachedAuthUser(data.user);
+    clearAccountActivationPending();
     const isAdmin =
       data.isAdmin === true ||
       data.user.role === "admin" ||
@@ -234,6 +236,7 @@ export async function registerFreeMember(input: {
       markTabAlive();
       writeCachedAuthUser(data.user);
       clearLocalComplimentaryClaim();
+      clearAccountActivationPending();
     }
     return {
       ok: true,
@@ -452,6 +455,7 @@ export async function confirmEmailVerification(token: string): Promise<{
       setSessionToken(data.token);
       markTabAlive();
       writeCachedAuthUser(data.user);
+      clearAccountActivationPending();
     }
     return { ok: true, user: data.user };
   } catch (e) {

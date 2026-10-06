@@ -22,6 +22,8 @@ npm run deploy:pages
 
 Do **not** run eager-hypatia / mypartb `npm run deploy` for GYSH work.
 
+`deploy:pages` aborts if `GuidePrepSections.tsx` is missing or `StepByStepGuides.tsx` does not render it. Do not bypass that guard. `--branch=main` on the Cloudflare upload is a label, not git `main`.
+
 After deploy, report the Pages preview URL + https://getyoursidehustle.com.
 
 ## Part B Optimizer (`eager-hypatia` / mypartb)

@@ -65,11 +65,15 @@ describe("member profile basics", () => {
     ).toBe(false);
   });
 
-  it("requires a phone number with 7–15 digits on registration", () => {
+  it("requires a 10-digit phone number on registration", () => {
     expect(parseRequiredPhone("")).toEqual({ ok: false, error: REGISTER_PHONE_REQUIRED_ERROR });
     expect(parseRequiredPhone("   ")).toEqual({ ok: false, error: REGISTER_PHONE_REQUIRED_ERROR });
     expect(parseRequiredPhone("123")).toEqual({ ok: false, error: REGISTER_PHONE_INVALID_ERROR });
-    expect(parseRequiredPhone("1".repeat(16))).toEqual({
+    expect(parseRequiredPhone("555123456")).toEqual({
+      ok: false,
+      error: REGISTER_PHONE_INVALID_ERROR,
+    });
+    expect(parseRequiredPhone("15551234567")).toEqual({
       ok: false,
       error: REGISTER_PHONE_INVALID_ERROR,
     });

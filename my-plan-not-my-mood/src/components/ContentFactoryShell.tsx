@@ -13,8 +13,8 @@ export const ContentFactoryShell: React.FC<{
   const heading = active === 'calendar' ? 'Angela’s posting schedule' : 'Phase 1 organic calendar';
   const intro =
     active === 'calendar'
-      ? 'One document: date, platform, time, what to post, and who posts it. Download or print the full Phase 1 list.'
-      : 'Posting starts Friday Sep 4 with one welcome per platform — NonNegotiation.com is the house, MY PLAN, NOT MY MOOD is the brand. Every public post includes https://nonnegotiation.com/gear.';
+      ? 'This is the Content Factory calendar. Each row has the same Not Started / In Progress / Done / Blocked status as a task. Change it here or on the Factory card.'
+      : 'Posting starts Friday Sep 4 with one welcome per platform — NonNegotiation.com is the house, MY PLAN, NOT MY MOOD is the brand. Every public post includes https://nonnegotiation.com/gear. Status on each card is the same as the Posting Schedule.';
 
   return (
     <div className="space-y-4" data-testid="content-factory-shell">
@@ -44,6 +44,16 @@ export const ContentFactoryShell: React.FC<{
               </button>
             );
           })}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={false}
+            onClick={() => onOpenTab('growth')}
+            className={brandTabClass(false)}
+            data-testid="content-factory-tab-growth"
+          >
+            Growth Studio
+          </button>
         </div>
       </div>
       {children}

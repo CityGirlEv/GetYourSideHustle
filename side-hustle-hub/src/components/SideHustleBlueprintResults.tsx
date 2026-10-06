@@ -207,6 +207,11 @@ export function SideHustleBlueprintResults({
             Choose 1 match as your free guide, then sign up to open it. You can select only 1 free guide per lifetime.
           </p>
         )}
+        {guestPickError ? (
+          <p className="side-hustle-blueprint-comp-error" role="alert" data-testid="blueprint-guest-free-guide-error">
+            {guestPickError}
+          </p>
+        ) : null}
         {unlocked ? (
           <p className="side-hustle-blueprint-dashboard-link-wrap">
             <a
@@ -419,11 +424,6 @@ export function SideHustleBlueprintResults({
                 </a>
               )}
             </div>
-            {guestPickError ? (
-              <p className="side-hustle-blueprint-comp-error" role="alert" data-testid="blueprint-guest-free-guide-error">
-                {guestPickError}
-              </p>
-            ) : null}
             {unlockErrorId === row.id && unlockError ? (
               <p className="side-hustle-blueprint-comp-error" role="alert" data-testid={`blueprint-comp-unlock-error-${row.id}`}>
                 {unlockError}

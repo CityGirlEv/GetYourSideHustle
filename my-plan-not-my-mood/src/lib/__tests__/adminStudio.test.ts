@@ -45,6 +45,8 @@ describe('adminStudio', () => {
     expect(studioTabDef('testing')?.label).toBe('Testing Portal');
     expect(studioTabDef('guides')?.label).toBe('Beta Guide');
     expect(studioTabDef('emails')?.label).toBe('Emails');
+    expect(studioTabDef('growth')?.label).toBe('Growth Studio');
+    expect(studioTabDef('growth')?.description).toMatch(/official channels/i);
     const content = ADMIN_STUDIO_GROUPS.find((group) => group.id === 'content');
     expect(
       studioGroupSubTabs(content!, {
@@ -63,6 +65,8 @@ describe('adminStudio', () => {
     expect(canOpenStudioTab('gear-selections', admin)).toBe(true);
     expect(canOpenStudioTab('asset-library', admin)).toBe(true);
     expect(canOpenStudioTab('logo-concepts', admin)).toBe(true);
+    expect(canOpenStudioTab('growth', admin)).toBe(true);
+    expect(canOpenStudioTab('growth', { isAdmin: true, hasAdminRole: false })).toBe(false);
     expect(canOpenStudioTab('factory', { isAdmin: true, hasAdminRole: false })).toBe(false);
     expect(canOpenStudioTab('budget', admin)).toBe(true);
     expect(canOpenStudioTab('inventory-pricing', admin)).toBe(true);
@@ -137,6 +141,7 @@ describe('adminStudio', () => {
     expect(studioGroupIdForTab('agenda')).toBe('delivery');
     expect(studioGroupIdForTab('users')).toBe('people');
     expect(studioGroupIdForTab('factory')).toBe('content');
+    expect(studioGroupIdForTab('growth')).toBe('content');
     expect(studioGroupIdForTab('calendar')).toBe('content');
     expect(studioGroupIdForTab('gear-selections')).toBe('content');
     expect(studioGroupIdForTab('asset-library')).toBe('content');
