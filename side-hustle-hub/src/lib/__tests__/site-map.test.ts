@@ -42,6 +42,28 @@ describe("site-map stays in sync with nav sources", () => {
     expect([...inGroups].sort()).toEqual([...ADMIN_TABS.map((t) => t.id)].sort());
   });
 
+  it("Content Factory nests the posting schedule, creatives schedule, and Growth Studio", () => {
+    const factory = (GYSH_ADMIN_MAP.children ?? [])
+      .flatMap((g) => g.children ?? [])
+      .find((n) => n.id === adminTabSiteMapId("factory"));
+    expect(factory?.children?.map((c) => c.label)).toEqual([
+      "Posting Schedule",
+      "Creatives Schedule",
+      "Growth Studio",
+    ]);
+    expect(hrefForSiteMapNode("adm-factory-posting")).toEqual({
+      kind: "admin",
+      tab: "factory",
+      panel: "posting",
+    });
+    expect(hrefForSiteMapNode("adm-factory-creatives")).toEqual({
+      kind: "admin",
+      tab: "factory",
+      panel: "creatives",
+    });
+    expect(hrefForSiteMapNode("adm-studio")).toEqual({ kind: "admin", tab: "studio" });
+  });
+
   it("User Guides leaves match ADMIN_USER_GUIDE_LINKS", () => {
     const guidesNode = (GYSH_ADMIN_MAP.children ?? [])
       .flatMap((g) => g.children ?? [])

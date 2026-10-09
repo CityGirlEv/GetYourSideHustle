@@ -9,6 +9,8 @@ import {
 describe("email-template-content", () => {
   it("lists every catalog slug with editable defaults", () => {
     expect(EMAIL_TEMPLATE_CATALOG.length).toBeGreaterThanOrEqual(15);
+    const slugs = EMAIL_TEMPLATE_CATALOG.map((t) => t.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
     for (const t of EMAIL_TEMPLATE_CATALOG) {
       const content = defaultContentForSlug(t.slug);
       expect(content, t.slug).toBeTruthy();

@@ -39,6 +39,10 @@ export function homeLibrarySpotlight(
 ): {
   /** Compact line beside the Home title — guide counts only. */
   inlineLabel: string;
+  /** Header menu: total guides. */
+  menuTotal: string;
+  /** Header menu: free-to-test-drive count. */
+  menuFree: string;
   headline: string;
   body: string;
   cta: string;
@@ -46,9 +50,13 @@ export function homeLibrarySpotlight(
 } {
   const n = Math.max(0, Math.floor(Number(count) || 0));
   const freeN = Math.max(0, Math.floor(Number(freeCount) || 0));
+  const menuTotal = `${n} Side Hustle Guides`;
+  const menuFree = `${freeN} free to test-drive`;
   return {
-    inlineLabel: `${n} Side Hustle Guides · ${freeN} free to test-drive`,
-    headline: `${n} Side Hustle Guides · ${freeN} free to test-drive`,
+    inlineLabel: `${menuTotal} · ${menuFree}`,
+    menuTotal,
+    menuFree,
+    headline: `${menuTotal} · ${menuFree}`,
     body: `${n} age-ready Side Hustle Guides in the library — ${freeN} free with Free Membership to test-drive. Match Wizard finds your fit; the Library has your playbook.`,
     cta: "Browse Library",
     wizardCta: "Take Match Wizard",

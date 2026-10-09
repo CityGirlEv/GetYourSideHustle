@@ -1202,6 +1202,42 @@ h1, h2, h3, h4, h5, h6 {
   white-space: nowrap;
 }
 
+.nav-link-btn--guides {
+  white-space: normal;
+  height: auto;
+  max-width: min(15.5rem, 100%);
+  align-items: flex-start;
+  line-height: 1.15;
+  box-sizing: border-box;
+}
+
+.nav-guides-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 100%;
+  gap: 1px;
+}
+
+.nav-guides-menu__total,
+.nav-guides-menu__free {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.nav-guides-menu__total {
+  font-weight: 750;
+}
+
+.nav-guides-menu__free {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
 .nav-item-with-banner {
   position: relative;
   display: flex;
@@ -2080,6 +2116,33 @@ h1, h2, h3, h4, h5, h6 {
   text-transform: uppercase;
   color: var(--bronze);
   white-space: nowrap;
+}
+
+.admin-portal-nav__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.admin-portal-nav__sub {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(148, 125, 100, 0.35);
+}
+
+.admin-portal-nav__sub .nav-link-btn {
+  font-size: 0.85rem;
+}
+
+.content-factory-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .admin-portal-nav__tabs {
@@ -31204,6 +31267,18 @@ small {
 .email-templates-admin__note code {
   font-size: 0.85em;
 }
+.email-templates-admin__followup-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.email-templates-admin__followup-actions p {
+  margin: 0;
+}
+.email-templates-admin__followup-actions .btn {
+  min-height: 44px;
+}
 .email-templates-admin__fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -32791,6 +32866,13 @@ small {
     width: 100%;
     justify-content: flex-start;
     box-sizing: border-box;
+  }
+
+  .top-header.open .nav-link-btn--guides {
+    white-space: normal;
+    height: auto;
+    max-width: 100%;
+    align-items: flex-start;
   }
 
   .top-header.open .nav-item-banner {

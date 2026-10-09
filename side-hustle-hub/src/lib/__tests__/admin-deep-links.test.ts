@@ -34,6 +34,14 @@ describe("admin-deep-links", () => {
       panel: "launch-plan",
       itemId: "sl-s3-yt-first-short",
     });
+    expect(readAdminDeepLink("?tab=factory&panel=posting")).toEqual({
+      tab: "factory",
+      panel: "posting",
+    });
+    expect(readAdminDeepLink("?tab=factory&panel=creatives")).toEqual({
+      tab: "factory",
+      panel: "creatives",
+    });
     expect(readAdminDeepLink("?tab=email&template=welcome_free")).toEqual({
       tab: "email",
       template: "welcome_free",

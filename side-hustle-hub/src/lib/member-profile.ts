@@ -33,6 +33,31 @@ export const PROFILE_EMAIL_TAKEN_ERROR =
 export const PROFILE_SAVE_SIGN_IN_ERROR =
   "Sign in with this account’s email and password to save your profile. The dashboard was still open, but the login session is missing.";
 
+type ProfileIdentity = {
+  name: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  roles?: string[];
+};
+
+/** Keep admin/QA roles when a profile save comes back without them, and apply them when it includes them. */
+export function applySavedMemberProfile<T extends ProfileIdentity>(
+  current: T,
+  saved: Partial<ProfileIdentity>,
+): T {
+  const roles =
+    Array.isArray(saved.roles) && saved.roles.length > 0 ? saved.roles : current.roles;
+  return {
+    ...current,
+    name: saved.name != null && String(saved.name).trim() ? String(saved.name) : current.name,
+    email: saved.email != null && String(saved.email).trim() ? String(saved.email) : current.email,
+    phone: saved.phone !== undefined ? String(saved.phone) : (current.phone ?? ""),
+    role: saved.role ? String(saved.role) : current.role,
+    roles,
+  };
+}
+
 /** Map API auth failures to a save-profile message (avoid raw "Not authenticated."). */
 export function profileSaveAuthError(message: string): string {
   if (/not authenticated|session invalid|session expired/i.test(String(message || ""))) {

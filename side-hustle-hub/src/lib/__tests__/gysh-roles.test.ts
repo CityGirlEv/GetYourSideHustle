@@ -15,6 +15,7 @@ import {
   qaTesterIdForUser,
   qaTestersFromUsers,
   allQaTestersForProgress,
+  placeSavedUser,
   userHasRole,
   userRoles,
   type GyshUser,
@@ -340,6 +341,26 @@ describe("gysh-roles", () => {
     expect(canAccessTestingPortal({ role: "adult", roles: ["qa"] })).toBe(true);
     expect(isQaOnlyPortalUser({ role: "qa" })).toBe(true);
     expect(isQaOnlyPortalUser({ role: "admin", roles: ["admin", "qa"] })).toBe(false);
+  });
+
+  it("keeps a saved user on screen when the directory refresh fails", () => {
+    const saved = {
+      id: "u-kiva",
+      name: "Kiva Estelle Jackson",
+      email: "kivajackson123@gmail.com",
+      role: "admin",
+      roles: ["admin", "qa", "adult", "beta"],
+      status: "active",
+      joinedAt: "2026-10-07",
+      notes: "",
+    } as GyshUser;
+    expect(placeSavedUser([], saved)).toEqual([saved]);
+    const listed = placeSavedUser(
+      [{ ...saved, role: "adult", roles: ["adult", "beta"], creditBalance: 921 }],
+      saved,
+    );
+    expect(listed[0]?.roles).toEqual(["admin", "qa", "adult", "beta"]);
+    expect(listed[0]?.creditBalance).toBe(921);
   });
 
   it("maps Candace Jackson to the candace QA tester id", () => {

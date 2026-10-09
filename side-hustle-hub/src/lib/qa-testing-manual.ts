@@ -58,7 +58,7 @@ export const QA_TESTING_MANUAL = {
   ],
   quickStart: [
     "Open Testing Portal (Admin menu → Testing Portal, or after login).",
-    "On load, Assignees is expanded; Sprint and Other start collapsed. Other holds Status, Test Suites, All Test Cases, External vs Internal, and Categories. Sprint defaults to All sprints — click a sprint chip (Sprint 0 through Sprint 10; dates show on each bubble) to narrow to one sprint.",
+    "On load, Assignees is expanded; Sprint and Other start collapsed. Other holds Status, Test Suites, All Test Cases, External vs Internal, and Categories. Sprint defaults to All sprints — click a sprint chip (Sprint 0 through Sprint 14; dates show on each bubble) to narrow to one sprint.",
     "Open Assignees and tap your QA Testors chip so you only see your cases.",
     "Use External vs Internal, suite (Manual / Vitest / Playwright), status, and search as needed.",
     "Open a case → follow the steps → check them off as you go.",

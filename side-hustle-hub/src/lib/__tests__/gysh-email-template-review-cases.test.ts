@@ -9,13 +9,14 @@ import {
 
 describe("email template review cases", () => {
   it("covers every catalog template once, assigned to Candace", () => {
-    expect(EMAIL_TEMPLATE_REVIEW_CATALOG.length).toBe(27);
-    expect(EMAIL_TEMPLATE_REVIEW_CASES).toHaveLength(27);
+    expect(EMAIL_TEMPLATE_REVIEW_CATALOG.length).toBe(28);
+    expect(EMAIL_TEMPLATE_REVIEW_CASES).toHaveLength(28);
     const ids = new Set(EMAIL_TEMPLATE_REVIEW_CASES.map((c) => c.id));
-    expect(ids.size).toBe(27);
+    expect(ids.size).toBe(28);
     expect(ids.has("EMAIL-TPL-membership_subscribed")).toBe(true);
     expect(ids.has("EMAIL-TPL-membership_upgraded")).toBe(true);
     expect(ids.has("EMAIL-TPL-membership_merch_ready")).toBe(true);
+    expect(ids.has("EMAIL-TPL-complimentary_guide_followup")).toBe(true);
     expect(ids.has("EMAIL-TPL-alacarte_purchased")).toBe(true);
     expect(ids.has("EMAIL-TPL-credit_pack_purchased")).toBe(true);
     expect(ids.has("EMAIL-TPL-workshop_registration_confirmation")).toBe(true);

@@ -105,7 +105,6 @@ export function applyEndSprintActions(input: EndSprintApplyInput): EndSprintAppl
       next = {
         ...t,
         ...withSprintDueDate({ sprint: nextSprint }),
-        status: t.status === "not_started" ? "in_progress" : t.status,
         notes: appendActorNote(t.notes, input.actorLabel, rolloverNoteText(sprint)),
       };
     }

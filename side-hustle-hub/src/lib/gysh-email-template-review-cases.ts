@@ -125,6 +125,12 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
       "Email to Starter and up with the t-shirt/hat discount: shop GYSH Gear, pick the complimentary hat or t-shirt count for their plan, enter GYSHFamily at checkout for 100% off.",
   },
   {
+    slug: "complimentary_guide_followup",
+    name: "Complimentary guide follow-up",
+    description:
+      "Nudge active Free members who have not picked their 1 complimentary Launch Guide. Unique Unique Free stays included; the extra pick can be Starter, Pro, or Elite.",
+  },
+  {
     slug: "alacarte_purchased",
     name: "A la carte purchase",
     description: "Confirmation after a-la-carte checkout (Stripe, GYSH credits, or mixed).",

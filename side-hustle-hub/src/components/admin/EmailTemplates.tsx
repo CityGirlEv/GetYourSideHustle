@@ -4,6 +4,7 @@ import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { api, ApiError } from "../../lib/api";
 import { emailTemplateMatchesQuery, emailTemplateSaveEnabled, shouldHydrateEmailTemplateDraft, emailTemplateLogLabel } from "../../lib/email-template-list";
 import { merchEmailVars } from "../../lib/membership-email-copy";
+import { COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG } from "../../lib/complimentary-guide-followup";
 import { EMAIL_TEMPLATE_REVIEW_CATALOG } from "../../lib/gysh-email-template-review-cases";
 import { RichTextEmailEditor } from "./RichTextEmailEditor";
 
@@ -183,6 +184,11 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
   const [logsBusy, setLogsBusy] = useState(false);
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
+  const [followupPreview, setFollowupPreview] = useState<{
+    eligible: number;
+    alreadySent: number;
+    wouldSend: number;
+  } | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHydratedSlug = useRef("");
   const dirty = draftReady && !draftsEqual(draft, savedSnapshot);
@@ -327,6 +333,26 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
     void loadLogs(selected, showAllLogs);
   }, [selected, showAllLogs, loadLogs]);
 
+  useEffect(() => {
+    if (selected !== COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG || !emailConfigured) {
+      setFollowupPreview(null);
+      return;
+    }
+    let cancelled = false;
+    void api<{ eligible: number; alreadySent: number; wouldSend: number }>(
+      "email/complimentary-guide-followup/preview",
+    )
+      .then((data) => {
+        if (!cancelled) setFollowupPreview(data);
+      })
+      .catch(() => {
+        if (!cancelled) setFollowupPreview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, emailConfigured]);
+
   const setField = <K extends keyof TemplateContent>(key: K, value: TemplateContent[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
   };
@@ -466,6 +492,41 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
       await loadLogs("daily_admin_digest", false);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Digest send failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendComplimentaryFollowup = async () => {
+    const n = followupPreview?.wouldSend ?? 0;
+    if (
+      !window.confirm(
+        `Send this follow-up to ${n} active Free member${n === 1 ? "" : "s"} who have not picked their complimentary Launch Guide? Unique Unique Free stays included. Skip anyone already emailed.`,
+      )
+    ) {
+      return;
+    }
+    setMsg("");
+    setErr("");
+    setBusy(true);
+    try {
+      const data = await api<{
+        ok: boolean;
+        sent?: number;
+        skipped?: number;
+        errors?: number;
+      }>("email/complimentary-guide-followup/send", { method: "POST", body: {} });
+      setMsg(
+        `Complimentary guide follow-up: ${data.sent ?? 0} sent, ${data.skipped ?? 0} skipped, ${data.errors ?? 0} errors.`,
+      );
+      const preview = await api<{ eligible: number; alreadySent: number; wouldSend: number }>(
+        "email/complimentary-guide-followup/preview",
+      );
+      setFollowupPreview(preview);
+      await load({ keepDraft: true });
+      await loadLogs(COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG, false);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Complimentary guide follow-up failed.");
     } finally {
       setBusy(false);
     }
@@ -642,6 +703,36 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
                   intro fields, and CTA; keep <code>{"{{digestBodyHtml}}"}</code> in the body where the
                   generated content should appear.
                 </p>
+              ) : null}
+
+              {selected === COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG ? (
+                <div
+                  className="email-templates-admin__note email-templates-admin__followup-actions"
+                  data-testid="email-comp-guide-followup-actions"
+                >
+                  <p>
+                    Sends to active Free members who have not picked their 1 complimentary Launch Guide
+                    (Starter, Pro, or Elite). Unique Unique Free stays included. Skips anyone already
+                    emailed this template.
+                  </p>
+                  {followupPreview ? (
+                    <p data-testid="email-comp-guide-followup-counts">
+                      Eligible: {followupPreview.eligible} · already sent: {followupPreview.alreadySent}{" "}
+                      · would send: {followupPreview.wouldSend}
+                    </p>
+                  ) : (
+                    <p>Loading who still needs this follow-up…</p>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    data-testid="email-comp-guide-followup-send"
+                    disabled={busy || !emailConfigured || !(followupPreview?.wouldSend)}
+                    onClick={() => void sendComplimentaryFollowup()}
+                  >
+                    <Send size={16} /> Send follow-up to members who haven&apos;t picked
+                  </button>
+                </div>
               ) : null}
 
               <div className="email-templates-admin__fields">

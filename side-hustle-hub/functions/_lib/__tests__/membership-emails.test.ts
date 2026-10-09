@@ -47,6 +47,23 @@ describe("membership subscription emails", () => {
     expect(reminder?.bodyHtml).toContain("{{expiresOn}}");
   });
 
+  it("has editable defaults for complimentary guide follow-up", () => {
+    const followup = defaultContentForSlug("complimentary_guide_followup");
+    expect(followup?.subject).toMatch(/1 free Launch Guide/i);
+    expect(followup?.preheader).toMatch(/Unique Unique Free/i);
+    expect(followup?.preheader).toMatch(/Starter, Pro, or Elite/i);
+    expect(followup?.bodyHtml).toMatch(/Unique Unique Free/);
+    expect(followup?.bodyHtml).toMatch(/Starter, Pro, or Elite/);
+    expect(followup?.bodyHtml).toMatch(/once per lifetime/);
+    expect(followup?.ctaLabel).toMatch(/Pick my free guide/i);
+    expect(followup?.ctaUrl).toBe("https://getyoursidehustle.com/match");
+    const rendered = renderContent(followup!, { name: "Pat" });
+    expect(rendered.html).toMatch(/Unique Unique Free/);
+    expect(rendered.html).toMatch(/any level/i);
+    expect(rendered.html).toContain("https://getyoursidehustle.com/match");
+    expect(rendered.html).toContain("https://getyoursidehustle.com/guides");
+  });
+
   it("has editable defaults for merch-ready template", () => {
     const merch = defaultContentForSlug("membership_merch_ready");
     expect(merch?.subject).toMatch(/hat or tee/i);

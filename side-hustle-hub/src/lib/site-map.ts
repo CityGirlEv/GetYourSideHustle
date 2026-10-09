@@ -16,6 +16,7 @@ import {
   type AdminTab,
   type UserGuideId,
 } from "./admin-nav";
+import { CONTENT_FACTORY_MENU_CHILDREN } from "./content-factory-sections";
 import {
   JUNIOR_CORNER_TABS,
   KIDS_CORNER_TABS,
@@ -63,6 +64,13 @@ function buildAdminMap(): SiteMapNode {
           node.children = ADMIN_USER_GUIDE_LINKS.map((g) => ({
             id: adminGuideSiteMapId(g.id),
             label: g.label,
+            kind: "page" as const,
+          }));
+        }
+        if (tabId === "factory") {
+          node.children = CONTENT_FACTORY_MENU_CHILDREN.map((section) => ({
+            id: section.siteMapId ?? `adm-factory-${section.id}`,
+            label: section.label,
             kind: "page" as const,
           }));
         }
@@ -225,6 +233,7 @@ export type SiteMapHref =
       kind: "admin";
       tab: AdminTab;
       guide?: UserGuideId;
+      panel?: "launch-plan" | "posting" | "creatives";
     };
 
 function buildAdminHrefEntries(): Record<string, SiteMapHref> {
@@ -243,6 +252,14 @@ function buildAdminHrefEntries(): Record<string, SiteMapHref> {
       kind: "admin",
       tab: "user-guides",
       guide: g.id,
+    };
+  }
+  for (const section of CONTENT_FACTORY_MENU_CHILDREN) {
+    const id = section.siteMapId ?? `adm-factory-${section.id}`;
+    out[id] = {
+      kind: "admin",
+      tab: section.tab,
+      ...(section.panel ? { panel: section.panel } : {}),
     };
   }
   return out;
@@ -325,7 +342,11 @@ export function collectSiteMapIds(node: SiteMapNode): string[] {
 
 /** All admin tab ids that appear in menu groups (must match ADMIN_TABS coverage). */
 export function adminTabsInMenuGroups(): AdminTab[] {
-  return ADMIN_MENU_GROUPS.flatMap((g) => g.tabs);
+  const grouped = ADMIN_MENU_GROUPS.flatMap((g) => g.tabs);
+  const nested = CONTENT_FACTORY_MENU_CHILDREN.map((section) => section.tab).filter(
+    (tab) => !grouped.includes(tab),
+  );
+  return [...grouped, ...nested];
 }
 
 export { ADMIN_TABS, ADMIN_MENU_GROUPS, ADMIN_USER_GUIDE_LINKS };

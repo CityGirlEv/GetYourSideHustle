@@ -3,6 +3,7 @@ import {
   ROLLOUT_CHANNEL_LABELS,
   ROLLOUT_CHANNELS,
   ROLLOUT_OWNERS,
+  SOFT_LAUNCH_FACTORY_SPRINTS,
   SOFT_LAUNCH_ITEM_STATUSES,
   SOFT_LAUNCH_ITEM_STATUS_LABELS,
   type SoftLaunchItem,
@@ -77,7 +78,7 @@ export function SoftLaunchItemEditor({
   const buildPatch = (): SoftLaunchItemPatch => ({
     title: title.trim(),
     day: day.trim(),
-    sprint: Number(sprint) as 2 | 3 | 4 | 5,
+    sprint: Number(sprint),
     channel,
     owner,
     status,
@@ -163,7 +164,7 @@ export function SoftLaunchItemEditor({
             onChange={(e) => setSprint(e.target.value)}
             data-testid={`factory-item-sprint-${item.id}`}
           >
-            {[2, 3, 4, 5].map((s) => (
+            {SOFT_LAUNCH_FACTORY_SPRINTS.map((s) => (
               <option key={s} value={s}>
                 Sprint {s}
               </option>

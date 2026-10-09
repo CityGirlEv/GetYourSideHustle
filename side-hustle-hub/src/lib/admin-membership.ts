@@ -156,3 +156,38 @@ export function foundingStarterGrantBlockReason(opts: {
   }
   return null;
 }
+
+type MembershipSaveFields = {
+  membershipTier?: string;
+  notes?: string;
+  audience?: string;
+  membershipExpiresAt?: string | null;
+  membershipLastPaidAt?: string | null;
+  heardAbout?: string | null;
+};
+
+/**
+ * Membership Save returns a full user row. That snapshot can be older than a
+ * role change that just landed, so only membership fields are applied.
+ */
+export function applyMembershipSaveToUser<T extends MembershipSaveFields>(
+  current: T,
+  saved: MembershipSaveFields,
+): T {
+  return {
+    ...current,
+    membershipTier:
+      saved.membershipTier !== undefined ? saved.membershipTier : current.membershipTier,
+    notes: saved.notes !== undefined ? saved.notes : current.notes,
+    audience: saved.audience !== undefined ? saved.audience : current.audience,
+    membershipExpiresAt:
+      saved.membershipExpiresAt !== undefined
+        ? saved.membershipExpiresAt
+        : current.membershipExpiresAt,
+    membershipLastPaidAt:
+      saved.membershipLastPaidAt !== undefined
+        ? saved.membershipLastPaidAt
+        : current.membershipLastPaidAt,
+    heardAbout: saved.heardAbout !== undefined ? saved.heardAbout : current.heardAbout,
+  };
+}

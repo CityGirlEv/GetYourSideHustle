@@ -3,6 +3,7 @@ import { EMAIL_TEMPLATE_CATALOG } from "../../../functions/_lib/email-template-c
 import { emailTemplateMatchesQuery, emailTemplateSaveEnabled, shouldHydrateEmailTemplateDraft, emailTemplateLogLabel } from "../email-template-list";
 
 const merch = EMAIL_TEMPLATE_CATALOG.find((t) => t.slug === "membership_merch_ready");
+const complimentary = EMAIL_TEMPLATE_CATALOG.find((t) => t.slug === "complimentary_guide_followup");
 
 describe("emailTemplateMatchesQuery", () => {
   it("finds the GYSHFamily hat/tee email by t-shirt, discount, or merch wording", () => {
@@ -19,6 +20,16 @@ describe("emailTemplateMatchesQuery", () => {
 
   it("shows every template when the query is blank", () => {
     expect(emailTemplateMatchesQuery(merch!, "  ")).toBe(true);
+  });
+
+  it("finds the complimentary guide follow-up by Unique Unique Free or any-level pick", () => {
+    expect(complimentary).toBeTruthy();
+    expect(complimentary!.description).toMatch(/Unique Unique Free/);
+    expect(complimentary!.description).toMatch(/Starter, Pro, or Elite/);
+    for (const q of ["complimentary", "launch guide", "unique unique", "elite", "follow-up"]) {
+      expect(emailTemplateMatchesQuery(complimentary!, q), q).toBe(true);
+    }
+    expect(emailTemplateMatchesQuery(complimentary!, "password reset")).toBe(false);
   });
 });
 

@@ -203,8 +203,8 @@ const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export const SPRINT_ZERO_START = new Date(2026, 6, 14);
-/** Sprint 0 through Sprint 10 (11 windows). */
-export const DEFAULT_SPRINT_COUNT = 11;
+/** Sprint 0 through Sprint 14 (15 windows). */
+export const DEFAULT_SPRINT_COUNT = 15;
 export const LAST_SPRINT_INDEX = DEFAULT_SPRINT_COUNT - 1;
 
 /**
@@ -294,6 +294,26 @@ export const SPRINT_THEMES: SprintTheme[] = [
     goal: "Next horizon",
     theme: "Holiday / Q4 scale, retro of S0–S10, and the next planning pull",
   },
+  {
+    index: 11,
+    goal: "Fall family week",
+    theme: "First Q4 execution week: one fall family side hustle, Match Wizard reminder, calm pacing",
+  },
+  {
+    index: 12,
+    goal: "Gift-season guides",
+    theme: "Guides that can fund a small extra stream before the holidays — one offer, one first customer",
+  },
+  {
+    index: 13,
+    goal: "November calm",
+    theme: "Light week: one finished step, ads on hold, family money talks without hustle-culture noise",
+  },
+  {
+    index: 14,
+    goal: "Holiday workshops",
+    theme: "Early-holiday workshop dates and a plain membership CTA before Thanksgiving week",
+  },
 ];
 
 /** Concise phased rollout rows for Admin Schedule summary UI. */
@@ -305,7 +325,7 @@ export type RolloutScheduleRow = {
   focus: string;
 };
 
-/** Soft launch + GMSH band schedule (Sprint 0–10) with live date windows. */
+/** Soft launch + GMSH band schedule (Sprint 0–14) with live date windows. */
 export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutScheduleRow[] {
   const focusBySprint: Record<number, string> = {
     0: "Infra & accounts — foundations only",
@@ -319,6 +339,10 @@ export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutSched
     8: "Workshops live + paid membership conversion",
     9: "Community, invite-a-friend, certificates / retention",
     10: "Next-horizon planning + holiday / Q4 scale",
+    11: "Fall family side hustles — first Q4 execution week",
+    12: "Gift-season guides — one offer, one first customer",
+    13: "November calm — one finished step, ads on hold",
+    14: "Early-holiday workshop dates before Thanksgiving week",
   };
   return SPRINT_THEMES.map((t) => {
     const sw = getSprintWindow(t.index, ref);
@@ -961,6 +985,34 @@ export function buildDefaultPlanItems(ref: Date = new Date()): PlanItem[] {
       owner: "Both",
       kind: "sprint",
       notes: "Holiday / Q4 scale and the next planning pull · Sprint 10",
+    }, ref),
+    planItemOnSprintDay(11, 1, {
+      id: "s11-fall-family",
+      title: "Fall family side-hustle week",
+      owner: "Both",
+      kind: "content",
+      notes: "Ship the Q4 plan: one fall family post, Match Wizard reminder · Sprint 11",
+    }, ref),
+    planItemOnSprintDay(12, 1, {
+      id: "s12-gift-guides",
+      title: "Gift-season guide spotlight",
+      owner: "Both",
+      kind: "content",
+      notes: "One guide, a clear price, a first customer you already know · Sprint 12",
+    }, ref),
+    planItemOnSprintDay(13, 1, {
+      id: "s13-november-calm",
+      title: "November calm — one finished step",
+      owner: "Both",
+      kind: "sprint",
+      notes: "Ads on hold. One next step. No louder hustle · Sprint 13",
+    }, ref),
+    planItemOnSprintDay(14, 1, {
+      id: "s14-holiday-workshops",
+      title: "Early-holiday workshop dates",
+      owner: "Both",
+      kind: "launch",
+      notes: "Workshop cards dated before Thanksgiving week · Sprint 14",
     }, ref),
   ];
 

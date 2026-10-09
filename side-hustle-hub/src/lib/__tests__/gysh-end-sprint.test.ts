@@ -104,6 +104,25 @@ describe("applyEndSprintActions", () => {
     expect(result.testBatch[0]?.sprint).toBe(1);
     expect(result.testBatch[0]?.checkedSteps).toEqual([true]);
   });
+
+  it("keeps a not-started task not started when it rolls forward", () => {
+    const result = applyEndSprintActions({
+      sprint: 9,
+      actions: {},
+      tasks: [task({ id: "T-FRESH", sprint: 9, status: "not_started" })],
+      tests: [{ id: "QA-FRESH" }],
+      testStatuses: { "QA-FRESH": "not_run" },
+      testSprints: { "QA-FRESH": 9 },
+      testNotes: {},
+      testAssignees: {},
+      testDueDates: {},
+      actorLabel: "Evelyn",
+    });
+
+    expect(result.taskDelta[0]?.sprint).toBe(10);
+    expect(result.taskDelta[0]?.status).toBe("not_started");
+    expect(result.testBatch[0]?.status).toBe("not_run");
+  });
 });
 
 describe("notesEffectivelyEqual", () => {

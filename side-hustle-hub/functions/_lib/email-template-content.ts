@@ -16,6 +16,7 @@ import {
 import { GYSH_GEAR_COLLECTION_URL } from "../../src/lib/gysh-gear-store";
 import { membershipRegistrationNoticeHtml } from "../../src/lib/membership-registration-notice";
 import { merchEmailVars, membershipTierDisplayName } from "../../src/lib/membership-email-copy";
+import { complimentaryGuideFollowupUrls } from "../../src/lib/complimentary-guide-followup";
 
 export type EmailTemplateContent = {
   subject: string;
@@ -148,12 +149,6 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     sampleSubject: `[GYSH …] …`,
   },
   {
-    slug: "workshop_registration_confirmation",
-    name: "Workshop registration confirmation",
-    description: "Sent to the registrant when they are added to a workshop roster.",
-    sampleSubject: `${SITE_NAME} — you're registered for 90-Minute AI Marketing Video Workshop`,
-  },
-  {
     slug: "membership_subscribed",
     name: "Membership subscribed",
     description: "Sent to the member when they pay for / join a paid plan (Stripe or credit plan).",
@@ -178,6 +173,13 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     description:
       "Email to Starter and up with the t-shirt/hat discount: shop GYSH Gear, pick the complimentary hat or t-shirt count for their plan, enter GYSHFamily at checkout for 100% off.",
     sampleSubject: `${SITE_NAME} — pick your complimentary GYSH hat or tee`,
+  },
+  {
+    slug: "complimentary_guide_followup",
+    name: "Complimentary guide follow-up",
+    description:
+      "Nudge active Free members who have not picked their 1 complimentary Launch Guide. Unique Unique Free stays included; the extra pick can be Starter, Pro, or Elite.",
+    sampleSubject: `${SITE_NAME} — you still have 1 free Launch Guide to pick`,
   },
   {
     slug: "alacarte_purchased",
@@ -287,6 +289,9 @@ export function previewSampleVarsForSlug(slug: string): EmailTemplateVars {
   }
   if (slug === "workshop_registration_confirmation" || slug === "workshop_date_confirmed") {
     vars.ctaUrl = `${SITE_URL}/workshops?workshop=ai-marketing-video`;
+  }
+  if (slug === "complimentary_guide_followup") {
+    vars.ctaUrl = complimentaryGuideFollowupUrls().match;
   }
   return vars;
 }
@@ -608,6 +613,27 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         ctaUrl: GYSH_GEAR_COLLECTION_URL,
         footerNote: `Questions? Reply to this email or use Contact Us on getyoursidehustle.com.`,
       };
+    case "complimentary_guide_followup": {
+      const urls = complimentaryGuideFollowupUrls();
+      return {
+        subject: `${SITE_NAME} — you still have 1 free Launch Guide to pick`,
+        preheader:
+          "Unique Unique Free is already yours. Pick 1 extra guide at any level — Starter, Pro, or Elite.",
+        eyebrow: "Free membership · Complimentary guide",
+        headline: "{{name}}, your extra free guide is waiting",
+        subhead: "Unique Unique Free stays open. You also get 1 complimentary Launch Guide at any level.",
+        bodyHtml: `<p style="margin:0 0 12px;">You already have the <strong>Unique Unique Free</strong> library — those Launch Guides stay included with your Free membership.</p>
+        <p style="margin:0 0 12px;">On top of that, you still get to pick <strong>1 complimentary Launch Guide</strong> from your Match Wizard results — <strong>Starter, Pro, or Elite</strong> included. That extra is once per lifetime. Unique Unique Free stays yours either way.</p>
+        <p style="margin:0 0 12px;">Sign in, run the Match Wizard (or open a saved Blueprint), then tap <strong>Select this as my free guide</strong> on the match you want.</p>
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Already-free library:</strong> Unique Unique Free on <a href="${urls.guides}" style="color:#9B2F28;font-weight:700;">/guides</a><br/>
+          <strong>Your extra pick:</strong> 1 guide at any level, once per lifetime
+        </p>`,
+        ctaLabel: "Pick my free guide",
+        ctaUrl: urls.match,
+        footerNote: "You cannot unlock another extra later. Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    }
     case "membership_renewal_reminder":
       return {
         subject: `${SITE_NAME} — your {{tier}} membership renews soon`,

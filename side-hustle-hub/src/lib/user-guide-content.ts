@@ -356,7 +356,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     items: [
       {
         id: "sch-bars",
-        text: "Sprint chips cover Sprint 0 through Sprint 10 (Tue–Mon windows, including the two-week pause after Sprint 2). Dates show on each bubble.",
+        text: "Sprint chips cover Sprint 0 through Sprint 14 (Tue–Mon windows, including the two-week pause after Sprint 2). Dates show on each bubble.",
       },
       {
         id: "sch-filter",

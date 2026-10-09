@@ -21,6 +21,8 @@ describe("homeLibrarySpotlight", () => {
     expect(freeN).toBeGreaterThan(0);
     const copy = homeLibrarySpotlight(117);
     expect(copy.inlineLabel).toBe(`117 Side Hustle Guides · ${freeN} free to test-drive`);
+    expect(copy.menuTotal).toBe("117 Side Hustle Guides");
+    expect(copy.menuFree).toBe(`${freeN} free to test-drive`);
     expect(copy.inlineLabel.length).toBeLessThan(60);
     expect(copy.headline).toBe(copy.inlineLabel);
     expect(copy.body).toContain("117");
