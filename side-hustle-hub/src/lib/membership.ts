@@ -3,6 +3,9 @@
  * Pro & Above unlocks proposed side hustle schedules, trackers, progress reports, and email alerts.
  */
 
+/** Public membership page banner. Introductory pricing through this date. */
+export const MEMBERSHIP_INTRO_RATE_BANNER = "Introductory rate ends Oct 30!";
+
 export type AudienceGroup = "kids" | "junior" | "adult" | "senior";
 export type TierId = "free" | "starter" | "pro" | "elite";
 

@@ -8,6 +8,7 @@ import {
   normalizeQaTests,
   normalizeTasks,
 } from '../workBoard';
+import { OPEN_ROLLOVER_SPRINT } from '../sprintRollover';
 import { linkedTestsForTask, pageHrefForWorkItem, taskContentSeed } from '../workItemContentSeed';
 import { TODAYS_NEW_TEST_PARENT_DUE, dueDateForTodaysNewTest } from '../todaysReviewDueDates';
 import {
@@ -40,7 +41,7 @@ describe('formWalkthroughTests', () => {
     const task = INITIAL_TASKS.find((item) => item.id === FORM_WALKTHROUGH_TASK_ID);
     expect(task).toMatchObject({
       title: formWalkthroughTaskTitle(),
-      sprint: FORM_WALKTHROUGH_SPRINT,
+      sprint: OPEN_ROLLOVER_SPRINT,
       assignee: FORM_WALKTHROUGH_ASSIGNEE,
       assignor: 'evelyn',
       category: 'QA & Testing',
@@ -62,7 +63,7 @@ describe('formWalkthroughTests', () => {
     const normalized = normalizeQaTests(board);
     for (const test of normalized) {
       expect(test).toMatchObject({
-        sprint: FORM_WALKTHROUGH_SPRINT,
+        sprint: OPEN_ROLLOVER_SPRINT,
         assignee: 'angela',
       });
       expect(test.steps?.[0]?.href, test.id).toBe(pageHrefForWorkItem(test.id));

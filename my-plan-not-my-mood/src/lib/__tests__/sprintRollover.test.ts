@@ -27,19 +27,23 @@ import {
 } from '../sprintRollover';
 
 describe('sprintRollover', () => {
-  it('locks Sprint 0 and Sprint 1 as closed and rolls outstanding work to Sprint 2', () => {
-    expect(LOCKED_SPRINTS).toEqual(['Sprint 0', 'Sprint 1']);
-    expect(OPEN_ROLLOVER_SPRINT).toBe('Sprint 2');
+  it('locks Sprint 0–3 as closed and rolls outstanding work to Sprint 4', () => {
+    expect(LOCKED_SPRINTS).toEqual(['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3']);
+    expect(OPEN_ROLLOVER_SPRINT).toBe('Sprint 4');
     expect(isSprintLocked('Sprint 0')).toBe(true);
     expect(isSprintLocked('Sprint 1')).toBe(true);
-    expect(isSprintLocked('Sprint 2')).toBe(false);
+    expect(isSprintLocked('Sprint 2')).toBe(true);
+    expect(isSprintLocked('Sprint 3')).toBe(true);
+    expect(isSprintLocked('Sprint 4')).toBe(false);
     expect(canAssignSprint('Sprint 0')).toBe(false);
-    expect(canAssignSprint('Sprint 1')).toBe(false);
-    expect(canAssignSprint('Sprint 2')).toBe(true);
-    expect(rolloverSprint('Sprint 0')).toBe('Sprint 2');
-    expect(rolloverSprint('Sprint 1')).toBe('Sprint 2');
+    expect(canAssignSprint('Sprint 2')).toBe(false);
+    expect(canAssignSprint('Sprint 3')).toBe(false);
+    expect(canAssignSprint('Sprint 4')).toBe(true);
+    expect(rolloverSprint('Sprint 0')).toBe('Sprint 4');
+    expect(rolloverSprint('Sprint 2')).toBe('Sprint 4');
+    expect(rolloverSprint('Sprint 3')).toBe('Sprint 4');
     expect(ROLLOVER_STATUS_LABEL).toBe('Rolled Over');
-    expect(ROLLOVER_NOTE_TEXT).toBe('Rolled Over to Sprint 2');
+    expect(ROLLOVER_NOTE_TEXT).toBe('Rolled Over to Sprint 4');
 
     const fromSprint0 = rolloverWorkItemSprint({
       id: 't-49',
@@ -52,7 +56,7 @@ describe('sprintRollover', () => {
       dueDate: '2026-09-03',
       notes: '',
     });
-    expect(fromSprint0.sprint).toBe('Sprint 2');
+    expect(fromSprint0.sprint).toBe('Sprint 4');
     expect(fromSprint0.rolledOver).toBe(true);
     expect(fromSprint0.assignee).toBe('evelyn');
     expect(fromSprint0.assignor).toBe('angela');
@@ -61,52 +65,65 @@ describe('sprintRollover', () => {
     expect(hasRolloverNote(fromSprint0.notes)).toBe(true);
     expect(fromSprint0.notes).toContain(ROLLOVER_NOTE_TEXT);
 
-    const fromSprint1 = rolloverWorkItemSprint({
-      id: 't-27',
-      title: 'Create Gear Selections page',
-      sprint: 'Sprint 1',
-      assignee: 'evelyn',
-      assignor: 'angela',
+    const fromSprint2 = rolloverWorkItemSprint({
+      id: 't-10',
+      title: 'Build Shop Gear catalog',
+      sprint: 'Sprint 2',
+      assignee: 'dev',
       status: 'not_started',
       notes: '',
     });
-    expect(fromSprint1).toMatchObject({
-      sprint: 'Sprint 2',
-      assignee: 'evelyn',
-      assignor: 'angela',
+    expect(fromSprint2).toMatchObject({
+      sprint: 'Sprint 4',
       status: 'not_started',
       rolledOver: true,
     });
-    expect(hasRolloverNote(fromSprint1.notes)).toBe(true);
+    expect(hasRolloverNote(fromSprint2.notes)).toBe(true);
+
+    const fromSprint3 = rolloverWorkItemSprint({
+      id: 't-12',
+      title: 'About page',
+      sprint: 'Sprint 3',
+      assignee: 'dev',
+      status: 'in_progress',
+      notes: '',
+    });
+    expect(fromSprint3).toMatchObject({
+      sprint: 'Sprint 4',
+      status: 'in_progress',
+      rolledOver: true,
+    });
   });
 
   it('does not let assignment land on Sprint 0 or Sprint 1 and exposes a Rolled Over status filter', () => {
-    expect(assignableSprintOptions(['Sprint 0', 'Sprint 1', 'Sprint 2'])).toEqual(['Sprint 2']);
-    expect(sprintSelectOptions(['Sprint 0', 'Sprint 1', 'Sprint 2'])).toEqual(['Sprint 2']);
+    expect(assignableSprintOptions(['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'])).toEqual(['Sprint 4']);
+    expect(sprintSelectOptions(['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'])).toEqual(['Sprint 4']);
     expect(sprintSectionTitle('Sprint 0')).toBe('Sprint 0 · Locked');
-    expect(sprintSectionTitle('Sprint 1')).toBe('Sprint 1 · Locked');
-    expect(sprintSectionTitle('Sprint 2')).toBe('Sprint 2');
-    expect(sprintChipLabel('Sprint 0')).toMatch(/^Sprint 0 · Locked · /);
-    expect(sprintChipLabel('Sprint 1')).toMatch(/^Sprint 1 · Locked · /);
-    expect(sprintChipLabel('Sprint 2')).toMatch(/^Sprint 2 · /);
-    expect(sprintChipLabel('Sprint 2')).not.toMatch(/Locked/);
+    expect(sprintSectionTitle('Sprint 2')).toBe('Sprint 2 · Locked');
+    expect(sprintSectionTitle('Sprint 3')).toBe('Sprint 3 · Locked');
+    expect(sprintSectionTitle('Sprint 4')).toBe('Sprint 4');
+    expect(sprintChipLabel('Sprint 2')).toMatch(/^Sprint 2 · Locked · /);
+    expect(sprintChipLabel('Sprint 4')).toMatch(/^Sprint 4 · /);
+    expect(sprintChipLabel('Sprint 4')).not.toMatch(/Locked/);
     expect(
       rolloverLockedSprintItems([
         { id: 'a', sprint: 'Sprint 0', assignee: 'angela', notes: '' },
         { id: 's1', sprint: 'Sprint 1', assignee: 'evelyn', notes: '' },
-        { id: 'b', sprint: 'Sprint 3', assignee: 'qa', notes: '' },
+        { id: 's2', sprint: 'Sprint 2', assignee: 'dev', notes: '' },
+        { id: 's3', sprint: 'Sprint 3', assignee: 'qa', notes: '' },
       ]),
     ).toEqual([
-      expect.objectContaining({ id: 'a', sprint: 'Sprint 2', assignee: 'angela', rolledOver: true }),
-      expect.objectContaining({ id: 's1', sprint: 'Sprint 2', assignee: 'evelyn', rolledOver: true }),
-      { id: 'b', sprint: 'Sprint 3', assignee: 'qa', notes: '' },
+      expect.objectContaining({ id: 'a', sprint: 'Sprint 4', assignee: 'angela', rolledOver: true }),
+      expect.objectContaining({ id: 's1', sprint: 'Sprint 4', assignee: 'evelyn', rolledOver: true }),
+      expect.objectContaining({ id: 's2', sprint: 'Sprint 4', assignee: 'dev', rolledOver: true }),
+      expect.objectContaining({ id: 's3', sprint: 'Sprint 4', assignee: 'qa', rolledOver: true }),
     ]);
     expect(
       rolloverLockedSprintItems([{ id: 's1', sprint: 'Sprint 1', assignee: 'evelyn', notes: '' }], {
         migrateOutstandingLocked: true,
       }),
     ).toEqual([
-      expect.objectContaining({ id: 's1', sprint: 'Sprint 2', assignee: 'evelyn', rolledOver: true }),
+      expect.objectContaining({ id: 's1', sprint: 'Sprint 4', assignee: 'evelyn', rolledOver: true }),
     ]);
     expect(
       matchesRolledOverStatusFilter({ status: 'not_started', rolledOver: true }, new Set([ROLLOVER_STATUS_ID])),
@@ -234,7 +251,7 @@ describe('sprintRollover', () => {
 
   it('keeps work finished on or before Sep 13 on Sprint 1 as done or passed', () => {
     expect(SPRINT_0_END_ISO).toBe('2026-09-06');
-    expect(LATEST_CLOSED_SPRINT_END_ISO).toBe('2026-09-13');
+    expect(LATEST_CLOSED_SPRINT_END_ISO).toBe('2026-09-27');
     expect(SPRINT_1_LATE_DONE_ISO).toBe('2026-09-14');
     expect(
       workItemFinishedOnIso({
@@ -341,6 +358,60 @@ describe('sprintRollover', () => {
     expect(formatRolledOverCount(3)).toBe('3 rolled over');
   });
 
+  it('keeps finished Sprint 2 and Sprint 3 work on those locked sprints', () => {
+    const sprint2Done = rolloverWorkItemSprint({
+      id: 't-10',
+      sprint: 'Sprint 2',
+      status: 'done',
+      completedOn: '2026-09-18',
+      notes: '',
+    });
+    expect(sprint2Done).toMatchObject({
+      sprint: 'Sprint 2',
+      status: 'done',
+      completedOn: '2026-09-18',
+    });
+    expect(sprint2Done.rolledOver).toBeFalsy();
+    const sprint2Passed = rolloverWorkItemSprint({
+      id: 'shop-gear-page-qa1',
+      sprint: 'Sprint 2',
+      status: 'passed',
+      completedOn: '2026-09-20',
+      desc: '',
+    });
+    expect(sprint2Passed).toMatchObject({
+      sprint: 'Sprint 2',
+      status: 'passed',
+    });
+    expect(sprint2Passed.rolledOver).toBeFalsy();
+    const sprint3Done = rolloverWorkItemSprint({
+      id: 't-12',
+      sprint: 'Sprint 3',
+      status: 'done',
+      completedOn: '2026-09-24',
+      notes: '',
+    });
+    expect(sprint3Done).toMatchObject({
+      sprint: 'Sprint 3',
+      status: 'done',
+      completedOn: '2026-09-24',
+    });
+    expect(sprint3Done.rolledOver).toBeFalsy();
+    const sprint3Restored = rolloverWorkItemSprint({
+      id: 'about-qa1',
+      sprint: 'Sprint 4',
+      status: 'passed',
+      completedOn: '2026-09-26',
+      rolledOver: true,
+      desc: stampRolloverNote(''),
+    });
+    expect(sprint3Restored).toMatchObject({
+      sprint: 'Sprint 3',
+      status: 'passed',
+    });
+    expect(sprint3Restored.rolledOver).toBeFalsy();
+  });
+
   it('moves outstanding Content Factory locked-sprint rows and leaves done rows on their locked sprint', () => {
     const rows = rolloverOutstandingContentFactoryItems([
       { id: 'cf-s0-mon-angela', sprint: 'Sprint 0', status: 'not_started', assignee: 'angela', channel: 'facebook' },
@@ -371,14 +442,14 @@ describe('sprintRollover', () => {
       },
     ]);
     expect(rows[0]).toMatchObject({
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       status: 'not_started',
       assignee: 'angela',
       rolledOver: true,
       note: ROLLOVER_NOTE_TEXT,
     });
     expect(rows[1]).toMatchObject({
-      sprint: 'Sprint 2',
+      sprint: 'Sprint 4',
       status: 'not_started',
       assignee: 'evelyn',
       rolledOver: true,

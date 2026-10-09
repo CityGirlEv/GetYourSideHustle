@@ -67,7 +67,7 @@ describe('phase1WebsiteReview', () => {
       assignor: 'evelyn',
       phase: 'Phase 1',
       category: 'QA & Testing',
-      sprint: 'Sprint 3',
+      sprint: 'Sprint 4',
       dueDate: TODAYS_NEW_TEST_PARENT_DUE,
     });
     expect(linkedTestsForTask(PHASE_1_WEBSITE_REVIEW_TASK_ID)).toEqual(phase1WebsiteReviewTestIds());

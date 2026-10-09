@@ -65,7 +65,7 @@ export const ADMIN_MENU_GROUPS: { id: string; label: string; tabs: AdminTab[] }[
     label: "People & access",
     tabs: ["users", "blueprints", "memberships", "hustle-schedules", "certificates", "email", "workshops"],
   },
-  { id: "content", label: "Content & growth", tabs: ["factory", "vspw", "studio", "financials", "time-load"] },
+  { id: "content", label: "Content & growth", tabs: ["factory", "vspw", "financials", "time-load"] },
   { id: "reference", label: "Reference", tabs: ["sitemap", "user-guides"] },
 ];
 

@@ -4,6 +4,7 @@ import {
   PROFILE_EMAIL_TAKEN_ERROR,
   PROFILE_SAVE_SIGN_IN_ERROR,
   isProfileDashboardHash,
+  applySavedMemberProfile,
   parseMemberProfileUpdate,
   parseRequiredPhone,
   profileEmailConflictError,
@@ -65,11 +66,15 @@ describe("member profile basics", () => {
     ).toBe(false);
   });
 
-  it("requires a phone number with 7–15 digits on registration", () => {
+  it("requires a 10-digit phone number on registration", () => {
     expect(parseRequiredPhone("")).toEqual({ ok: false, error: REGISTER_PHONE_REQUIRED_ERROR });
     expect(parseRequiredPhone("   ")).toEqual({ ok: false, error: REGISTER_PHONE_REQUIRED_ERROR });
     expect(parseRequiredPhone("123")).toEqual({ ok: false, error: REGISTER_PHONE_INVALID_ERROR });
-    expect(parseRequiredPhone("1".repeat(16))).toEqual({
+    expect(parseRequiredPhone("555123456")).toEqual({
+      ok: false,
+      error: REGISTER_PHONE_INVALID_ERROR,
+    });
+    expect(parseRequiredPhone("15551234567")).toEqual({
       ok: false,
       error: REGISTER_PHONE_INVALID_ERROR,
     });
@@ -102,5 +107,36 @@ describe("member profile basics", () => {
     expect(profileSaveAuthError("Not authenticated.")).toBe(PROFILE_SAVE_SIGN_IN_ERROR);
     expect(profileSaveAuthError("Session expired.")).toBe(PROFILE_SAVE_SIGN_IN_ERROR);
     expect(profileSaveAuthError(PROFILE_EMAIL_TAKEN_ERROR)).toBe(PROFILE_EMAIL_TAKEN_ERROR);
+  });
+
+  it("applies a saved profile without dropping an admin role", () => {
+    const current = {
+      name: "Kiva",
+      email: "kiva@example.com",
+      phone: "",
+      role: "adult",
+      roles: ["adult", "beta"],
+    };
+    expect(
+      applySavedMemberProfile(current, {
+        name: "Kiva Estelle Jackson",
+        email: "kivajackson123@gmail.com",
+        phone: "(555) 123-4567",
+        role: "admin",
+        roles: ["admin", "qa", "adult", "beta"],
+      }),
+    ).toMatchObject({
+      name: "Kiva Estelle Jackson",
+      email: "kivajackson123@gmail.com",
+      phone: "(555) 123-4567",
+      role: "admin",
+      roles: ["admin", "qa", "adult", "beta"],
+    });
+    expect(
+      applySavedMemberProfile(
+        { ...current, role: "admin", roles: ["admin", "qa", "adult", "beta"] },
+        { name: "Kiva Estelle Jackson", email: "kivajackson123@gmail.com", phone: "" },
+      ).roles,
+    ).toEqual(["admin", "qa", "adult", "beta"]);
   });
 });

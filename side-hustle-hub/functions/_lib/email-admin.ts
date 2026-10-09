@@ -2,7 +2,7 @@
  * Admin APIs: email templates catalog, edit/save, preview, test send, email_log.
  */
 import { error, json, type DbUser, type Env } from "./auth";
-import { EmailSendError, emailConfigured, sendResendEmail } from "./email";
+import { EmailSendError, emailConfigured, sendComplimentaryGuideFollowupEmail, sendResendEmail } from "./email";
 import { SITE_URL } from "./email-brand";
 import { buildSampleDigestPreview, DIGEST_TEMPLATE_SLUG } from "./daily-digest";
 import { PARTNER_ADMINS } from "./partners";
@@ -21,6 +21,11 @@ import {
   type EmailTemplateContent,
   type EmailTemplateVars,
 } from "./email-template-content";
+import {
+  complimentaryGuideFollowupAlreadySent,
+  COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG,
+  isComplimentaryGuideFollowupRecipient,
+} from "../../src/lib/complimentary-guide-followup";
 
 type TemplateRow = {
   slug: string;
@@ -714,6 +719,148 @@ export async function sendTestEmail(
     const message = e instanceof Error ? e.message : String(e);
     return error(message, 500);
   }
+}
+
+type ComplimentaryFollowupRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  status: string | null;
+  membership_tier: string | null;
+  comp_payload: string | null;
+};
+
+async function listComplimentaryFollowupSourceRows(env: Env): Promise<ComplimentaryFollowupRow[]> {
+  try {
+    const { results } = await withD1Retry(() =>
+      env.DB.prepare(
+        `SELECT u.id, u.name, u.email, u.status, u.membership_tier, mp.payload AS comp_payload
+         FROM users u
+         LEFT JOIN member_progress mp ON mp.user_id = u.id AND mp.kind = 'wizard_comp_guides'`,
+      ).all<ComplimentaryFollowupRow>(),
+    );
+    return results ?? [];
+  } catch {
+    const { results } = await withD1Retry(() =>
+      env.DB.prepare(
+        `SELECT u.id, u.name, u.email, u.status, NULL AS membership_tier, mp.payload AS comp_payload
+         FROM users u
+         LEFT JOIN member_progress mp ON mp.user_id = u.id AND mp.kind = 'wizard_comp_guides'`,
+      ).all<ComplimentaryFollowupRow>(),
+    );
+    return results ?? [];
+  }
+}
+
+async function complimentaryFollowupSentEmails(env: Env): Promise<Set<string>> {
+  const { results } = await withD1Retry(() =>
+    env.DB.prepare(
+      `SELECT to_email FROM email_log
+       WHERE template_slug = ? AND status = 'sent'`,
+    )
+      .bind(COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG)
+      .all<{ to_email: string }>(),
+  );
+  return new Set(
+    (results ?? []).map((row) =>
+      String(row.to_email || "")
+        .trim()
+        .toLowerCase(),
+    ),
+  );
+}
+
+function parseCompPayload(raw: string | null): unknown {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+export async function previewComplimentaryGuideFollowup(env: Env): Promise<Response> {
+  if (!emailConfigured(env)) {
+    return error("RESEND_API_KEY is not configured.", 500);
+  }
+  const rows = await listComplimentaryFollowupSourceRows(env);
+  const sent = await complimentaryFollowupSentEmails(env);
+  const eligible = rows.filter((row) =>
+    isComplimentaryGuideFollowupRecipient({
+      email: row.email,
+      status: row.status,
+      membershipTier: row.membership_tier,
+      complimentaryPayload: parseCompPayload(row.comp_payload),
+    }),
+  );
+  const wouldSend = eligible.filter(
+    (row) => !complimentaryGuideFollowupAlreadySent(sent, row.email),
+  );
+  return json({
+    ok: true,
+    eligible: eligible.length,
+    alreadySent: eligible.length - wouldSend.length,
+    wouldSend: wouldSend.length,
+    sampleEmails: wouldSend.slice(0, 8).map((row) => row.email),
+  });
+}
+
+export async function sendComplimentaryGuideFollowupBatch(
+  env: Env,
+  actor: DbUser,
+): Promise<Response> {
+  if (!emailConfigured(env)) {
+    return error("RESEND_API_KEY is not configured.", 500);
+  }
+  const rows = await listComplimentaryFollowupSourceRows(env);
+  const sentEmails = await complimentaryFollowupSentEmails(env);
+  const eligible = rows.filter((row) =>
+    isComplimentaryGuideFollowupRecipient({
+      email: row.email,
+      status: row.status,
+      membershipTier: row.membership_tier,
+      complimentaryPayload: parseCompPayload(row.comp_payload),
+    }),
+  );
+  const targets = eligible.filter(
+    (row) => !complimentaryGuideFollowupAlreadySent(sentEmails, row.email),
+  );
+  const sent: Array<{ email: string; id: string }> = [];
+  const skipped: Array<{ email: string; reason: string }> = [];
+  const errors: Array<{ email: string; error: string }> = [];
+
+  for (const row of eligible) {
+    const email = String(row.email || "").trim();
+    if (complimentaryGuideFollowupAlreadySent(sentEmails, email)) {
+      skipped.push({ email, reason: "already sent" });
+      continue;
+    }
+    try {
+      const ok = await sendComplimentaryGuideFollowupEmail(env, {
+        id: row.id,
+        email,
+        name: row.name || "Side Hustler",
+      });
+      if (!ok) {
+        errors.push({ email, error: "send skipped" });
+        continue;
+      }
+      sent.push({ email, id: row.id });
+      sentEmails.add(email.toLowerCase());
+    } catch (e) {
+      errors.push({ email, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  return json({
+    ok: true,
+    sent: sent.length,
+    skipped: skipped.length,
+    errors: errors.length,
+    sentBy: actor.email,
+    targets: targets.length,
+    details: { sent, skipped, errors },
+  });
 }
 
 export async function deactivateChildProfile(

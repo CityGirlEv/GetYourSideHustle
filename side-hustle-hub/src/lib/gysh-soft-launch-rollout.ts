@@ -1,5 +1,5 @@
 /**
- * GYSH Marketing Rollout — Sprints 2–10
+ * GYSH Marketing Rollout — Sprints 2–14
  * Expert marketing cadence: Facebook, Kevina Starr, website/newsletter, ads, new channels.
  * Dates aligned to sprint windows (Tue–Mon) from gysh-sprints.
  */
@@ -7,15 +7,15 @@
 import { adminMarkdownLink } from "./admin-deep-links";
 import { currentSprintIndex } from "./gysh-sprints";
 
-/** Marketing calendar covers Sprints 2–10 in Content Factory. */
+/** Marketing calendar covers Sprints 2–14 in Content Factory. */
 export const SOFT_LAUNCH_FACTORY_MIN_SPRINT = 2;
 /**
- * Last marketing-calendar sprint (Sprint 10).
+ * Last marketing-calendar sprint (Sprint 14).
  * Keep this numeric literal — do not import DEFAULT_SPRINT_COUNT here.
  * gysh-sprints → gysh-tasks → this file → gysh-sprints is a cycle; reading
  * DEFAULT_SPRINT_COUNT at module init throws during Vite HMR reloads.
  */
-export const SOFT_LAUNCH_FACTORY_MAX_SPRINT = 10;
+export const SOFT_LAUNCH_FACTORY_MAX_SPRINT = 14;
 export const SOFT_LAUNCH_FACTORY_SPRINTS = Array.from(
   { length: SOFT_LAUNCH_FACTORY_MAX_SPRINT - SOFT_LAUNCH_FACTORY_MIN_SPRINT + 1 },
   (_, i) => i + SOFT_LAUNCH_FACTORY_MIN_SPRINT,
@@ -25,7 +25,7 @@ export const SOFT_LAUNCH_SEED_ALL_RANGE = `S${SOFT_LAUNCH_FACTORY_MIN_SPRINT}–
 
 /**
  * Default Sprint filter for Content Factory — live sprint only,
- * clamped to the marketing calendar range (2–10).
+ * clamped to the marketing calendar range (2–14).
  */
 export function softLaunchFactoryDefaultSprint(ref: Date = new Date()): number {
   const cur = currentSprintIndex(ref);
@@ -34,7 +34,7 @@ export function softLaunchFactoryDefaultSprint(ref: Date = new Date()): number {
 }
 
 /**
- * Default multi-select Sprint filters: current sprint only (clamped to 2–10).
+ * Default multi-select Sprint filters: current sprint only (clamped to 2–14).
  * Kept as an array for Set(...)/chip init callers.
  */
 export function softLaunchFactoryDefaultSprints(ref: Date = new Date()): number[] {
@@ -76,7 +76,7 @@ export const MARKETING_PLAN_DEFINITIONS: { term: string; definition: string }[] 
   {
     term: "GYSH Marketing/Launch Plan",
     definition:
-      "The living marketing calendar (Sprint 2 kickoff through Sprint 10): daily posts, newsletters, ads, channel setup, Kevina Starr bridges, website actions, projections, and artifact checklists.",
+      "The living marketing calendar (Sprint 2 kickoff through Sprint 14): daily posts, newsletters, ads, channel setup, Kevina Starr bridges, website actions, projections, and artifact checklists.",
   },
   {
     term: "Cadence",
@@ -165,7 +165,7 @@ export type SoftLaunchCfStatus = SoftLaunchItemStatus;
 
 export type SoftLaunchItem = {
   id: string;
-  /** Sprint index (2–10 marketing calendar; kickoff items may be 2). */
+  /** Sprint index (2–14 marketing calendar; kickoff items may be 2). */
   sprint: number;
   /** ISO date YYYY-MM-DD */
   day: string;
@@ -827,7 +827,7 @@ export function personalAmplifyCadenceItems(): SoftLaunchItem[] {
   return PERSONAL_AMPLIFY_CADENCE.flatMap((row) => personalAmplifyFromCadence(row.idBase));
 }
 
-/** Marketing calendar — Sprint 2 kickoff through Sprint 10. */
+/** Marketing calendar — Sprint 2 kickoff through Sprint 14. */
 export const SOFT_LAUNCH_ROLLOUT: SoftLaunchItem[] = [
   /* ───────────── Sprint 2 close / Soft Launch day (Mon Aug 3) ───────────── */
   {
@@ -1876,6 +1876,205 @@ getyoursidehustle.com`,
     owner: "Both",
     artifacts: ["S0–S10 recap for Agenda", "Next sprint-count decision", "Holiday calendar sketch"],
   },
+
+  /* ───────────── Sprint 11 — Fall family week (Oct 13–19) ───────────── */
+  {
+    id: "sl-s11-ops",
+    sprint: 11,
+    day: "2026-10-13",
+    channel: "website",
+    title: "Fall family week — Q4 plan ships (ops)",
+    owner: "Both",
+    artifacts: [
+      "Q4 plan from the Sprint 10 pull is the only new work",
+      "Fall family posts only — no new channel experiments",
+    ],
+  },
+  {
+    id: "sl-s11-fb-fall",
+    sprint: 11,
+    day: "2026-10-15",
+    channel: "facebook_gysh",
+    title: "FB — A fall side hustle that fits the week you have",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `Fall is a good time to start small. One Match Wizard. One guide. A side hustle that fits the calendar you already have.
+
+getyoursidehustle.com`,
+    artifacts: ["GYSH FB post"],
+  },
+  {
+    id: "sl-s11-newsletter-7",
+    sprint: 11,
+    day: "2026-10-16",
+    channel: "newsletter",
+    title: "Newsletter #7 — Fall family next step",
+    owner: "Both",
+    copy: `Subject: A fall side hustle that fits the week you already have
+
+The Q4 plan is simple: one next step, not a new identity. Take the Match Wizard if you haven't. If you have, open one guide and do the first step this week.
+
+getyoursidehustle.com`,
+    artifacts: ["Send", "UTM on Match Wizard"],
+  },
+  {
+    id: "sl-s11-retro",
+    sprint: 11,
+    day: "2026-10-19",
+    channel: "website",
+    title: "Sprint 11 retro — fall week notes",
+    owner: "Both",
+    artifacts: ["What families actually clicked", "Carry-over into gift-season guides"],
+  },
+
+  /* ───────────── Sprint 12 — Gift-season guides (Oct 20–26) ───────────── */
+  {
+    id: "sl-s12-ops",
+    sprint: 12,
+    day: "2026-10-20",
+    channel: "website",
+    title: "Gift-season guides — spotlight one offer (ops)",
+    owner: "Both",
+    artifacts: [
+      "Pick guides that can fund a small extra stream",
+      "Plain price language — no discount screaming",
+    ],
+  },
+  {
+    id: "sl-s12-fb-gift",
+    sprint: 12,
+    day: "2026-10-22",
+    channel: "facebook_gysh",
+    title: "FB — One guide, one first customer",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `A gift-season side hustle is not a second job you hate. It's one guide, a clear price, and a first customer you already know.
+
+Match Wizard → one guide → first offer.
+
+getyoursidehustle.com`,
+    artifacts: ["GYSH FB post"],
+  },
+  {
+    id: "sl-s12-kevina",
+    sprint: 12,
+    day: "2026-10-23",
+    channel: "facebook_kevina",
+    title: "Kevina Starr — a small fall project as the gift fund",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `Kids Corner families: a small fall project can be the gift fund. Parent sets the boundary. Kid does the work. One guide is enough.
+
+getyoursidehustle.com`,
+    artifacts: ["Kevina post", "Optional GYSH cross-share"],
+  },
+  {
+    id: "sl-s12-retro",
+    sprint: 12,
+    day: "2026-10-26",
+    channel: "website",
+    title: "Sprint 12 retro — which guides got opens",
+    owner: "Both",
+    artifacts: ["Guide opens this week", "Keep or drop the gift-season angle"],
+  },
+
+  /* ───────────── Sprint 13 — November calm (Oct 27–Nov 2) ───────────── */
+  {
+    id: "sl-s13-ops",
+    sprint: 13,
+    day: "2026-10-27",
+    channel: "website",
+    title: "November calm — one finished step (ops)",
+    owner: "Both",
+    artifacts: ["Ads on hold", "One next-step CTA only"],
+  },
+  {
+    id: "sl-s13-fb-calm",
+    sprint: 13,
+    day: "2026-10-29",
+    channel: "facebook_gysh",
+    title: "FB — November does not need a louder hustle",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `November does not need a louder hustle. It needs one finished step.
+
+If the catalog feels big, close it and take the Match Wizard.
+
+getyoursidehustle.com`,
+    artifacts: ["GYSH FB post"],
+  },
+  {
+    id: "sl-s13-newsletter-8",
+    sprint: 13,
+    day: "2026-10-30",
+    channel: "newsletter",
+    title: "Newsletter #8 — One finished step before the holidays",
+    owner: "Both",
+    copy: `Subject: One finished step before the holidays
+
+We are keeping November calm on purpose. Match Wizard, one guide, or one workshop — pick one.
+
+getyoursidehustle.com`,
+    artifacts: ["Send"],
+  },
+  {
+    id: "sl-s13-retro",
+    sprint: 13,
+    day: "2026-11-02",
+    channel: "website",
+    title: "Sprint 13 retro — is the stop-doing list still true?",
+    owner: "Both",
+    artifacts: ["Stop-doing list from Sprint 10", "What we still will not add"],
+  },
+
+  /* ───────────── Sprint 14 — Early holiday workshops (Nov 3–9) ───────────── */
+  {
+    id: "sl-s14-ops",
+    sprint: 14,
+    day: "2026-11-03",
+    channel: "website",
+    title: "Early-holiday workshops — dates before Thanksgiving (ops)",
+    owner: "Both",
+    artifacts: [
+      "Workshop cards dated for the weeks before Thanksgiving",
+      "Membership CTA stays plain",
+    ],
+  },
+  {
+    id: "sl-s14-fb-workshops",
+    sprint: 14,
+    day: "2026-11-05",
+    channel: "facebook_gysh",
+    title: "FB — Early-holiday workshop dates",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `Workshop dates for the early holiday weeks are up. Come for one practical session. Bring the question you already have.
+
+getyoursidehustle.com (Workshops)`,
+    artifacts: ["GYSH FB post", "Event/reminder if Facebook Events is in use"],
+  },
+  {
+    id: "sl-s14-kevina",
+    sprint: 14,
+    day: "2026-11-06",
+    channel: "facebook_kevina",
+    title: "Kevina Starr — Kids Corner before the holiday rush",
+    owner: "Tina",
+    postTime: "6:30 PM CT",
+    copy: `Before the holiday rush: Kids Corner is still the gentle on-ramp. One family project. Parent nearby.
+
+getyoursidehustle.com`,
+    artifacts: ["Kevina post"],
+  },
+  {
+    id: "sl-s14-retro",
+    sprint: 14,
+    day: "2026-11-09",
+    channel: "website",
+    title: "Sprint 14 retro — workshop RSVPs",
+    owner: "Both",
+    artifacts: ["RSVP / waitlist count", "Carry-over into Thanksgiving week"],
+  },
 ];
 
 export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
@@ -2098,6 +2297,97 @@ export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
         lowUsd: 0,
         highUsd: 500,
         note: "Snapshot for the next planning pull — not a hard target.",
+      },
+    ],
+  },
+  {
+    sprint: 11,
+    label: "Sprint 11 — Fall family week",
+    rangeLabel: "10/13/26–10/19/26",
+    theme: "First Q4 week: one fall family side hustle and a Match Wizard reminder",
+    expectedOutcomes: [
+      "Q4 plan from Sprint 10 is what ships",
+      "Newsletter #7 sent",
+      "No new channel experiments",
+    ],
+    metrics: [
+      { label: "Match Wizard starts", low: "15", high: "80" },
+      { label: "Email list size", low: "70", high: "320" },
+    ],
+    revenue: [
+      {
+        label: "Paid memberships (this week)",
+        lowUsd: 0,
+        highUsd: 200,
+        note: "Awareness week — joins are the signal.",
+      },
+    ],
+  },
+  {
+    sprint: 12,
+    label: "Sprint 12 — Gift-season guides",
+    rangeLabel: "10/20/26–10/26/26",
+    theme: "One guide, a clear price, a first customer you already know",
+    expectedOutcomes: [
+      "Gift-season guide spotlight posted",
+      "Kevina Kids Corner gift-fund bridge",
+      "Guide opens reviewed at retro",
+    ],
+    metrics: [
+      { label: "Guide opens", low: "20", high: "150" },
+      { label: "Wizard completions", low: "10", high: "60" },
+    ],
+    revenue: [
+      {
+        label: "Paid memberships (this week)",
+        lowUsd: 27,
+        highUsd: 300,
+        note: "Directional — gift-season interest, not a sale event.",
+      },
+    ],
+  },
+  {
+    sprint: 13,
+    label: "Sprint 13 — November calm",
+    rangeLabel: "10/27/26–11/2/26",
+    theme: "One finished step. Ads on hold. No louder hustle.",
+    expectedOutcomes: [
+      "Newsletter #8 sent",
+      "Ads stay on hold",
+      "Stop-doing list still holds",
+    ],
+    metrics: [
+      { label: "Returning site users", low: "20", high: "100" },
+    ],
+    revenue: [
+      {
+        label: "Ad spend",
+        lowUsd: 0,
+        highUsd: 0,
+        note: "Hold week.",
+      },
+    ],
+  },
+  {
+    sprint: 14,
+    label: "Sprint 14 — Holiday workshops",
+    rangeLabel: "11/3/26–11/9/26",
+    theme: "Workshop dates before Thanksgiving week, plain membership CTA",
+    expectedOutcomes: [
+      "Early-holiday workshop cards dated",
+      "FB + Kevina posts shipped",
+      "RSVP count captured at retro",
+    ],
+    metrics: [
+      { label: "Workshop waitlist / RSVP", low: "5", high: "40" },
+      { label: "Membership upgrades", low: "0", high: "10" },
+    ],
+    revenue: [
+      {
+        label: "Paid memberships (this week)",
+        lowUsd: 0,
+        highUsd: 250,
+        note: "Workshops first. Membership stays a plain next step.",
       },
     ],
   },

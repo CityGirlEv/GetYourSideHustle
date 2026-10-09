@@ -455,6 +455,7 @@ export function MembershipSignupPage({
         email: trimmed,
         ageGroup: audience,
         isParentAccount: isKids || undefined,
+        activationPending: result.pendingActivation === true,
       });
       saveJoinAudience(audience);
       if (result.user) onProfileUpdated?.(result.user);

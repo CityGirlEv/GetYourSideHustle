@@ -138,6 +138,7 @@ export function BlueprintUnlockPanel({
         email: trimmed,
         ageGroup,
         isParentAccount: isKids || undefined,
+        activationPending: result.pendingActivation === true,
       });
 
       if (pending.claimToken && !result.claimedBlueprintId) {

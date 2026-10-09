@@ -11,6 +11,7 @@ import {
 } from "../../lib/membership";
 import {
   adminMembershipTierLabel,
+  applyMembershipSaveToUser,
   FOUNDING_STARTER_LIMIT,
   foundingStarterSlotsRemaining,
   hasFoundingStarterGrant,
@@ -134,7 +135,9 @@ export function MembershipsPage() {
   }, [filtered, tierFilter]);
 
   const applyUserUpdate = (next: GyshUser, message: string) => {
-    setUsers((list) => list.map((row) => (row.id === next.id ? { ...row, ...next } : row)));
+    setUsers((list) =>
+      list.map((row) => (row.id === next.id ? applyMembershipSaveToUser(row, next) : row)),
+    );
     setSaveMsg(message);
   };
 

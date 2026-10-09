@@ -27,6 +27,9 @@ import { QaTestingManualPage } from "./admin/QaTestingManualPage";
 import { UsersArea } from "./admin/UsersArea";
 import { BlueprintList } from "./admin/BlueprintList";
 import { ContentFactory } from "./admin/ContentFactory";
+import { ContentFactorySectionTabs } from "./admin/ContentFactorySectionTabs";
+import { CreativesSchedulePage } from "./admin/CreativesSchedulePage";
+import { PostingSchedulePage } from "./admin/PostingSchedulePage";
 import { TaskList } from "./admin/TaskList";
 import { Financials } from "./admin/Financials";
 import { SchedulePage } from "./admin/SchedulePage";
@@ -70,8 +73,14 @@ import {
 import {
   ADMIN_DEEPLINK_EVENT,
   clearAdminFocusFromUrl,
+  navigateAdminDeepLink,
   readAdminDeepLink,
 } from "../lib/admin-deep-links";
+import {
+  CONTENT_FACTORY_MENU_CHILDREN,
+  contentFactorySectionFor,
+  type ContentFactorySectionId,
+} from "../lib/content-factory-sections";
 import {
   fetchPartnerAgenda,
   mustPickAgendaTimes,
@@ -130,6 +139,10 @@ export const AdminPortal: React.FC<Props> = ({
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
   const [focusTestId, setFocusTestId] = useState<string | null>(null);
   const [focusItemId, setFocusItemId] = useState<string | null>(null);
+  const [factorySection, setFactorySection] = useState<ContentFactorySectionId>(() => {
+    const link = readAdminDeepLink();
+    return contentFactorySectionFor(link.tab, link.panel);
+  });
   const [focusEmailTemplate, setFocusEmailTemplate] = useState<string | null>(null);
   const [showQaManual, setShowQaManual] = useState(false);
   const [agendaGateActive, setAgendaGateActive] = useState(false);
@@ -209,6 +222,8 @@ export const AdminPortal: React.FC<Props> = ({
 
   const requestTabChange = (tab: AdminTab) => {
     if (agendaGateActive && tab !== "agenda") return;
+    if (tab === "factory") setFactorySection("factory");
+    if (tab === "studio") setFactorySection("studio");
     onTabChange(tab);
   };
 
@@ -240,6 +255,7 @@ export const AdminPortal: React.FC<Props> = ({
           onTabChange(link.tab);
         }
       }
+      setFactorySection(contentFactorySectionFor(link.tab, link.panel));
       if (link.testId) {
         setShowQaManual(false);
         setFocusTestId(link.testId);
@@ -402,6 +418,10 @@ export const AdminPortal: React.FC<Props> = ({
           const groupTabs = group.tabs
             .map((id) => tabs.find((t) => t.id === id))
             .filter((t): t is (typeof tabs)[number] => Boolean(t));
+          if (group.id === "content" && !groupTabs.some((t) => t.id === "factory")) {
+            const studio = tabs.find((t) => t.id === "studio");
+            if (studio) groupTabs.push(studio);
+          }
           if (groupTabs.length === 0) return null;
           return (
             <div
@@ -439,6 +459,50 @@ export const AdminPortal: React.FC<Props> = ({
                         <BookOpen size={13} aria-hidden />
                         Manual
                       </button>
+                    </span>
+                  ) : t.id === "factory" ? (
+                    <span key={t.id} className="admin-portal-nav__stack">
+                      <button
+                        type="button"
+                        disabled={agendaGateActive}
+                        onClick={() => {
+                          setFactorySection("factory");
+                          onTabChange("factory");
+                          navigateAdminDeepLink({ tab: "factory", panel: "launch-plan" });
+                        }}
+                        className={`nav-link-btn ${activeTab === "factory" || activeTab === "studio" ? "active" : ""}`}
+                      >
+                        {t.icon}
+                        {t.label}
+                      </button>
+                      <span className="admin-portal-nav__sub" role="group" aria-label="Content Factory">
+                        {CONTENT_FACTORY_MENU_CHILDREN.map((section) => {
+                          const selected =
+                            (section.id === "studio" && activeTab === "studio") ||
+                            (section.id !== "studio" &&
+                              activeTab === "factory" &&
+                              factorySection === section.id);
+                          return (
+                            <button
+                              key={section.id}
+                              type="button"
+                              disabled={agendaGateActive}
+                              data-testid={`portal-factory-${section.id}`}
+                              onClick={() => {
+                                setFactorySection(section.id);
+                                onTabChange(section.tab);
+                                navigateAdminDeepLink({
+                                  tab: section.tab,
+                                  ...(section.panel ? { panel: section.panel } : {}),
+                                });
+                              }}
+                              className={`nav-link-btn ${selected ? "active" : ""}`}
+                            >
+                              {section.label}
+                            </button>
+                          );
+                        })}
+                      </span>
                     </span>
                   ) : (
                     <button
@@ -530,7 +594,13 @@ export const AdminPortal: React.FC<Props> = ({
       {activeTab === "certificates" && <CertificatesAdmin />}
       {activeTab === "email" && <EmailTemplates focusSlug={focusEmailTemplate} />}
       {activeTab === "workshops" && isAdmin && <WorkshopsAdmin />}
-      {activeTab === "factory" && isAdmin && (
+      {activeTab === "factory" && isAdmin && factorySection === "posting" && (
+        <PostingSchedulePage focusItemId={focusItemId} />
+      )}
+      {activeTab === "factory" && isAdmin && factorySection === "creatives" && (
+        <CreativesSchedulePage focusItemId={focusItemId} />
+      )}
+      {activeTab === "factory" && isAdmin && factorySection !== "posting" && factorySection !== "creatives" && (
         <ContentFactory
           focusItemId={focusItemId}
           onFocusConsumed={() => setFocusItemId(null)}
@@ -558,8 +628,9 @@ export const AdminPortal: React.FC<Props> = ({
               <div>
                 <h2 style={{ fontSize: "1.6rem", color: "var(--bronze)", marginBottom: "6px" }}>GYSH Growth Studio</h2>
                 <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>
-                  Planning notes for {ROOT_DOMAIN}. Publishing calendar will connect to Content Factory / DB later — no placeholder posts shown as live data.
+                  Planning notes for {ROOT_DOMAIN}. Publishing lives on the Posting Schedule. Scene prompts live on the Creatives Schedule.
                 </p>
+                {isAdmin ? <ContentFactorySectionTabs active="studio" /> : null}
               </div>
               <span className="glow-badge emerald">Logged In: GYSH Admin</span>
             </div>

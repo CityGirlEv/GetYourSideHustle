@@ -1064,6 +1064,37 @@ export async function sendMembershipMerchReadyEmail(
   return true;
 }
 
+export async function sendComplimentaryGuideFollowupEmail(
+  env: Env,
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  },
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const { complimentaryGuideFollowupUrls, COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG } = await import(
+    "../../src/lib/complimentary-guide-followup"
+  );
+  const urls = complimentaryGuideFollowupUrls();
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG, {
+    name: user.name || "Side Hustler",
+    ctaUrl: urls.match,
+  });
+  if (!rendered) return false;
+  await sendResendEmail(env, {
+    to: user.email,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: COMPLIMENTARY_GUIDE_FOLLOWUP_SLUG,
+    userId: user.id,
+    meta: { complimentaryGuideFollowup: true, matchUrl: urls.match },
+  });
+  return true;
+}
+
 export async function sendParentConsentEmail(
   env: Env,
   input: { parentEmail: string; childName: string; consentUrl: string; audience: "kids" | "junior" },

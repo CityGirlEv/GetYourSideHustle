@@ -11,6 +11,7 @@ import {
   normalizeQaTests,
   normalizeTasks,
 } from '../workBoard';
+import { OPEN_ROLLOVER_SPRINT } from '../sprintRollover';
 import { linkedTestsForTask, pageHrefForWorkItem, taskContentSeed } from '../workItemContentSeed';
 import { TODAYS_NEW_TEST_PARENT_DUE, dueDateForTodaysNewTest } from '../todaysReviewDueDates';
 import { flattenLeaves } from '../siteMap';
@@ -66,7 +67,7 @@ describe('moodWorkflow', () => {
     const task = INITIAL_TASKS.find((item) => item.id === MOOD_WORKFLOW_TASK_ID);
     expect(task).toMatchObject({
       title: moodWorkflowTaskTitle(),
-      sprint: MOOD_WORKFLOW_SPRINT,
+      sprint: OPEN_ROLLOVER_SPRINT,
       assignee: MOOD_WORKFLOW_ASSIGNEE,
       assignor: 'evelyn',
       category: 'QA & Testing',

@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 
 export const HOME_PAGE_COPY_STORAGE_KEY = 'myplan_home_page_copy_v1';
 
-export const HOME_HERO_IMAGE = '/images/home-hero.jpg?v=hero-final';
+export const HOME_HERO_IMAGE = '/images/home-hero.jpg?v=hero-smile-1';
 export const HOME_HERO_IMAGE_ALT =
   'Angela Harris at her desk in a My Plan, Not My Mood tee, with Join the Movement and Shop the Collection';
 
@@ -16,15 +16,15 @@ export type HomeHeroHotspot = {
 /** Percent boxes over the painted Join / Shop buttons on the landscape hero. Must not overlap. */
 export const HOME_HERO_JOIN_HOTSPOT: HomeHeroHotspot = {
   left: '5.5%',
-  top: '66.5%',
+  top: '58.5%',
   width: '28%',
-  height: '8.5%',
+  height: '10%',
 };
 export const HOME_HERO_SHOP_HOTSPOT: HomeHeroHotspot = {
   left: '5.5%',
-  top: '76%',
+  top: '69.5%',
   width: '28%',
-  height: '9%',
+  height: '10.5%',
 };
 
 export function homeHeroHotspotStyle(hotspot: HomeHeroHotspot): CSSProperties {
@@ -118,7 +118,7 @@ export const DEFAULT_HOME_PAGE_COPY: HomePageCopy = {
   movementTitle: 'A Movement for Real Life.',
   movementBody:
     'Whether you’re tired, excited, overwhelmed or somewhere in between — the plan still works. This movement is about making choices that align with the life you want, not just how you feel in the moment.',
-  movementCta: 'How The Journey Began',
+  movementCta: 'DISCOVER OUR STORY',
   quote: 'Discipline today creates the freedom you want tomorrow.',
   quoteEmphasis: 'freedom',
   quoteAttribution: 'MY PLAN, NOT MY MOOD',

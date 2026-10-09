@@ -17,6 +17,7 @@ import {
 import {
   ALA_CARTE_PRICE_LIST,
   AUDIENCE_LABELS,
+  MEMBERSHIP_INTRO_RATE_BANNER,
   CREDIT_EARN_ACTIONS,
   CREDIT_PACKS,
   MEMBERSHIP_FEATURES,
@@ -744,7 +745,7 @@ export function MembershipPage({
             role="status"
             data-testid="membership-intro-rate-banner"
           >
-            Introductory rate ends Sept 30!
+            {MEMBERSHIP_INTRO_RATE_BANNER}
           </p>
         </div>
         <div

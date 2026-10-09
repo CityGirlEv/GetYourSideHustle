@@ -9,6 +9,7 @@ import {
   overlayContentFactoryStatuses,
   parseContentFactoryEdits,
   parseContentFactoryStatuses,
+  setContentFactoryStatus,
   type ContentFactoryItemEdit,
 } from '../lib/contentFactory';
 import {
@@ -19,7 +20,7 @@ import {
   dayPostCountLabel,
   postingScheduleSummary,
 } from '../lib/postingSchedule';
-import type { TaskStatus } from '../lib/workBoard';
+import { TASK_STATUSES, TASK_STATUS_LABELS, TASK_STATUS_TONES, type TaskStatus } from '../lib/workBoard';
 import { ContentFactoryShell } from './ContentFactoryShell';
 
 function loadStatuses(): Record<string, TaskStatus> {
@@ -71,6 +72,10 @@ export const PostingSchedulePage: React.FC<{
     setEdits(loadEdits());
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem(CONTENT_FACTORY_STATUS_KEY, JSON.stringify(statuses));
+  }, [statuses]);
+
   const items = useMemo(
     () =>
       overlayContentFactoryEdits(
@@ -93,7 +98,7 @@ export const PostingSchedulePage: React.FC<{
           <div>
             <h3 className="text-xl font-serif font-semibold text-[#9A3412]">{POSTING_SCHEDULE_TITLE}</h3>
             <p className="text-sm text-[#9A3412] font-medium mt-1 max-w-3xl">
-              One document for every Phase 1 post: date, platform, time, what to post, and who posts it.
+              Same Content Factory calendar: date, platform, time, copy, and status. Change status here or on a Factory card — it is the same Not Started / In Progress / Done / Blocked list as the Task List.
               {` ${summary.dayCount} days · ${summary.postCount} posts · up to ${summary.maxPostsInADay} posts in a day.`}
             </p>
           </div>
@@ -147,6 +152,7 @@ export const PostingSchedulePage: React.FC<{
                     <th className="px-3 py-2">Kind</th>
                     <th className="px-3 py-2">What to post</th>
                     <th className="px-3 py-2">Caption / notes</th>
+                    <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Format</th>
                     <th className="px-3 py-2">Who</th>
                   </tr>
@@ -159,6 +165,25 @@ export const PostingSchedulePage: React.FC<{
                       <td className="px-3 py-2 text-[#3F3832]">{row.kindLabel}</td>
                       <td className="px-3 py-2 font-semibold text-[#1F1917]">{row.title}</td>
                       <td className="px-3 py-2 text-[#3F3832]">{row.whatToPost}</td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={row.status}
+                          aria-label={`${row.title} status`}
+                          data-testid={`posting-schedule-status-${row.id}`}
+                          onChange={(event) =>
+                            setStatuses((prev) =>
+                              setContentFactoryStatus(prev, row.id, event.target.value as TaskStatus),
+                            )
+                          }
+                          className={`min-h-[44px] rounded-xl border-2 px-2 text-[10px] font-black uppercase cursor-pointer ${TASK_STATUS_TONES[row.status]}`}
+                        >
+                          {TASK_STATUSES.map((status) => (
+                            <option key={status} value={status}>
+                              {TASK_STATUS_LABELS[status]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="px-3 py-2 text-[#3F3832] whitespace-nowrap">{row.format}</td>
                       <td className="px-3 py-2 text-[#3F3832]">{row.assignee}</td>
                     </tr>

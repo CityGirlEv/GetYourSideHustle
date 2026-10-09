@@ -9,6 +9,9 @@ describe('spaAssets', () => {
     expect(cacheBustPublicUrl('/images/apparel_hat_white.png')).toBe(
       `/images/apparel_hat_white.png?v=${PUBLIC_IMAGE_CACHE_VERSION}`,
     );
+    expect(cacheBustPublicUrl('/videos/welcome-about.mp4')).toBe(
+      `/videos/welcome-about.mp4?v=${PUBLIC_IMAGE_CACHE_VERSION}`,
+    );
     expect(cacheBustPublicUrl('data:image/png;base64,aa')).toBe('data:image/png;base64,aa');
   });
 });

@@ -12,6 +12,9 @@ export const MEMBERSHIP_JOINED_STORAGE_KEY = 'myplan_membership_joined_v1';
 export const AFFIRMATIONS_MEMBERSHIP_SCOPE_NOTE =
   'Daily Affirmations and the 7-Day Challenge stay with membership (Join to Unlock). Offering them free on the public site is a Phase 1 scope change.';
 
+/** Paid membership preview prices are introductory through this date. */
+export const MEMBERSHIP_INTRO_RATE_NOTE = 'Ends on Oct 31!';
+
 export interface MembershipTier {
   id: string;
   name: string;
@@ -19,6 +22,10 @@ export interface MembershipTier {
   tagline: string;
   highlight?: boolean;
   perks: string[];
+}
+
+export function membershipTierShowsIntroRate(tier: MembershipTier): boolean {
+  return tier.priceLabel !== 'Free';
 }
 
 export const MEMBERSHIP_TIERS: MembershipTier[] = [

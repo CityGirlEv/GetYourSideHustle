@@ -164,8 +164,23 @@ test.describe('PW-LAUNCH-001 public launch pages', () => {
     await page.goto('/about');
     await expect(page.getByTestId('about-page')).toBeVisible();
     await expect(page.getByRole('heading', { name: /about my plan, not my mood/i })).toBeVisible();
-    await expect(page.getByTestId('about-inline-photo')).toBeVisible();
-    await expect(page.getByText(/niece/i)).toBeVisible();
+    await expect(page.getByTestId('about-envision')).toContainText(/Here's what I envision/i);
+    await expect(page.getByTestId('about-brand-lockup')).toContainText(/MY PLAN/i);
+    await expect(page.getByTestId('about-brand-lockup')).toContainText(/NOT MY MOOD/i);
+    await expect(page.getByTestId('about-feelings-line')).toContainText(/Your Feelings Are Real/i);
+    await expect(page.getByTestId('about-feelings-line')).toContainText(/Your Goals Matter Too/i);
+    await expect(page.getByTestId('about-welcome-video')).toBeVisible();
+    await expect(page.getByTestId('about-founder')).toContainText(/Angela Harris is the founder/i);
+    await expect(page.getByTestId('about-inline-photo')).toHaveCount(0);
+    await expect(page.getByTestId('about-origin')).toContainText(/niece/i);
+    await expect(page.getByRole('heading', { name: /discover our story/i })).toBeVisible();
+    await expect(page.getByTestId('about-site-roles')).toContainText(/Capture attention and establish the message/i);
+    await expect(page.getByTestId('about-site-roles')).toContainText(/emotional connection/i);
+    await expect(page.getByTestId('about-site-roles')).toContainText(/wear the message/i);
+    await expect(page.getByTestId('about-philosophy')).toContainText(/One additional thought, Angela/i);
+    await expect(page.getByTestId('about-philosophy')).toContainText(/entire brand around/i);
+    await expect(page.getByTestId('about-manifesto')).toContainText(/One tough day/i);
+    await expect(page.getByTestId('about-manifesto')).toContainText(/Angela Harris, Founder/i);
     await expect(page.getByText(/unique writing style/i)).toBeVisible();
 
     await page.goto('/privacy-policy');

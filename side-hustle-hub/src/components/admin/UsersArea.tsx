@@ -12,6 +12,7 @@ import {
   deleteUser,
   fetchAuditEvents,
   fetchUsers,
+  placeSavedUser,
   saveUser,
   userHasRole,
   userRoles,
@@ -32,7 +33,11 @@ import {
   membershipDirectoryView,
   userMatchesDirectoryStatus,
 } from "../../lib/gysh-user-delete";
-import { foundingStarterSlotsRemaining, adminMembershipTierLabel } from "../../lib/admin-membership";
+import {
+  adminMembershipTierLabel,
+  applyMembershipSaveToUser,
+  foundingStarterSlotsRemaining,
+} from "../../lib/admin-membership";
 import { ApiError } from "../../lib/api";
 import { UserAuditTrail } from "./UserAuditTrail";
 import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
@@ -315,6 +320,7 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
   const [pendingDelete, setPendingDelete] = useState<GyshUser | null>(null);
   const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
   const [roleMenuUserId, setRoleMenuUserId] = useState<string | null>(null);
+  const usersRequest = useRef(0);
 
   const reloadAudit = async () => {
     setAuditLoading(true);
@@ -330,15 +336,18 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
   };
 
   const reload = async () => {
+    const requestId = ++usersRequest.current;
     setLoading(true);
     setError("");
     try {
-      setUsers(await fetchUsers({ includeDeleted: true }));
+      const next = await fetchUsers({ includeDeleted: true });
+      if (requestId !== usersRequest.current) return;
+      setUsers(next);
     } catch (e) {
-      setUsers([]);
+      if (requestId !== usersRequest.current) return;
       setError(e instanceof ApiError ? e.message : "Failed to load users from database.");
     } finally {
-      setLoading(false);
+      if (requestId === usersRequest.current) setLoading(false);
     }
   };
 
@@ -467,6 +476,9 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
     setRoleBusyId(u.id);
     setError("");
     setSaveMsg("");
+    // Drop an in-flight user list so it cannot paint the pre-save roles back.
+    usersRequest.current += 1;
+    setLoading(false);
     // Optimistic update
     setUsers((list) =>
       list.map((row) =>
@@ -513,10 +525,11 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
       return;
     }
 
+    const password = draft.password.trim();
     setBusy(true);
     setError("");
     try {
-      await saveUser(
+      const saved = await saveUser(
         {
           id,
           name: nextName,
@@ -526,12 +539,20 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
           notes: draft.notes.trim(),
           joinedAt: existing.joinedAt,
         },
-        draft.password.trim() || undefined,
+        password || undefined,
+      );
+      usersRequest.current += 1;
+      setLoading(false);
+      setUsers((list) =>
+        placeSavedUser(list, {
+          ...saved,
+          creditBalance: saved.creditBalance ?? existing.creditBalance,
+        }),
       );
       setEditingId(null);
       setDraft(null);
-      await reload();
-      setSaveMsg(draft.password.trim() ? "User saved. Login password updated." : "User saved.");
+      setSaveMsg(password ? "User saved. Login password updated." : "User saved.");
+      void reload();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to save user.");
     } finally {
@@ -926,7 +947,9 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                           foundingSlotsRemaining={foundingLeft}
                           onUpdated={(next, message) => {
                             setUsers((list) =>
-                              list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
+                              list.map((row) =>
+                                row.id === next.id ? applyMembershipSaveToUser(row, next) : row,
+                              ),
                             );
                             setSaveMsg(message);
                             void reloadAudit();
@@ -999,7 +1022,9 @@ export function UsersArea({ currentUserId = null }: { currentUserId?: string | n
                       foundingSlotsRemaining={foundingLeft}
                       onUpdated={(next, message) => {
                         setUsers((list) =>
-                          list.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
+                          list.map((row) =>
+                            row.id === next.id ? applyMembershipSaveToUser(row, next) : row,
+                          ),
                         );
                         setSaveMsg(message);
                         void reloadAudit();

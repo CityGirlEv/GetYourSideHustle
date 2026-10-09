@@ -6,6 +6,7 @@ import {
   foundingStarterGrantBlockReason,
   foundingStarterGrants,
   foundingStarterSlots,
+  applyMembershipSaveToUser,
   foundingStarterSlotsRemaining,
   hasFoundingStarterGrant,
   nextFoundingStarterSlot,
@@ -134,5 +135,34 @@ describe("admin membership + complimentary Starter", () => {
     );
     expect(appendFoundingStarterStamp("Joined today", stamp)).toContain(stamp);
     expect(appendFoundingStarterStamp(lynne.notes, stamp)).toBe(lynne.notes);
+  });
+
+  it("keeps admin roles when a membership save returns a stale user", () => {
+    const current = {
+      id: "u-kiva",
+      name: "Kiva Estelle Jackson",
+      email: "kivajackson123@gmail.com",
+      role: "admin",
+      roles: ["admin", "qa", "adult", "beta"],
+      status: "active",
+      membershipTier: "free",
+      notes: "old",
+      creditBalance: 921,
+    };
+    const saved = {
+      role: "adult",
+      roles: ["adult", "beta"],
+      name: "Someone Else",
+      email: "other@example.com",
+      status: "pending",
+      membershipTier: "starter",
+      notes: "Membership set to starter",
+      creditBalance: 0,
+    };
+    expect(applyMembershipSaveToUser(current, saved)).toEqual({
+      ...current,
+      membershipTier: "starter",
+      notes: "Membership set to starter",
+    });
   });
 });

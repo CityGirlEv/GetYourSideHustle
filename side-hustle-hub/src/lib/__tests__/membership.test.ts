@@ -8,6 +8,7 @@ import {
   MEMBER_PERKS_BY_TIER,
   MEMBERSHIP_COMPARE_ROWS,
   MEMBERSHIP_FEATURES,
+  MEMBERSHIP_INTRO_RATE_BANNER,
   MEMBERSHIP_TIERS,
   MILITARY_VETERAN_CALLOUT,
   SHOW_MILITARY_VETERAN_CALLOUT,
@@ -45,6 +46,10 @@ import {
 } from "../membership";
 
 describe("membership catalog", () => {
+  it("ends the introductory membership rate on October 30", () => {
+    expect(MEMBERSHIP_INTRO_RATE_BANNER).toBe("Introductory rate ends Oct 30!");
+  });
+
   it("defines Free, Starter, Pro, and Elite", () => {
     expect(MEMBERSHIP_TIERS.map((t) => t.id)).toEqual(["free", "starter", "pro", "elite"]);
   });

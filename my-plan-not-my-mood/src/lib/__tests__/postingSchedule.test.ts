@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PHASE_1_CONTENT_FACTORY } from '../contentFactory';
+import { overlayContentFactoryStatuses, PHASE_1_CONTENT_FACTORY } from '../contentFactory';
 import {
   POSTING_SCHEDULE_PATH,
   POSTING_SCHEDULE_TITLE,
@@ -41,7 +41,23 @@ describe('postingSchedule', () => {
     const welcome = PHASE_1_CONTENT_FACTORY.find((item) => item.id === 'cf-s0-welcome-facebook')!;
     const row = toPostingScheduleRow(welcome);
     expect(row.platform).toBe('Facebook');
+    expect(row.status).toBe('not_started');
+    expect(row.statusLabel).toBe('Not Started');
     expect(row.format).toMatch(/image|Video/i);
     expect(html).toContain(welcome.title);
+    expect(html).toContain('Status');
+    expect(html).toContain('Not Started');
+  });
+
+  it('carries Content Factory status onto the posting schedule', () => {
+    const overlay = overlayContentFactoryStatuses(PHASE_1_CONTENT_FACTORY, {
+      'cf-s0-welcome-facebook': 'done',
+      'cf-s0-welcome-tiktok': 'in_progress',
+    });
+    const days = buildPostingSchedule(overlay);
+    const facebook = days.flatMap((day) => day.rows).find((row) => row.id === 'cf-s0-welcome-facebook');
+    const tiktok = days.flatMap((day) => day.rows).find((row) => row.id === 'cf-s0-welcome-tiktok');
+    expect(facebook).toMatchObject({ status: 'done', statusLabel: 'Done' });
+    expect(tiktok).toMatchObject({ status: 'in_progress', statusLabel: 'In Progress' });
   });
 });

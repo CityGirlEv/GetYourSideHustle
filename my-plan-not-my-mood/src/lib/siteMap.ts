@@ -85,6 +85,7 @@ export const APP_SITE_TREE: SiteTreeNode = {
         { id: 'testing', label: 'Testing Portal', path: '/admin/testing', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'tasks', label: 'Tasks', path: '/admin/tasks', status: 'gated', branch: 'admin', weight: 4 },
         { id: 'factory', label: 'Content Factory', path: '/admin/factory', status: 'gated', branch: 'admin', weight: 4 },
+        { id: 'growth', label: 'Growth Studio', path: '/admin/growth', status: 'gated', branch: 'admin', weight: 3 },
         { id: 'gear-selections', label: 'Gear', path: '/admin/gear-selections', status: 'gated', branch: 'admin', weight: 3 },
         { id: 'logo-concepts', label: 'Logos', path: '/admin/logo-concepts', status: 'gated', branch: 'admin', weight: 3 },
         { id: 'asset-library', label: 'Asset Library', path: '/admin/asset-library', status: 'gated', branch: 'admin', weight: 3 },

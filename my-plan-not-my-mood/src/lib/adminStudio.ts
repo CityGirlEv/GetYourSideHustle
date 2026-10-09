@@ -61,7 +61,7 @@ export const ADMIN_STUDIO_TABS: AdminStudioTabDef[] = [
   { id: 'gear-selections', label: 'Gear', description: 'Style cards that already include hat, hoodie, and tee' },
   { id: 'logo-concepts', label: 'Logos', description: 'Upload logos and highlight the Selected Logo' },
   { id: 'asset-library', label: 'Asset Library', description: 'Logos, Gear, and Phase 2 Accessories' },
-  { id: 'growth', label: 'Growth Studio', description: 'Socials and amplification' },
+  { id: 'growth', label: 'Growth Studio', description: 'Official channels, organic traffic, and paid-ad setup' },
   { id: 'budget', label: 'Financials', description: 'Interactive budget and PDF downloads' },
   { id: 'pay', label: 'Pay', description: 'Make a phase payment' },
   { id: 'previous-budget', label: 'Previous Budget', description: 'Archived budget with pre-payment discount schedule' },
@@ -172,7 +172,7 @@ export function canOpenStudioTab(
   if (id === 'users') return Boolean(permissions.canManageUsers);
   if (id === 'memberships') return Boolean(permissions.hasAdminRole || permissions.isSuperAdmin);
   if (id === 'emails' || id === 'mailing-list') return Boolean(permissions.canManageEmailTemplates);
-  if (id === 'factory' || id === 'calendar' || id === 'gear-selections' || id === 'asset-library' || id === 'logo-concepts') return factory;
+  if (id === 'factory' || id === 'calendar' || id === 'gear-selections' || id === 'asset-library' || id === 'logo-concepts' || id === 'growth') return factory;
   return staff;
 }
 

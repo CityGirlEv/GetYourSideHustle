@@ -60,7 +60,7 @@ import { isReferralDashboardHash } from "./lib/referral";
 import { isCreditsDashboardHash } from "./lib/member-credits";
 import { isBillingDashboardHash } from "./lib/member-purchases";
 import { isBlueprintDashboardHash } from "./lib/member-dashboard";
-import { isProfileDashboardHash } from "./lib/member-profile";
+import { applySavedMemberProfile, isProfileDashboardHash } from "./lib/member-profile";
 import { userHasAdminRole, canSetGuideReviewedByDev } from "./lib/gysh-assignment";
 import {
   ADMIN_MENU_GROUPS,
@@ -153,7 +153,8 @@ import {
 } from "./lib/app-routes";
 import { workshopRegistrationPath } from "./lib/workshops";
 import { consumeJoinReturnView, consumeWorkshopJoinReturn } from "./lib/pending-join-return";
-import { readAdminDeepLink } from "./lib/admin-deep-links";
+import { navigateAdminDeepLink, readAdminDeepLink } from "./lib/admin-deep-links";
+import { CONTENT_FACTORY_MENU_CHILDREN } from "./lib/content-factory-sections";
 import {
   confirmEmailVerification,
   confirmPasswordReset,
@@ -1183,6 +1184,9 @@ function App() {
         break;
       case "admin":
         goToAdmin(href.tab, href.guide);
+        if (href.panel) {
+          navigateAdminDeepLink({ tab: href.tab, panel: href.panel });
+        }
         break;
       default:
         break;
@@ -2038,6 +2042,13 @@ function App() {
                               .map((id) => adminTabById(id))
                               .filter((tab): tab is NonNullable<typeof tab> => Boolean(tab))
                               .filter((tab) => !tab.adminOnly || roles.includes("admin"));
+                            if (
+                              group.id === "content" &&
+                              !tabs.some((tab) => tab.id === "factory")
+                            ) {
+                              const studio = adminTabById("studio");
+                              if (studio) tabs.push(studio);
+                            }
                             if (tabs.length === 0) return null;
                             return (
                               <li key={group.id} className="admin-nav-group" role="none">
@@ -2046,7 +2057,56 @@ function App() {
                                 </p>
                                 <ul className="admin-nav-group__list" role="group" aria-label={group.label}>
                                   {tabs.map((tab) =>
-                                    tab.id === "user-guides" ? (
+                                    tab.id === "factory" ? (
+                                      <li key={tab.id} role="none">
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          className={`admin-nav-item${
+                                            activeView === "admin" &&
+                                            (adminTab === "factory" || adminTab === "studio")
+                                              ? " active"
+                                              : ""
+                                          }`}
+                                          onClick={() => {
+                                            goToAdmin("factory");
+                                            navigateAdminDeepLink({ tab: "factory", panel: "launch-plan" });
+                                          }}
+                                        >
+                                          {tab.label}
+                                        </button>
+                                        <ul className="admin-nav-submenu" role="group" aria-label="Content Factory">
+                                          {CONTENT_FACTORY_MENU_CHILDREN.map((section) => {
+                                            const current = readAdminDeepLink();
+                                            const selected =
+                                              activeView === "admin" &&
+                                              adminTab === section.tab &&
+                                              (section.panel
+                                                ? current.panel === section.panel
+                                                : section.tab === "studio");
+                                            return (
+                                              <li key={section.id} role="none">
+                                                <button
+                                                  type="button"
+                                                  role="menuitem"
+                                                  className={`admin-nav-item admin-nav-item--sub${selected ? " active" : ""}`}
+                                                  data-testid={`nav-factory-${section.id}`}
+                                                  onClick={() => {
+                                                    goToAdmin(section.tab);
+                                                    navigateAdminDeepLink({
+                                                      tab: section.tab,
+                                                      ...(section.panel ? { panel: section.panel } : {}),
+                                                    });
+                                                  }}
+                                                >
+                                                  {section.label}
+                                                </button>
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      </li>
+                                    ) : tab.id === "user-guides" ? (
                                       <li key={tab.id} role="none">
                                         <button
                                           type="button"
@@ -2384,11 +2444,24 @@ function App() {
                     <button
                       type="button"
                       onClick={() => openGuidesLibrary()}
-                      className={`nav-link-btn ${activeView === "guides" ? "active" : ""}`}
+                      className={`nav-link-btn nav-link-btn--guides ${activeView === "guides" ? "active" : ""}`}
                       data-testid="nav-guides"
                     >
                       <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
-                      Side Hustle Guides
+                      {showHomeGuidesLibraryTag()
+                        ? (() => {
+                            const guideMenu = homeLibrarySpotlight(
+                              liveGuideCounts.totalActive,
+                              liveGuideCounts.freeActive,
+                            );
+                            return (
+                              <span className="nav-guides-menu" data-testid="nav-guides-count">
+                                <span className="nav-guides-menu__total">{guideMenu.menuTotal}</span>
+                                <span className="nav-guides-menu__free">{guideMenu.menuFree}</span>
+                              </span>
+                            );
+                          })()
+                        : "Side Hustle Guides"}
                     </button>
                   </li>
                   <li>
@@ -3694,11 +3767,7 @@ function App() {
                 setAuthUser((prev) => (prev ? { ...prev, notes: user.notes } : prev));
               }}
               onProfileSaved={(user: AuthUser) => {
-                setAuthUser((prev) =>
-                  prev
-                    ? { ...prev, name: user.name, email: user.email, phone: user.phone }
-                    : prev,
-                );
+                setAuthUser((prev) => (prev ? applySavedMemberProfile(prev, user) : user));
               }}
               onComplimentaryClaimed={() => {
                 setMemberAccessTick((n) => n + 1);

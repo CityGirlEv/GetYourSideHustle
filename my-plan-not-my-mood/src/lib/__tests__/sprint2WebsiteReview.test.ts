@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { OPEN_ROLLOVER_SPRINT } from '../sprintRollover';
 import {
   INITIAL_QA_TESTS,
   INITIAL_TASKS,
@@ -61,7 +62,7 @@ describe('sprint2WebsiteReview', () => {
       assignor: 'evelyn',
       phase: 'Phase 1',
       category: 'QA & Testing',
-      sprint: SPRINT_2_WEBSITE_REVIEW_SPRINT,
+      sprint: OPEN_ROLLOVER_SPRINT,
       dueDate: TODAYS_NEW_TEST_PARENT_DUE,
     });
     expect(linkedTestsForTask(SPRINT_2_WEBSITE_REVIEW_TASK_ID)).toEqual(sprint2WebsiteReviewTestIds());

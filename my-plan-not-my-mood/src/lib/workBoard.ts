@@ -7,7 +7,6 @@ import { currentSprintWindow, dueDateForSprintLabel } from './sprintCalendar';
 import { normalizeWorkAttachments, type WorkAttachmentMeta } from './workAttachments';
 import { addWorkNote, workNotesHaveText, type WorkNoteActor } from './workNoteEntries';
 import {
-  checkAllChecklistSteps,
   checklistAllChecked,
   clearFailedHere,
   markFailedHere,
@@ -1000,6 +999,11 @@ export function defaultTestingPortalFilters<T extends string>(
   return filters;
 }
 
+/** Hide empty sprint sections when a specific sprint chip is selected. */
+export function hideEmptyWorkBoardSprintSections(sprintFilter: Set<string>): boolean {
+  return sprintFilter.size > 0;
+}
+
 export function isWorkBoardFilterActive<T extends string>(
   filters: WorkBoardFilters<T>,
   search = '',
@@ -1281,15 +1285,7 @@ export function applyTaskInlinePatch(task: TaskItem, patch: TaskInlinePatch, act
       taskNeedsBlockedNote(task.status, patch.status) &&
       (patch.notes === undefined || !workNotesHaveText(patch.notes));
     if (!blockedMissingNote) {
-      if (patch.status === 'done') {
-        next.steps = checkAllChecklistSteps(next.steps ?? task.steps);
-      }
       next.status = patch.status;
-      if (patch.status === 'done') {
-        next.completedOn = next.completedOn || workBoardTodayIso();
-      } else if (isOutstandingWorkStatus(patch.status)) {
-        next.completedOn = undefined;
-      }
     }
   }
   if (patch.assignee !== undefined && isAllowedTaskAssignee(patch.assignee)) next.assignee = patch.assignee;
@@ -1304,7 +1300,15 @@ export function applyTaskInlinePatch(task: TaskItem, patch: TaskInlinePatch, act
   }
   if (patch.attachments !== undefined) next.attachments = normalizeWorkAttachments(patch.attachments);
   if (patch.onAgenda !== undefined) next.onAgenda = Boolean(patch.onAgenda);
-  return patch.status !== undefined ? rolloverWorkItemSprint(next) : next;
+  next.status = clampStatusToChecklist('task', task.status, next.status, next.steps) as TaskStatus;
+  if (next.status !== task.status) {
+    if (next.status === 'done') {
+      next.completedOn = next.completedOn || workBoardTodayIso();
+    } else if (isOutstandingWorkStatus(next.status)) {
+      next.completedOn = undefined;
+    }
+  }
+  return patch.status !== undefined || next.status !== task.status ? rolloverWorkItemSprint(next) : next;
 }
 
 export function applyTaskInlinePatchToList(
@@ -1402,18 +1406,13 @@ export function applyQaInlinePatch(test: QaTestItem, patch: QaInlinePatch, actor
   }
   if (patch.priority !== undefined && PRIORITY_OPTIONS.includes(patch.priority)) next.priority = patch.priority;
   if (patch.status !== undefined && QA_STATUSES.includes(patch.status)) {
-    if (patch.status === 'passed') {
-      next.steps = checkAllChecklistSteps(next.steps ?? test.steps);
-    }
-    const workflow = qaWorkflowFieldsForStatus(next, patch.status);
-    next.status = workflow.status;
-    // Only auto-route assignee/assignor when status changed and caller did not override them.
-    if (patch.assignee === undefined) next.assignee = workflow.assignee;
-    if (patch.assignor === undefined) next.assignor = workflow.assignor;
-    if (next.status === 'passed') {
-      next.completedOn = next.completedOn || workBoardTodayIso();
-    } else if (isOutstandingWorkStatus(next.status)) {
-      next.completedOn = undefined;
+    const allowed = clampStatusToChecklist('test', test.status, patch.status, next.steps) as QaStatus;
+    if (allowed === patch.status) {
+      const workflow = qaWorkflowFieldsForStatus(next, patch.status);
+      next.status = workflow.status;
+      // Only auto-route assignee/assignor when status changed and caller did not override them.
+      if (patch.assignee === undefined) next.assignee = workflow.assignee;
+      if (patch.assignor === undefined) next.assignor = workflow.assignor;
     }
   }
   if (patch.assignee !== undefined && isAllowedTestAssignee(patch.assignee)) next.assignee = patch.assignee;
@@ -1429,7 +1428,15 @@ export function applyQaInlinePatch(test: QaTestItem, patch: QaInlinePatch, actor
     next.assignor = normalizeAssignor(actor);
   }
   next.assignor = normalizeAssignor(next.assignor);
-  return patch.status !== undefined ? rolloverWorkItemSprint(next) : next;
+  next.status = clampStatusToChecklist('test', test.status, next.status, next.steps) as QaStatus;
+  if (next.status !== test.status) {
+    if (next.status === 'passed') {
+      next.completedOn = next.completedOn || workBoardTodayIso();
+    } else if (isOutstandingWorkStatus(next.status)) {
+      next.completedOn = undefined;
+    }
+  }
+  return patch.status !== undefined || next.status !== test.status ? rolloverWorkItemSprint(next) : next;
 }
 
 export function applyQaInlinePatchToList(
@@ -2386,4 +2393,44 @@ export function canCompleteWithChecklist(
     (kind === 'task' && nextStatus === 'done') || (kind === 'test' && nextStatus === 'passed');
   if (!needsAll || checklistAllChecked(steps)) return { ok: true };
   return { ok: false, error: checklistBlockMessage(kind) };
+}
+
+/** Keep Done/Passed only when every checkbox is checked. Unchecking a step reopens the item. */
+export function clampStatusToChecklist(
+  kind: 'task' | 'test',
+  previousStatus: string,
+  nextStatus: string,
+  steps: WorkChecklistStep[] | null | undefined,
+): string {
+  const complete = kind === 'task' ? 'done' : 'passed';
+  if (nextStatus !== complete || checklistAllChecked(steps)) return nextStatus;
+  return previousStatus === complete ? 'in_progress' : previousStatus;
+}
+
+export function cycleTaskStatus(current: TaskStatus, steps: WorkChecklistStep[] | null | undefined): TaskStatus {
+  const order: TaskStatus[] = ['not_started', 'in_progress', 'done', 'blocked'];
+  const start = Math.max(0, order.indexOf(current));
+  for (let offset = 1; offset <= order.length; offset += 1) {
+    const next = order[(start + offset) % order.length]!;
+    if (canCompleteWithChecklist('task', steps, next).ok) return next;
+  }
+  return current;
+}
+
+export function cycleQaStatus(current: QaStatus, steps: WorkChecklistStep[] | null | undefined): QaStatus {
+  const order: QaStatus[] = [
+    'untested',
+    'in_progress',
+    'passed',
+    'failed',
+    'fixed_retest',
+    'failed_retest',
+    'blocked',
+  ];
+  const start = Math.max(0, order.indexOf(current));
+  for (let offset = 1; offset <= order.length; offset += 1) {
+    const next = order[(start + offset) % order.length]!;
+    if (canCompleteWithChecklist('test', steps, next).ok) return next;
+  }
+  return current;
 }

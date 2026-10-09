@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CalendarRange, Sparkles, Wand2 } from "lucide-react";
+import { CalendarRange, Download, Sparkles, Wand2 } from "lucide-react";
 import { BusyOverlay } from "../WaitFeedback";
 import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import {
@@ -48,6 +48,9 @@ import {
   type RolloutOwner,
 } from "../../lib/gysh-soft-launch-rollout";
 import { currentSprintIndex, getSprintWindow, withSprintDueDate } from "../../lib/gysh-sprints";
+import { scenePackageForItem } from "../../lib/gysh-scene-packet";
+import { ContentFactorySectionTabs } from "./ContentFactorySectionTabs";
+import { downloadScreenProductionPackage } from "../../lib/screen-production-package";
 import {
   fetchTasks,
   isoToMmddyy,
@@ -429,7 +432,7 @@ export function ContentFactory({
           const baseNotes = prevNotes || catalogNotes;
           try {
             const saved = await saveSoftLaunchItemOverride(plan.itemId, {
-              sprint: targetSprint as 2 | 3 | 4 | 5,
+              sprint: targetSprint,
               notes: withSoftLaunchRolloverNote(baseNotes, plan.fromSprint),
             });
             nextOverrides = { ...nextOverrides, [plan.itemId]: saved };
@@ -443,7 +446,6 @@ export function ContentFactory({
             taskDelta.push({
               ...task,
               ...withSprintDueDate({ sprint: targetSprint }),
-              status: task.status === "not_started" ? "in_progress" : task.status,
               notes: already
                 ? task.notes
                 : appendActorNote(task.notes, "System", rolloverNoteText(plan.fromSprint)),
@@ -774,6 +776,7 @@ export function ContentFactory({
         <p style={{ color: "var(--text-primary)", marginTop: 4, marginBottom: 0, fontSize: "0.95rem" }}>
           GYSH Marketing/Launch Plan ({SOFT_LAUNCH_SEED_ALL_RANGE}): Facebook, Kevina Starr, website/newsletter, ads, and new channels. Admin only.
         </p>
+        <ContentFactorySectionTabs active="factory" />
         {error && (
           <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.9rem" }}>
             {error}
@@ -1745,6 +1748,51 @@ export function ContentFactory({
                         </ol>
                       </div>
                     )}
+                    {(() => {
+                      const packet = scenePackageForItem(item);
+                      return (
+                        <div
+                          style={{ marginTop: 12 }}
+                          data-testid={`factory-scene-packet-${item.id}`}
+                        >
+                          <strong style={{ fontSize: "0.875rem" }}>
+                            Scene packet · {packet.kind === "video" ? `${packet.scenes.length} scenes` : "still"} · {packet.format}
+                          </strong>
+                          <p style={{ margin: "6px 0 0", fontSize: "0.875rem" }}>{packet.purpose}</p>
+                          {packet.scenes.map((scene) => (
+                            <details key={scene.number} style={{ marginTop: 8 }}>
+                              <summary style={{ cursor: "pointer", fontWeight: 650 }}>
+                                Scene {scene.number} — {scene.title}
+                              </summary>
+                              <div style={{ marginTop: 8, fontSize: "0.875rem", whiteSpace: "pre-wrap" }}>
+                                <p><strong>ChatGPT starting image</strong><br />{scene.chatgptStartPrompt}</p>
+                                <p><strong>ChatGPT ending image</strong><br />{scene.chatgptEndPrompt}</p>
+                                <p><strong>Hedra prompt</strong><br />{scene.hedraPrompt}</p>
+                              </div>
+                            </details>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                    <div style={{ marginTop: 12 }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        data-testid={`factory-production-package-${item.id}`}
+                        onClick={() => {
+                          void downloadScreenProductionPackage(item).catch((e) => {
+                            setError(
+                              e instanceof Error
+                                ? e.message
+                                : "Failed to download the scene packet.",
+                            );
+                          });
+                        }}
+                      >
+                        <Download size={16} aria-hidden />
+                        Download scene packet (PDF)
+                      </button>
+                    </div>
                     </div>
                     )}
                   </div>

@@ -35,6 +35,7 @@ describe('siteMap', () => {
     expect(flattenLeaves(APP_SITE_TREE).find((leaf) => leaf.id === 'mailing-list')?.status).toBe('gated');
     expect(publicLeaves.find((leaf) => leaf.id === 'budget')?.status).toBe('gated');
     expect(publicLeaves.find((leaf) => leaf.id === 'inventory-pricing')?.status).toBe('gated');
+    expect(flattenLeaves(APP_SITE_TREE).find((leaf) => leaf.id === 'growth')?.path).toBe('/admin/growth');
     const publicPaths = publicLeaves.map((leaf) => leaf.path).filter(Boolean) as string[];
     expect(publicPaths).toEqual(expect.arrayContaining(['/', '/about', '/gear', '/privacy-policy', '/contact', '/faq']));
     expect(

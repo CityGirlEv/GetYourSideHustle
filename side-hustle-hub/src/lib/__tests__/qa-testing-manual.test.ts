@@ -12,7 +12,7 @@ describe("QA testing manual", () => {
 
     const quick = QA_TESTING_MANUAL.quickStart.join(" ");
     expect(quick).toMatch(/All sprints/i);
-    expect(quick).toMatch(/Sprint 10/i);
+    expect(quick).toMatch(/Sprint 14/i);
     expect(quick).toMatch(/date/i);
     expect(quick).toMatch(/Assignees is expanded/i);
     expect(quick).toMatch(/Sprint and Other start collapsed/i);

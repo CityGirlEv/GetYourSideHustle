@@ -12,7 +12,7 @@ const LEDE =
   "Soft launch S2 (~Aug 3) · pause 8/4–8/17 · Sprint 3 resumes 8/18 · Kids S4 · Jr/Adult S5 · Senior S6 · Workshops S8 · through S10";
 
 /**
- * Compact phased rollout for Evelyn: soft launch (S2) then GMSH bands (S4–S6) through Sprint 10.
+ * Compact phased rollout for Evelyn: soft launch (S2) then GMSH bands (S4–S6) through Sprint 14.
  * Dense table/grid — no sparse card stacks. Collapsible like Task/Tests status.
  */
 export function RolloutScheduleSummary({

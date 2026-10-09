@@ -1207,7 +1207,7 @@ export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     description: 'About tells the brand story and does not scroll sideways on a phone.',
     steps: [
       { label: 'Go to About (header About, or footer About).', href: '/about' },
-      'Confirm you can read a brand story — not an empty page or “lorem ipsum”.',
+      'Confirm you can read “Your Feelings Are Real. Your Goals Matter Too.”, the niece origin, and play the welcome video.',
       'On a phone-width (~320px), confirm no sideways scroll.',
     ],
   },

@@ -37,9 +37,11 @@ describe('contentFactory', () => {
     const grouped = groupContentFactoryBySprint(overlayContentFactoryStatuses(PHASE_1_CONTENT_FACTORY));
     expect(grouped['Sprint 0'].length).toBe(0);
     expect(grouped['Sprint 1'].filter((item) => item.rolledOver).length).toBe(0);
-    expect(grouped['Sprint 2'].filter((item) => item.rolledOver).length).toBeGreaterThanOrEqual(5);
-    expect(grouped['Sprint 2'].some((item) => item.assignee === 'angela')).toBe(true);
-    expect(grouped['Sprint 2'].some((item) => item.assignee === 'evelyn')).toBe(true);
+    expect(grouped['Sprint 2'].filter((item) => item.rolledOver).length).toBe(0);
+    expect(grouped['Sprint 3'].filter((item) => item.rolledOver).length).toBe(0);
+    expect(grouped['Sprint 4'].filter((item) => item.rolledOver).length).toBeGreaterThanOrEqual(5);
+    expect(grouped['Sprint 4'].some((item) => item.assignee === 'angela')).toBe(true);
+    expect(grouped['Sprint 4'].some((item) => item.assignee === 'evelyn')).toBe(true);
     expect(PHASE_1_CONTENT_FACTORY.filter((item) => item.assignee === 'angela' && item.kind === 'post').length).toBeGreaterThanOrEqual(20);
   });
 
@@ -70,7 +72,7 @@ describe('contentFactory', () => {
   it('puts Logo Concepts work in Sprint 0/1 for Evelyn upload and Angela pick', () => {
     const logos = overlayContentFactoryStatuses(contentFactoryLogoItems());
     expect(logos.length).toBeGreaterThanOrEqual(2);
-    expect(logos.some((item) => item.taskId === 't-41' && item.assignee === 'evelyn' && item.sprint === 'Sprint 2')).toBe(true);
+    expect(logos.some((item) => item.taskId === 't-41' && item.assignee === 'evelyn' && item.sprint === 'Sprint 4')).toBe(true);
     expect(logos.some((item) => item.taskId === 't-42' && item.assignee === 'angela')).toBe(true);
     expect(
       filterContentFactoryItems(PHASE_1_CONTENT_FACTORY, { search: 'Logo Concepts' }).some((item) => item.kind === 'logo'),

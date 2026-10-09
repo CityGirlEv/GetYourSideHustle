@@ -97,7 +97,7 @@ export function checklistAllChecked(steps: WorkChecklistStep[] | null | undefine
   return list.every((s) => s.checked);
 }
 
-/** Mark every remaining step checked so Done / Passed can land. */
+/** Mark every remaining step checked. */
 export function checkAllChecklistSteps(
   steps: WorkChecklistStep[] | null | undefined,
 ): WorkChecklistStep[] {

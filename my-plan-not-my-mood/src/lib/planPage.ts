@@ -162,6 +162,7 @@ const HEADER_ADMIN_LABELS: Partial<Record<AdminStudioTab, string>> = {
   'mailing-list': 'List',
   factory: 'Content Factory',
   calendar: 'Posting Schedule',
+  growth: 'Growth Studio',
   budget: 'Admin Hub',
 };
 

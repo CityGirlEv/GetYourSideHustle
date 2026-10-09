@@ -11,7 +11,7 @@ import { siteUrl } from "./site-config";
 const TAB_IDS = new Set<string>(ADMIN_TABS.map((t) => t.id));
 
 /** Content Factory (and similar) nested panels. */
-export type AdminPanelId = "launch-plan" | "workshops";
+export type AdminPanelId = "launch-plan" | "posting" | "creatives" | "workshops";
 
 /** Financials nested sub-tabs. */
 export type FinancialsSubId = "budget" | "expenses" | "money-model" | "payments" | "contract";
@@ -27,6 +27,10 @@ const PANEL_ALIASES: Record<string, AdminPanelId> = {
   marketing: "launch-plan",
   /** Legacy drafts deep links → Marketing/Launch Plan */
   drafts: "launch-plan",
+  posting: "posting",
+  "posting-schedule": "posting",
+  creatives: "creatives",
+  "creatives-schedule": "creatives",
   workshops: "workshops",
 };
 

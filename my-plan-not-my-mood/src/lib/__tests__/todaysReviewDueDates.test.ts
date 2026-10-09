@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INITIAL_QA_TESTS, INITIAL_TASKS, normalizeQaTests, normalizeTasks } from '../workBoard';
+import { OPEN_ROLLOVER_SPRINT } from '../sprintRollover';
 import { phase1WebsiteReviewTestIds, PHASE_1_WEBSITE_REVIEW_TASK_ID } from '../phase1WebsiteReview';
 import { sprint2WebsiteReviewTestIds, SPRINT_2_WEBSITE_REVIEW_TASK_ID } from '../sprint2WebsiteReview';
 import { formWalkthroughTestIds, FORM_WALKTHROUGH_TASK_ID } from '../formWalkthroughTests';
@@ -57,7 +58,7 @@ describe('todaysReviewDueDates', () => {
     expect(board).toHaveLength(TODAYS_TEST_IDS.length);
     expect(board.length).toBeGreaterThan(20);
     for (const test of board) {
-      expect(test.sprint, test.id).toBe(TODAYS_NEW_TEST_SPRINT);
+      expect(test.sprint, test.id).toBe(OPEN_ROLLOVER_SPRINT);
       expect(isTodaysNewTestDueDate(test.dueDate), test.id).toBe(true);
     }
     const uniqueDue = new Set(board.map((test) => test.dueDate));
@@ -65,17 +66,17 @@ describe('todaysReviewDueDates', () => {
 
     const normalized = normalizeQaTests(board);
     for (const test of normalized) {
-      expect(test.sprint, test.id).toBe(TODAYS_NEW_TEST_SPRINT);
+      expect(test.sprint, test.id).toBe(OPEN_ROLLOVER_SPRINT);
       expect(isTodaysNewTestDueDate(test.dueDate), test.id).toBe(true);
     }
 
     for (const id of TODAYS_PARENT_TASK_IDS) {
       const task = INITIAL_TASKS.find((item) => item.id === id);
-      expect(task?.sprint, id).toBe(TODAYS_NEW_TEST_SPRINT);
+      expect(task?.sprint, id).toBe(OPEN_ROLLOVER_SPRINT);
       expect(task?.dueDate, id).toBe(TODAYS_NEW_TEST_PARENT_DUE);
     }
     const parentNormalized = normalizeTasks(INITIAL_TASKS.filter((item) => TODAYS_PARENT_TASK_IDS.includes(item.id)));
     expect(parentNormalized.every((task) => task.dueDate === TODAYS_NEW_TEST_PARENT_DUE)).toBe(true);
-    expect(parentNormalized.every((task) => task.sprint === TODAYS_NEW_TEST_SPRINT)).toBe(true);
+    expect(parentNormalized.every((task) => task.sprint === OPEN_ROLLOVER_SPRINT)).toBe(true);
   });
 });

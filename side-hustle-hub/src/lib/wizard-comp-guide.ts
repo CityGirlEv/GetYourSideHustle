@@ -8,8 +8,13 @@
 
 import { actAsUserId, readActAsTarget } from "./admin-act-as";
 import { getSessionToken } from "./api";
+import { accountActivationStillPending } from "./free-member-session";
 import { fetchMemberProgress, saveMemberProgress } from "./gysh-member-progress";
 import { getLocalStore } from "./browser-storage";
+import {
+  ACCOUNT_ACTIVATION_REQUIRED_ERROR,
+  accountNeedsEmailActivation,
+} from "./register-activation";
 import {
   canOfferComplimentaryPick,
   claimComplimentaryGuide,
@@ -106,6 +111,25 @@ export function wizardCompUserFacingRule(): string {
 
 export const GUEST_FREE_GUIDE_BUTTON_LABEL = "Select this as my free guide";
 
+export { ACCOUNT_ACTIVATION_REQUIRED_ERROR };
+
+/**
+ * Pending accounts cannot lock a free guide until they open the activation email.
+ * Logged-in Active accounts are not blocked by a leftover local reminder.
+ */
+export function freeGuideSelectionBlock(input: {
+  isLoggedIn?: boolean;
+  accountStatus?: string | null;
+}): string | null {
+  if (accountNeedsEmailActivation(input.accountStatus)) {
+    return ACCOUNT_ACTIVATION_REQUIRED_ERROR;
+  }
+  if (!input.isLoggedIn && accountActivationStillPending()) {
+    return ACCOUNT_ACTIVATION_REQUIRED_ERROR;
+  }
+  return null;
+}
+
 /**
  * Anonymous wizard: remember one free-guide choice. The first pick wins for life.
  * A later pick of a different guide is ignored.
@@ -114,6 +138,10 @@ export function selectGuestFreeGuide(
   guideId: string,
   resultIds: readonly string[],
 ): { claimedId: string | null; alreadyClaimed: boolean; error: string | null } {
+  const activationBlock = freeGuideSelectionBlock({ isLoggedIn: false });
+  if (activationBlock) {
+    return { claimedId: null, alreadyClaimed: false, error: activationBlock };
+  }
   const id = guideId.trim();
   const allowed = new Set(resultIds.map((row) => row.trim()).filter(Boolean));
   const existing = readLocalCompMap();
@@ -210,6 +238,7 @@ export async function claimSelectedComplimentaryGuide(input: {
   isLoggedIn?: boolean;
   previewAsGuest?: boolean;
   membershipTier?: string | null;
+  accountStatus?: string | null;
   guideId: string;
   resultIds: string[];
 }): Promise<{
@@ -218,6 +247,19 @@ export async function claimSelectedComplimentaryGuide(input: {
   alreadyClaimed: boolean;
   error: string | null;
 }> {
+  const signedIn = Boolean(input.isLoggedIn) && !input.previewAsGuest;
+  const activationBlock = freeGuideSelectionBlock({
+    isLoggedIn: signedIn,
+    accountStatus: input.accountStatus,
+  });
+  if (activationBlock) {
+    return {
+      map: {},
+      claimedId: null,
+      alreadyClaimed: false,
+      error: activationBlock,
+    };
+  }
   if (input.previewAsGuest || !input.isLoggedIn) {
     return {
       map: {},

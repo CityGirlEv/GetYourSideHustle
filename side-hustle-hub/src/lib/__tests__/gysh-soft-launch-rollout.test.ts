@@ -58,9 +58,9 @@ describe("gysh-soft-launch-rollout", () => {
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 8, 2))).toEqual([5]); // Sep 2 → Sprint 5
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 8, 8))).toEqual([6]); // Sep 8 → Sprint 6
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 9, 7))).toEqual([10]); // Oct 7 → Sprint 10
-    expect(SOFT_LAUNCH_FACTORY_SPRINTS).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    expect(SOFT_LAUNCH_SEED_ALL_RANGE).toBe("S2–S10");
-    for (const sprint of [6, 7, 8, 9, 10]) {
+    expect(SOFT_LAUNCH_FACTORY_SPRINTS).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    expect(SOFT_LAUNCH_SEED_ALL_RANGE).toBe("S2–S14");
+    for (const sprint of [6, 7, 8, 9, 10, 11, 12, 13, 14]) {
       expect(SOFT_LAUNCH_ROLLOUT.some((i) => i.sprint === sprint)).toBe(true);
     }
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 5, 1))).toEqual([2]);

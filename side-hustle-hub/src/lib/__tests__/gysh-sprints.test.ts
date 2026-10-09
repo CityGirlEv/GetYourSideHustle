@@ -80,11 +80,12 @@ describe("gysh-sprints", () => {
     expect(items.some((i) => i.id === "bl-ai-brainstorm" && i.sprint === 4)).toBe(true);
     expect(items.some((i) => i.id === "s6-senior-gmsh" && i.sprint === 6)).toBe(true);
     expect(items.some((i) => i.id === "s10-next-horizon" && i.sprint === 10)).toBe(true);
+    expect(items.some((i) => i.id === "s14-holiday-workshops" && i.sprint === 14)).toBe(true);
     expect(items.some((i) => i.sprint === 0)).toBe(true);
   });
 
   it("exposes Sprint Goals for the schedule UI", () => {
-    expect(SPRINT_THEMES.length).toBe(11);
+    expect(SPRINT_THEMES.length).toBe(15);
     expect(themeForSprint(0)?.goal).toBe("Infrastructure");
     expect(themeForSprint(1)?.goal).toMatch(/Brand|Content/i);
     expect(themeForSprint(2)?.goal).toMatch(/Soft Launch|Launch/i);
@@ -93,18 +94,21 @@ describe("gysh-sprints", () => {
     expect(themeForSprint(6)?.goal).toMatch(/Senior/i);
     expect(themeForSprint(8)?.goal).toMatch(/Workshop|conversion/i);
     expect(themeForSprint(10)?.goal).toMatch(/horizon|Q4|Holiday/i);
+    expect(themeForSprint(11)?.goal).toMatch(/Fall family/i);
+    expect(themeForSprint(14)?.goal).toMatch(/Holiday workshop/i);
   });
 
   it("lists a compact rollout schedule summary with soft launch + GMSH bands", async () => {
     const { listRolloutScheduleSummary } = await import("../gysh-sprints");
     const rows = listRolloutScheduleSummary(new Date(2026, 6, 16));
-    expect(rows).toHaveLength(11);
+    expect(rows).toHaveLength(15);
     expect(rows[2]!.focus).toMatch(/Soft launch/i);
     expect(rows[4]!.focus).toMatch(/Kids/i);
     expect(rows[5]!.focus).toMatch(/Teen|Adult/i);
     expect(rows[6]!.focus).toMatch(/Senior/i);
     expect(rows[8]!.focus).toMatch(/Workshop/i);
     expect(rows[10]!.focus).toMatch(/horizon|Q4|Holiday/i);
+    expect(rows[14]!.focus).toMatch(/workshop/i);
   });
 
   it("schedules standup 3x, planning day-before-end, and retrospective", () => {
@@ -132,6 +136,8 @@ describe("gysh-sprints", () => {
     expect(dueDateForSprint(4)).toBe("08/27/26");
     expect(dueDateForSprint(6)).toBe("09/10/26");
     expect(dueDateForSprint(10)).toBe("10/08/26");
+    expect(dueDateForSprint(11)).toBe("10/15/26");
+    expect(dueDateForSprint(14)).toBe("11/05/26");
     expect(dueDateForSprint(BACKLOG_SPRINT)).toBe("");
   });
 
@@ -146,7 +152,12 @@ describe("gysh-sprints", () => {
     expect(sprints.map((s) => s.numericRangeLabel)).toContain("9/1/26–9/7/26");
     expect(sprints.map((s) => s.numericRangeLabel)).toContain("9/8/26–9/14/26");
     expect(sprints.map((s) => s.numericRangeLabel)).toContain("10/6/26–10/12/26");
-    expect(sprints).toHaveLength(11);
+    expect(sprints.map((s) => s.numericRangeLabel)).toContain("10/13/26–10/19/26");
+    expect(sprints.map((s) => s.numericRangeLabel)).toContain("11/3/26–11/9/26");
+    expect(sprints).toHaveLength(15);
+    expect(currentSprintIndex(new Date(2026, 9, 13))).toBe(11);
+    expect(currentSprintIndex(new Date(2026, 10, 3))).toBe(14);
+    expect(currentSprintIndex(new Date(2026, 10, 10))).toBe(14);
     expect(formatNumericDateRange(sprints[0]!.start, sprints[sprints.length - 1]!.end)).toMatch(
       /^7\/14\/26–/,
     );

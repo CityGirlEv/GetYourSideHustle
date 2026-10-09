@@ -59,7 +59,9 @@ import { getMemberCredits, handleAdminGrantInternalCredits } from "../_lib/membe
 import {
   listEmailLog,
   listEmailTemplates,
+  previewComplimentaryGuideFollowup,
   previewEmailTemplate,
+  sendComplimentaryGuideFollowupBatch,
   sendTestEmail,
   updateEmailTemplate,
 } from "../_lib/email-admin";
@@ -124,6 +126,8 @@ import {
   getDailyProgressReportHtml,
   listDailyProgressReports,
 } from "../_lib/daily-progress-audit";
+import { handleUpdateMemberProfile } from "../_lib/member-profile";
+import { publicCaughtApiError } from "../_lib/d1-retry";
 import { error, json } from "../_lib/crypto";
 
 function pathParts(params: { path?: string | string[] }): string[] {
@@ -247,6 +251,9 @@ export async function onRequest(context: {
 
     if (route === "auth/me" && method === "GET") {
       return withCors(request, await handleMe(env, request));
+    }
+    if (route === "auth/profile" && (method === "POST" || method === "PUT")) {
+      return withCors(request, await handleUpdateMemberProfile(env, request, sessionUser));
     }
     if (route === "beta-nda" && method === "POST") {
       const { handleAcceptBetaNda } = await import("../_lib/beta-nda-store");
@@ -476,6 +483,12 @@ export async function onRequest(context: {
     if (route === "email/test-send" && method === "POST") {
       return withCors(request, await sendTestEmail(env, request, user));
     }
+    if (route === "email/complimentary-guide-followup/preview" && method === "GET") {
+      return withCors(request, await previewComplimentaryGuideFollowup(env));
+    }
+    if (route === "email/complimentary-guide-followup/send" && method === "POST") {
+      return withCors(request, await sendComplimentaryGuideFollowupBatch(env, user));
+    }
     if (route === "email/digest/preview" && method === "GET") {
       return withCors(request, await handleAdminPreviewDigest(env, request, user));
     }
@@ -532,7 +545,7 @@ export async function onRequest(context: {
     if (dbFail) return withCors(request, dbFail);
     return withCors(request, error(`Not found: /api/${route}`, 404));
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return withCors(request, json({ error: `Server error: ${message}` }, 500));
+    const mapped = publicCaughtApiError(e);
+    return withCors(request, json({ error: mapped.message }, mapped.status));
   }
 }

@@ -17,6 +17,9 @@ import {
   applyQaInlinePatch,
   applyTaskInlinePatch,
   canCompleteWithChecklist,
+  clampStatusToChecklist,
+  cycleQaStatus,
+  cycleTaskStatus,
   qaWorkflowFieldsForStatus,
   type QaTestItem,
   type TaskItem,
@@ -88,7 +91,7 @@ describe('workChecklist + completion gates', () => {
     expect(formatStepPageHref('https://nonnegotiation.com/gear')).toBe('https://nonnegotiation.com/gear');
   });
 
-  it('marks remaining steps checked when status is set to Done or Passed', () => {
+  it('refuses Done or Passed until every checkbox is checked', () => {
     const steps = normalizeWorkChecklist([
       { id: 's1', label: 'Open page', href: '/pay', checked: true },
       { id: 's2', label: 'Confirm Zelle', checked: false },
@@ -97,18 +100,22 @@ describe('workChecklist + completion gates', () => {
     expect(checkAllChecklistSteps(steps).every((step) => step.checked)).toBe(true);
     expect(canCompleteWithChecklist('task', steps, 'done').ok).toBe(false);
     expect(canCompleteWithChecklist('test', steps, 'passed').ok).toBe(false);
+    expect(clampStatusToChecklist('task', 'in_progress', 'done', steps)).toBe('in_progress');
+    expect(clampStatusToChecklist('test', 'in_progress', 'passed', steps)).toBe('in_progress');
 
     const done = applyTaskInlinePatch(baseTask(), { steps, status: 'done' });
-    expect(done.status).toBe('done');
-    expect(checklistAllChecked(done.steps)).toBe(true);
+    expect(done.status).toBe('not_started');
+    expect(checklistAllChecked(done.steps)).toBe(false);
 
     const passed = applyQaInlinePatch(baseTest(), { steps, status: 'passed' });
-    expect(passed.status).toBe('passed');
-    expect(checklistAllChecked(passed.steps)).toBe(true);
+    expect(passed.status).toBe('untested');
+    expect(checklistAllChecked(passed.steps)).toBe(false);
 
     const checked = toggleChecklistStep(steps, 's2', true);
     expect(canCompleteWithChecklist('task', checked, 'done').ok).toBe(true);
     expect(canCompleteWithChecklist('test', checked, 'passed').ok).toBe(true);
+    expect(applyTaskInlinePatch(baseTask(), { steps: checked, status: 'done' }).status).toBe('done');
+    expect(applyQaInlinePatch(baseTest(), { steps: checked, status: 'passed' }).status).toBe('passed');
   });
 
   it('keeps spaces while a Super Admin is typing a step label', () => {
@@ -157,23 +164,41 @@ describe('QA Fixed/Retest workflow', () => {
     expect(notABug.assignee).toBe('angela');
   });
 
-  it('lets Not Started or In Progress jump to Done and checks leftover steps', () => {
+  it('blocks Done until leftover steps are checked, then skips Done when cycling', () => {
     const started = applyTaskInlinePatch(baseTask(), {
       steps: [{ id: 's1', label: 'Do it', checked: false }],
       status: 'in_progress',
     });
     expect(started.status).toBe('in_progress');
-    const done = applyTaskInlinePatch(started, { status: 'done' });
+    const blocked = applyTaskInlinePatch(started, { status: 'done' });
+    expect(blocked.status).toBe('in_progress');
+    expect(blocked.steps?.every((step) => step.checked)).toBe(false);
+    expect(cycleTaskStatus('in_progress', started.steps)).toBe('blocked');
+    const done = applyTaskInlinePatch(started, {
+      steps: checkAllChecklistSteps(started.steps),
+      status: 'done',
+    });
     expect(done.status).toBe('done');
     expect(done.steps?.every((step) => step.checked)).toBe(true);
+    const reopened = applyTaskInlinePatch(done, {
+      steps: [{ id: 's1', label: 'Do it', checked: false }],
+    });
+    expect(reopened.status).toBe('in_progress');
   });
 
-  it('lets a test Pass with unchecked steps by checking them', () => {
+  it('blocks Pass until leftover steps are checked, then skips Pass when cycling', () => {
     const test = applyQaInlinePatch(baseTest(), {
       steps: [{ id: 's1', label: 'Open', checked: false }],
       status: 'passed',
     });
-    expect(test.status).toBe('passed');
-    expect(test.steps?.every((step) => step.checked)).toBe(true);
+    expect(test.status).toBe('untested');
+    expect(test.steps?.every((step) => step.checked)).toBe(false);
+    expect(cycleQaStatus('in_progress', test.steps)).toBe('failed');
+    const passed = applyQaInlinePatch(test, {
+      steps: checkAllChecklistSteps(test.steps),
+      status: 'passed',
+    });
+    expect(passed.status).toBe('passed');
+    expect(passed.steps?.every((step) => step.checked)).toBe(true);
   });
 });

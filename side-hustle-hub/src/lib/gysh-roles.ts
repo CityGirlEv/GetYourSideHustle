@@ -526,6 +526,19 @@ export async function saveUser(
   return data.user;
 }
 
+/** Put a saved user into the directory without dropping fields the save response omitted. */
+export function placeSavedUser(list: readonly GyshUser[], saved: GyshUser): GyshUser[] {
+  const idx = list.findIndex((row) => row.id === saved.id);
+  const prior = idx >= 0 ? list[idx] : undefined;
+  const next: GyshUser = {
+    ...(prior ?? ({} as GyshUser)),
+    ...saved,
+    creditBalance: saved.creditBalance ?? prior?.creditBalance,
+  };
+  if (idx < 0) return [next, ...list];
+  return list.map((row) => (row.id === saved.id ? next : row));
+}
+
 export async function deleteUser(id: string): Promise<void> {
   const userId = String(id || "").trim();
   if (!userId) throw new Error("User id is required.");

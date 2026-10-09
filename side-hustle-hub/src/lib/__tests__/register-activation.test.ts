@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { pendingFreeAccountMaySignIn, registerUserStatus } from "../register-activation";
+import {
+  ACCOUNT_ACTIVATION_REQUIRED_ERROR,
+  accountNeedsEmailActivation,
+  pendingFreeAccountMaySignIn,
+  registerUserStatus,
+} from "../register-activation";
 
 describe("register activation", () => {
   it("keeps every new membership pending until the verification email is clicked", () => {
@@ -22,5 +27,13 @@ describe("register activation", () => {
     expect(
       pendingFreeAccountMaySignIn({ status: "active", membershipTier: "free" }),
     ).toBe(false);
+  });
+
+  it("treats a pending membership as not activated yet", () => {
+    expect(accountNeedsEmailActivation("pending")).toBe(true);
+    expect(accountNeedsEmailActivation("Pending")).toBe(true);
+    expect(accountNeedsEmailActivation("active")).toBe(false);
+    expect(accountNeedsEmailActivation("")).toBe(false);
+    expect(ACCOUNT_ACTIVATION_REQUIRED_ERROR).toMatch(/activation email/i);
   });
 });

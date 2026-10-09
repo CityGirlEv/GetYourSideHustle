@@ -60,6 +60,7 @@ import {
 } from "./assignment";
 import { logTaskAssignmentChange, logTestAssignmentChange } from "./daily-digest";
 import { decodeBase64ToBytes, scanTestEvidence } from "./test-evidence";
+import { isTransientD1Error, withD1Retry } from "./d1-retry";
 import { defaultsForNewTest } from "./new-test-defaults";
 import {
   closedSprintBlocksActor,
@@ -352,6 +353,10 @@ function mapListedUsers(
 }
 
 export async function listUsers(env: Env, request?: Request): Promise<Response> {
+  return withD1Retry(() => listUsersOnce(env, request));
+}
+
+async function listUsersOnce(env: Env, request?: Request): Promise<Response> {
   await ensurePartnerAdmins(env);
   const includeDeleted = usersListIncludesDeleted(request?.url);
   try {
@@ -433,35 +438,37 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
     await appendAudit(env.DB, "password_admin_set", email, `email migrated from ${existing.email}`);
   }
 
-  await env.DB.prepare(
-    `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
-       name = excluded.name,
-       email = excluded.email,
-       role = excluded.role,
-       roles = excluded.roles,
-       status = excluded.status,
-       notes = excluded.notes,
-       password_hash = excluded.password_hash,
-       password_salt = excluded.password_salt,
-       updated_at = excluded.updated_at`,
-  )
-    .bind(
-      id,
-      name,
-      email,
-      role,
-      rolesJson,
-      status,
-      existing?.joined_at ?? joinedAt,
-      notes,
-      passwordHash,
-      passwordSalt,
-      existing?.created_at ?? now,
-      now,
+  await withD1Retry(() =>
+    env.DB.prepare(
+      `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         email = excluded.email,
+         role = excluded.role,
+         roles = excluded.roles,
+         status = excluded.status,
+         notes = excluded.notes,
+         password_hash = excluded.password_hash,
+         password_salt = excluded.password_salt,
+         updated_at = excluded.updated_at`,
     )
-    .run();
+      .bind(
+        id,
+        name,
+        email,
+        role,
+        rolesJson,
+        status,
+        existing?.joined_at ?? joinedAt,
+        notes,
+        passwordHash,
+        passwordSalt,
+        existing?.created_at ?? now,
+        now,
+      )
+      .run(),
+  );
 
   const prevStatus = existing?.status ?? "";
   const becameActive = status === "active" && prevStatus !== "active";
@@ -495,12 +502,33 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
     }
   }
 
-  let user =
-    (await env.DB.prepare(
-      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt FROM users WHERE id = ?`,
-    )
-      .bind(id)
-      .first<DbUser>()) ?? null;
+  let user: DbUser | null = null;
+  try {
+    user =
+      (await withD1Retry(() =>
+        env.DB.prepare(
+          `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt FROM users WHERE id = ?`,
+        )
+          .bind(id)
+          .first<DbUser>(),
+      )) ?? null;
+  } catch (e) {
+    if (!isTransientD1Error(e)) throw e;
+  }
+  if (!user) {
+    user = {
+      id,
+      name,
+      email,
+      role,
+      roles: rolesJson,
+      status,
+      joined_at: existing?.joined_at ?? joinedAt,
+      notes,
+      password_hash: passwordHash,
+      password_salt: passwordSalt,
+    } as DbUser;
+  }
 
   let membershipTier = "free";
   let audience = "adult";
