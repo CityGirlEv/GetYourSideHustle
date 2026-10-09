@@ -14,11 +14,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { hashPassword } from "./lib/password.mjs";
 
+import { resolveWranglerBin } from "./resolve-wrangler.mjs";
+
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const wrangler = path.resolve(
-  root,
-  "../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js",
-);
+const wrangler = resolveWranglerBin(root);
+if (!wrangler) {
+  console.error("Wrangler not found. Install it with: npm install wrangler --save-dev");
+  process.exit(1);
+}
 const isLocal = process.argv.includes("--local");
 
 const now = new Date().toISOString();
@@ -184,10 +187,14 @@ function runSqlFile(sql) {
     if (isLocal) {
       args.push("--persist-to", ".wrangler/state");
     }
-    const result = spawnSync("node", args, {
+    const win = process.platform === "win32";
+    const spawnArgs = win
+      ? args.map((arg) => (/\s/.test(String(arg)) ? `"${arg}"` : String(arg)))
+      : args;
+    const result = spawnSync("node", spawnArgs, {
       cwd: root,
       encoding: "utf8",
-      shell: process.platform === "win32",
+      shell: win,
     });
     if (result.status !== 0) {
       console.error(result.stdout || "");

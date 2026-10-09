@@ -91,6 +91,8 @@ import {
   MarketingManual,
   MembershipSignupPage,
   NewsletterPage,
+  WelcomeVol1AnswerPage,
+  WelcomeVol1Page,
   ParentConsentPage,
   PrivacyPolicyPage,
   SeniorSideHustles,
@@ -150,7 +152,7 @@ import {
   workshopsListingPath,
 } from "./lib/app-routes";
 import { workshopRegistrationPath } from "./lib/workshops";
-import { consumeWorkshopJoinReturn } from "./lib/pending-join-return";
+import { consumeJoinReturnView, consumeWorkshopJoinReturn } from "./lib/pending-join-return";
 import { readAdminDeepLink } from "./lib/admin-deep-links";
 import {
   confirmEmailVerification,
@@ -215,6 +217,8 @@ export type AppView =
   | "checklist"
   | "community"
   | "newsletter"
+  | "welcome_vol1"
+  | "welcome_vol1_answer"
   | "workshops"
   | "kids"
   | "seniors"
@@ -246,6 +250,7 @@ function resolveLaunchGuideId(hustleId: string): string {
 function App() {
   const bootRoute = parseAppRoute();
   const [activeView, setActiveView] = useState<AppView>(bootRoute.view as AppView);
+  const [newsletterFocusId, setNewsletterFocusId] = useState<string | null>(null);
   const [consentToken, setConsentToken] = useState<string | null>(() => readConsentTokenFromUrl());
   /** Skip pushState when the URL change came from back/forward. */
   const skipNextUrlSync = useRef(false);
@@ -931,10 +936,21 @@ function App() {
         return {
           title: "How the GYSH Bi-Weekly Newsletter works",
           steps: [
+            "Welcome Vol 1 is open to everyone. Its answer key needs a free account.",
             "Starter or higher members get two issues a month — kids glow + adult side hustle tip.",
             "Read the archive on this page; the same issue lands in your inbox.",
             "Content Factory drafts appear here after they are marked Published.",
-            "Free accounts can browse titles, then upgrade to unlock the full issue.",
+          ],
+        };
+      case "welcome_vol1":
+      case "welcome_vol1_answer":
+        return {
+          title: "How GYSH Welcome Vol 1 works",
+          steps: [
+            "Anyone can read the full Welcome Vol 1 issue.",
+            "See the answer key asks you to sign in or join free.",
+            "A free account is enough. Starter, Pro, and Elite can open it too.",
+            "The paid bi-weekly archive stays on the Newsletter page.",
           ],
         };
       case "about":
@@ -1412,6 +1428,8 @@ function App() {
             const workshopReturn = consumeWorkshopJoinReturn();
             if (workshopReturn) {
               goTo("workshops", { workshopRegisterId: workshopReturn });
+            } else if (consumeJoinReturnView("welcome_vol1_answer")) {
+              goTo("welcome_vol1_answer");
             } else {
               restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
             }
@@ -1655,6 +1673,8 @@ function App() {
       case "checklist": return "GYSH Side Hustle Guide";
       case "community": return "GYSH Blog";
       case "newsletter": return "GYSH Bi-Weekly Newsletter";
+      case "welcome_vol1": return "GYSH Welcome Vol 1";
+      case "welcome_vol1_answer": return "GYSH Welcome Vol 1 Answer Key";
       case "workshops": return "GYSH Workshops & Speakers";
       case "shop": return "GYSH Shop";
       case "kids": return "GYSH Kids & Teens Corner";
@@ -1696,6 +1716,8 @@ function App() {
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
       case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult side hustle tip.";
+      case "welcome_vol1": return "Newsletter #1, Soft Launch Welcome. The answer key needs a free GYSH account.";
+      case "welcome_vol1_answer": return "October 5, 2026 word search solution for GYSH members.";
       case "shop": return "GYSH tees, caps, and Gang merch — Ideas. Action. Income. Freedom.";
       case "kids": return "Stories, GYSH Match Wizard, ideas, savings, and guides for Kids and Teens — parents coach the journey.";
       case "seniors": return "GYSH Match Wizard and flexible Side Hustles for 50+, retirees, and second careers.";
@@ -3096,6 +3118,31 @@ function App() {
             }
             onLogin={() => goTo("login")}
             onJoin={() => openJoin(null, { scrollToPlans: true })}
+            onOpenWelcome={() => goTo("welcome_vol1")}
+            focusIssueId={newsletterFocusId}
+          />
+        )}
+
+        {activeView === "welcome_vol1" && (
+          <WelcomeVol1Page
+            onOpenAnswer={() => goTo("welcome_vol1_answer")}
+            onSelectIssue={(issue) => {
+              if (issue.target === "welcome_vol1") {
+                goTo("welcome_vol1");
+                return;
+              }
+              setNewsletterFocusId(issue.id);
+              goTo("newsletter");
+            }}
+          />
+        )}
+
+        {activeView === "welcome_vol1_answer" && (
+          <WelcomeVol1AnswerPage
+            isLoggedIn={effectivePortalLogin}
+            onLogin={() => goTo("login")}
+            onJoin={() => openMembershipSignup("free")}
+            onBack={() => goTo("welcome_vol1")}
           />
         )}
 
@@ -3508,6 +3555,11 @@ function App() {
               const workshopReturn = consumeWorkshopJoinReturn();
               if (!workshopReturn) return false;
               goTo("workshops", { workshopRegisterId: workshopReturn });
+              return true;
+            }}
+            onFreeAccountReady={() => {
+              if (!consumeJoinReturnView("welcome_vol1_answer")) return false;
+              goTo("welcome_vol1_answer");
               return true;
             }}
             onBackToPlans={() => {

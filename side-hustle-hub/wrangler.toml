@@ -25,4 +25,4 @@ migrations_dir = "migrations"
 # ONE database: production gysh-db (same as getyoursidehustle.com).
 # `npm run dev` keeps remote = true. Only `npm run dev:local` flips this to false
 # for an isolated .wrangler/state sandbox (see scripts/dev-pages.mjs).
-remote = true
+remote = false

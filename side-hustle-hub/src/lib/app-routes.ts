@@ -13,6 +13,8 @@ export type AppRouteView =
   | "checklist"
   | "community"
   | "newsletter"
+  | "welcome_vol1"
+  | "welcome_vol1_answer"
   | "workshops"
   | "kids"
   | "seniors"
@@ -39,6 +41,8 @@ export const VIEW_PATH: Record<AppRouteView, string> = {
   checklist: "/checklist",
   community: "/community",
   newsletter: "/newsletter",
+  welcome_vol1: "/newsletter/welcome-vol-1",
+  welcome_vol1_answer: "/newsletter/welcome-vol-1/answer",
   workshops: "/workshops",
   kids: "/kids",
   seniors: "/seniors",
@@ -69,6 +73,8 @@ const PATH_ALIASES: Record<string, AppRouteView> = {
   "/community": "community",
   "/newsletter": "newsletter",
   "/newsletters": "newsletter",
+  "/newsletter/welcome-vol-1": "welcome_vol1",
+  "/newsletter/welcome-vol-1/answer": "welcome_vol1_answer",
   "/workshops": "workshops",
   "/kids": "kids",
   "/seniors": "seniors",
@@ -178,6 +184,8 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     checklist: "GYSH Side Hustle Guide",
     community: "GYSH Community",
     newsletter: "GYSH Newsletter",
+    welcome_vol1: "GYSH Welcome Vol 1",
+    welcome_vol1_answer: "GYSH Welcome Vol 1 Answer Key",
     workshops: "GYSH Workshops",
     kids: "GYSH Kids & Teens Corner",
     seniors: "GYSH Seniors Corner",

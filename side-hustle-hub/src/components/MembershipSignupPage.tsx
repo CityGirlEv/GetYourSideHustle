@@ -78,6 +78,8 @@ type MembershipSignupPageProps = {
   onBackToPlans: () => void;
   onGoToLogin: () => void;
   onOpenFreeGuides?: () => void;
+  /** Return true when a just-created free account should leave this page. */
+  onFreeAccountReady?: () => boolean;
   onOpenBetaNda?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
 };
@@ -121,6 +123,7 @@ export function MembershipSignupPage({
   onBackToPlans,
   onGoToLogin,
   onOpenFreeGuides,
+  onFreeAccountReady,
   onOpenBetaNda,
   onBetaTestingUnlocked,
 }: MembershipSignupPageProps) {
@@ -479,7 +482,7 @@ export function MembershipSignupPage({
       }
       if (isPaid && stripeReady) {
         setStep("checkout");
-      } else {
+      } else if (!onFreeAccountReady?.()) {
         setStep("done");
       }
     } catch {

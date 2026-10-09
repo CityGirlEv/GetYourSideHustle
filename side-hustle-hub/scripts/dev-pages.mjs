@@ -29,11 +29,10 @@ import {
   wranglerRestartRequestAction,
 } from "./d1-health-watch.mjs";
 
+import { resolveWranglerBin, wranglerBinCandidates } from "./resolve-wrangler.mjs";
+
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const wrangler = path.resolve(
-  root,
-  "../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js",
-);
+const wrangler = resolveWranglerBin(root);
 const wranglerConfig = path.join(root, "wrangler.toml");
 
 const wantLocalD1Flag =
@@ -60,7 +59,7 @@ function ensureD1RemoteFlag(wantRemote) {
     console.error(`Missing ${wranglerConfig}`);
     process.exit(1);
   }
-  const before = readFileSync(wranglerConfig, "utf8");
+  const before = readFileSync(wranglerConfig, "utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   if (!/^\s*remote\s*=\s*(true|false)\s*$/m.test(before)) {
     console.error("wrangler.toml [[d1_databases]] is missing a remote = true|false line.");
     process.exit(1);
@@ -130,9 +129,11 @@ const VITE_PORT = 5173;
 const API_PORT = 8788;
 const isWin = process.platform === "win32";
 
-if (!existsSync(wrangler)) {
-  console.error(`Wrangler not found at ${wrangler}`);
-  console.error("Install wrangler in muntie-ev-ai-studio-main, or add wrangler as a devDependency here.");
+if (!wrangler) {
+  console.error("Wrangler not found.");
+  console.error("Install it with: npm install wrangler --save-dev");
+  console.error("Looked in:");
+  for (const candidate of wranglerBinCandidates(root)) console.error(`  ${candidate}`);
   process.exit(1);
 }
 
@@ -216,8 +217,13 @@ function freePort(port, label) {
 
 const devVars = loadDevVars();
 
+function quoteWinArgs(args) {
+  if (!isWin) return args;
+  return args.map((arg) => (/\s/.test(String(arg)) ? `"${arg}"` : String(arg)));
+}
+
 function spawnInherit(cmd, args, label, extraEnv = {}) {
-  const child = spawn(cmd, args, {
+  const child = spawn(cmd, quoteWinArgs(args), {
     cwd: root,
     stdio: "inherit",
     shell: isWin,
@@ -237,7 +243,7 @@ function spawnInherit(cmd, args, label, extraEnv = {}) {
 function startWrangler() {
   const proc = spawn(
     "node",
-    [
+    quoteWinArgs([
       "--use-system-ca",
       wrangler,
       "pages",
@@ -251,7 +257,7 @@ function startWrangler() {
       ".wrangler/state",
       "--show-interactive-dev-session",
       "false",
-    ],
+    ]),
     {
       cwd: root,
       stdio: "inherit",

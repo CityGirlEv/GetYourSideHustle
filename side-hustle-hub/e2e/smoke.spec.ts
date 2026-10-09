@@ -334,12 +334,36 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("contact-page")).toBeVisible();
   });
 
+  test("Welcome Vol 1 puzzle is public and the answer key asks for a free account", async ({ page }) => {
+    await page.goto("/newsletter/welcome-vol-1");
+    await expect(page).toHaveURL(/\/newsletter\/welcome-vol-1$/);
+    await expect(page.getByTestId("welcome-vol1-page")).toBeVisible();
+    await expect(page.getByTestId("newsletter-issue-menu-open")).toBeVisible();
+    await expect(page.getByTestId("newsletter-issue-menu-panel")).toHaveAttribute("aria-hidden", "true");
+    await page.getByTestId("newsletter-issue-menu-open").click();
+    await expect(page.getByTestId("newsletter-issue-link-welcome-vol-1")).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("button", { name: /Newsletter #2/i })).toHaveCount(0);
+    await page.getByTestId("newsletter-issue-menu-close").click();
+    await expect(page.getByTestId("welcome-vol1-page-1")).toBeVisible();
+    await expect(page.getByTestId("welcome-vol1-page-2")).toBeVisible();
+    await expect(page.getByTestId("welcome-vol1-page-1")).toHaveAttribute("alt", /Tina and Evelyn/);
+    await expect(page.getByTestId("welcome-vol1-answer-image")).toHaveCount(0);
+    await page.getByTestId("welcome-vol1-answer-link").click();
+    await expect(page).toHaveURL(/\/newsletter\/welcome-vol-1\/answer$/);
+    await expect(page.getByTestId("welcome-vol1-answer-lock")).toBeVisible();
+    await expect(page.getByTestId("welcome-vol1-answer-join")).toBeVisible();
+    await expect(page.getByTestId("welcome-vol1-answer-image")).toHaveCount(0);
+    await page.getByTestId("welcome-vol1-back").click();
+    await expect(page.getByTestId("welcome-vol1-page")).toBeVisible();
+  });
+
   test("Newsletter page is members-only from header, footer, and /newsletter", async ({ page }) => {
     await page.goto("/newsletter");
     await expect(page).toHaveURL(/\/newsletter$/);
     await expect(page.getByTestId("page-title")).toContainText("Newsletter");
     await expect(page.getByTestId("newsletter-page")).toBeVisible();
     await expect(page.getByTestId("nav-newsletter")).toBeVisible();
+    await expect(page.getByTestId("newsletter-welcome-vol1")).toBeVisible();
     await expect(page.getByTestId("newsletter-lock")).toBeVisible();
     await expect(page.getByTestId("newsletter-join")).toBeVisible();
     await expect(page.getByRole("heading", { name: /Newsletter #1/i })).toBeVisible();

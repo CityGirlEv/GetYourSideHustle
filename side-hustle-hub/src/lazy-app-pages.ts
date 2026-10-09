@@ -42,6 +42,12 @@ export const CommunityHub = lazyPage(() =>
 export const NewsletterPage = lazyPage(() =>
   import("./components/NewsletterPage").then((m) => ({ default: m.NewsletterPage })),
 );
+export const WelcomeVol1Page = lazyPage(() =>
+  import("./components/WelcomeVol1Page").then((m) => ({ default: m.WelcomeVol1Page })),
+);
+export const WelcomeVol1AnswerPage = lazyPage(() =>
+  import("./components/WelcomeVol1AnswerPage").then((m) => ({ default: m.WelcomeVol1AnswerPage })),
+);
 export const KidsCorner = lazyPage(() =>
   import("./components/KidsCorner").then((m) => ({ default: m.KidsCorner })),
 );

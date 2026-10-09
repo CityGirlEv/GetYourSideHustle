@@ -1,5 +1,6 @@
 import { api } from "./api";
 import { SOFT_LAUNCH_ROLLOUT } from "./gysh-soft-launch-rollout";
+import { WELCOME_VOL1_DATE, WELCOME_VOL1_ID } from "./welcome-vol1";
 
 export const NEWSLETTER_CADENCE = "biweekly" as const;
 export const NEWSLETTER_CADENCE_LABEL = "Bi-Weekly Newsletter";
@@ -78,6 +79,30 @@ export function mergeMemberNewsletterIssues(
   const seen = new Set(published.map((issue) => normalizeNewsletterTitle(issue.title)));
   const extras = fallback.filter((issue) => !seen.has(normalizeNewsletterTitle(issue.title)));
   return [...published, ...extras].sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+}
+
+export type NewsletterIssueLink = {
+  id: string;
+  title: string;
+  publishedAt: string;
+  /** Designed public issue, or a title in the Starter archive. */
+  target: "welcome_vol1" | "archive";
+};
+
+/** Published issues only. Soft-launch drafts stay off this menu until they have a real date. */
+export const PUBLISHED_NEWSLETTER_LINKS: NewsletterIssueLink[] = [
+  {
+    id: WELCOME_VOL1_ID,
+    title: "Newsletter #1 — Soft Launch Welcome",
+    publishedAt: WELCOME_VOL1_DATE,
+    target: "welcome_vol1",
+  },
+];
+
+export function newsletterIssueLinks(
+  issues: NewsletterIssueLink[] = PUBLISHED_NEWSLETTER_LINKS,
+): NewsletterIssueLink[] {
+  return [...issues].sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
 }
 
 export function teaserIssues(issues: MemberNewsletterIssue[]): MemberNewsletterTeaser[] {

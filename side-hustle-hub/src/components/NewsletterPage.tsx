@@ -20,6 +20,8 @@ type NewsletterPageProps = {
   membershipTier: TierId | null;
   onLogin: () => void;
   onJoin: () => void;
+  onOpenWelcome: () => void;
+  focusIssueId?: string | null;
 };
 
 function formatIssueDate(value: string): string {
@@ -36,6 +38,8 @@ export function NewsletterPage({
   membershipTier,
   onLogin,
   onJoin,
+  onOpenWelcome,
+  focusIssueId = null,
 }: NewsletterPageProps) {
   const unlocked = canAccessNewsletter(membershipTier, { isAdmin });
   const [issues, setIssues] = useState<MemberNewsletterIssue[]>(FALLBACK_ISSUES);
@@ -60,6 +64,10 @@ export function NewsletterPage({
     };
   }, [isLoggedIn]);
 
+  useEffect(() => {
+    if (focusIssueId) setOpenId(focusIssueId);
+  }, [focusIssueId]);
+
   return (
     <div className="static-page newsletter-page" data-testid="newsletter-page">
       <section className="glass static-page-hero">
@@ -73,6 +81,18 @@ export function NewsletterPage({
         </p>
         <MembershipLockBadge minTier="starter" unlocked={unlocked} data-testid="newsletter-lock-badge" />
       </section>
+
+      <article className="glass static-page-card newsletter-page__welcome" data-testid="newsletter-welcome-vol1">
+        <span className="newsletter-page__issue-meta">October 5, 2026 · Open issue</span>
+        <h3>Newsletter #1 — Soft Launch Welcome</h3>
+        <p>
+          The full Welcome Vol 1 issue: Tina and Evelyn’s letter, this week’s steps, Kids Corner,
+          Coach Duke, the word search, and a parent note. The answer key needs a free account.
+        </p>
+        <button type="button" className="btn btn-primary" onClick={onOpenWelcome} data-testid="newsletter-open-welcome">
+          Open Welcome Vol 1
+        </button>
+      </article>
 
       {!unlocked ? (
         <section className="glass static-page-card newsletter-page__lock" data-testid="newsletter-lock">

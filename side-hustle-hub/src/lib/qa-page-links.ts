@@ -16,6 +16,8 @@ export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   checklist: "Side Hustle Checklist",
   community: "Community",
   newsletter: "Newsletter",
+  welcome_vol1: "Welcome Vol 1",
+  welcome_vol1_answer: "Welcome Vol 1 Answer Key",
   workshops: "Workshops",
   kids: "Kids & Teens Corner",
   seniors: "Seniors Corner",

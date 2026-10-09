@@ -17,5 +17,9 @@ export const COMMUNITY_NAV_CHILDREN = [
 ] as const;
 
 export function isCommunityNavView(view: AppRouteView): boolean {
-  return COMMUNITY_NAV_CHILDREN.some((child) => child.view === view);
+  return (
+    COMMUNITY_NAV_CHILDREN.some((child) => child.view === view) ||
+    view === "welcome_vol1" ||
+    view === "welcome_vol1_answer"
+  );
 }

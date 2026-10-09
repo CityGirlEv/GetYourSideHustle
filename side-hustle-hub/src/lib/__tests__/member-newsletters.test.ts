@@ -5,6 +5,7 @@ import {
   NEWSLETTER_CADENCE_LABEL,
   memberNewsletterBody,
   mergeMemberNewsletterIssues,
+  newsletterIssueLinks,
   normalizeNewsletterTitle,
   publishedDraftsToIssues,
   softLaunchNewsletterIssues,
@@ -71,6 +72,19 @@ describe("member newsletters", () => {
     expect(merged.some((i) => i.id === "D-1")).toBe(true);
     expect(merged.some((i) => i.id === "sl-s4-newsletter-2")).toBe(true);
     expect(merged.filter((i) => normalizeNewsletterTitle(i.title).includes("soft launch welcome"))).toHaveLength(1);
+  });
+
+  it("lists only published newsletters with their real dates", () => {
+    const links = newsletterIssueLinks();
+    expect(links).toEqual([
+      {
+        id: "welcome-vol-1",
+        title: "Newsletter #1 — Soft Launch Welcome",
+        publishedAt: "2026-10-05",
+        target: "welcome_vol1",
+      },
+    ]);
+    expect(links.some((link) => link.id.startsWith("sl-"))).toBe(false);
   });
 
   it("hides body on teasers for locked visitors", () => {

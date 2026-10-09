@@ -27,6 +27,8 @@ describe("primary nav", () => {
     expect(COMMUNITY_NAV_CHILDREN[0]?.view).toBe("community");
     expect(COMMUNITY_NAV_CHILDREN.find((c) => c.id === "gear")?.view).toBe("shop");
     expect(isCommunityNavView("community")).toBe(true);
+    expect(isCommunityNavView("welcome_vol1")).toBe(true);
+    expect(isCommunityNavView("welcome_vol1_answer")).toBe(true);
     expect(isCommunityNavView("guides")).toBe(false);
     expect(isCommunityNavView("shop")).toBe(true);
     expect(isCommunityNavView("workshops")).toBe(false);

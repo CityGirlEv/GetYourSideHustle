@@ -72,6 +72,14 @@ export function consumeWorkshopJoinReturn(): string | null {
   return id;
 }
 
+/** Consume a saved return only when it points at this view. */
+export function consumeJoinReturnView(view: string): boolean {
+  const pending = readPendingJoinReturn();
+  if (!pending || pending.view !== view) return false;
+  clearPendingJoinReturn();
+  return true;
+}
+
 /** Prefer wizard returnView; otherwise the page that opened Join / signup. */
 export function resolvePostFreeSignupDestination(input: {
   blueprintReturnView?: string | null;
